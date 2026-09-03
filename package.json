@@ -1,0 +1,42 @@
+{
+  "name": "obsidian-paraflow",
+  "version": "0.1.0",
+  "description": "Provides structured Live Preview list editing with bundled Typora-style reading and editing visuals.",
+  "main": "main.js",
+  "type": "module",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+    "version": "node version-bump.mjs && git add manifest.json versions.json",
+    "lint": "eslint ."
+  },
+  "keywords": [
+    "obsidian",
+    "markdown",
+    "typography",
+    "codemirror"
+  ],
+  "author": "flovst",
+  "license": "MIT",
+  "devDependencies": {
+    "@codemirror/commands": "6.8.1",
+    "@codemirror/language": "6.12.4",
+    "@codemirror/state": "6.5.0",
+    "@codemirror/view": "6.38.6",
+    "@eslint/js": "^9.39.4",
+    "@lezer/common": "1.5.2",
+    "@lezer/markdown": "1.7.2",
+    "@types/jsdom": "21.1.7",
+    "@types/node": "^22.15.17",
+    "esbuild": "0.25.5",
+    "eslint": "^9.39.4",
+    "eslint-plugin-obsidianmd": "^0.4.0",
+    "globals": "^17.6.0",
+    "jiti": "^2.6.1",
+    "jsdom": "26.1.0",
+    "obsidian": "latest",
+    "tsx": "4.23.12",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.59.1"
+  }
+}

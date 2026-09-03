@@ -1,0 +1,10 @@
+{
+  "id": "paraflow",
+  "name": "ParaFlow",
+  "version": "0.1.0",
+  "minAppVersion": "1.0.0",
+  "description": "Provides structured Live Preview list editing with bundled Typora-style reading and editing visuals.",
+  "author": "flovst",
+  "isDesktopOnly": false,
+  "authorUrl": "https://github.com/flovst"
+}

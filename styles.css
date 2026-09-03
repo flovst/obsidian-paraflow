@@ -1,0 +1,587 @@
+/*
+ * ParaFlow final Typora-style standalone snippet.
+ *
+ * This snippet is intentionally independent from the behavior-only plugin
+ * track. Copy it into an Obsidian vault's .obsidian/snippets directory.
+ */
+
+.markdown-source-view.mod-cm6,
+.markdown-reading-view {
+	--paraflow-line-height: 1.6;
+	--paraflow-blank-line-height: 0.65em;
+	--paraflow-block-gap: 0.8em;
+	--paraflow-reading-list-indent: 16px;
+	--paraflow-reading-list-line-height: 1.5;
+	--paraflow-live-list-base-indent: 0.5em;
+	--paraflow-live-list-indent: 2.75em;
+	--paraflow-end-spacing: 100px;
+	--paraflow-h1-size: 2.25em;
+	--paraflow-h2-size: 1.75em;
+	--paraflow-h3-size: 1.5em;
+	--paraflow-h4-size: 1.25em;
+	--paraflow-h5-size: 1em;
+	--paraflow-h6-size: 1em;
+	--paraflow-content-width: 860px;
+	--paraflow-code-background: var(--background-secondary);
+}
+
+.markdown-source-view.mod-cm6 {
+	--h1-size: var(--paraflow-h1-size);
+	--h2-size: var(--paraflow-h2-size);
+	--h3-size: var(--paraflow-h3-size);
+	--h4-size: var(--paraflow-h4-size);
+	--h5-size: var(--paraflow-h5-size);
+	--h6-size: var(--paraflow-h6-size);
+	--line-height-normal: var(--paraflow-line-height);
+	--list-spacing: 0;
+	--code-background: var(--paraflow-code-background);
+	--list-indent: var(--paraflow-live-list-indent);
+}
+
+.markdown-source-view.mod-cm6 .cm-content,
+.workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer {
+	line-height: var(--paraflow-line-height);
+}
+
+.workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	:is(.callout, .markdown-embed) {
+	line-height: var(--line-height-normal);
+}
+
+.workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	:is(p, li, blockquote):not(:is(.callout *, .markdown-embed *)) {
+	line-height: var(--paraflow-line-height);
+}
+
+.markdown-source-view.mod-cm6 .cm-sizer,
+.workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer {
+	max-width: var(--paraflow-content-width);
+	margin-inline: auto;
+}
+
+.markdown-source-view.mod-cm6 .cm-line {
+	line-height: var(--paraflow-line-height);
+}
+
+.markdown-source-view.mod-cm6 .cm-content > .cm-line {
+	margin-inline: 0 !important;
+	margin-block: 0 !important;
+}
+
+.markdown-source-view.mod-cm6 .cm-hmd-list-indent {
+	font-family: var(--font-monospace) !important;
+	font-size: 0;
+}
+
+.markdown-source-view.mod-cm6
+	> .cm-editor
+	> .cm-scroller
+	> .cm-sizer
+	> .cm-contentContainer
+	> .cm-content {
+	padding-bottom: var(--paraflow-end-spacing) !important;
+}
+
+.markdown-source-view.mod-cm6 .cm-line:has(> br:only-child) {
+	min-height: var(--paraflow-blank-line-height);
+	padding-block: 0;
+	line-height: var(--paraflow-blank-line-height);
+}
+
+.markdown-source-view.mod-cm6 .HyperMD-header-1,
+.workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	h1:not(:is(.callout *, .markdown-embed *)) {
+	font-size: var(--paraflow-h1-size);
+	line-height: 1.2;
+}
+
+.markdown-source-view.mod-cm6 .HyperMD-header-2,
+.workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	h2:not(:is(.callout *, .markdown-embed *)) {
+	font-size: var(--paraflow-h2-size);
+	line-height: 1.225;
+}
+
+.markdown-source-view.mod-cm6 .HyperMD-header-3,
+.workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	h3:not(:is(.callout *, .markdown-embed *)) {
+	font-size: var(--paraflow-h3-size);
+	line-height: 1.43;
+}
+
+.markdown-source-view.mod-cm6 .HyperMD-header-4,
+.workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	h4:not(:is(.callout *, .markdown-embed *)) {
+	font-size: var(--paraflow-h4-size);
+}
+
+.markdown-source-view.mod-cm6 .HyperMD-header-5,
+.workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	h5:not(:is(.callout *, .markdown-embed *)) {
+	font-size: var(--paraflow-h5-size);
+}
+
+.markdown-source-view.mod-cm6 .HyperMD-header-6,
+.workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	h6:not(:is(.callout *, .markdown-embed *)) {
+	color: var(--text-muted);
+	font-size: var(--paraflow-h6-size);
+}
+
+.markdown-source-view.mod-cm6 .HyperMD-header-1,
+.markdown-source-view.mod-cm6 .HyperMD-header-2 {
+	position: relative;
+	box-sizing: border-box;
+	padding-bottom: 0.2em;
+	border-bottom: 0;
+}
+
+.workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	:is(h1, h2):not(:is(.callout *, .markdown-embed *)) {
+	position: relative;
+	box-sizing: border-box;
+	padding-bottom: 0.2em;
+	border-bottom: 0;
+}
+
+.workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	:is(h1, h2):not(:is(.callout *, .markdown-embed *))::after,
+.markdown-source-view.mod-cm6 .HyperMD-header-1::after,
+.markdown-source-view.mod-cm6 .HyperMD-header-2::after {
+	content: '';
+	position: absolute;
+	right: 0;
+	bottom: 0.16em;
+	left: 0;
+	height: 1px;
+	background: var(--background-modifier-border);
+}
+
+.workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	:is(p, blockquote, ul, ol, dl, table):not(
+		:is(.callout *, .markdown-embed *)
+	) {
+	margin-block: var(--paraflow-block-gap);
+}
+
+.workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	:is(ul, ol):not(:is(.callout *, .markdown-embed *)) {
+	margin-inline-start: 0 !important;
+	padding-inline-start: var(--paraflow-reading-list-indent) !important;
+}
+
+.workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	:is(li > ul, li > ol):not(:is(.callout *, .markdown-embed *)) {
+	margin-block: 0;
+}
+
+.workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	li:not(:is(.callout *, .markdown-embed *)) {
+	margin-block: 0;
+	line-height: var(--paraflow-reading-list-line-height);
+}
+
+.workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	li:not(.task-list-item):not(:is(.callout *, .markdown-embed *))::marker {
+	color: var(--text-normal);
+	font-size: 1.05em;
+}
+
+.workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	.list-bullet:not(:is(.callout *, .markdown-embed *)) {
+	display: none !important;
+}
+
+.workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	ul:not(.contains-task-list):not(:is(.callout *, .markdown-embed *)) {
+	list-style-type: disc;
+}
+
+.workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	ul:not(.contains-task-list)
+	ul:not(.contains-task-list):not(:is(.callout *, .markdown-embed *)) {
+	list-style-type: circle;
+}
+
+.workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	ul:not(.contains-task-list)
+	ul:not(.contains-task-list)
+	ul:not(.contains-task-list):not(:is(.callout *, .markdown-embed *)) {
+	list-style-type: square;
+}
+
+.workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	ul:not(.contains-task-list)
+	ul:not(.contains-task-list)
+	ul:not(.contains-task-list)
+	ul:not(.contains-task-list):not(:is(.callout *, .markdown-embed *)) {
+	list-style-type: square;
+}
+
+.markdown-source-view.mod-cm6 .HyperMD-list-line {
+	padding-block: 0.12em;
+	line-height: var(--paraflow-line-height);
+}
+
+.markdown-source-view.mod-cm6 .HyperMD-list-line-1 {
+	padding-inline-start: var(--paraflow-live-list-base-indent) !important;
+	text-indent: 0 !important;
+}
+
+.markdown-source-view.mod-cm6 .HyperMD-list-line-2 {
+	padding-inline-start: calc(
+		var(--paraflow-live-list-base-indent) + var(--paraflow-live-list-indent)
+	) !important;
+	text-indent: 0 !important;
+}
+
+.markdown-source-view.mod-cm6 .HyperMD-list-line-3 {
+	padding-inline-start: calc(
+		var(--paraflow-live-list-base-indent) + 2 * var(--paraflow-live-list-indent)
+	) !important;
+	text-indent: 0 !important;
+}
+
+.markdown-source-view.mod-cm6 .HyperMD-list-line-4 {
+	padding-inline-start: calc(
+		var(--paraflow-live-list-base-indent) + 3 * var(--paraflow-live-list-indent)
+	) !important;
+	text-indent: 0 !important;
+}
+
+.markdown-source-view.mod-cm6 .HyperMD-list-line-5 {
+	padding-inline-start: calc(
+		var(--paraflow-live-list-base-indent) + 4 * var(--paraflow-live-list-indent)
+	) !important;
+	text-indent: 0 !important;
+}
+
+.markdown-source-view.mod-cm6 .HyperMD-list-line-6 {
+	padding-inline-start: calc(
+		var(--paraflow-live-list-base-indent) + 5 * var(--paraflow-live-list-indent)
+	) !important;
+	text-indent: 0 !important;
+}
+
+.markdown-source-view.mod-cm6 .list-bullet {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 1em;
+	color: transparent;
+	font-size: 1rem;
+	line-height: 1;
+	vertical-align: middle;
+	margin-inline-end: 0.65em;
+}
+
+.markdown-source-view.mod-cm6 .list-bullet::before {
+	display: none !important;
+}
+
+.markdown-source-view.mod-cm6 .list-bullet::after {
+	position: relative !important;
+	flex: 0 0 auto;
+	width: 0.42em;
+	height: 0.42em;
+	background-color: transparent;
+	top: -0.39em !important;
+	transform: none !important;
+}
+
+.markdown-source-view.mod-cm6
+	.HyperMD-list-line:not(.cm-active):has(.list-bullet)
+	.cm-formatting-list {
+	color: transparent !important;
+	font-size: 0;
+}
+
+.markdown-source-view.mod-cm6
+	.HyperMD-list-line.cm-active:not(.HyperMD-task-line)
+	.list-bullet {
+	display: none;
+}
+
+.markdown-source-view.mod-cm6
+	.HyperMD-list-line-1:not(.HyperMD-task-line)
+	.list-bullet::after {
+	border: 0;
+	border-radius: 50%;
+	background: var(--text-normal);
+}
+
+.markdown-source-view.mod-cm6
+	.HyperMD-list-line-2:not(.HyperMD-task-line)
+	.list-bullet::after {
+	box-sizing: border-box;
+	border: 1px solid var(--text-normal);
+	border-radius: 50%;
+	background: transparent;
+}
+
+.markdown-source-view.mod-cm6
+	.HyperMD-list-line-3:not(.HyperMD-task-line)
+	.list-bullet::after,
+.markdown-source-view.mod-cm6
+	.HyperMD-list-line-4:not(.HyperMD-task-line)
+	.list-bullet::after,
+.markdown-source-view.mod-cm6
+	.HyperMD-list-line-5:not(.HyperMD-task-line)
+	.list-bullet::after,
+.markdown-source-view.mod-cm6
+	.HyperMD-list-line-6:not(.HyperMD-task-line)
+	.list-bullet::after {
+	border: 0;
+	border-radius: 0;
+	background: var(--text-normal);
+}
+
+/* ParaFlow replaces protected Live Preview prefixes with owned marker widgets. */
+.markdown-source-view.mod-cm6 .paraflow-list-marker {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: 0 0 auto;
+	width: 1em;
+	color: var(--text-normal);
+	font-size: 1rem;
+	line-height: 1;
+	vertical-align: middle;
+	margin-inline-end: 0.65em;
+}
+
+.markdown-source-view.mod-cm6
+	.paraflow-list-marker--unordered:not(.paraflow-list-marker--task) {
+	color: transparent;
+}
+
+.markdown-source-view.mod-cm6
+	.paraflow-list-marker--unordered:not(.paraflow-list-marker--task)::after {
+	content: '';
+	position: relative;
+	box-sizing: border-box;
+	flex: 0 0 auto;
+	width: 0.42em;
+	height: 0.42em;
+	top: -0.39em;
+}
+
+.markdown-source-view.mod-cm6 .paraflow-list-marker--disc::after {
+	border: 0;
+	border-radius: 50%;
+	background: var(--text-normal);
+}
+
+.markdown-source-view.mod-cm6 .paraflow-list-marker--ring::after {
+	border: 1px solid var(--text-normal);
+	border-radius: 50%;
+	background: transparent;
+}
+
+.markdown-source-view.mod-cm6 .paraflow-list-marker--square::after {
+	border: 0;
+	border-radius: 0;
+	background: var(--text-normal);
+}
+
+.markdown-source-view.mod-cm6 .paraflow-list-marker--task {
+	display: none;
+}
+
+.workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	code:not(pre code):not(:is(.callout *, .markdown-embed *)),
+.markdown-source-view.mod-cm6 span.cm-inline-code {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 3px;
+	background: var(--paraflow-code-background);
+	padding: 0 0.2em;
+	font-size: 0.9em;
+}
+
+.workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	pre:not(:is(.callout *, .markdown-embed *)) {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 3px;
+	background: var(--paraflow-code-background);
+}
+
+.markdown-source-view.mod-cm6 .HyperMD-codeblock {
+	background: var(--paraflow-code-background);
+	font-size: 0.9em;
+}
+
+.workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	table:not(:is(.callout *, .markdown-embed *)),
+.markdown-source-view.mod-cm6 table {
+	width: 100%;
+	table-layout: auto;
+	border-collapse: collapse;
+}
+
+.markdown-source-view.mod-cm6 .cm-table-widget {
+	width: 100%;
+}
+
+.markdown-source-view.mod-cm6
+	.cm-table-widget :is(table, .table-wrapper) {
+	width: 100%;
+}
+
+.workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	:is(th, td):not(:is(.callout *, .markdown-embed *)),
+.markdown-source-view.mod-cm6 :is(th, td) {
+	border: 1px solid var(--background-modifier-border);
+	padding: 6px 13px;
+}
+
+.workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	thead:not(:is(.callout *, .markdown-embed *)),
+.markdown-source-view.mod-cm6 thead {
+	background: var(--background-secondary);
+}
+
+.workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	tbody:not(:is(.callout *, .markdown-embed *))
+	tr:nth-child(even),
+.markdown-source-view.mod-cm6 tbody tr:nth-child(even) {
+	background: var(--background-secondary);
+}
+
+.markdown-source-view.mod-cm6 .image-embed,
+.markdown-source-view.mod-cm6 .mermaid,
+.workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	:is(.image-embed, .mermaid):not(:is(.callout *, .markdown-embed *)) {
+	display: flex;
+	justify-content: center;
+}
+
+.markdown-source-view.mod-cm6 .image-embed img,
+.markdown-source-view.mod-cm6 .mermaid svg,
+.workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	.image-embed:not(:is(.callout *, .markdown-embed *)) img,
+.workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	.mermaid:not(:is(.callout *, .markdown-embed *)) svg {
+	display: block;
+	max-width: 100%;
+	margin-inline: auto;
+}
+
+.workspace-leaf-content[data-type='markdown']
+	> .view-content
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer,
+.workspace-leaf-content[data-type='markdown']
+	> .view-content.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer {
+	min-height: 0 !important;
+	padding-bottom: var(--paraflow-end-spacing) !important;
+}
+
+@media (min-width: 1400px) {
+	.markdown-source-view.mod-cm6,
+	.markdown-reading-view {
+		--paraflow-content-width: 1024px;
+	}
+}
+
+@media (min-width: 1800px) {
+	.markdown-source-view.mod-cm6,
+	.markdown-reading-view {
+		--paraflow-content-width: 1200px;
+	}
+}
