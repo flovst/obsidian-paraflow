@@ -12,12 +12,7 @@ export interface StructuredListMarker {
 
 const BASE_CLASS = 'paraflow-list-marker';
 const SHAPES: readonly StructuredListMarkerShape[] = ['disc', 'ring', 'square'];
-const SHAPE_GLYPHS: Readonly<Record<StructuredListMarkerShape, string>> = {
-	disc: '•',
-	ring: '○',
-	square: '▪',
-};
-
+const FORWARDED_MOUSE_EVENTS = new Set(['click', 'mousedown', 'mousemove', 'mouseup']);
 function markerShape(depth: number): StructuredListMarkerShape {
 	return SHAPES[Math.min(Math.max(0, depth), SHAPES.length - 1)] ?? 'disc';
 }
@@ -58,8 +53,10 @@ function markerClasses(marker: StructuredListMarker): string {
 
 function updateOwnedMarker(dom: HTMLElement, marker: StructuredListMarker): void {
 	dom.className = markerClasses(marker);
-	dom.textContent = marker.label ?? SHAPE_GLYPHS[marker.shape];
+	dom.textContent = marker.label ?? '';
 	dom.setAttribute('aria-hidden', 'true');
+	dom.setAttribute('contenteditable', 'false');
+	dom.setAttribute('draggable', 'false');
 }
 
 function sameMarker(left: StructuredListMarker, right: StructuredListMarker): boolean {
@@ -76,6 +73,10 @@ export class StructuredListMarkerWidget extends WidgetType {
 
 	eq(other: WidgetType): boolean {
 		return other instanceof StructuredListMarkerWidget && sameMarker(this.marker, other.marker);
+	}
+
+	ignoreEvent(event: Event): boolean {
+		return !FORWARDED_MOUSE_EVENTS.has(event.type);
 	}
 
 	toDOM(_view: EditorView): HTMLElement {

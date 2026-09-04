@@ -79,7 +79,7 @@ function editResult(plan: EditPlan): OperationResult {
 function physicalIndent(context: ListContext): string {
 	return context.source.slice({
 		from: context.current.lineFrom,
-		to: context.current.prefix.full.from,
+		to: context.current.prefix.outerMarker.from,
 	});
 }
 
@@ -274,8 +274,11 @@ function emptyReplacement(
 	layout: EmptyLayout,
 ): { readonly caretOffset: number; readonly text: string } {
 	const indent = desiredEmptyIndent(context);
-	const existing = physicalIndent(context);
-	const first = indent.startsWith(existing) ? indent.slice(existing.length) : indent;
+	const preserved = context.source.slice({
+		from: context.current.lineFrom,
+		to: context.current.markerLine.from,
+	});
+	const first = indent.startsWith(preserved) ? indent.slice(preserved.length) : indent;
 	const lines = [first, ...Array.from({ length: layout.lines - 1 }, () => indent)];
 	return {
 		caretOffset: lines.slice(0, layout.caretLine + 1).join('\n').length,

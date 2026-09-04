@@ -100,7 +100,12 @@ function transactionProvenance(transaction: Transaction): SelectionMode | 'unkno
 export const selectionProvenanceStateField = StateField.define<SelectionMode | 'unknown'>({
 	create: () => 'unknown',
 	update(value, transaction) {
-		return transaction.selection ? transactionProvenance(transaction) : value;
+		if (!transaction.selection) return value;
+		const provenance = transactionProvenance(transaction);
+		return provenance === 'unknown' && value === 'normal' &&
+			transaction.newSelection.eq(transaction.startState.selection)
+			? value
+			: provenance;
 	},
 });
 
@@ -141,20 +146,30 @@ function sharedProtectedBoundary(
 		: null;
 }
 
+function mappedEndpoint(
+	rangeIndex: StructuredListRangeIndex,
+	position: number,
+	bias: -1 | 1,
+): number {
+	const startBoundary = bias === 1
+		? rangeIndex.protectedRanges.find((range) => range.from === position)
+		: null;
+	return startBoundary?.to ?? rangeIndex.mapEndpoint(position, bias);
+}
+
 function mappedSelection(transaction: Transaction): EditorSelection | null {
 	const rangeIndex = getStructuredListProjectionState(transaction.state)?.rangeIndex;
 	if (!rangeIndex) return null;
 	const { anchor, head } = transaction.newSelection.main;
 	if (anchor === head) {
-		const position = rangeIndex.mapEndpoint(anchor, 1);
-		return EditorSelection.single(position);
+		return EditorSelection.single(mappedEndpoint(rangeIndex, anchor, 1));
 	}
 	const sharedBoundary = sharedProtectedBoundary(rangeIndex, anchor, head);
 	if (sharedBoundary !== null) return EditorSelection.single(sharedBoundary);
 	const direction = anchor < head ? 1 : -1;
 	return EditorSelection.single(
-		rangeIndex.mapEndpoint(anchor, direction),
-		rangeIndex.mapEndpoint(head, direction === 1 ? -1 : 1),
+		mappedEndpoint(rangeIndex, anchor, direction),
+		mappedEndpoint(rangeIndex, head, direction === 1 ? -1 : 1),
 	);
 }
 
@@ -164,7 +179,8 @@ function compositionActive(transaction: Transaction): boolean {
 }
 
 function geometryExcluded(transaction: Transaction): boolean {
-	return transaction.newSelection.ranges.length !== 1 || exactWholeDocument(transaction.state);
+	return transaction.newSelection.ranges.length !== 1 ||
+		(exactWholeDocument(transaction.state) && !transaction.isUserEvent('select.pointer'));
 }
 
 function selectionModeExcluded(transaction: Transaction): boolean {

@@ -24,7 +24,10 @@ function syntaxForItem(
 	replacementStartsAfterIndent = false,
 ): ListItemSyntax | null {
 	const line = state.doc.lineAt(itemNode.from);
-	const markerLine = range(itemNode.from, line.to);
+	const normalizedItemNode = replacementStartsAfterIndent
+		? range(line.from, itemNode.to)
+		: itemNode;
+	const markerLine = range(normalizedItemNode.from, line.to);
 	const parsed = prefixPolicy.parse(state.sliceDoc(markerLine.from, markerLine.to), markerLine.from);
 	if (!parsed) return null;
 	const prefix = replacementStartsAfterIndent && parsed.indentText.length > 0
@@ -36,7 +39,7 @@ function syntaxForItem(
 			),
 		}
 		: parsed;
-	return { itemNode, markerLine, prefix };
+	return { itemNode: normalizedItemNode, markerLine, prefix };
 }
 
 function nodeNameTokens(name: string): readonly string[] {

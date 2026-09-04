@@ -83,7 +83,7 @@ function emptyExceptionId(nested: boolean, operation: BackspaceOperation): Excep
 function physicalIndent(context: ListContext): string {
 	return context.source.slice({
 		from: context.current.lineFrom,
-		to: context.current.prefix.full.from,
+		to: context.current.prefix.outerMarker.from,
 	});
 }
 
