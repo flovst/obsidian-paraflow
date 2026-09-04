@@ -105,7 +105,6 @@ function contentRelativeX(view: EditorView, event: MouseEvent): number {
 function intentTarget(
 	view: EditorView,
 	event: MouseEvent,
-	point: VisualPosition,
 	range: SourceRange,
 	services: NavigationServices,
 ): PointerIntent['target'] | null {
@@ -124,7 +123,7 @@ function pointerIntent(
 	if (!point) return null;
 	const range = rangeAtPoint(services.rangeIndex.protectedRanges, point);
 	if (!range) return null;
-	const target = intentTarget(view, event, point, range, services);
+	const target = intentTarget(view, event, range, services);
 	return target ? {
 		documentPosition: point.position,
 		drag: false,

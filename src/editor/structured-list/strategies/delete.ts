@@ -223,13 +223,11 @@ function boundaryFragment(
 			execution.context,
 			prerequisites.boundary,
 			[prerequisites.regionId],
-			execution.services.capabilities,
 		)
 		: removeStructuralBoundary(
 			execution.context.editScope,
 			prerequisites.boundary,
 			prerequisites.regionId,
-			execution.services.capabilities,
 		);
 }
 
@@ -242,7 +240,6 @@ function executeDeleteDecision(
 			execution.context,
 			prerequisites.regionId,
 			prerequisites.direction,
-			execution.services.capabilities,
 		)
 		: boundaryFragment(execution, prerequisites);
 	return {
@@ -251,7 +248,6 @@ function executeDeleteDecision(
 			'backspace-delete-inside-content',
 			execution.context.editScope,
 			[fragment],
-			execution.services.capabilities,
 		),
 	};
 }

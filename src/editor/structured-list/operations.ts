@@ -2,9 +2,7 @@ import type { EditorSelection, EditorState } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
 import type {
 	EditPlan,
-	EditScopeFactory,
 	EditValidationInput,
-	OperationCapabilityProvider,
 } from './edit-plan.js';
 import type {
 	ListContext,
@@ -155,14 +153,12 @@ export interface GoalXStore {
 
 export interface StructuralServices {
 	readonly prefixPolicy: PrefixPolicy;
-	readonly capabilities: OperationCapabilityProvider;
 }
 
 export interface NavigationServices {
 	readonly visual: VisualNavigationAdapter;
 	readonly goalX: GoalXStore;
 	readonly rangeIndex: StructuredListRangeIndex;
-	readonly capabilities: OperationCapabilityProvider;
 	resolveDestination(rawPosition: VisualPosition, bias: -1 | 1): NavigationDestination | null;
 }
 
@@ -177,7 +173,6 @@ export interface ClipboardEventSink extends ClipboardSink {
 export interface SelectionServices {
 	serialize(context: SelectionContext): string;
 	readonly clipboard: ClipboardSink;
-	readonly capabilities: OperationCapabilityProvider;
 }
 
 export interface OperationResultServices {
@@ -186,7 +181,6 @@ export interface OperationResultServices {
 }
 
 export interface StructuredListRuntimeServices {
-	readonly scopeFactory: EditScopeFactory;
 	readonly structural: StructuralServices;
 	readonly navigation: NavigationServices;
 	readonly selection: SelectionServices;

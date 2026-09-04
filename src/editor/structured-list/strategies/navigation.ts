@@ -182,9 +182,7 @@ function terminalEdit(
 	return {
 		changes: [{ from, insert: '\n', to: from }],
 		exceptionId: 'SLX-005',
-		ownership: {
-			capability: execution.services.capabilities.request(execution.context.editScope, [id]),
-		},
+		ownership: { regionIds: [id] },
 		selection: EditorSelection.single(from + 1),
 	};
 }
@@ -204,7 +202,6 @@ function verticalDirection(
 }
 
 function finishVertical(
-	execution: ExecutionFor<'up-down'>,
 	current: VisualPosition,
 	raw: VisualPosition,
 	destination: NavigationDestination,
@@ -241,7 +238,7 @@ export const upDown: OperationHandler<'up-down'> = (execution) => {
 	const destination = resolved(execution.services, raw, 1);
 	if (!destination) return passThrough();
 	execution.services.goalX.write(goalX);
-	return finishVertical(execution, current, raw, destination);
+	return finishVertical(current, raw, destination);
 };
 
 function sameItem(

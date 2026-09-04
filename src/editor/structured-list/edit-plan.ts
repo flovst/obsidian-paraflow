@@ -13,10 +13,6 @@ import type {
 	OperationResultServices,
 } from './operations.js';
 
-const editScopeBrand: unique symbol = Symbol('EditScope');
-const stateSnapshotBrand: unique symbol = Symbol('StateSnapshot');
-const editCapabilityBrand: unique symbol = Symbol('EditCapability');
-
 export type EditRegionKind =
 	| 'current-prefix'
 	| 'current-content'
@@ -47,74 +43,21 @@ export interface ContextEditRegion {
 	readonly protection: 'ordinary' | 'protected-prefix';
 }
 
-export interface StateSnapshotId {
-	readonly [stateSnapshotBrand]: true;
-}
-
-export function createStateSnapshotId(): StateSnapshotId {
-	return Object.freeze({ [stateSnapshotBrand]: true as const });
-}
-
-export interface EditScopeId {
-	readonly [editScopeBrand]: true;
-}
-
 export interface EditScope {
-	readonly id: EditScopeId;
-	readonly stateSnapshotId: StateSnapshotId;
 	readonly operation: HandledOperationId;
 	readonly mode: 'editable' | 'selection-only';
 	readonly regionIds: readonly EditRegionId[];
 	region(id: EditRegionId): ContextEditRegion | null;
 }
 
-export interface EditScopeFactory {
-	create(
-		operation: HandledOperationId,
-		mode: EditScope['mode'],
-		regions: readonly ContextEditRegion[],
-	): EditScope;
-}
-
-export interface EditCapability {
-	readonly [editCapabilityBrand]: true;
-	readonly operation: HandledOperationId;
-	readonly scopeId: EditScopeId;
-	readonly stateSnapshotId: StateSnapshotId;
-	readonly regionIds: readonly EditRegionId[];
-}
-
-export interface OperationCapabilityProvider {
-	request(scope: EditScope, regionIds: readonly EditRegionId[]): EditCapability;
-}
-
-export interface ResolvedEditCapability {
-	readonly operation: HandledOperationId;
-	readonly scopeId: EditScopeId;
-	readonly stateSnapshotId: StateSnapshotId;
-	readonly regions: readonly ContextEditRegion[];
-}
-
-export interface OperationCapabilityVerifier {
-	verifyAndResolve(
-		capability: EditCapability,
-		expectedOperation: HandledOperationId,
-		expectedScope: EditScope,
-		stateSnapshotId: StateSnapshotId,
-		authoritativeProtectedRanges: readonly SourceRange[],
-	): ResolvedEditCapability | null;
-}
-
 export interface EditValidationInput {
 	readonly expectedOperation: HandledOperationId;
 	readonly expectedScope: EditScope;
-	readonly stateSnapshotId: StateSnapshotId;
 	readonly authoritativeProtectedRanges: readonly SourceRange[];
-	readonly verifier: OperationCapabilityVerifier;
 }
 
 export interface EditOwnership {
-	readonly capability: EditCapability;
+	readonly regionIds: readonly EditRegionId[];
 }
 
 export interface EditPlan {
@@ -126,7 +69,6 @@ export interface EditPlan {
 
 export interface EditPlanFragment {
 	readonly operation: HandledOperationId;
-	readonly scopeId: EditScopeId;
 	readonly regionIds: readonly EditRegionId[];
 	readonly changes: readonly ChangeSpec[];
 	readonly selection: EditorSelection | null;
@@ -202,12 +144,6 @@ export const OPERATION_REGION_KINDS = {
 	'up-down': ['terminal-insertion'],
 } as const satisfies Readonly<Record<HandledOperationId, readonly EditRegionKind[]>>;
 
-export interface OperationCapabilityRuntime {
-	readonly scopeFactory: EditScopeFactory;
-	readonly capabilities: OperationCapabilityProvider;
-	readonly verifier: OperationCapabilityVerifier;
-}
-
 export const structuralEditAnnotation = Annotation.define<HandledOperationId>();
 export const structuralExceptionAnnotation = Annotation.define<EditPlan['exceptionId']>();
 
@@ -223,18 +159,6 @@ const idKey = (id: EditRegionId): string => `${id.kind}:${id.index === null ? 'n
 
 const sameId = (left: EditRegionId, right: EditRegionId): boolean =>
 	left.kind === right.kind && left.index === right.index;
-
-const sameRanges = (left: readonly SourceRange[], right: readonly SourceRange[]): boolean =>
-	left.length === right.length &&
-	left.every((range, index) => {
-		const candidate = right[index];
-		return candidate !== undefined && range.from === candidate.from && range.to === candidate.to;
-	});
-
-const cloneId = (id: EditRegionId): EditRegionId => Object.freeze({ ...id });
-const cloneRange = (range: SourceRange): SourceRange => Object.freeze({ ...range });
-const cloneRegion = (region: ContextEditRegion): ContextEditRegion =>
-	Object.freeze({ id: cloneId(region.id), protection: region.protection, range: cloneRange(region.range) });
 
 function validateRange(range: SourceRange, sourceLength: number, label: string): void {
 	if (
@@ -262,169 +186,31 @@ function validateRegionDefinitions(
 	}
 	const ordered = [...regions].sort((left, right) => left.range.from - right.range.from);
 	for (let index = 1; index < ordered.length; index += 1) {
-		const previous = ordered[index - 1];
-		const current = ordered[index];
-		if (previous && current && current.range.from < previous.range.to) {
+		const previous = ordered[index - 1]!;
+		const current = ordered[index]!;
+		if (current.range.from < previous.range.to) {
 			throw new Error('Edit scope contains overlapping region definitions');
 		}
 	}
 }
 
-function validateProtectedRanges(
-	ranges: readonly SourceRange[],
-	sourceLength: number,
-): readonly SourceRange[] {
-	for (const range of ranges) validateRange(range, sourceLength, 'Protected range');
-	return Object.freeze(ranges.map(cloneRange));
-}
-
-const scopeContainsId = (scope: EditScope, id: EditRegionId): boolean =>
-	scope.regionIds.some((candidate) => sameId(candidate, id));
-
-interface CapabilityRuntimeState {
-	readonly stateSnapshotId: StateSnapshotId;
-	readonly sourceLength: number;
-	readonly protectedSnapshot: readonly SourceRange[];
-	readonly mintedScopes: WeakSet<object>;
-	readonly mintedCapabilities: WeakSet<object>;
-	readonly capabilityRegions: WeakMap<object, readonly ContextEditRegion[]>;
-}
-
-function createScopeFactory(runtime: CapabilityRuntimeState): EditScopeFactory {
-	return {
-		create(operation, mode, definitions) {
-			validateRegionDefinitions(definitions, runtime.sourceLength);
-			const allowed = new Set<EditRegionKind>(OPERATION_REGION_KINDS[operation]);
-			const regions = mode === 'selection-only'
-				? []
-				: definitions.filter((region) => allowed.has(region.id.kind)).map(cloneRegion);
-			const scopeId = Object.freeze({ [editScopeBrand]: true as const });
-			const regionIds = Object.freeze(regions.map((region) => region.id));
-			const scope = Object.freeze({
-				id: scopeId,
-				mode,
-				operation,
-				region: (id: EditRegionId) =>
-					regions.find((region) => sameId(region.id, id)) ?? null,
-				regionIds,
-				stateSnapshotId: runtime.stateSnapshotId,
-			}) satisfies EditScope;
-			runtime.mintedScopes.add(scope);
-			return scope;
-		},
-	};
-}
-
-function assertRequestableScope(scope: EditScope, runtime: CapabilityRuntimeState): void {
-	if (!runtime.mintedScopes.has(scope) || scope.stateSnapshotId !== runtime.stateSnapshotId) {
-		throw new Error('Edit scope was not minted by this capability runtime');
-	}
-	if (scope.mode === 'selection-only') {
-		throw new Error('Cannot request an edit capability from a selection-only scope');
-	}
-}
-
-function assertRequestableIds(scope: EditScope, requestedIds: readonly EditRegionId[]): void {
-	const keys = requestedIds.map(idKey);
-	if (new Set(keys).size !== keys.length) {
-		throw new Error('Edit capability request contains a duplicate region ID');
-	}
-	const allowed = new Set<EditRegionKind>(OPERATION_REGION_KINDS[scope.operation]);
-	for (const id of requestedIds) {
-		if (!allowed.has(id.kind) || !scopeContainsId(scope, id)) {
-			throw new Error(`Region ${idKey(id)} is not in the edit scope`);
-		}
-	}
-}
-
-function createCapabilityProvider(runtime: CapabilityRuntimeState): OperationCapabilityProvider {
-	return {
-		request(scope, requestedIds) {
-			assertRequestableScope(scope, runtime);
-			assertRequestableIds(scope, requestedIds);
-			const regionIds = Object.freeze(requestedIds.map(cloneId));
-			const regions = Object.freeze(
-				regionIds
-					.map((id) => scope.region(id))
-					.filter((region): region is ContextEditRegion => region !== null),
-			);
-			const capability = Object.freeze({
-				[editCapabilityBrand]: true as const,
-				operation: scope.operation,
-				regionIds,
-				scopeId: scope.id,
-				stateSnapshotId: runtime.stateSnapshotId,
-			}) satisfies EditCapability;
-			runtime.mintedCapabilities.add(capability);
-			runtime.capabilityRegions.set(capability, regions);
-			return capability;
-		},
-	};
-}
-
-function capabilityMatchesScope(
-	capability: EditCapability,
+export function createEditScope(
 	operation: HandledOperationId,
-	scope: EditScope,
-): boolean {
-	return operation === scope.operation &&
-		capability.operation === operation &&
-		capability.scopeId === scope.id;
-}
-
-function capabilityMatchesRuntime(
-	capability: EditCapability,
-	scope: EditScope,
-	snapshotId: StateSnapshotId,
-	protectedRanges: readonly SourceRange[],
-	runtime: CapabilityRuntimeState,
-): boolean {
-	return runtime.mintedCapabilities.has(capability) &&
-		runtime.mintedScopes.has(scope) &&
-		snapshotId === runtime.stateSnapshotId &&
-		capability.stateSnapshotId === runtime.stateSnapshotId &&
-		sameRanges(runtime.protectedSnapshot, protectedRanges);
-}
-
-function createCapabilityVerifier(runtime: CapabilityRuntimeState): OperationCapabilityVerifier {
-	return {
-		verifyAndResolve(capability, operation, scope, snapshotId, protectedRanges) {
-			if (!capabilityMatchesScope(capability, operation, scope)) return null;
-			if (!capabilityMatchesRuntime(capability, scope, snapshotId, protectedRanges, runtime)) {
-				return null;
-			}
-			const regions = runtime.capabilityRegions.get(capability);
-			if (!regions) return null;
-			return Object.freeze({
-				operation,
-				regions,
-				scopeId: scope.id,
-				stateSnapshotId: runtime.stateSnapshotId,
-			});
-		},
-	};
-}
-
-export function createOperationCapabilityRuntime(
-	stateSnapshotId: StateSnapshotId,
+	mode: EditScope['mode'],
+	definitions: readonly ContextEditRegion[],
 	sourceLength: number,
-	authoritativeProtectedRanges: readonly SourceRange[],
-): OperationCapabilityRuntime {
-	if (!Number.isInteger(sourceLength) || sourceLength < 0) {
-		throw new RangeError('Source length must be a non-negative integer');
-	}
-	const runtime: CapabilityRuntimeState = {
-		capabilityRegions: new WeakMap<object, readonly ContextEditRegion[]>(),
-		mintedCapabilities: new WeakSet<object>(),
-		mintedScopes: new WeakSet<object>(),
-		protectedSnapshot: validateProtectedRanges(authoritativeProtectedRanges, sourceLength),
-		sourceLength,
-		stateSnapshotId,
+): EditScope {
+	validateRegionDefinitions(definitions, sourceLength);
+	const allowed = new Set<EditRegionKind>(OPERATION_REGION_KINDS[operation]);
+	const regions = mode === 'selection-only'
+		? []
+		: definitions.filter((region) => allowed.has(region.id.kind));
+	return {
+		mode,
+		operation,
+		region: (id) => regions.find((region) => sameId(region.id, id)) ?? null,
+		regionIds: regions.map((region) => region.id),
 	};
-	const scopeFactory = createScopeFactory(runtime);
-	const capabilities = createCapabilityProvider(runtime);
-	const verifier = createCapabilityVerifier(runtime);
-	return Object.freeze({ capabilities, scopeFactory, verifier });
 }
 
 type ConcreteChange = SourceRange;
@@ -450,15 +236,32 @@ function inspectChanges(changes: readonly ChangeSpec[], sourceLength: number): r
 	const concrete = changes.flatMap((change) => inspectChangeSpec(change, sourceLength));
 	if (concrete.length === 0) throw new Error('Edit plan must contain a source change');
 	for (let index = 1; index < concrete.length; index += 1) {
-		const previous = concrete[index - 1];
-		const current = concrete[index];
-		if (!previous || !current) continue;
+		const previous = concrete[index - 1]!;
+		const current = concrete[index]!;
 		if (current.from < previous.from) throw new Error('Edit plan changes must be ordered');
 		if (current.from < previous.to || current.from === previous.from) {
 			throw new Error('Edit plan changes must not overlap');
 		}
 	}
 	return concrete;
+}
+
+function resolveOwnedRegions(plan: EditPlan, input: EditValidationInput): readonly ContextEditRegion[] {
+	if (input.expectedScope.operation !== input.expectedOperation) {
+		throw new Error('Edit scope does not match the expected operation');
+	}
+	if (input.expectedScope.mode !== 'editable') {
+		throw new Error('A selection-only scope cannot authorize an edit plan');
+	}
+	const keys = plan.ownership.regionIds.map(idKey);
+	if (new Set(keys).size !== keys.length) {
+		throw new Error('Edit plan ownership contains a duplicate region ID');
+	}
+	return plan.ownership.regionIds.map((id) => {
+		const region = input.expectedScope.region(id);
+		if (!region) throw new Error(`Region ${idKey(id)} is not in the expected edit scope`);
+		return region;
+	});
 }
 
 function containsChange(region: SourceRange, change: ConcreteChange): boolean {
@@ -479,7 +282,7 @@ function authorizeChange(
 	protectedRanges: readonly SourceRange[],
 ): void {
 	const region = regions.find((candidate) => containsChange(candidate.range, change));
-	if (!region) throw new Error('Edit plan change is outside every verifier-resolved named edit region');
+	if (!region) throw new Error('Edit plan change is outside every owned named edit region');
 	const touchesProtectedPrefix = protectedRanges.some((range) => touchesRange(change, range));
 	if (touchesProtectedPrefix && region.protection !== 'protected-prefix') {
 		throw new Error('An ordinary edit region cannot authorize a protected prefix change');
@@ -491,17 +294,13 @@ export function validateEditPlan(
 	plan: EditPlan,
 	input: EditValidationInput,
 ): void {
-	const resolved = input.verifier.verifyAndResolve(
-		plan.ownership.capability,
-		input.expectedOperation,
-		input.expectedScope,
-		input.stateSnapshotId,
-		input.authoritativeProtectedRanges,
-	);
-	if (!resolved) throw new Error('Edit plan capability is invalid for the expected operation and scope');
+	for (const range of input.authoritativeProtectedRanges) {
+		validateRange(range, source.length, 'Protected range');
+	}
+	const regions = resolveOwnedRegions(plan, input);
 	const changes = inspectChanges(plan.changes, source.length);
 	for (const change of changes) {
-		authorizeChange(change, resolved.regions, input.authoritativeProtectedRanges);
+		authorizeChange(change, regions, input.authoritativeProtectedRanges);
 	}
 }
 
@@ -543,15 +342,19 @@ function applyClipboardResult(
 	result: Extract<OperationResult, { readonly kind: 'clipboard' }>,
 	services: OperationResultServices,
 ): void {
+	const state = view.state;
 	services.clipboard.writeText(result.text);
 	if (result.edit) {
+		if (view.state !== state) {
+			throw new Error('Editor state changed while writing Cut clipboard data');
+		}
 		validateEditPlan(view.state.doc.toString(), result.edit, {
 			...services.validation,
 			expectedOperation,
 			expectedScope,
 		});
+		dispatchValidatedEditPlan(view, expectedOperation, result.edit);
 	}
-	if (result.edit) dispatchValidatedEditPlan(view, expectedOperation, result.edit);
 }
 
 function applyHandledResult(

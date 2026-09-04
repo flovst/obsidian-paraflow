@@ -1,16 +1,5 @@
-import type { EditorSelection } from '@codemirror/state';
-import type { EditorView } from '@codemirror/view';
-import type { EditScope, EditScopeFactory } from './edit-plan.js';
-import type {
-	ContractOperationId,
-	ExecutionFor,
-	HandledOperationId,
-	NavigationOperationId,
-	OperationHandlers,
-	OperationResult,
-	StructuralOperationId,
-	StructuredListRuntimeServices,
-} from './operations.js';
+import type { EditScope } from './edit-plan.js';
+import type { HandledOperationId } from './operations.js';
 
 export interface SourceRange {
 	readonly from: number;
@@ -231,7 +220,6 @@ export interface NavigationDestination extends VisualPosition {
 export interface ContextRuntime {
 	readonly operation: HandledOperationId;
 	readonly editIntent: 'structural' | 'conditional-terminal' | 'cut' | 'none';
-	readonly scopeFactory: EditScopeFactory;
 	readonly selectionsCount: number;
 	readonly imeComposing: boolean;
 	readonly selectionMode:
@@ -242,151 +230,4 @@ export interface ContextRuntime {
 		| 'whole-item'
 		| 'column'
 		| 'third-party';
-}
-
-export interface FixtureManifestEntry {
-	readonly operation: ContractOperationId;
-	readonly contractHeading: string;
-	readonly fixtureKinds: readonly OperationFixture['kind'][];
-	readonly fixtureFile: string;
-	readonly expectedEvidenceIds: readonly string[];
-}
-
-export type OperationFixture =
-	| EditOperationFixture
-	| NavigationOperationFixture
-	| PointerOperationFixture
-	| CheckboxOwnershipFixture
-	| SelectionOperationFixture;
-
-export type FixtureForOperation<K extends ContractOperationId> =
-	K extends StructuralOperationId
-		? EditOperationFixture & { readonly operation: K }
-		: K extends 'up-down'
-			? (NavigationOperationFixture | EditOperationFixture) & { readonly operation: K }
-			: K extends NavigationOperationId
-				? NavigationOperationFixture & { readonly operation: K }
-				: K extends 'click-prefix-gutter'
-					? PointerOperationFixture
-					: K extends 'click-task-checkbox'
-						? CheckboxOwnershipFixture
-						: SelectionOperationFixture;
-
-export interface FixtureEvidence {
-	readonly id: string;
-	readonly contractHeading: string;
-	readonly sourceHeading: string;
-}
-
-export interface EditOperationFixture extends FixtureEvidence {
-	readonly kind: 'edit';
-	readonly operation: StructuralOperationId | 'up-down';
-	readonly key:
-		| 'Backspace'
-		| 'Delete'
-		| 'Enter'
-		| 'Shift+Enter'
-		| 'Tab'
-		| 'Shift+Tab'
-		| 'ArrowDown';
-	readonly before: string;
-	readonly after: string;
-	readonly caretBefore: number;
-	readonly caretAfter: number;
-	readonly handled: boolean;
-	readonly transactionCount: 0 | 1;
-	readonly undoRestoresBefore: boolean;
-	readonly tags: readonly string[];
-}
-
-export interface NavigationOperationFixture extends FixtureEvidence {
-	readonly kind: 'navigation';
-	readonly operation: NavigationOperationId;
-	readonly direction: 'up' | 'down' | 'backward' | 'forward' | null;
-	readonly source: string;
-	readonly caretBefore: number;
-	readonly caretAfter: number;
-	readonly assocBefore?: VisualAssociation;
-	readonly assocAfter?: VisualAssociation;
-	readonly visualLines: readonly VisualLineFixture[];
-	readonly goalXBefore: number | null;
-	readonly goalXAfter: number | null;
-	readonly transactionCount: 0 | 1;
-}
-
-export interface VisualLineFixture {
-	readonly from: number;
-	readonly to: number;
-	readonly startX: number;
-	readonly endX: number;
-}
-
-export interface PointerOperationFixture extends FixtureEvidence {
-	readonly kind: 'pointer';
-	readonly operation: 'click-prefix-gutter';
-	readonly source: string;
-	readonly target: 'marker' | 'prefix-gutter' | 'fold-control' | 'drag';
-	readonly clientX: number;
-	readonly clientY: number;
-	readonly domTarget: 'paraflow-marker' | 'editor-content' | 'native-fold';
-	readonly documentPosition: number;
-	readonly caretAfter: number | null;
-	readonly handled: boolean;
-}
-
-export interface CheckboxOwnershipFixture extends FixtureEvidence {
-	readonly kind: 'native-checkbox';
-	readonly operation: 'click-task-checkbox';
-	readonly before: string;
-	readonly nativeAfter: string;
-	readonly paraflowTransactionCount: 0;
-	readonly nativeTransactionCount: 1;
-}
-
-export interface SelectionOperationFixture extends FixtureEvidence {
-	readonly kind: 'selection';
-	readonly operation: 'normal-selection';
-	readonly before: string;
-	readonly selectionBefore: SelectionSnapshot;
-	readonly mappedSelection: SelectionSnapshot;
-	readonly action: 'map' | 'copy' | 'cut';
-	readonly clipboard: string | null;
-	readonly after: string;
-	readonly transactionCount: 0 | 1;
-	readonly undoRestoresBefore: boolean;
-}
-
-export interface FixtureCatalogSource {
-	readonly manifest: readonly FixtureManifestEntry[];
-	readFixtureFile(fileName: string): unknown;
-}
-
-export interface FixtureExecutionEnvironment {
-	readonly handlers: Partial<OperationHandlers>;
-	readonly services: StructuredListRuntimeServices;
-	buildExecution(fixture: OperationFixture): ExecutionFor<HandledOperationId> | null;
-	createHarness(source: string): TransactionHarness;
-	applyResult(
-		fixture: OperationFixture,
-		result: OperationResult,
-		harness: TransactionHarness,
-	): string | null;
-}
-
-export interface TransactionHarness {
-	readonly view: EditorView;
-	readonly sourceChangingTransactions: number;
-	documentText(): string;
-	pressUndo(): boolean;
-	pressRedo(): boolean;
-	destroy(): void;
-}
-
-export interface FixtureRunResult {
-	readonly after: string;
-	readonly selection: EditorSelection;
-	readonly undoSelection: EditorSelection | null;
-	readonly clipboard: string | null;
-	readonly sourceChangingTransactions: number;
-	readonly undoRestored: boolean;
 }

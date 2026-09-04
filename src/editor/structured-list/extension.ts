@@ -4,10 +4,7 @@ import { serializeSelection } from './clipboard.js';
 import { buildListContext, buildSelectionContext } from './context.js';
 import {
 	applyOperationResult,
-	createOperationCapabilityRuntime,
-	createStateSnapshotId,
 	exceptionSinkStateField,
-	type OperationCapabilityVerifier,
 } from './edit-plan.js';
 import { createStructuredListKeymap } from './keymap.js';
 import { createStructuredListMouseExtension } from './mouse.js';
@@ -23,7 +20,6 @@ import {
 	operationHandlers,
 	type ClipboardEventSink,
 	type ClipboardSink,
-	type GoalXStore,
 	type PointerIntent,
 	type RuntimeServiceFactory,
 	type StructuredListExtensionOptions,
@@ -45,56 +41,23 @@ export interface StructuredListRuntimeServiceFactoryOptions {
 	readonly clipboard: ClipboardSink;
 }
 
-const emptyRangeIndex: StructuredListRangeIndex = Object.freeze({
-	containing: () => null,
-	mapEndpoint: (position: number) => position,
-	protectedRanges: Object.freeze([]),
-});
-
-const fallbackGoalStores = new WeakMap<EditorView, GoalXStore>();
-
-function fallbackGoalStore(view: EditorView): GoalXStore {
-	const existing = fallbackGoalStores.get(view);
-	if (existing) return existing;
-	let value: number | null = null;
-	const store: GoalXStore = {
-		read: () => value,
-		write: (next) => { value = next; },
-	};
-	fallbackGoalStores.set(view, store);
-	return store;
-}
-
 function rangeIndexFor(state: EditorState): StructuredListRangeIndex {
-	return getStructuredListProjectionState(state)?.rangeIndex ?? emptyRangeIndex;
+	const projection = getStructuredListProjectionState(state);
+	if (!projection) throw new Error('Structured-list projection state is not installed');
+	return projection.rangeIndex;
 }
 
 function snapshotRanges(rangeIndex: StructuredListRangeIndex) {
 	return Object.freeze(rangeIndex.protectedRanges.map((range) => Object.freeze({ ...range })));
 }
 
-function stateBoundVerifier(
-	view: EditorView,
-	capturedState: EditorState,
-	verifier: OperationCapabilityVerifier,
-): OperationCapabilityVerifier {
-	return {
-		verifyAndResolve(...input) {
-			if (view.state !== capturedState) return null;
-			return verifier.verifyAndResolve(...input);
-		},
-	};
-}
-
 function destinationRuntime(
 	view: EditorView,
-	scopeFactory: StructuredListRuntimeServices['scopeFactory'],
 ): ContextRuntime {
 	return {
 		editIntent: 'none',
 		imeComposing: view.composing,
 		operation: 'home',
-		scopeFactory,
 		selectionMode: classifyCurrentSelectionMode(view.state),
 		selectionsCount: view.state.selection.ranges.length,
 	};
@@ -107,16 +70,11 @@ function runtimeServicesForView(
 	const state = view.state;
 	const rangeIndex = rangeIndexFor(state);
 	const protectedRanges = snapshotRanges(rangeIndex);
-	const stateSnapshotId = createStateSnapshotId();
-	const authority = createOperationCapabilityRuntime(
-		stateSnapshotId,
-		state.doc.length,
-		protectedRanges,
-	);
-	const runtime = destinationRuntime(view, authority.scopeFactory);
+	const runtime = destinationRuntime(view);
+	const goalX = goalXStoreFor(view);
+	if (!goalX) throw new Error('Structured-list goal-X state is not installed');
 	const navigation = {
-		capabilities: authority.capabilities,
-		goalX: goalXStoreFor(view) ?? fallbackGoalStore(view),
+		goalX,
 		rangeIndex,
 		resolveDestination: createNavigationDestinationResolver({
 			rangeIndex,
@@ -129,12 +87,10 @@ function runtimeServicesForView(
 		navigation,
 		result: {
 			clipboard,
-			validation: { authoritativeProtectedRanges: protectedRanges, stateSnapshotId,
-				verifier: stateBoundVerifier(view, state, authority.verifier) },
+			validation: { authoritativeProtectedRanges: protectedRanges },
 		},
-		scopeFactory: authority.scopeFactory,
-		selection: { capabilities: authority.capabilities, clipboard, serialize: serializeSelection },
-		structural: { capabilities: authority.capabilities, prefixPolicy },
+		selection: { clipboard, serialize: serializeSelection },
+		structural: { prefixPolicy },
 	};
 }
 
@@ -155,7 +111,6 @@ function pointerRuntime(
 		editIntent: 'none',
 		imeComposing: view.composing,
 		operation: intent.operation,
-		scopeFactory: services.scopeFactory,
 		selectionMode: classifyCurrentSelectionMode(view.state),
 		selectionsCount: view.state.selection.ranges.length,
 	};
@@ -203,7 +158,6 @@ function selectionRuntime(
 		editIntent: action === 'cut' ? 'cut' : 'none',
 		imeComposing: view.composing,
 		operation: 'normal-selection',
-		scopeFactory: services.scopeFactory,
 		selectionMode: classifyCurrentSelectionMode(view.state),
 		selectionsCount: view.state.selection.ranges.length,
 	};

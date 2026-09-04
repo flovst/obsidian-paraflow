@@ -44,6 +44,7 @@ export default class ParaFlowPlugin extends Plugin {
 		const nextSettings: ParaFlowSettings = { structuredListEditingEnabled: enabled };
 		await this.saveData(nextSettings);
 		this.settings = nextSettings;
-		this.structuredListLifecycle?.setEnabled(enabled);
+		if (!this.structuredListLifecycle) throw new Error('ParaFlow lifecycle is not initialized');
+		this.structuredListLifecycle.setEnabled(enabled);
 	}
 }

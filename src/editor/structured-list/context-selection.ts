@@ -110,7 +110,7 @@ export function buildSelectionFromAnalysis(
 	const segments = selectionSegments(analysis, from, to);
 	const protectedRanges = protectedSelectionRanges(analysis, from, to);
 	return {
-		editScope: buildSelectionScope(segments, runtime),
+		editScope: buildSelectionScope(segments, runtime, analysis.source.length),
 		protectedRanges,
 		segments,
 		selection: selectionSnapshot(selection),

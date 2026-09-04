@@ -130,9 +130,11 @@ function intersects(item: SourceRange, ranges: readonly SourceRange[]): boolean 
 }
 
 export function discoverListItem(state: EditorState, position: number): ListItemSyntax | null {
-	const boundedPosition = Math.max(0, Math.min(position, state.doc.length));
+	if (!Number.isInteger(position) || position < 0 || position > state.doc.length) {
+		throw new RangeError('List discovery position is outside the document');
+	}
 	return allListItems(state)
-		.filter((item) => item.itemNode.from <= boundedPosition && boundedPosition <= item.itemNode.to)
+		.filter((item) => item.itemNode.from <= position && position <= item.itemNode.to)
 		.sort((left, right) =>
 			(left.itemNode.to - left.itemNode.from) - (right.itemNode.to - right.itemNode.from))[0] ?? null;
 }

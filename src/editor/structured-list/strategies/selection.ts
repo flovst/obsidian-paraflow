@@ -6,7 +6,7 @@ function clipboardResult(
 ): OperationResult {
 	const text = execution.services.serialize(execution.context);
 	if (execution.intent.action === 'copy') return { edit: null, kind: 'clipboard', text };
-	const edit = createSelectionCutPlan(execution.context, execution.services.capabilities);
+	const edit = createSelectionCutPlan(execution.context);
 	return edit ? { edit, kind: 'clipboard', text } : { kind: 'pass-through' };
 }
 

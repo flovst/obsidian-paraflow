@@ -4,7 +4,6 @@ import type {
 	EditPlanFragment,
 	EditRegionId,
 	EditScope,
-	OperationCapabilityProvider,
 } from './edit-plan.js';
 import type {
 	ListContext,
@@ -38,14 +37,12 @@ function fragment(
 	regionIds: readonly EditRegionId[],
 	changes: readonly ChangeSpec[],
 	selection: EditorSelection | null,
-	capabilities: OperationCapabilityProvider,
 ): EditPlanFragment {
 	return {
 		changes,
 		operation: scope.operation,
-		ownership: { capability: capabilities.request(scope, regionIds) },
+		ownership: { regionIds },
 		regionIds,
-		scopeId: scope.id,
 		selection,
 	};
 }
@@ -60,11 +57,10 @@ function prefixRegion(context: ListContext, id: EditRegionId): void {
 export function removePrefix(
 	context: ListContext,
 	prefixRegionId: EditRegionId,
-	capabilities: OperationCapabilityProvider,
 ): EditPlanFragment {
 	prefixRegion(context, prefixRegionId);
 	const { from, to } = context.current.prefix.full;
-	return fragment(context.editScope, [prefixRegionId], [{ from, insert: '', to }], null, capabilities);
+	return fragment(context.editScope, [prefixRegionId], [{ from, insert: '', to }], null);
 }
 
 function idsCoverRange(scope: EditScope, ids: readonly EditRegionId[], target: SourceRange): boolean {
@@ -77,7 +73,6 @@ function idsCoverRange(scope: EditScope, ids: readonly EditRegionId[], target: S
 export function convertItemToParagraph(
 	context: ListContext,
 	regionIds: readonly EditRegionId[],
-	capabilities: OperationCapabilityProvider,
 ): EditPlanFragment {
 	const prefix = context.current.prefix.full;
 	const physicalPrefix = { from: context.current.lineFrom, to: prefix.to };
@@ -86,14 +81,13 @@ export function convertItemToParagraph(
 	}
 	return fragment(context.editScope, regionIds, [
 		{ from: physicalPrefix.from, insert: '', to: physicalPrefix.to },
-	], null, capabilities);
+	], null);
 }
 
 export function splitItem(
 	context: ListContext,
 	contentRegionId: EditRegionId,
 	splitAt: number,
-	capabilities: OperationCapabilityProvider,
 	linePrefix?: string,
 ): EditPlanFragment {
 	const region = regionFor(context.editScope, contentRegionId, 'current-content');
@@ -106,14 +100,13 @@ export function splitItem(
 	})}`;
 	return fragment(context.editScope, [contentRegionId], [
 		{ from: splitAt, insert: insertion, to: splitAt },
-	], EditorSelection.create([EditorSelection.cursor(splitAt + insertion.length)]), capabilities);
+	], EditorSelection.create([EditorSelection.cursor(splitAt + insertion.length)]));
 }
 
 export function insertContentText(
 	context: ListContext,
 	contentRegionId: EditRegionId,
 	text: string,
-	capabilities: OperationCapabilityProvider,
 ): EditPlanFragment {
 	const region = regionFor(context.editScope, contentRegionId, 'current-content');
 	if (context.caret < region.range.from || context.caret > region.range.to) {
@@ -124,21 +117,20 @@ export function insertContentText(
 		{ from: context.caret, insert: text, to: context.caret },
 	], EditorSelection.create([
 		EditorSelection.cursor(context.caret + text.length),
-	]), capabilities);
+	]));
 }
 
 export function replaceCurrentPrefix(
 	context: ListContext,
 	prefixRegionId: EditRegionId,
 	replacement: string,
-	capabilities: OperationCapabilityProvider,
 ): EditPlanFragment {
 	prefixRegion(context, prefixRegionId);
 	return fragment(context.editScope, [prefixRegionId], [{
 		from: context.current.prefix.full.from,
 		insert: replacement,
 		to: context.current.prefix.full.to,
-	}], null, capabilities);
+	}], null);
 }
 
 export function replaceListBlockPrefix(
@@ -147,7 +139,6 @@ export function replaceListBlockPrefix(
 	regionId: EditRegionId,
 	block: ListBlockRef,
 	replacement: string,
-	capabilities: OperationCapabilityProvider,
 ): EditPlanFragment {
 	const region = scope.region(regionId);
 	const from = block.lineFrom;
@@ -158,7 +149,7 @@ export function replaceListBlockPrefix(
 	if (source.slice({ from: block.prefix.full.from, to }) === '') {
 		throw new Error('Normalized list-block prefix is empty');
 	}
-	return fragment(scope, [regionId], [{ from, insert: replacement, to }], null, capabilities);
+	return fragment(scope, [regionId], [{ from, insert: replacement, to }], null);
 }
 
 export function insertAfterListBlock(
@@ -166,7 +157,6 @@ export function insertAfterListBlock(
 	regionId: EditRegionId,
 	block: ListBlockRef,
 	text: string,
-	capabilities: OperationCapabilityProvider,
 ): EditPlanFragment {
 	const region = regionFor(scope, regionId, 'following-block');
 	if (region.range.from !== block.item.to || region.range.to !== block.item.to) {
@@ -175,7 +165,7 @@ export function insertAfterListBlock(
 	if (text.length === 0) throw new RangeError('Following-block insertion text must not be empty');
 	return fragment(scope, [regionId], [
 		{ from: block.item.to, insert: text, to: block.item.to },
-	], null, capabilities);
+	], null);
 }
 
 export function replaceOwnedBlockIndentation(
@@ -183,7 +173,6 @@ export function replaceOwnedBlockIndentation(
 	ownedRegionId: EditRegionId,
 	owned: OwnedBlock,
 	replacement: string,
-	capabilities: OperationCapabilityProvider,
 ): EditPlanFragment {
 	const region = regionFor(context.editScope, ownedRegionId, 'owned-block');
 	if (!sameRange(region.range, owned.range)) {
@@ -196,7 +185,7 @@ export function replaceOwnedBlockIndentation(
 		to: indentationEnd,
 	}], EditorSelection.create([
 		EditorSelection.cursor(owned.range.from + replacement.length),
-	]), capabilities);
+	]));
 }
 
 function emptyItemReplacementRange(
@@ -237,7 +226,6 @@ export function replaceEmptyItem(
 	itemRegionId: EditRegionId,
 	replacement: string,
 	caretOffset: number,
-	capabilities: OperationCapabilityProvider,
 	options: {
 		readonly ownedIndentDelta?: number;
 		readonly replacePhysicalIndent?: boolean;
@@ -263,7 +251,7 @@ export function replaceEmptyItem(
 		to: replacementRange.to,
 	}, ...ownedChanges], EditorSelection.create([
 		EditorSelection.cursor(replacementRange.from + caretOffset),
-	]), capabilities);
+	]));
 }
 
 function structuralBoundaryId(
@@ -287,12 +275,11 @@ export function mergeFollowingBlock(
 	context: ListContext,
 	boundary: NormalizedStructuralBoundary,
 	regionIds: readonly EditRegionId[],
-	capabilities: OperationCapabilityProvider,
 ): EditPlanFragment {
 	structuralBoundaryId(context.editScope, boundary, regionIds);
 	return fragment(context.editScope, regionIds, [
 		{ from: boundary.removalRange.from, insert: '', to: boundary.removalRange.to },
-	], EditorSelection.create([EditorSelection.cursor(boundary.removalRange.from)]), capabilities);
+	], EditorSelection.create([EditorSelection.cursor(boundary.removalRange.from)]));
 }
 
 function indentationChanges(
@@ -319,7 +306,6 @@ export function remapIndentation(
 	scope: EditScope,
 	regionIds: readonly EditRegionId[],
 	deltaColumns: number,
-	capabilities: OperationCapabilityProvider,
 ): EditPlanFragment {
 	if (!Number.isInteger(deltaColumns) || deltaColumns === 0) {
 		throw new RangeError('Indentation delta must be a non-zero integer');
@@ -329,7 +315,7 @@ export function remapIndentation(
 		if (!region) throw new Error('Indentation region is absent from the edit scope');
 		return indentationChanges(source, region.range, deltaColumns);
 	});
-	return fragment(scope, regionIds, changes, null, capabilities);
+	return fragment(scope, regionIds, changes, null);
 }
 
 function orderedMarker(sequence: OrderedSequenceContext, index: number, delta: number): string {
@@ -352,7 +338,6 @@ export function renumberOrderedItems(
 	scope: EditScope,
 	regionIds: readonly EditRegionId[],
 	sequence: OrderedSequenceContext,
-	capabilities: OperationCapabilityProvider,
 	delta = 0,
 ): EditPlanFragment {
 	if (!Number.isInteger(delta)) throw new RangeError('Ordered renumber delta must be an integer');
@@ -374,7 +359,7 @@ export function renumberOrderedItems(
 			to: item.prefix.outerMarker.to,
 		};
 	});
-	return fragment(scope, regionIds, changes, null, capabilities);
+	return fragment(scope, regionIds, changes, null);
 }
 
 function characterRange(text: string, position: number, direction: 'backward' | 'forward'): SourceRange {
@@ -391,7 +376,6 @@ export function deleteVisibleCharacter(
 	context: ListContext,
 	contentRegionId: EditRegionId,
 	direction: 'backward' | 'forward',
-	capabilities: OperationCapabilityProvider,
 ): EditPlanFragment {
 	const region = regionFor(context.editScope, contentRegionId, 'current-content');
 	const deletion = characterRange(context.source.text, context.caret, direction);
@@ -400,7 +384,7 @@ export function deleteVisibleCharacter(
 	}
 	return fragment(context.editScope, [contentRegionId], [
 		{ from: deletion.from, insert: '', to: deletion.to },
-	], EditorSelection.create([EditorSelection.cursor(deletion.from)]), capabilities);
+	], EditorSelection.create([EditorSelection.cursor(deletion.from)]));
 }
 
 export function rewriteWhitespaceBoundary(
@@ -408,7 +392,6 @@ export function rewriteWhitespaceBoundary(
 	boundary: WhitespaceBoundaryFact,
 	boundaryRegionId: EditRegionId,
 	replacement: string,
-	capabilities: OperationCapabilityProvider,
 ): EditPlanFragment {
 	const region = regionFor(scope, boundaryRegionId, 'whitespace-boundary');
 	if (!sameRange(region.range, boundary.range)) {
@@ -416,19 +399,18 @@ export function rewriteWhitespaceBoundary(
 	}
 	return fragment(scope, [boundaryRegionId], [
 		{ from: boundary.range.from, insert: replacement, to: boundary.range.to },
-	], null, capabilities);
+	], null);
 }
 
 export function removeStructuralBoundary(
 	scope: EditScope,
 	boundary: NormalizedStructuralBoundary,
 	boundaryRegionId: EditRegionId,
-	capabilities: OperationCapabilityProvider,
 ): EditPlanFragment {
 	structuralBoundaryId(scope, boundary, [boundaryRegionId]);
 	return fragment(scope, [boundaryRegionId], [
 		{ from: boundary.removalRange.from, insert: '', to: boundary.removalRange.to },
-	], null, capabilities);
+	], null);
 }
 
 function unionRegionIds(fragments: readonly EditPlanFragment[]): readonly EditRegionId[] {
@@ -445,20 +427,18 @@ export function composeEditPlan(
 	expectedOperation: HandledOperationId,
 	expectedScope: EditScope,
 	fragments: readonly EditPlanFragment[],
-	capabilities: OperationCapabilityProvider,
 	exceptionId: EditPlan['exceptionId'] = null,
 ): EditPlan {
 	if (fragments.length === 0) throw new Error('Cannot compose an empty edit plan');
-	const incompatible = fragments.some((item) =>
-		item.operation !== expectedOperation || item.scopeId !== expectedScope.id);
-	if (incompatible) throw new Error('Edit fragments have an incompatible operation or scope');
+	const incompatible = fragments.some((item) => item.operation !== expectedOperation);
+	if (incompatible) throw new Error('Edit fragments have an incompatible operation');
 	const selections = fragments.flatMap((item) => item.selection ? [item.selection] : []);
 	if (selections.length > 1) throw new Error('Edit fragments contain multiple final selections');
 	const regionIds = unionRegionIds(fragments);
 	return {
 		changes: fragments.flatMap((item) => item.changes),
 		exceptionId,
-		ownership: { capability: capabilities.request(expectedScope, regionIds) },
+		ownership: { regionIds },
 		selection: selections[0] ?? null,
 	};
 }
@@ -510,7 +490,6 @@ function cutRegionsCoverSelection(
 
 export function createSelectionCutPlan(
 	context: SelectionContext,
-	capabilities: OperationCapabilityProvider,
 ): EditPlan | null {
 	const regions = resolvedCutRegions(context);
 	if (!regions || !cutRegionsCoverSelection(context, regions)) return null;
@@ -521,9 +500,7 @@ export function createSelectionCutPlan(
 	return {
 		changes,
 		exceptionId: 'SLX-006',
-		ownership: {
-			capability: capabilities.request(context.editScope, context.editScope.regionIds),
-		},
+		ownership: { regionIds: context.editScope.regionIds },
 		selection: EditorSelection.single(position),
 	};
 }

@@ -71,9 +71,8 @@ function analyzeLines(state: EditorState, source: SourceSnapshot): readonly Sour
 
 export function containingLine(lines: readonly SourceLine[], position: number): SourceLine {
 	const found = lines.find((line) => line.from <= position && position <= line.to);
-	const fallback = lines.at(-1);
-	if (!found && !fallback) throw new Error('Editor documents always contain one line');
-	return found ?? fallback!;
+	if (!found) throw new RangeError('Position is not in an analyzed source line');
+	return found;
 }
 
 function containsItem(candidate: ListItemSyntax, current: ListItemSyntax): boolean {

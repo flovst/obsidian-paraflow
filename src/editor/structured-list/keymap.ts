@@ -33,7 +33,6 @@ function contextRuntime(
 		editIntent: editIntent(intent),
 		imeComposing: view.composing,
 		operation: intent.operation,
-		scopeFactory: services.scopeFactory,
 		selectionMode: classifyCurrentSelectionMode(view.state),
 		selectionsCount: view.state.selection.ranges.length,
 	};

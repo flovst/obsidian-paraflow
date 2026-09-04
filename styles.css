@@ -1,8 +1,8 @@
 /*
- * ParaFlow final Typora-style standalone snippet.
+ * ParaFlow Typora-style visual layer.
  *
- * This snippet is intentionally independent from the behavior-only plugin
- * track. Copy it into an Obsidian vault's .obsidian/snippets directory.
+ * This file is bundled with the plugin. Keep the standalone migration copy at
+ * snippets/paraflow-typora.css byte-for-byte identical.
  */
 
 .markdown-source-view.mod-cm6,

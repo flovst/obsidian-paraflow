@@ -1,8 +1,7 @@
 import { PluginSettingTab, Setting } from 'obsidian';
 import type ParaFlowPlugin from './main.js';
 
-const STRUCTURED_LIST_DESCRIPTION = 'Affects Live Preview only; '
-	+ 'third-party list/task plugin compatibility is deferred.';
+const STRUCTURED_LIST_DESCRIPTION = 'Affects recognized standard Markdown lists in Live Preview only.';
 
 export class ParaFlowSettingTab extends PluginSettingTab {
 	constructor(private readonly paraFlow: ParaFlowPlugin) {

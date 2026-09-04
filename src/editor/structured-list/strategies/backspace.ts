@@ -1,5 +1,5 @@
 import type { EditPlan, EditPlanFragment, EditRegionId, EditScope } from '../edit-plan.js';
-import { exceptionStrategies, type ExceptionId } from '../exception-registry.js';
+import type { ExceptionId } from '../exception-registry.js';
 import type {
 	ListBlockRef,
 	ListContext,
@@ -68,16 +68,8 @@ function editResult(plan: EditPlan): OperationResult {
 	return { kind: 'edit', plan };
 }
 
-function registeredException(id: ExceptionId, operation: BackspaceOperation): ExceptionId {
-	const entry = exceptionStrategies.get(id);
-	if (!entry?.operations.some((candidate) => candidate === operation)) {
-		throw new Error(`Exception ${id} is not registered for ${operation}`);
-	}
-	return entry.id;
-}
-
-function emptyExceptionId(nested: boolean, operation: BackspaceOperation): ExceptionId | null {
-	return nested ? registeredException('SLX-003', operation) : null;
+function emptyExceptionId(nested: boolean): ExceptionId | null {
+	return nested ? 'SLX-003' : null;
 }
 
 function physicalIndent(context: ListContext): string {
@@ -238,7 +230,6 @@ function prefixFragment(
 		? convertItemToParagraph(
 			execution.context,
 			[currentItemId],
-			execution.services.capabilities,
 		)
 		: replaceListBlockPrefix(
 			execution.context.source,
@@ -246,7 +237,6 @@ function prefixFragment(
 			currentItemId,
 			execution.context.current,
 			replacement,
-			execution.services.capabilities,
 		);
 }
 
@@ -262,7 +252,6 @@ function indentationFragments(
 		context.editScope,
 		ids,
 		delta,
-		execution.services.capabilities,
 	)];
 }
 
@@ -370,7 +359,6 @@ function forwardBoundaryFragments(
 			boundary.whitespace,
 			{ index: boundary.whitespaceIndex, kind: 'whitespace-boundary' },
 			replacement,
-			execution.services.capabilities,
 		));
 	}
 	return fragments;
@@ -387,7 +375,6 @@ function reclassifiedBeforeFragment(
 		before.whitespace,
 		{ index: before.whitespaceIndex, kind: 'whitespace-boundary' },
 		'\n\n',
-		execution.services.capabilities,
 	)];
 }
 
@@ -441,7 +428,6 @@ function nonEmptyPlan(
 		execution.intent.operation,
 		execution.context.editScope,
 		orderedFragments(execution.context.editScope, fragments),
-		execution.services.capabilities,
 	);
 }
 
@@ -493,7 +479,6 @@ function emptyFollowingFragments(
 		boundary.whitespace,
 		{ index: boundary.whitespaceIndex, kind: 'whitespace-boundary' },
 		'\n\n',
-		execution.services.capabilities,
 	)];
 }
 
@@ -521,7 +506,6 @@ function emptyPlan(
 		currentItemId,
 		replacement.text,
 		replacement.caretOffset,
-		execution.services.capabilities,
 		{ ownedIndentDelta: delta, replacePhysicalIndent: true },
 	);
 	const boundaryFragments = followingBoundary
@@ -531,8 +515,7 @@ function emptyPlan(
 		execution.intent.operation,
 		execution.context.editScope,
 		[fragment, ...boundaryFragments],
-		execution.services.capabilities,
-		emptyExceptionId(nested, execution.intent.operation),
+		emptyExceptionId(nested),
 	);
 }
 

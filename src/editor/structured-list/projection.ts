@@ -572,18 +572,14 @@ function classifyNonDocumentProjectionUpdate(
 	invalidation: ProjectionInvalidation,
 ): ProjectionUpdateDecision {
 	if (!cachedOldAuthority) return { analysis: null, invalidation };
-	try {
-		const currentSyntax = projectionSyntaxAuthority(transaction.state);
-		if (sameSyntaxAuthority(cachedOldAuthority.syntax, currentSyntax)) {
-			return { analysis: null, invalidation };
-		}
-		return {
-			analysis: projectionAnalysis(transaction.state),
-			invalidation: { kind: 'rebuild-all' },
-		};
-	} catch {
-		return { analysis: null, invalidation: { kind: 'rebuild-all' } };
+	const currentSyntax = projectionSyntaxAuthority(transaction.state);
+	if (sameSyntaxAuthority(cachedOldAuthority.syntax, currentSyntax)) {
+		return { analysis: null, invalidation };
 	}
+	return {
+		analysis: projectionAnalysis(transaction.state),
+		invalidation: { kind: 'rebuild-all' },
+	};
 }
 
 function classifyCachedDocumentMap(
@@ -622,21 +618,17 @@ function classifyProjectionUpdate(
 	if (invalidation.kind !== 'map-only') {
 		return { analysis: null, invalidation };
 	}
-	try {
-		if (cachedOldAuthority) {
-			return classifyCachedDocumentMap(transaction, cachedOldAuthority, invalidation);
-		}
-		const oldAuthority = projectionAnalysis(transaction.startState).authority;
-		const analysis = projectionAnalysis(transaction.state);
-		return {
-			analysis,
-			invalidation: mapOnlyAuthorityAgrees(transaction, oldAuthority, analysis.authority)
-				? invalidation
-				: { kind: 'rebuild-all' },
-		};
-	} catch {
-		return { analysis: null, invalidation: { kind: 'rebuild-all' } };
+	if (cachedOldAuthority) {
+		return classifyCachedDocumentMap(transaction, cachedOldAuthority, invalidation);
 	}
+	const oldAuthority = projectionAnalysis(transaction.startState).authority;
+	const analysis = projectionAnalysis(transaction.state);
+	return {
+		analysis,
+		invalidation: mapOnlyAuthorityAgrees(transaction, oldAuthority, analysis.authority)
+			? invalidation
+			: { kind: 'rebuild-all' },
+	};
 }
 
 export function classifyProjectionInvalidation(

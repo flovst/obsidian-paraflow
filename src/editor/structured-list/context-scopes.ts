@@ -1,4 +1,9 @@
-import type { EditRegionKind, ContextEditRegion, EditScope } from './edit-plan.js';
+import {
+	createEditScope,
+	type ContextEditRegion,
+	type EditRegionKind,
+	type EditScope,
+} from './edit-plan.js';
 import type { SourceAnalysis } from './context-analysis.js';
 import { containingLine, sourceRange } from './context-analysis.js';
 import type {
@@ -277,15 +282,15 @@ export function buildListScope(
 	const emptyMarkerLine = line.from === current.lineFrom && current.content.from === current.content.to;
 	const terminal = emptyMarkerLine ? null : terminalInsertionLine(analysis, position, runtime);
 	if (terminal) {
-		return runtime.scopeFactory.create(runtime.operation, 'editable', [
+		return createEditScope(runtime.operation, 'editable', [
 			region('terminal-insertion', 0, terminal),
-		]);
+		], analysis.source.length);
 	}
 	if (runtime.editIntent === 'none' || runtime.editIntent === 'conditional-terminal') {
-		return runtime.scopeFactory.create(runtime.operation, 'selection-only', []);
+		return createEditScope(runtime.operation, 'selection-only', [], analysis.source.length);
 	}
 	const regions = sortRegions(structuralLayout(runtime.operation, current, topology));
-	return runtime.scopeFactory.create(runtime.operation, 'editable', regions);
+	return createEditScope(runtime.operation, 'editable', regions, analysis.source.length);
 }
 
 export function buildOrdinaryScope(
@@ -295,8 +300,8 @@ export function buildOrdinaryScope(
 ): EditScope {
 	const terminal = terminalInsertionLine(analysis, position, runtime);
 	return terminal
-		? runtime.scopeFactory.create(runtime.operation, 'editable', [region('terminal-insertion', 0, terminal)])
-		: runtime.scopeFactory.create(runtime.operation, 'selection-only', []);
+		? createEditScope(runtime.operation, 'editable', [region('terminal-insertion', 0, terminal)], analysis.source.length)
+		: createEditScope(runtime.operation, 'selection-only', [], analysis.source.length);
 }
 
 function selectionContentKind(index: number, count: number): EditRegionKind {
@@ -338,8 +343,9 @@ function selectionRegions(segments: readonly SelectionSegment[]): readonly Conte
 export function buildSelectionScope(
 	segments: readonly SelectionSegment[],
 	runtime: ContextRuntime,
+	sourceLength: number,
 ): EditScope {
 	return runtime.editIntent === 'cut'
-		? runtime.scopeFactory.create(runtime.operation, 'editable', selectionRegions(segments))
-		: runtime.scopeFactory.create(runtime.operation, 'selection-only', []);
+		? createEditScope(runtime.operation, 'editable', selectionRegions(segments), sourceLength)
+		: createEditScope(runtime.operation, 'selection-only', [], sourceLength);
 }

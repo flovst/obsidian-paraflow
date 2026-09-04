@@ -1,5 +1,5 @@
 import type { EditPlan, EditPlanFragment, EditRegionId } from '../edit-plan.js';
-import { exceptionStrategies, type ExceptionId } from '../exception-registry.js';
+import type { ExceptionId } from '../exception-registry.js';
 import type {
 	ListContext,
 	OwnedBlock,
@@ -64,14 +64,6 @@ const continuationBoundaryRules = [
 	},
 ] as const;
 
-function registeredException(id: ExceptionId, operation: EnterOperation): ExceptionId {
-	const entry = exceptionStrategies.get(id);
-	if (!entry || !entry.operations.some((candidate) => candidate === operation)) {
-		throw new Error(`Exception ${id} is not registered for ${operation}`);
-	}
-	return entry.id;
-}
-
 function editResult(plan: EditPlan): OperationResult {
 	return { kind: 'edit', plan };
 }
@@ -126,7 +118,6 @@ function insertionRenumberFragments(
 			execution.context.editScope,
 			ids,
 			sequence,
-			execution.services.capabilities,
 			1,
 		)]
 		: [];
@@ -144,7 +135,6 @@ function removalRenumberFragments(
 		execution.context.editScope,
 		ids,
 		sequence,
-		execution.services.capabilities,
 		firstValue - sequence.renderedValue - 1,
 	)];
 }
@@ -164,7 +154,6 @@ function continuationWhitespaceFragments(
 			boundary,
 			{ index, kind: 'whitespace-boundary' },
 			rule.replacement(owned),
-			execution.services.capabilities,
 		)];
 	}
 	return [];
@@ -184,7 +173,6 @@ function continuationPlan(
 			{ index: 0, kind: 'owned-block' },
 			owned,
 			sameLevelPrefix(execution, taskState),
-			execution.services.capabilities,
 		),
 		...continuationWhitespaceFragments(execution, owned),
 		...insertionRenumberFragments(execution),
@@ -193,7 +181,6 @@ function continuationPlan(
 		execution.intent.operation,
 		execution.context.editScope,
 		fragments,
-		execution.services.capabilities,
 	);
 }
 
@@ -213,7 +200,6 @@ function splitPlan(
 				context,
 				currentPrefixId,
 				unchecked,
-				execution.services.capabilities,
 			));
 		}
 	}
@@ -221,7 +207,6 @@ function splitPlan(
 		context,
 		currentContentId,
 		context.caret,
-		execution.services.capabilities,
 		sameLevelPrefix(execution, taskState),
 	));
 	fragments.push(...insertionRenumberFragments(execution));
@@ -229,7 +214,6 @@ function splitPlan(
 		execution.intent.operation,
 		context.editScope,
 		fragments,
-		execution.services.capabilities,
 	);
 }
 
@@ -298,7 +282,6 @@ function convertEmptyPlan(
 			currentItemId,
 			replacement.text,
 			replacement.caretOffset,
-			execution.services.capabilities,
 		),
 		...removalRenumberFragments(execution),
 	];
@@ -306,10 +289,9 @@ function convertEmptyPlan(
 		execution.intent.operation,
 		execution.context.editScope,
 		fragments,
-		execution.services.capabilities,
 		exceptionId === null
 			? null
-			: registeredException(exceptionId, execution.intent.operation),
+			: exceptionId,
 	);
 }
 
@@ -333,14 +315,12 @@ function duplicateEmptyPlan(execution: ExecutionFor<'enter-empty-top-level'>): E
 		currentItemId,
 		replacement,
 		replacement.length,
-		execution.services.capabilities,
 	);
 	return composeEditPlan(
 		execution.intent.operation,
 		context.editScope,
 		[fragment],
-		execution.services.capabilities,
-		registeredException('SLX-004', execution.intent.operation),
+		'SLX-004',
 	);
 }
 
@@ -414,13 +394,11 @@ export function shiftEnter(execution: ExecutionFor<'shift-enter'>): OperationRes
 		context,
 		currentContentId,
 		context.caret,
-		execution.services.capabilities,
 		continuationIndent,
 	);
 	return editResult(composeEditPlan(
 		execution.intent.operation,
 		context.editScope,
 		[fragment],
-		execution.services.capabilities,
 	));
 }

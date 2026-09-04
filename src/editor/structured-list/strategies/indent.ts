@@ -1,5 +1,5 @@
 import type { EditPlan, EditPlanFragment, EditRegionId } from '../edit-plan.js';
-import { exceptionStrategies, type ExceptionId } from '../exception-registry.js';
+import type { ExceptionId } from '../exception-registry.js';
 import type { ListContext } from '../model.js';
 import type { ExecutionFor, OperationResult } from '../operations.js';
 import {
@@ -17,14 +17,6 @@ type IndentOperation = 'tab' | 'shift-tab';
 
 const currentItemId = { index: null, kind: 'current-item' } as const;
 const currentContentId = { index: null, kind: 'current-content' } as const;
-
-function registeredException(id: ExceptionId, operation: IndentOperation): ExceptionId {
-	const entry = exceptionStrategies.get(id);
-	if (!entry?.operations.some((candidate) => candidate === operation)) {
-		throw new Error(`Exception ${id} is not registered for ${operation}`);
-	}
-	return entry.id;
-}
 
 function editResult(plan: EditPlan): OperationResult {
 	return { kind: 'edit', plan };
@@ -70,14 +62,12 @@ function fallbackPlan(execution: ExecutionFor<'tab'>): EditPlan {
 		execution.context,
 		currentContentId,
 		fallbackText(execution.context),
-		execution.services.capabilities,
 	);
 	return composeEditPlan(
 		execution.intent.operation,
 		execution.context.editScope,
 		[fragment],
-		execution.services.capabilities,
-		registeredException('SLX-001', execution.intent.operation),
+		'SLX-001',
 	);
 }
 
@@ -98,7 +88,6 @@ function tabWhitespaceFragments(execution: ExecutionFor<'tab'>): readonly EditPl
 			boundary,
 			{ index, kind: 'whitespace-boundary' },
 			context.source.slice(boundary.range) + '\n',
-			execution.services.capabilities,
 		)];
 	});
 }
@@ -113,7 +102,6 @@ function tabStructuralPlan(
 		execution.context.editScope,
 		[id],
 		delta,
-		execution.services.capabilities,
 	));
 	const whitespace = tabWhitespaceFragments(execution);
 	const fragments = whitespace.length === 0
@@ -123,7 +111,6 @@ function tabStructuralPlan(
 		execution.intent.operation,
 		execution.context.editScope,
 		fragments,
-		execution.services.capabilities,
 		exceptionId,
 	);
 }
@@ -160,7 +147,6 @@ function orderedContinuationFragments(
 		execution.context.editScope,
 		[{ index: 0, kind: 'owned-block' }],
 		delta,
-		execution.services.capabilities,
 	)];
 }
 
@@ -176,7 +162,6 @@ function orderedChildFragments(
 		{ index: 0, kind: 'owned-block' },
 		child,
 		renderedPrefix(execution, child, indent, 2),
-		execution.services.capabilities,
 	)];
 }
 
@@ -197,7 +182,6 @@ function orderedTabPlan(execution: ExecutionFor<'tab'>, delta: number): EditPlan
 			currentItemId,
 			context.current,
 			renderedPrefix(execution, context.current, indent, 1),
-			execution.services.capabilities,
 		),
 		...orderedContinuationFragments(execution, delta),
 		...orderedChildFragments(execution, child, indent),
@@ -208,10 +192,9 @@ function orderedTabPlan(execution: ExecutionFor<'tab'>, delta: number): EditPlan
 		context.editScope,
 		followingIds,
 		sequence,
-		execution.services.capabilities,
 		-1,
 	));
-	return composeEditPlan('tab', context.editScope, fragments, execution.services.capabilities, 'SLX-002');
+	return composeEditPlan('tab', context.editScope, fragments, 'SLX-002');
 }
 
 function boundaryIndex(
@@ -234,7 +217,6 @@ function rewriteBoundary(
 		boundary,
 		{ index, kind: 'whitespace-boundary' },
 		replacement,
-		execution.services.capabilities,
 	);
 }
 
@@ -285,13 +267,11 @@ function nestedTargetFragment(
 		currentItemId,
 		context.current,
 		'\n' + context.source.slice(context.current.prefix.full),
-		execution.services.capabilities,
 	) : remapIndentation(
 		context.source,
 		context.editScope,
 		[currentItemId],
 		policy.delta,
-		execution.services.capabilities,
 	);
 }
 
@@ -304,7 +284,6 @@ function nestedOwnedFragments(
 		execution.context.editScope,
 		[id],
 		delta,
-		execution.services.capabilities,
 	));
 }
 
@@ -343,7 +322,6 @@ function nestedTrailingFragments(
 		{ index: 0, kind: 'following-block' },
 		trailing.nextSibling,
 		'\n',
-		execution.services.capabilities,
 	)];
 }
 
@@ -357,8 +335,7 @@ function nestedShiftTabPlan(execution: ExecutionFor<'shift-tab'>): EditPlan {
 		...nestedTrailingFragments(execution),
 	];
 	const exceptionId = execution.context.topology.ownedBlocks.length > 0 ? 'SLX-002' : null;
-	return composeEditPlan('shift-tab', execution.context.editScope, fragments,
-		execution.services.capabilities, exceptionId);
+	return composeEditPlan('shift-tab', execution.context.editScope, fragments, exceptionId);
 }
 
 function nestedOrderedShiftTabPlan(execution: ExecutionFor<'shift-tab'>): EditPlan | null {
@@ -373,14 +350,12 @@ function nestedOrderedShiftTabPlan(execution: ExecutionFor<'shift-tab'>): EditPl
 		currentItemId,
 		context.current,
 		renderedPrefix(execution, context.current, parent.prefix.full.from - parent.lineFrom, targetValue),
-		execution.services.capabilities,
 	);
 	const owned = ownedIds(context).map((id) => remapIndentation(
 		context.source,
 		context.editScope,
 		[id],
 		(parent.prefix.full.from - parent.lineFrom) - physicalIndent(context),
-		execution.services.capabilities,
 	));
 	const followingIds = orderedIdsAfter(context, sequence, 'parent-ordered-sequence-item');
 	const renumber = followingIds.length === 0 ? [] : [renumberOrderedItems(
@@ -388,11 +363,10 @@ function nestedOrderedShiftTabPlan(execution: ExecutionFor<'shift-tab'>): EditPl
 		context.editScope,
 		followingIds,
 		sequence,
-		execution.services.capabilities,
 		1,
 	)];
 	return composeEditPlan('shift-tab', context.editScope, [target, ...owned, ...renumber],
-		execution.services.capabilities, registeredException('SLX-002', 'shift-tab'));
+		'SLX-002');
 }
 
 function addedBoundaryNewline(
@@ -432,7 +406,6 @@ function topLevelMovementFragments(
 	const conversion = convertItemToParagraph(
 		context,
 		[currentItemId],
-		execution.services.capabilities,
 	);
 	if (ids.length === 0) return [conversion];
 	const step = context.current.prefix.outerMarker.to - context.current.prefix.outerMarker.from;
@@ -441,7 +414,6 @@ function topLevelMovementFragments(
 			context.editScope,
 			ids,
 			-step,
-			execution.services.capabilities,
 		)];
 }
 
@@ -474,7 +446,6 @@ function topLevelRenumberFragments(
 		execution.context.editScope,
 		ids,
 		sequence,
-		execution.services.capabilities,
 		-2,
 	)];
 }
@@ -492,7 +463,6 @@ function topLevelShiftTabPlan(execution: ExecutionFor<'shift-tab'>): EditPlan {
 		execution.intent.operation,
 		execution.context.editScope,
 		fragments,
-		execution.services.capabilities,
 	);
 }
 
@@ -501,7 +471,7 @@ export function tab(execution: ExecutionFor<'tab'>): OperationResult {
 	const delta = tabDelta(execution);
 	if (delta === 0) return editResult(fallbackPlan(execution));
 	const exceptionId = execution.context.topology.ownedBlocks.length > 0
-		? registeredException('SLX-002', execution.intent.operation)
+		? 'SLX-002'
 		: null;
 	return editResult(execution.context.current.prefix.kind === 'ordered'
 		? orderedTabPlan(execution, delta)
