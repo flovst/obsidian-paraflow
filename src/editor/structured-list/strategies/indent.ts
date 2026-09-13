@@ -43,14 +43,18 @@ function tabMovementIds(context: ListContext): readonly EditRegionId[] {
 function tabDelta(execution: ExecutionFor<'tab'>): number {
 	const previous = execution.context.topology.previousSibling;
 	if (!previous) return 0;
-	const previousIndent = previous.prefix.full.from - previous.lineFrom;
+	const previousIndent = blockPhysicalIndent(previous);
 	const currentIndent = physicalIndent(execution.context);
 	const structuralWidth = previous.prefix.outerMarker.to - previous.prefix.outerMarker.from;
 	return previousIndent + structuralWidth - currentIndent;
 }
 
+function blockPhysicalIndent(block: ListContext['current']): number {
+	return block.prefix.outerMarker.from - block.lineFrom;
+}
+
 function physicalIndent(context: ListContext): number {
-	return context.current.prefix.full.from - context.current.lineFrom;
+	return blockPhysicalIndent(context.current);
 }
 
 function fallbackText(context: ListContext): string {
@@ -231,7 +235,7 @@ interface NestedShiftPolicy {
 
 function nestedShiftPolicy(context: ListContext): NestedShiftPolicy {
 	const parent = context.topology.parent;
-	const parentIndent = parent ? parent.prefix.full.from - parent.lineFrom : 0;
+	const parentIndent = parent ? blockPhysicalIndent(parent) : 0;
 	const owned = context.topology.ownedBlocks;
 	return {
 		after: boundaryIndex(context, (from, to) =>
@@ -349,13 +353,13 @@ function nestedOrderedShiftTabPlan(execution: ExecutionFor<'shift-tab'>): EditPl
 		context.editScope,
 		currentItemId,
 		context.current,
-		renderedPrefix(execution, context.current, parent.prefix.full.from - parent.lineFrom, targetValue),
+		renderedPrefix(execution, context.current, blockPhysicalIndent(parent), targetValue),
 	);
 	const owned = ownedIds(context).map((id) => remapIndentation(
 		context.source,
 		context.editScope,
 		[id],
-		(parent.prefix.full.from - parent.lineFrom) - physicalIndent(context),
+		blockPhysicalIndent(parent) - physicalIndent(context),
 	));
 	const followingIds = orderedIdsAfter(context, sequence, 'parent-ordered-sequence-item');
 	const renumber = followingIds.length === 0 ? [] : [renumberOrderedItems(

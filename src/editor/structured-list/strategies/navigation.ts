@@ -1,9 +1,9 @@
 import { EditorSelection } from '@codemirror/state';
+import type { VisualPosition } from '../../runtime/navigation-core.js';
 import type { EditPlan, EditRegionId, EditScope } from '../edit-plan.js';
 import type {
 	NavigationContext,
 	NavigationDestination,
-	VisualPosition,
 } from '../model.js';
 import type {
 	ExecutionFor,

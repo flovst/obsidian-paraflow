@@ -1,3 +1,4 @@
+import type { VisualAssociation, VisualPosition } from '../runtime/navigation-core.js';
 import type { EditScope } from './edit-plan.js';
 import type { HandledOperationId } from './operations.js';
 
@@ -20,6 +21,7 @@ export interface SelectionSnapshot {
 
 export type SiblingPosition = 'first' | 'middle' | 'final' | 'only';
 export type OwnedBlockKind = 'continuation' | 'additional-paragraph' | 'descendant';
+export type ProjectionOwnedLineKind = Exclude<OwnedBlockKind, 'descendant'> | 'blank';
 
 export interface ListPrefix {
 	readonly kind: 'unordered' | 'ordered' | 'task';
@@ -113,9 +115,18 @@ export type ShiftTabTrailingBlankPolicy =
 			readonly nextSibling: ListBlockRef;
 	  };
 
+export interface ProjectionOwnedLine {
+	readonly depth: number;
+	readonly kind: ProjectionOwnedLineKind;
+	readonly ownerKind: ListPrefix['kind'];
+	readonly range: SourceRange;
+	readonly rendering: 'projected' | 'native-depth';
+}
+
 export interface ProjectionListContext {
 	readonly block: ListBlockRef;
 	readonly depth: number;
+	readonly ownedLines: readonly ProjectionOwnedLine[];
 	readonly orderedSequence: OrderedSequenceContext | null;
 }
 
@@ -204,13 +215,6 @@ export interface StructuredListRangeIndex {
 	readonly protectedRanges: readonly SourceRange[];
 	containing(position: number): SourceRange | null;
 	mapEndpoint(position: number, bias: -1 | 1): number;
-}
-
-export type VisualAssociation = -1 | 0 | 1;
-
-export interface VisualPosition {
-	readonly position: number;
-	readonly assoc: VisualAssociation;
 }
 
 export interface NavigationDestination extends VisualPosition {

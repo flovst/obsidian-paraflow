@@ -24,6 +24,7 @@ export default defineConfig(
 					allowDefaultProject: [
 						'eslint.config.mts',
 						'manifest.json',
+						'scripts/*.mjs',
 					],
 				},
 				tsconfigRootDir: import.meta.dirname,

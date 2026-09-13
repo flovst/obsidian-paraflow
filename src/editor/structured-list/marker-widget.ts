@@ -11,6 +11,7 @@ export interface StructuredListMarker {
 }
 
 const BASE_CLASS = 'paraflow-list-marker';
+const LABEL_CLASS = `${BASE_CLASS}-label`;
 const SHAPES: readonly StructuredListMarkerShape[] = ['disc', 'ring', 'square'];
 const FORWARDED_MOUSE_EVENTS = new Set(['click', 'mousedown', 'mousemove', 'mouseup']);
 function markerShape(depth: number): StructuredListMarkerShape {
@@ -51,9 +52,26 @@ function markerClasses(marker: StructuredListMarker): string {
 	return [...new Set(classes)].join(' ');
 }
 
+function updateMarkerLabel(dom: HTMLElement, label: string | null): void {
+	if (label === null) {
+		dom.replaceChildren();
+		return;
+	}
+	const current = dom.firstElementChild;
+	const labelDom = dom.childNodes.length === 1 &&
+		current?.tagName === 'BDI' &&
+		current.classList.contains(LABEL_CLASS)
+		? current as HTMLElement
+		: dom.ownerDocument.createElement('bdi');
+	labelDom.className = LABEL_CLASS;
+	labelDom.setAttribute('dir', 'ltr');
+	labelDom.textContent = label;
+	if (labelDom !== current || dom.childNodes.length !== 1) dom.replaceChildren(labelDom);
+}
+
 function updateOwnedMarker(dom: HTMLElement, marker: StructuredListMarker): void {
 	dom.className = markerClasses(marker);
-	dom.textContent = marker.label ?? '';
+	updateMarkerLabel(dom, marker.label);
 	dom.setAttribute('aria-hidden', 'true');
 	dom.setAttribute('contenteditable', 'false');
 	dom.setAttribute('draggable', 'false');

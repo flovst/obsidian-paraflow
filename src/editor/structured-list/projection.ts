@@ -19,6 +19,7 @@ import {
 } from './marker-widget.js';
 import type {
 	ProjectionInvalidation,
+	ProjectionOwnedLine,
 	SourceRange,
 	StructuredListRangeIndex,
 } from './model.js';
@@ -31,6 +32,7 @@ import {
 
 export interface StructuredListProjectionOptions {
 	readonly isLivePreview: (state: EditorState) => boolean;
+	readonly isActive?: (view: EditorView) => boolean;
 }
 
 export interface StructuredListProjectionState {
@@ -67,6 +69,7 @@ interface ListEnvelope extends SourceRange {
 interface ProjectionAuthorityItem {
 	readonly item: SourceRange;
 	readonly marker: StructuredListMarker;
+	readonly ownedLines: readonly ProjectionOwnedLine[];
 	readonly prefix: SourceRange;
 	readonly replacement: SourceRange;
 }
@@ -343,11 +346,20 @@ function entryForContext(
 	context: ReturnType<typeof buildProjectionContexts>[number],
 ): ProjectionEntry {
 	const marker = markerForProjection(context, prefixPolicy);
+	const outerMarker = context.block.prefix.outerMarker;
+	const markerEnd = outerMarker.to - context.block.prefix.separatorText.length;
 	return {
 		item: { ...context.block.item },
 		marker,
+		ownedLines: context.ownedLines.map((line) => ({
+			...line,
+			range: { ...line.range },
+		})),
 		prefix: { from: context.block.lineFrom, to: context.block.prefix.full.to },
-		replacement: { ...context.block.prefix.outerMarker },
+		replacement: {
+			from: markerEnd - context.block.prefix.markerText.length,
+			to: markerEnd,
+		},
 		widget: new StructuredListMarkerWidget(marker),
 	};
 }
@@ -359,9 +371,10 @@ function projectionAuthority(
 	recordProjectionWork(state, 'authority');
 	return {
 		envelopes: completeListEnvelopes(state),
-		items: entries.map(({ item, marker, prefix, replacement }) => ({
+		items: entries.map(({ item, marker, ownedLines, prefix, replacement }) => ({
 			item,
 			marker,
+			ownedLines,
 			prefix,
 			replacement,
 		})),
@@ -399,7 +412,7 @@ function projectionEntries(
 	within?: readonly SourceRange[],
 ): readonly ProjectionEntry[] {
 	const items = enumerateProjectionItems(state, within);
-	return validatedEntries(projectionContexts(state, items).map(entryForContext));
+	return validatedEntries(state, projectionContexts(state, items).map(entryForContext));
 }
 
 function projectionAnalysis(state: EditorState): ProjectionAnalysis {
@@ -420,6 +433,10 @@ function mapAuthority(
 		items: authority.items.map((item) => ({
 			item: mapRange(transaction, item.item),
 			marker: item.marker,
+			ownedLines: item.ownedLines.map((line) => ({
+				...line,
+				range: mapRange(transaction, line.range),
+			})),
 			prefix: mapRange(transaction, item.prefix),
 			replacement: mapRange(transaction, item.replacement),
 		})),
@@ -458,7 +475,13 @@ function sameAuthorityItem(
 ): boolean {
 	const leftRanges = [left.item, left.prefix, left.replacement];
 	const rightRanges = [right.item, right.prefix, right.replacement];
-	return pairwiseEqual(leftRanges, rightRanges, sameRange) && sameMarker(left.marker, right.marker);
+	return pairwiseEqual(leftRanges, rightRanges, sameRange) && sameMarker(left.marker, right.marker) &&
+		pairwiseEqual(left.ownedLines, right.ownedLines, (leftLine, rightLine) =>
+			leftLine.depth === rightLine.depth &&
+			leftLine.kind === rightLine.kind &&
+			leftLine.ownerKind === rightLine.ownerKind &&
+			leftLine.rendering === rightLine.rendering &&
+			sameRange(leftLine.range, rightLine.range));
 }
 
 function mapOnlyAuthorityAgrees(
@@ -651,20 +674,99 @@ export function classifyProjectionInvalidation(
 	return invalidation;
 }
 
-function validatedEntries(entries: readonly ProjectionEntry[]): readonly ProjectionEntry[] {
+export function validateProjectionOwnedLineRange(
+	state: EditorState,
+	ownerItem: SourceRange,
+	range: SourceRange,
+): void {
+	if (range.from < 0 || range.from > range.to) {
+		throw new Error('Invalid projection-owned line range');
+	}
+	if (range.to > state.doc.length) {
+		throw new Error('Projection-owned line range is outside the editor document');
+	}
+	if (range.from < ownerItem.from || range.to > ownerItem.to) {
+		throw new Error('Projection-owned line must remain inside its owner item');
+	}
+	const physicalLine = state.doc.lineAt(range.from);
+	if (physicalLine.from !== range.from) {
+		throw new Error('Projection-owned line must start at a physical source line boundary');
+	}
+	if (physicalLine.to !== range.to) {
+		throw new Error('Projection-owned line must cover one complete physical source line');
+	}
+}
+
+function validateOwnedLine(
+	state: EditorState,
+	entry: ProjectionEntry,
+	line: ProjectionOwnedLine,
+	ownedLineStarts: Set<number>,
+): void {
+	validateProjectionOwnedLineRange(state, entry.item, line.range);
+	if (ownedLineStarts.has(line.range.from)) {
+		throw new Error('Duplicate projection-owned physical line start');
+	}
+	ownedLineStarts.add(line.range.from);
+}
+
+function validateEntry(
+	state: EditorState,
+	entry: ProjectionEntry,
+	previous: ProjectionEntry | undefined,
+	ownedLineStarts: Set<number>,
+): void {
+	if (entry.prefix.from >= entry.prefix.to) throw new Error('Invalid prefix projection range');
+	if (previous && entry.prefix.from < previous.prefix.to) {
+		throw new Error('Duplicate or overlapping prefix projection ranges');
+	}
+	if (entry.replacement.from < entry.prefix.from || entry.replacement.to > entry.prefix.to) {
+		throw new Error('Marker replacement must remain inside its protected prefix');
+	}
+	for (const line of entry.ownedLines) {
+		validateOwnedLine(state, entry, line, ownedLineStarts);
+	}
+}
+
+function validatedEntries(
+	state: EditorState,
+	entries: readonly ProjectionEntry[],
+): readonly ProjectionEntry[] {
 	const sorted = [...entries].sort((left, right) => left.prefix.from - right.prefix.from);
+	const ownedLineStarts = new Set<number>();
 	for (let index = 0; index < sorted.length; index += 1) {
 		const entry = sorted[index];
-		const previous = sorted[index - 1];
-		if (!entry || entry.prefix.from >= entry.prefix.to) throw new Error('Invalid prefix projection range');
-		if (previous && entry.prefix.from < previous.prefix.to) {
-			throw new Error('Duplicate or overlapping prefix projection ranges');
-		}
-		if (entry.replacement.from < entry.prefix.from || entry.replacement.to > entry.prefix.to) {
-			throw new Error('Marker replacement must remain inside its protected prefix');
-		}
+		if (!entry) throw new Error('Projection entry vanished during validation');
+		validateEntry(state, entry, sorted[index - 1], ownedLineStarts);
 	}
 	return Object.freeze(sorted);
+}
+
+function ownedLineClass(line: ProjectionOwnedLine): string {
+	const kind = line.kind === 'blank'
+		? 'paraflow-list-owned-blank-line'
+		: `paraflow-list-${line.kind}-line`;
+	const rendering = line.rendering === 'projected'
+		? `paraflow-list-owned-line-${line.depth + 1}`
+		: 'paraflow-list-owned-line--native-depth';
+	return [
+		'paraflow-list-owned-line',
+		kind,
+		`paraflow-list-owned-line--${line.ownerKind}`,
+		rendering,
+	].join(' ');
+}
+
+function decorationsFor(entries: readonly ProjectionEntry[]): DecorationSet {
+	const ranges = entries.flatMap((entry) => [
+		Decoration.replace({ widget: entry.widget }).range(
+			entry.replacement.from,
+			entry.replacement.to,
+		),
+		...entry.ownedLines.map((line) =>
+			Decoration.line({ attributes: { class: ownedLineClass(line) } }).range(line.range.from)),
+	]);
+	return Decoration.set(ranges, true);
 }
 
 function rangeIndexFor(entries: readonly ProjectionEntry[]): StructuredListRangeIndex {
@@ -687,8 +789,7 @@ function stateFromProjection(
 	authority: ProjectionAuthority | null,
 	active: boolean,
 ): ProjectionFieldState {
-	const decorations = Decoration.set(entries.map((entry) =>
-		Decoration.replace({ widget: entry.widget }).range(entry.replacement.from, entry.replacement.to)));
+	const decorations = decorationsFor(entries);
 	const atomicRanges = RangeSet.of(entries.map((entry) =>
 		prefixRangeValue.range(entry.prefix.from, entry.prefix.to)));
 	return Object.freeze({
@@ -718,6 +819,10 @@ function mapEntry(transaction: Transaction, entry: ProjectionEntry): ProjectionE
 	return {
 		item: mapRange(transaction, entry.item),
 		marker: entry.marker,
+		ownedLines: entry.ownedLines.map((line) => ({
+			...line,
+			range: mapRange(transaction, line.range),
+		})),
 		prefix: mapRange(transaction, entry.prefix),
 		replacement: mapRange(transaction, entry.replacement),
 		widget: entry.widget,
@@ -740,7 +845,7 @@ function rebuildRanges(
 	const mapped = value.entries.map((entry) => mapEntry(transaction, entry));
 	const unaffected = mapped.filter((entry) => !intersectsAny(entry.prefix, ranges));
 	const rebuilt = projectionEntries(transaction.state, ranges);
-	const entries = validatedEntries([...unaffected, ...rebuilt]);
+	const entries = validatedEntries(transaction.state, [...unaffected, ...rebuilt]);
 	const authority = projectionAuthority(transaction.state, entries);
 	return stateFromProjection(entries, authority, true);
 }
@@ -755,7 +860,10 @@ function mapOnlyProjectionState(
 	analysis: ProjectionAnalysis | null,
 	mappedSyntax?: ProjectionSyntaxAuthority,
 ): ProjectionFieldState {
-	const entries = validatedEntries(value.entries.map((entry) => mapEntry(transaction, entry)));
+	const entries = validatedEntries(
+		transaction.state,
+		value.entries.map((entry) => mapEntry(transaction, entry)),
+	);
 	if (analysis) return stateFromProjection(entries, analysis.authority, true);
 	if (!value.authority) return rebuildAll(transaction.state);
 	return stateFromProjection(
@@ -811,14 +919,6 @@ export const structuredListProjectionField = StateField.define<ProjectionFieldSt
 	update: updateProjectionState,
 });
 
-const projectionDecorations = EditorView.decorations.from(
-	structuredListProjectionField,
-	(value) => value.decorations,
-);
-
-const projectionAtomicRanges = EditorView.atomicRanges.of((view) =>
-	view.state.field(structuredListProjectionField).atomicRanges);
-
 export function getStructuredListProjectionState(
 	state: EditorState,
 ): StructuredListProjectionState | null {
@@ -828,10 +928,15 @@ export function getStructuredListProjectionState(
 export function createStructuredListProjection(
 	options: StructuredListProjectionOptions,
 ): Extension {
+	const isActive = options.isActive ?? (() => true);
 	return [
 		livePreviewPredicates.of(options.isLivePreview),
 		structuredListProjectionField,
-		projectionDecorations,
-		projectionAtomicRanges,
+		EditorView.decorations.of((view) => isActive(view)
+			? view.state.field(structuredListProjectionField).decorations
+			: Decoration.none),
+		EditorView.atomicRanges.of((view) => isActive(view)
+			? view.state.field(structuredListProjectionField).atomicRanges
+			: RangeSet.empty),
 	];
 }

@@ -1,5 +1,16 @@
-import { type EditorState, type Extension } from '@codemirror/state';
-import { EditorView } from '@codemirror/view';
+import {
+	StateEffect,
+	StateField,
+	type EditorState,
+	type Extension,
+	type StateEffectType,
+} from '@codemirror/state';
+import { EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view';
+import { classifyCurrentSelectionMode } from '../runtime/input-state.js';
+import {
+	createVisualNavigationAdapter,
+	requireGoalXStore,
+} from '../runtime/navigation-core.js';
 import { serializeSelection } from './clipboard.js';
 import { buildListContext, buildSelectionContext } from './context.js';
 import {
@@ -9,10 +20,7 @@ import {
 import { createStructuredListKeymap } from './keymap.js';
 import { createStructuredListMouseExtension } from './mouse.js';
 import {
-	createGoalXStoreExtension,
 	createNavigationDestinationResolver,
-	createVisualNavigationAdapter,
-	goalXStoreFor,
 } from './navigation-adapter.js';
 import type { ContextRuntime, StructuredListRangeIndex } from './model.js';
 import {
@@ -30,12 +38,102 @@ import {
 	createStructuredListProjection,
 	getStructuredListProjectionState,
 } from './projection.js';
-import {
-	classifyCurrentSelectionMode,
-	createSelectionProtection,
-} from './selection-protection.js';
+import { createSelectionProtection } from './selection-protection.js';
 
 export { exceptionSinkStateField } from './edit-plan.js';
+
+const STRUCTURED_LIST_ACTIVE_CLASS = 'paraflow-structured-list-active';
+
+function isActive(view: EditorView, options: StructuredListExtensionOptions): boolean {
+	return options.isLivePreview(view.state) && (options.isSurface?.(view) ?? true);
+}
+
+interface StateViewCounts {
+	readonly active: number;
+	readonly total: number;
+}
+
+function addStateView(
+	stateViews: Map<EditorState, StateViewCounts>,
+	state: EditorState,
+	active: boolean,
+): void {
+	const counts = stateViews.get(state) ?? { active: 0, total: 0 };
+	stateViews.set(state, {
+		active: counts.active + (active ? 1 : 0),
+		total: counts.total + 1,
+	});
+}
+
+function removeStateView(
+	stateViews: Map<EditorState, StateViewCounts>,
+	state: EditorState,
+	active: boolean,
+): void {
+	const counts = stateViews.get(state);
+	if (!counts) return;
+	if (counts.total === 1) {
+		stateViews.delete(state);
+		return;
+	}
+	stateViews.set(state, {
+		active: counts.active - (active ? 1 : 0),
+		total: counts.total - 1,
+	});
+}
+
+function createActivationExtension(
+	options: StructuredListExtensionOptions,
+	stateViews: Map<EditorState, StateViewCounts>,
+	identityField: StateField<object | null>,
+	setIdentity: StateEffectType<object>,
+	activeIdentities: WeakSet<object>,
+): Extension {
+	return [
+		EditorView.editorAttributes.of((view) => ({
+			class: isActive(view, options) ? STRUCTURED_LIST_ACTIVE_CLASS : '',
+		})),
+		ViewPlugin.fromClass(class {
+			private active: boolean;
+			private destroyed = false;
+			private readonly identity = {};
+			private state: EditorState;
+
+			constructor(private readonly view: EditorView) {
+				this.active = isActive(view, options);
+				this.state = view.state;
+				addStateView(stateViews, this.state, this.active);
+				this.syncIdentityActivity();
+				// CodeMirror forbids dispatch during ViewPlugin construction.
+				void Promise.resolve().then(() => this.installIdentity());
+			}
+
+			destroy(): void {
+				this.destroyed = true;
+				removeStateView(stateViews, this.state, this.active);
+				activeIdentities.delete(this.identity);
+			}
+
+			update(update: ViewUpdate): void {
+				removeStateView(stateViews, this.state, this.active);
+				this.active = isActive(this.view, options);
+				this.state = update.state;
+				addStateView(stateViews, this.state, this.active);
+				this.syncIdentityActivity();
+			}
+
+			private installIdentity(): void {
+				if (this.destroyed || this.view.state.field(identityField, false) === undefined) return;
+				this.view.dispatch({ effects: setIdentity.of(this.identity) });
+			}
+
+			private syncIdentityActivity(): void {
+				if (this.active) activeIdentities.add(this.identity);
+				else activeIdentities.delete(this.identity);
+			}
+		}),
+	];
+}
 
 export interface StructuredListRuntimeServiceFactoryOptions {
 	readonly clipboard: ClipboardSink;
@@ -71,8 +169,7 @@ function runtimeServicesForView(
 	const rangeIndex = rangeIndexFor(state);
 	const protectedRanges = snapshotRanges(rangeIndex);
 	const runtime = destinationRuntime(view);
-	const goalX = goalXStoreFor(view);
-	if (!goalX) throw new Error('Structured-list goal-X state is not installed');
+	const goalX = requireGoalXStore(view);
 	const navigation = {
 		goalX,
 		rangeIndex,
@@ -107,11 +204,17 @@ function pointerRuntime(
 	intent: PointerIntent,
 	services: StructuredListRuntimeServices,
 ): ContextRuntime {
+	const currentSelectionMode = classifyCurrentSelectionMode(view.state);
+	const selectionMode = currentSelectionMode === 'unknown' &&
+		view.state.selection.ranges.length === 1 && view.state.selection.main.empty
+		// The click adapter has already proved a fresh unmodified single-range gesture.
+		? 'caret'
+		: currentSelectionMode;
 	return {
 		editIntent: 'none',
 		imeComposing: view.composing,
 		operation: intent.operation,
-		selectionMode: classifyCurrentSelectionMode(view.state),
+		selectionMode,
 		selectionsCount: view.state.selection.ranges.length,
 	};
 }
@@ -121,9 +224,11 @@ function createMouseComposition(options: StructuredListExtensionOptions): Extens
 	return createStructuredListMouseExtension({
 		applyResult(view, execution, result) {
 			const runtime = runtimes.get(view);
-			runtimes.delete(view);
 			return runtime ? applyOperationResult(view, execution.intent.operation,
 				execution.context.editScope, result, runtime.result) : false;
+		},
+		clearTransientState(view) {
+			runtimes.delete(view);
 		},
 		createExecution(view, intent) {
 			const services = runtimes.get(view);
@@ -140,6 +245,7 @@ function createMouseComposition(options: StructuredListExtensionOptions): Extens
 			return { context, intent, services: navigation };
 		},
 		handler: operationHandlers['click-prefix-gutter'],
+		isActive: (view) => isActive(view, options),
 		isLivePreview: options.isLivePreview,
 		services(view) {
 			const runtime = options.services.forView(view);
@@ -169,7 +275,7 @@ function executeClipboard(
 	action: 'copy' | 'cut',
 	options: StructuredListExtensionOptions,
 ): boolean {
-	if (!options.isLivePreview(view.state)) return false;
+	if (!isActive(view, options)) return false;
 	const services = options.services.forView(view);
 	const runtime = selectionRuntime(view, action, services);
 	const selection = view.state.selection;
@@ -223,13 +329,42 @@ function createClipboardExtension(options: StructuredListExtensionOptions): Exte
 export function createStructuredListExtension(
 	options: StructuredListExtensionOptions,
 ): Extension {
+	const setIdentity = StateEffect.define<object>();
+	const identityField = StateField.define<object | null>({
+		create: () => null,
+		update(identity, transaction) {
+			for (const effect of transaction.effects) {
+				if (effect.is(setIdentity)) return effect.value;
+			}
+			return identity;
+		},
+	});
+	const activeIdentities = new WeakSet<object>();
+	const stateViews = new Map<EditorState, StateViewCounts>();
+	const isActiveState = (state: EditorState): boolean => {
+		const counts = stateViews.get(state);
+		if (!counts || counts.active !== counts.total) return false;
+		const identity = state.field(identityField, false);
+		return identity !== null && identity !== undefined &&
+			options.isLivePreview(state) && activeIdentities.has(identity);
+	};
 	return [
-		createStructuredListProjection({ isLivePreview: options.isLivePreview }),
+		identityField,
+		createActivationExtension(
+			options,
+			stateViews,
+			identityField,
+			setIdentity,
+			activeIdentities,
+		),
+		createStructuredListProjection({
+			isActive: (view) => isActive(view, options),
+			isLivePreview: options.isLivePreview,
+		}),
 		createStructuredListKeymap(options),
 		createMouseComposition(options),
 		createClipboardExtension(options),
-		createSelectionProtection({ isLivePreview: options.isLivePreview }),
-		createGoalXStoreExtension(),
+		createSelectionProtection({ isLivePreview: isActiveState }),
 		exceptionSinkStateField,
 	];
 }

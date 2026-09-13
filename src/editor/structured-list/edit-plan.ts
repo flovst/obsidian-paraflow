@@ -12,6 +12,7 @@ import type {
 	OperationResult,
 	OperationResultServices,
 } from './operations.js';
+import { selectionModeAnnotation } from '../runtime/input-state.js';
 
 export type EditRegionKind =
 	| 'current-prefix'
@@ -311,6 +312,7 @@ function dispatchValidatedEditPlan(
 ): void {
 	view.dispatch({
 		annotations: [
+			selectionModeAnnotation.of('normal'),
 			structuralEditAnnotation.of(expectedOperation),
 			structuralExceptionAnnotation.of(plan.exceptionId),
 		],
@@ -365,7 +367,11 @@ function applyHandledResult(
 	services: OperationResultServices,
 ): void {
 	if (result.kind === 'selection') {
-		view.dispatch({ selection: result.selection, scrollIntoView: true });
+		view.dispatch({
+			annotations: selectionModeAnnotation.of('normal'),
+			selection: result.selection,
+			scrollIntoView: true,
+		});
 		return;
 	}
 	if (result.kind === 'edit') {

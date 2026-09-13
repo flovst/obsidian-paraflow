@@ -14,6 +14,7 @@ import type {
 	SelectionSnapshot,
 	SourceRange,
 } from './model.js';
+import { isSeparatorlessListMarkerLine } from './prefix.js';
 
 export function selectionSnapshot(selection: EditorSelection): SelectionSnapshot {
 	return {
@@ -35,6 +36,10 @@ export function selectionGate(
 }
 
 function itemForLine(analysis: SourceAnalysis, line: SourceLine): AnalyzedItem | null {
+	if (isSeparatorlessListMarkerLine(analysis.source.slice({
+		from: line.from,
+		to: line.to,
+	}))) return null;
 	const marker = analysis.items.find((item) => item.line.from === line.from);
 	if (marker) return marker;
 	let owner: AnalyzedItem | null = null;

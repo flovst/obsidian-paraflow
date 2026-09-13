@@ -2,16 +2,19 @@ import { syntaxTree } from '@codemirror/language';
 import type { EditorState } from '@codemirror/state';
 import type { Tree } from '@lezer/common';
 import type { ListItemSyntax, SourceRange } from './model.js';
-import { prefixPolicy } from './prefix.js';
+import { isSeparatorlessListMarkerLine, prefixPolicy } from './prefix.js';
 
 interface SyntaxNodeFact extends SourceRange {
 	readonly name: string;
 }
 
-interface ObsidianListLine {
-	readonly syntax: ListItemSyntax;
-	readonly indentColumns: number;
+interface ObsidianSyntaxLine {
+	readonly syntax: ListItemSyntax | null;
+	readonly indentColumns: number | null;
+	readonly isNoBullet: boolean;
+	readonly level: number | null;
 	readonly lineNumber: number;
+	readonly range: SourceRange;
 }
 
 function range(from: number, to: number): SourceRange {
@@ -50,6 +53,20 @@ export function isObsidianListLineName(name: string): boolean {
 	return nodeNameTokens(name).includes('HyperMD-list-line');
 }
 
+function obsidianListLevel(name: string): number | null {
+	for (const token of nodeNameTokens(name)) {
+		const match = /^HyperMD-list-line-(\d+)$/u.exec(token);
+		if (!match) continue;
+		const level = Number(match[1]);
+		if (Number.isSafeInteger(level) && level > 0) return level;
+	}
+	return null;
+}
+
+function isObsidianNoBulletLineName(name: string): boolean {
+	return nodeNameTokens(name).includes('HyperMD-list-line-nobullet');
+}
+
 function indentColumns(indent: string): number {
 	let column = 0;
 	for (const character of indent) {
@@ -83,37 +100,56 @@ function standardItems(
 function obsidianListLines(
 	state: EditorState,
 	facts: readonly SyntaxNodeFact[],
-): readonly ObsidianListLine[] {
-	const lines = new Map<number, ObsidianListLine>();
+): readonly ObsidianSyntaxLine[] {
+	const lines = new Map<number, ObsidianSyntaxLine>();
 	for (const fact of facts) {
 		if (!isObsidianListLineName(fact.name)) continue;
 		const syntax = syntaxForItem(state, fact, true);
-		if (!syntax) continue;
-		lines.set(syntax.markerLine.from, {
-			indentColumns: indentColumns(syntax.prefix.indentText),
-			lineNumber: state.doc.lineAt(syntax.markerLine.from).number,
+		const physicalLine = state.doc.lineAt(fact.from);
+		const lineNumber = physicalLine.number;
+		const candidate: ObsidianSyntaxLine = {
+			indentColumns: syntax ? indentColumns(syntax.prefix.indentText) : null,
+			isNoBullet: isObsidianNoBulletLineName(fact.name),
+			level: obsidianListLevel(fact.name),
+			lineNumber,
+			range: range(physicalLine.from, physicalLine.to),
 			syntax,
-		});
+		};
+		const existing = lines.get(lineNumber);
+		if (!existing || (!existing.syntax && syntax)) lines.set(lineNumber, candidate);
 	}
 	return [...lines.values()].sort((left, right) =>
-		left.syntax.markerLine.from - right.syntax.markerLine.from);
+		left.lineNumber - right.lineNumber);
 }
 
-function normalizedObsidianItems(lines: readonly ObsidianListLine[]): readonly ListItemSyntax[] {
-	return lines.map((line, index) => {
+function continuesObsidianItem(
+	owner: ObsidianSyntaxLine,
+	next: ObsidianSyntaxLine,
+): boolean {
+	if (next.syntax) {
+		return next.indentColumns !== null && owner.indentColumns !== null &&
+			next.indentColumns > owner.indentColumns;
+	}
+	return next.isNoBullet && owner.level !== null && next.level !== null &&
+		next.level >= owner.level;
+}
+
+function normalizedObsidianItems(lines: readonly ObsidianSyntaxLine[]): readonly ListItemSyntax[] {
+	return lines.flatMap((line, index): readonly ListItemSyntax[] => {
+		if (!line.syntax) return [];
 		let subtreeTo = line.syntax.markerLine.to;
 		let previousLineNumber = line.lineNumber;
 		for (let nextIndex = index + 1; nextIndex < lines.length; nextIndex += 1) {
 			const next = lines[nextIndex];
 			if (!next || next.lineNumber !== previousLineNumber + 1) break;
-			if (next.indentColumns <= line.indentColumns) break;
-			subtreeTo = next.syntax.markerLine.to;
+			if (!continuesObsidianItem(line, next)) break;
+			subtreeTo = next.range.to;
 			previousLineNumber = next.lineNumber;
 		}
-		return {
+		return [{
 			...line.syntax,
 			itemNode: range(line.syntax.itemNode.from, subtreeTo),
-		};
+		}];
 	});
 }
 
@@ -133,7 +169,17 @@ export function discoverListItem(state: EditorState, position: number): ListItem
 	if (!Number.isInteger(position) || position < 0 || position > state.doc.length) {
 		throw new RangeError('List discovery position is outside the document');
 	}
-	return allListItems(state)
+	if (isSeparatorlessListMarkerLine(state.doc.lineAt(position).text)) return null;
+	const facts = collectSyntaxFacts(syntaxTree(state));
+	const standardFacts = facts.filter((fact) => fact.name === 'ListItem');
+	if (standardFacts.length > 0) {
+		const deepest = standardFacts
+			.filter((fact) => fact.from <= position && position <= fact.to)
+			.sort((left, right) =>
+				(left.to - left.from) - (right.to - right.from))[0];
+		return deepest ? syntaxForItem(state, range(deepest.from, deepest.to)) : null;
+	}
+	return normalizedObsidianItems(obsidianListLines(state, facts))
 		.filter((item) => item.itemNode.from <= position && position <= item.itemNode.to)
 		.sort((left, right) =>
 			(left.itemNode.to - left.itemNode.from) - (right.itemNode.to - right.itemNode.from))[0] ?? null;

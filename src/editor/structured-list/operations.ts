@@ -1,6 +1,11 @@
 import type { EditorSelection, EditorState } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
 import type {
+	GoalXStore,
+	VisualNavigationAdapter,
+	VisualPosition,
+} from '../runtime/navigation-core.js';
+import type {
 	EditPlan,
 	EditValidationInput,
 } from './edit-plan.js';
@@ -12,7 +17,6 @@ import type {
 	SelectionContext,
 	SelectionSnapshot,
 	StructuredListRangeIndex,
-	VisualPosition,
 } from './model.js';
 import {
 	backspaceEmptyNested,
@@ -137,20 +141,6 @@ export interface NormalSelectionIntent {
 	readonly selection: SelectionSnapshot;
 }
 
-export interface VisualNavigationAdapter {
-	moveByChar(position: VisualPosition, forward: boolean): VisualPosition;
-	moveVertically(position: VisualPosition, forward: boolean, goalX: number): VisualPosition;
-	visualLineStart(position: VisualPosition): VisualPosition;
-	visualLineEnd(position: VisualPosition): VisualPosition;
-	coordsAtPos(position: VisualPosition): { readonly left: number; readonly top: number } | null;
-	posAtCoords(coords: { readonly x: number; readonly y: number }): VisualPosition | null;
-}
-
-export interface GoalXStore {
-	read(): number | null;
-	write(value: number | null): void;
-}
-
 export interface StructuralServices {
 	readonly prefixPolicy: PrefixPolicy;
 }
@@ -193,15 +183,9 @@ export interface RuntimeServiceFactory {
 
 export interface StructuredListExtensionOptions {
 	readonly isLivePreview: (state: EditorState) => boolean;
+	readonly isSurface?: (view: EditorView) => boolean;
 	readonly services: RuntimeServiceFactory;
 }
-
-export type SelectionMode =
-	| 'normal'
-	| 'whole-item'
-	| 'whole-document'
-	| 'column'
-	| 'third-party';
 
 type StructuralExecution<K extends StructuralOperationId> = {
 	readonly intent: StructuralIntent<K>;

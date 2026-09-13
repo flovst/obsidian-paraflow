@@ -1,7 +1,7 @@
 import type { EditorState, Extension } from '@codemirror/state';
-import { EditorView } from '@codemirror/view';
-import type { SourceRange, VisualPosition } from './model.js';
-import { goalXStoreFor } from './navigation-adapter.js';
+import { EditorView, ViewPlugin } from '@codemirror/view';
+import { goalXStoreFor, type VisualPosition } from '../runtime/navigation-core.js';
+import type { SourceRange } from './model.js';
 import type {
 	ExecutionFor,
 	NavigationServices,
@@ -55,7 +55,9 @@ export interface StructuredListMouseOptions {
 		view: EditorView,
 		intent: PointerIntent,
 	) => ExecutionFor<'click-prefix-gutter'> | null;
+	readonly clearTransientState?: (view: EditorView) => void;
 	readonly handler?: OperationHandler<'click-prefix-gutter'>;
+	readonly isActive?: (view: EditorView) => boolean;
 	readonly isLivePreview: (state: EditorState) => boolean;
 	readonly services: (view: EditorView) => NavigationServices | null;
 }
@@ -141,12 +143,16 @@ function executePointerClick(
 ): boolean {
 	const services = options.services(view);
 	if (!services) return false;
-	const intent = pointerIntent(view, event, services);
-	if (!intent) return false;
-	const execution = options.createExecution(view, intent);
-	if (!execution) return false;
-	const result = (options.handler ?? clickPrefixGutter)(execution);
-	return options.applyResult(view, execution, result);
+	try {
+		const intent = pointerIntent(view, event, services);
+		if (!intent) return false;
+		const execution = options.createExecution(view, intent);
+		if (!execution) return false;
+		const result = (options.handler ?? clickPrefixGutter)(execution);
+		return options.applyResult(view, execution, result);
+	} finally {
+		options.clearTransientState?.(view);
+	}
 }
 
 function supportedPointerTarget(
@@ -176,10 +182,15 @@ function clearGoalForEditorClick(
 }
 
 export interface StructuredListClickAdapter {
+	clear(view: EditorView): void;
 	mousedown(view: EditorView, event: MouseEvent): boolean;
 	mousemove(view: EditorView, event: MouseEvent): boolean;
 	mouseup(view: EditorView, event: MouseEvent): boolean;
 	click(view: EditorView, event: MouseEvent): boolean;
+}
+
+function activePointerSurface(options: StructuredListMouseOptions, view: EditorView): boolean {
+	return options.isLivePreview(view.state) && options.isActive?.(view) !== false;
 }
 
 export function createStructuredListClickAdapter(
@@ -187,7 +198,11 @@ export function createStructuredListClickAdapter(
 ): StructuredListClickAdapter {
 	const gestures = new WeakMap<EditorView, PointerGesture>();
 	return {
+		clear(view) {
+			gestures.delete(view);
+		},
 		mousedown(view, event) {
+			if (!activePointerSurface(options, view)) return false;
 			gestures.set(view, {
 				button: event.button,
 				dragged: false,
@@ -216,7 +231,7 @@ export function createStructuredListClickAdapter(
 		click(view, event) {
 			const gesture = gestures.get(view);
 			gestures.delete(view);
-			if (!options.isLivePreview(view.state)) return false;
+			if (!activePointerSurface(options, view)) return false;
 			if (!gesture || !ordinarySingleClick(gesture, event)) return false;
 			clearGoalForEditorClick(view, event, gesture);
 			const ownership = classifyPointerOwnership(event);
@@ -231,10 +246,27 @@ export function createStructuredListMouseExtension(
 	options: StructuredListMouseOptions,
 ): Extension {
 	const adapter = createStructuredListClickAdapter(options);
-	return EditorView.domEventHandlers({
-		click: (event, view) => adapter.click(view, event),
-		mousedown: (event, view) => adapter.mousedown(view, event),
-		mousemove: (event, view) => adapter.mousemove(view, event),
-		mouseup: (event, view) => adapter.mouseup(view, event),
-	});
+	const clearTransientState = (view: EditorView) => {
+		adapter.clear(view);
+		options.clearTransientState?.(view);
+	};
+	const cleanup = ViewPlugin.define((view) => ({
+		update(update) {
+			if (options.isLivePreview(update.startState) !==
+				options.isLivePreview(update.state) ||
+				options.isActive?.(view) === false) clearTransientState(view);
+		},
+		destroy() {
+			clearTransientState(view);
+		},
+	}));
+	return [
+		EditorView.domEventHandlers({
+			click: (event, view) => adapter.click(view, event),
+			mousedown: (event, view) => adapter.mousedown(view, event),
+			mousemove: (event, view) => adapter.mousemove(view, event),
+			mouseup: (event, view) => adapter.mouseup(view, event),
+		}),
+		cleanup,
+	];
 }

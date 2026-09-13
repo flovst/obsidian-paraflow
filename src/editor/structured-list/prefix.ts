@@ -13,12 +13,16 @@ function range(from: number, to: number): SourceRange {
 }
 
 function parseMarker(lineText: string): MarkerMatch | null {
-	const match = /^([ \t]*)([-+*]|\d+[.)])([ \t]+|$)/u.exec(lineText);
+	const match = /^([ \t]*)([-+*]|\d+[.)])([ \t]+)/u.exec(lineText);
 	if (!match) return null;
 	const [matched, indentText, markerText, separatorText] = match;
 	if (indentText === undefined || markerText === undefined || separatorText === undefined) return null;
 	const orderedValue = /^\d/u.test(markerText) ? Number.parseInt(markerText, 10) : null;
 	return { indentText, markerEnd: matched.length, markerText, orderedValue, separatorText };
+}
+
+export function isSeparatorlessListMarkerLine(lineText: string): boolean {
+	return /^[ \t]*(?:[-+*]|\d+[.)])$/u.test(lineText);
 }
 
 function parsePrefix(lineText: string, lineFrom: number): ListPrefix | null {

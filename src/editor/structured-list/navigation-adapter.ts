@@ -1,77 +1,12 @@
-import { EditorSelection, type EditorState, type Extension } from '@codemirror/state';
-import { EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view';
+import type { EditorState } from '@codemirror/state';
+import type { VisualPosition } from '../runtime/navigation-core.js';
 import { buildNavigationContext } from './context.js';
 import type {
 	ContextRuntime,
 	NavigationDestination,
 	StructuredListRangeIndex,
-	VisualPosition,
 } from './model.js';
-import type {
-	GoalXStore,
-	NavigationServices,
-	VisualNavigationAdapter,
-} from './operations.js';
-
-class GoalXPluginValue implements GoalXStore {
-	private value: number | null = null;
-
-	read(): number | null {
-		return this.value;
-	}
-
-	write(value: number | null): void {
-		this.value = value;
-	}
-
-	update(update: ViewUpdate): void {
-		if (update.docChanged) this.value = null;
-	}
-}
-
-const goalXPlugin = ViewPlugin.define(() => new GoalXPluginValue());
-
-export function createGoalXStoreExtension(): Extension {
-	return goalXPlugin;
-}
-
-export function goalXStoreFor(view: EditorView): GoalXStore | null {
-	return view.plugin(goalXPlugin) ?? null;
-}
-
-export function createVisualNavigationAdapter(view: EditorView): VisualNavigationAdapter {
-	const cursor = (point: VisualPosition, goalX?: number) =>
-		EditorSelection.cursor(point.position, point.assoc, undefined, goalX);
-	const point = (range: ReturnType<typeof EditorSelection.cursor>): VisualPosition => ({
-		assoc: range.assoc,
-		position: range.head,
-	});
-	return {
-		coordsAtPos(position) {
-			const coordinates = view.coordsAtPos(position.position, position.assoc < 0 ? -1 : 1);
-			return coordinates ? {
-				left: coordinates.left - view.contentDOM.getBoundingClientRect().left,
-				top: coordinates.top,
-			} : null;
-		},
-		moveByChar(position, forward) {
-			return point(view.moveByChar(cursor(position), forward));
-		},
-		moveVertically(position, forward, goalX) {
-			return point(view.moveVertically(cursor(position, goalX), forward));
-		},
-		posAtCoords(coordinates) {
-			const position = view.posAtCoords(coordinates);
-			return position === null ? null : { assoc: 0, position };
-		},
-		visualLineEnd(position) {
-			return point(view.moveToLineBoundary(cursor(position), true, true));
-		},
-		visualLineStart(position) {
-			return point(view.moveToLineBoundary(cursor(position), false, true));
-		},
-	};
-}
+import type { NavigationServices } from './operations.js';
 
 export interface NavigationDestinationResolverOptions {
 	readonly rangeIndex: StructuredListRangeIndex;

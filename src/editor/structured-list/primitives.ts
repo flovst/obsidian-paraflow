@@ -254,6 +254,60 @@ export function replaceEmptyItem(
 	]));
 }
 
+function firstOwnedDescendant(context: ListContext): ListContext['topology']['ownedBlocks'][number] {
+	const firstOwned = context.topology.ownedBlocks[0];
+	if (!firstOwned || !context.topology.ownedBlocks.every((block) => block.kind === 'descendant')) {
+		throw new Error('Promoting an empty item requires normalized descendant blocks');
+	}
+	return firstOwned;
+}
+
+function promotedOwnedContentOffset(
+	context: ListContext,
+	replacementRange: SourceRange,
+	ownedIndentDelta: number,
+): number {
+	const firstOwned = firstOwnedDescendant(context);
+	if (replacementRange.to >= context.source.length || context.source.text[replacementRange.to] !== '\n') {
+		throw new Error('Empty item before owned blocks must end at a physical newline');
+	}
+	const firstFollowing = context.topology.followingBoundary;
+	if (firstFollowing.kind !== 'list-item' || firstFollowing.block.lineFrom !== firstOwned.range.from) {
+		throw new Error('First owned descendant does not match the normalized following list item');
+	}
+	const offset = firstFollowing.block.content.from - firstFollowing.block.lineFrom + ownedIndentDelta;
+	if (!Number.isInteger(offset) || offset < 0) {
+		throw new RangeError('Promoted descendant content offset is invalid');
+	}
+	return offset;
+}
+
+export function removeEmptyItemAndPromoteOwnedBlocks(
+	context: ListContext,
+	itemRegionId: EditRegionId,
+	ownedIndentDelta: number,
+): EditPlanFragment {
+	const region = regionFor(context.editScope, itemRegionId, 'current-item');
+	const replacementRange = emptyItemReplacementRange(context, region.range, true);
+	const promotedContentOffset = promotedOwnedContentOffset(
+		context,
+		replacementRange,
+		ownedIndentDelta,
+	);
+	const ownedChanges = emptyItemOwnedChanges(
+		context,
+		region.range,
+		ownedIndentDelta,
+	);
+	return fragment(context.editScope, [itemRegionId], [{
+		from: replacementRange.from,
+		insert: '',
+		to: replacementRange.to + 1,
+	}, ...ownedChanges], EditorSelection.create([
+		EditorSelection.cursor(replacementRange.from + promotedContentOffset),
+	]));
+}
+
 function structuralBoundaryId(
 	scope: EditScope,
 	boundary: NormalizedStructuralBoundary,
@@ -323,11 +377,11 @@ function orderedMarker(sequence: OrderedSequenceContext, index: number, delta: n
 	if (!item || item.prefix.orderedValue === null) throw new Error('Ordered region index is not in the sequence');
 	const suffix = /^\d+(.*)$/u.exec(item.prefix.markerText)?.[1];
 	if (suffix === undefined) throw new Error('Normalized ordered marker has no numeric value');
-	return `${item.prefix.indentText}${sequence.renderedValue + index - sequence.currentIndex + delta}${suffix}${item.prefix.separatorText}`;
+	return `${sequence.renderedValue + index - sequence.currentIndex + delta}${suffix}${item.prefix.separatorText}`;
 }
 
 function assertOuterMarkerSource(source: SourceSnapshot, item: OrderedSequenceContext['items'][number]): void {
-	const expected = `${item.prefix.indentText}${item.prefix.markerText}${item.prefix.separatorText}`;
+	const expected = `${item.prefix.markerText}${item.prefix.separatorText}`;
 	if (source.slice(item.prefix.outerMarker) !== expected) {
 		throw new Error('Ordered marker does not match the normalized source snapshot');
 	}

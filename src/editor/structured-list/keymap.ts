@@ -1,5 +1,6 @@
 import { Prec, type Extension } from '@codemirror/state';
 import { keymap, type EditorView, type KeyBinding } from '@codemirror/view';
+import { classifyCurrentSelectionMode } from '../runtime/input-state.js';
 import { buildListContext, buildNavigationContext } from './context.js';
 import { applyOperationResult } from './edit-plan.js';
 import { createNavigationDestinationResolver } from './navigation-adapter.js';
@@ -13,7 +14,6 @@ import {
 	type StructuredListExtensionOptions,
 	type StructuredListRuntimeServices,
 } from './operations.js';
-import { classifyCurrentSelectionMode } from './selection-protection.js';
 
 type DispatchIntent =
 	| StructuralIntent<StructuralOperationId>
@@ -96,7 +96,7 @@ export function dispatchOperation(
 	intent: DispatchIntent,
 	options: StructuredListExtensionOptions,
 ): boolean {
-	if (!options.isLivePreview(view.state)) return false;
+	if (!options.isLivePreview(view.state) || options.isSurface?.(view) === false) return false;
 	const services = options.services.forView(view);
 	const runtime = contextRuntime(view, intent, services);
 	return intent.family === 'navigation'

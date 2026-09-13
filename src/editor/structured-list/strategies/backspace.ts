@@ -1,3 +1,4 @@
+import { ChangeSet, EditorSelection } from '@codemirror/state';
 import type { EditPlan, EditPlanFragment, EditRegionId, EditScope } from '../edit-plan.js';
 import type { ExceptionId } from '../exception-registry.js';
 import type {
@@ -12,6 +13,7 @@ import {
 	composeEditPlan,
 	convertItemToParagraph,
 	remapIndentation,
+	removeEmptyItemAndPromoteOwnedBlocks,
 	replaceEmptyItem,
 	replaceListBlockPrefix,
 	rewriteWhitespaceBoundary,
@@ -394,6 +396,28 @@ function orderedFragments(
 	});
 }
 
+function withContentStartSelection(context: ListContext, plan: EditPlan): EditPlan {
+	const changes = ChangeSet.of(plan.changes, context.source.length);
+	const position = changes.mapPos(context.current.content.from, 1);
+	return {
+		...plan,
+		selection: EditorSelection.create([EditorSelection.cursor(position, 1)]),
+	};
+}
+
+function withForwardCaretAssociation(plan: EditPlan): EditPlan {
+	const selection = plan.selection;
+	if (!selection || selection.ranges.length !== 1 || !selection.main.empty) {
+		throw new Error('Empty-item Backspace requires one explicit caret selection');
+	}
+	return {
+		...plan,
+		selection: EditorSelection.create([
+			EditorSelection.cursor(selection.main.head, 1),
+		]),
+	};
+}
+
 function nonEmptyPlan(
 	execution: ExecutionFor<BackspaceOperation>,
 ): EditPlan | null {
@@ -424,11 +448,12 @@ function nonEmptyPlan(
 		...indentationFragments(execution, effectiveDelta, prerequisites.ownedRegionIds),
 		...boundaryFragments,
 	];
-	return composeEditPlan(
+	const plan = composeEditPlan(
 		execution.intent.operation,
 		execution.context.editScope,
 		orderedFragments(execution.context.editScope, fragments),
 	);
+	return withContentStartSelection(execution.context, plan);
 }
 
 function repeatedLines(indent: string, count: number, caretLine: number): EmptyReplacement {
@@ -465,21 +490,32 @@ function emptyTopLevelReplacement(context: ListContext): EmptyReplacement {
 	return { caretOffset: desired.length + 1, text: `\n${desired}\n` };
 }
 
-function needsEmptyFollowingRewrite(context: ListContext, nested: boolean): boolean {
-	return nested && !context.topology.previousSibling &&
-		context.topology.ownedBlocks.length > 0 && context.topology.nextSibling !== null;
+function emptyOwnedIndentDelta(context: ListContext): number {
+	const firstOwned = context.topology.ownedBlocks[0];
+	if (firstOwned) return physicalIndent(context).length - firstOwned.indentText.length;
+	return paragraphIndent(context.topology.precedingContainer).length -
+		(context.current.content.from - context.current.lineFrom);
 }
 
-function emptyFollowingFragments(
-	execution: ExecutionFor<BackspaceOperation>,
-	boundary: NormalizedStructuralBoundary,
-): readonly EditPlanFragment[] {
-	return [rewriteWhitespaceBoundary(
-		execution.context.editScope,
-		boundary.whitespace,
-		{ index: boundary.whitespaceIndex, kind: 'whitespace-boundary' },
-		'\n\n',
-	)];
+function emptyItemFragment(
+	context: ListContext,
+	nested: boolean,
+	delta: number,
+): EditPlanFragment {
+	if (context.topology.ownedBlocks.length > 0 &&
+		context.topology.ownedBlocks.every((block) => block.kind === 'descendant')) {
+		return removeEmptyItemAndPromoteOwnedBlocks(context, currentItemId, delta);
+	}
+	const replacement = nested
+		? emptyNestedReplacement(context)
+		: emptyTopLevelReplacement(context);
+	return replaceEmptyItem(
+		context,
+		currentItemId,
+		replacement.text,
+		replacement.caretOffset,
+		{ ownedIndentDelta: delta, replacePhysicalIndent: true },
+	);
 }
 
 function emptyPlan(
@@ -487,36 +523,20 @@ function emptyPlan(
 	nested: boolean,
 ): EditPlan | null {
 	const { context } = execution;
-	const rewriteFollowing = needsEmptyFollowingRewrite(context, nested);
 	const prerequisites = resolveBackspacePrerequisites(context, {
-		boundaryRegionRoles: rewriteFollowing ? ['following'] : [],
+		boundaryRegionRoles: [],
 		includeOwnedRegions: false,
 		includeRelationshipRegions: false,
 	});
 	if (!prerequisites) return null;
-	const followingBoundary = rewriteFollowing ? prerequisites.boundaries.following : null;
-	if (rewriteFollowing && !followingBoundary) return null;
-	const replacement = nested
-		? emptyNestedReplacement(context)
-		: emptyTopLevelReplacement(context);
-	const delta = paragraphIndent(context.topology.precedingContainer).length -
-		(context.current.content.from - context.current.lineFrom);
-	const fragment = replaceEmptyItem(
-		context,
-		currentItemId,
-		replacement.text,
-		replacement.caretOffset,
-		{ ownedIndentDelta: delta, replacePhysicalIndent: true },
-	);
-	const boundaryFragments = followingBoundary
-		? emptyFollowingFragments(execution, followingBoundary)
-		: [];
-	return composeEditPlan(
+	const fragment = emptyItemFragment(context, nested, emptyOwnedIndentDelta(context));
+	const plan = composeEditPlan(
 		execution.intent.operation,
 		execution.context.editScope,
-		[fragment, ...boundaryFragments],
+		[fragment],
 		emptyExceptionId(nested),
 	);
+	return nested ? withForwardCaretAssociation(plan) : plan;
 }
 
 function handleNonEmpty<K extends BackspaceOperation>(

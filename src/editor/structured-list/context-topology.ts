@@ -20,6 +20,7 @@ import type {
 	OrderedSequenceContext,
 	OwnedBlock,
 	ProjectionListContext,
+	ProjectionOwnedLine,
 	ShiftTabTrailingBlankPolicy,
 	SourceRange,
 	WhitespaceBoundaryFact,
@@ -323,11 +324,13 @@ export function buildListTopology(
 export function buildProjectionContext(
 	analysis: SourceAnalysis,
 	item: AnalyzedItem,
+	ownedLines: readonly ProjectionOwnedLine[],
 ): ProjectionListContext {
 	const siblings = directSiblingRun(analysis, item);
 	return {
 		block: item.block,
 		depth: item.depth,
+		ownedLines,
 		orderedSequence: orderedSequence(item, siblings),
 	};
 }

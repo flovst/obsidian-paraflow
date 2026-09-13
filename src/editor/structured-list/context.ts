@@ -1,3 +1,4 @@
+import { syntaxTreeAvailable } from '@codemirror/language';
 import type { EditorSelection, EditorState } from '@codemirror/state';
 import {
 	analyzeSource,
@@ -22,13 +23,15 @@ import type {
 	ProjectionListContext,
 	SelectionContext,
 } from './model.js';
-import { enumerateListItems } from './syntax.js';
+import { buildProjectionOwnedLines } from './projection-owned-lines.js';
+import { discoverListItem, enumerateListItems } from './syntax.js';
 
 export { normalizeStructuralBoundary };
 export type { StructuralBoundaryExpectation } from './context-boundaries.js';
 
 function caretGate(state: EditorState, runtime: ContextRuntime): boolean {
-	return runtime.selectionsCount === 1 && !runtime.imeComposing && state.selection.main.empty;
+	return runtime.selectionMode === 'caret' && runtime.selectionsCount === 1 &&
+		!runtime.imeComposing && state.selection.main.empty;
 }
 
 function caretZone(item: AnalyzedItem, position: number): ListContext['caretZone'] {
@@ -68,7 +71,9 @@ export function buildListContext(
 	if (!caretGate(state, runtime)) return null;
 	const analysis = enumerateAnalysis(state);
 	const item = itemAtPosition(analysis, position);
-	return item ? buildAnalyzedListContext(analysis, item, position, state, runtime) : null;
+	return item && discoverListItem(state, position)
+		? buildAnalyzedListContext(analysis, item, position, state, runtime)
+		: null;
 }
 
 function ordinaryNavigationContext(
@@ -99,6 +104,7 @@ export function buildNavigationContext(
 	const analysis = enumerateAnalysis(state);
 	const item = itemAtPosition(analysis, position);
 	if (!item) return { ...ordinaryNavigationContext(analysis, position, state, runtime), assoc };
+	if (!discoverListItem(state, position)) return null;
 	const list = buildAnalyzedListContext(analysis, item, position, state, runtime);
 	return { assoc, editScope: list.editScope, kind: 'list', list };
 }
@@ -109,7 +115,8 @@ export function buildSelectionContext(
 	runtime: ContextRuntime,
 ): SelectionContext | null {
 	if (!selectionGate(state, selection, runtime)) return null;
-	return buildSelectionFromAnalysis(enumerateAnalysis(state), selection, runtime);
+	const context = buildSelectionFromAnalysis(enumerateAnalysis(state), selection, runtime);
+	return context.segments.some((segment) => segment.kind === 'list-content') ? context : null;
 }
 
 export function buildProjectionContexts(
@@ -117,5 +124,10 @@ export function buildProjectionContexts(
 	items: readonly ListItemSyntax[],
 ): readonly ProjectionListContext[] {
 	const analysis = analyzeSource(state, items);
-	return analysis.items.map((item) => buildProjectionContext(analysis, item));
+	const ownedLines = buildProjectionOwnedLines(
+		analysis,
+		syntaxTreeAvailable(state, state.doc.length),
+	);
+	return analysis.items.map((item, index) =>
+		buildProjectionContext(analysis, item, ownedLines[index] ?? []));
 }
