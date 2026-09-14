@@ -18,6 +18,7 @@ import type {
 	ParagraphRun,
 	TopLevelBlockBoundary,
 } from './model.js';
+import { capabilitiesForTopLevelBlock } from './model.js';
 import {
 	discoverParagraphAuthority,
 	discoverParagraphAuthorityWithin,
@@ -317,11 +318,13 @@ function authorityFor(
 	entries: readonly ParagraphProjectionEntry[],
 ): ParagraphAuthority {
 	const boundaries = complete
-		? blocks.map(({ from, to }) => Object.freeze({ from, to }))
+		? blocks
+			.filter(({ kind }) => capabilitiesForTopLevelBlock(kind).gapBoundary)
+			.map(({ from, to }) => Object.freeze({ from, to }))
 		: [];
 	const paragraphs = complete
 		? blocks
-			.filter(({ kind }) => kind === 'paragraph')
+			.filter(({ kind }) => capabilitiesForTopLevelBlock(kind).paragraphEnter)
 			.map(({ from, to }) => Object.freeze({ from, to }))
 		: [];
 	return Object.freeze({

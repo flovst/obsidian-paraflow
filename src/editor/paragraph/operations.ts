@@ -7,7 +7,10 @@ import {
 	headingAtCaret,
 	normalizeHeadingSelectionEndpoint,
 } from './heading-projection.js';
+import { verticalEntryPosition } from './syntax.js';
 import { normalizeStructuredListSelectionEndpoint } from '../structured-list/selection-protection.js';
+import { capabilitiesForTopLevelBlock } from './model.js';
+import type { ParagraphAuthority, TopLevelBlockBoundary } from './model.js';
 
 export type ParagraphEnterOperation = 'enter' | 'shift-enter';
 export type ParagraphDeletionOperation = 'backspace' | 'delete';
@@ -32,6 +35,24 @@ function crossesCompleteGap(
 	const lower = Math.min(from, to);
 	const upper = Math.max(from, to);
 	return state.rangeIndex.gaps.some((gap) => lower <= gap.from && gap.to <= upper);
+}
+
+function blockAtPosition(
+	authority: ParagraphAuthority,
+	position: number,
+): TopLevelBlockBoundary | null {
+	return authority.blocks.find((block) =>
+		block.from <= position && position <= block.to) ?? null;
+}
+
+function blockAcrossGap(
+	authority: ParagraphAuthority,
+	gap: { readonly from: number; readonly to: number },
+	forward: boolean,
+): TopLevelBlockBoundary | null {
+	return authority.blocks.find((block) => forward
+		? block.from === gap.to
+		: block.to === gap.from) ?? null;
 }
 
 export function planParagraphEnter(
@@ -156,9 +177,11 @@ export function resolveVerticalStart(state: EditorState): {
 	const current = state.selection.main;
 	const indexedCurrent = projection.rangeIndex.containingGap(current.head) !== null ||
 		projection.rangeIndex.editableAnchors.includes(current.head);
-	const boundary = indexedCurrent ? null : projection.authority.boundaries.find((candidate) =>
-		candidate.from <= current.head && current.head <= candidate.to) ?? null;
-	if (!indexedCurrent && !boundary) return null;
+	const block = indexedCurrent
+		? null
+		: blockAtPosition(projection.authority, current.head);
+	if (!indexedCurrent && (!block ||
+		capabilitiesForTopLevelBlock(block.kind).verticalNavigation === 'host')) return null;
 	return { assoc: current.assoc, position: current.head };
 }
 
@@ -180,8 +203,7 @@ export function resolveVerticalSelection(
 	const paragraph = ordinaryParagraphAtCaret(
 		state, current.head, projection.authority.paragraphs,
 	);
-	const boundary = projection.authority.boundaries.find((candidate) =>
-		candidate.from <= current.head && current.head <= candidate.to) ?? null;
+	const boundary = blockAtPosition(projection.authority, current.head);
 	let movementStart = start;
 	const movementBlock = paragraph ?? boundary;
 	if (movementBlock && movementBlock.from < movementBlock.to) {
@@ -203,11 +225,42 @@ export function resolveVerticalSelection(
 		}
 	}
 	const rawCandidate = visual.moveVertically(movementStart, forward, goalX);
-	const candidate = rawCandidate.position === current.head
+	let candidate = rawCandidate.position === current.head
 		? rawCandidate
 		: visual.alignGoalOnVisualLine?.(rawCandidate, goalX) ?? rawCandidate;
 	const candidateGap = projection.rangeIndex.containingGap(candidate.position);
 	const crossesGap = crossesCompleteGap(projection, current.head, candidate.position);
+	const destinationBlock = candidateGap
+		? blockAcrossGap(projection.authority, candidateGap, forward)
+		: crossesGap ? blockAtPosition(projection.authority, candidate.position) : null;
+	if (destinationBlock) {
+		const capabilities = capabilitiesForTopLevelBlock(destinationBlock.kind);
+		if (capabilities.verticalEntry === 'host') return null;
+		if (capabilities.verticalNavigation === 'host') {
+			const entry = verticalEntryPosition(state, destinationBlock, forward);
+			const entryLine = state.doc.lineAt(entry);
+			const alignmentAnchor = forward
+				? Math.min(entryLine.to, entry + 1)
+				: Math.max(entryLine.from, entry - 1);
+			const aligned = visual.alignGoalOnVisualLine?.({
+				assoc: bias,
+				position: alignmentAnchor,
+			}, goalX) ?? {
+				assoc: bias,
+				position: entry,
+			};
+			const alignedOnEntryLine = Math.max(
+				entryLine.from,
+				Math.min(entryLine.to, aligned.position),
+			);
+			candidate = {
+				assoc: bias,
+				position: forward
+					? Math.max(entry, alignedOnEntryLine)
+					: Math.min(entry, alignedOnEntryLine),
+			};
+		}
+	}
 	if (!indexedCurrent && !candidateGap && !crossesGap) return null;
 	const position = normalizeBlockEndpoint(
 		state,

@@ -9,7 +9,9 @@ import type {
 	ParagraphPhysicalRow,
 	ParagraphRun,
 	TopLevelBlockBoundary,
+	TopLevelBlockBoundaryKind,
 } from './model.js';
+import { capabilitiesForTopLevelBlock } from './model.js';
 import { isSeparatorlessListMarkerLine } from '../structured-list/prefix.js';
 import { enumerateListItems, isObsidianListLineName } from '../structured-list/syntax.js';
 
@@ -23,6 +25,7 @@ function isHypermdBlockNode(node: SyntaxNode): boolean {
 	const tokens = nodeNameTokens(node.name);
 	return tokens.some((token) => token.startsWith('HyperMD-')) ||
 		tokens.some((token) => [
+			'hmd-codeblock',
 			'hmd-html-begin',
 			'hmd-html-end',
 			'hmd-indented-code',
@@ -145,7 +148,9 @@ function hypermdBlockFamily(name: string): string | null {
 	const tokens = nodeNameTokens(name);
 	if (tokens.some((token) => token.startsWith('HyperMD-quote'))) return 'HyperMD-quote';
 	if (tokens.includes('HyperMD-list-line')) return 'HyperMD-list-line';
-	if (tokens.includes('HyperMD-codeblock')) return 'HyperMD-codeblock';
+	if (tokens.some((token) => token.startsWith('HyperMD-codeblock')) ||
+		tokens.includes('hmd-codeblock')) return 'HyperMD-codeblock';
+	if (tokens.some((token) => token.startsWith('HyperMD-table'))) return 'HyperMD-table';
 	if (tokens.includes('hmd-html-begin') || tokens.includes('hmd-html-end')) return 'hmd-html';
 	if (tokens.includes('hmd-indented-code')) return 'hmd-indented-code';
 	if (tokens.includes('math-block')) return 'math-block';
@@ -357,12 +362,63 @@ function standardBoundaryBlocks(nodes: readonly SyntaxNode[]): readonly TopLevel
 			boundaries.push({ from: node.from, kind: 'heading', to: node.to });
 			continue;
 		}
+		const complexKind = node.name === 'Blockquote'
+			? 'blockquote'
+			: node.name === 'FencedCode'
+				? 'code-block'
+				: node.name === 'Table' ? 'table' : null;
+		if (complexKind) {
+			boundaries.push({ from: node.from, kind: complexKind, to: node.to });
+			continue;
+		}
 		if (node.name !== 'BulletList' && node.name !== 'OrderedList') continue;
 		for (let item = node.firstChild; item; item = item.nextSibling) {
 			if (item.name === 'ListItem') {
 				boundaries.push({ from: item.from, kind: 'list-item', to: item.to });
 			}
 		}
+	}
+	return boundaries;
+}
+
+function hypermdComplexKind(name: string): TopLevelBlockBoundaryKind | null {
+	const tokens = nodeNameTokens(name);
+	if (tokens.some((token) => token.startsWith('HyperMD-quote'))) return 'blockquote';
+	if (tokens.some((token) => token.startsWith('HyperMD-codeblock')) ||
+		tokens.includes('hmd-codeblock')) return 'code-block';
+	if (tokens.some((token) => token.startsWith('HyperMD-table'))) return 'table';
+	return null;
+}
+
+function hypermdComplexBoundaries(state: EditorState): readonly TopLevelBlockBoundary[] {
+	const lines = new Map<number, TopLevelBlockBoundaryKind>();
+	syntaxTree(state).iterate({
+		enter: (node) => {
+			const kind = hypermdComplexKind(node.name);
+			if (!kind) return;
+			const fromLine = state.doc.lineAt(node.from).number;
+			const finalPosition = node.to > node.from ? node.to - 1 : node.to;
+			const toLine = state.doc.lineAt(finalPosition).number;
+			for (let lineNumber = fromLine; lineNumber <= toLine; lineNumber += 1) {
+				const existing = lines.get(lineNumber);
+				if (existing && existing !== kind) {
+					throw new Error('Conflicting complete HyperMD block containment');
+				}
+				lines.set(lineNumber, kind);
+			}
+		},
+	});
+	const sorted = [...lines].sort(([left], [right]) => left - right);
+	const boundaries: TopLevelBlockBoundary[] = [];
+	for (const [lineNumber, kind] of sorted) {
+		const line = state.doc.line(lineNumber);
+		const previous = boundaries.at(-1);
+		if (previous && previous.kind === kind &&
+			state.doc.lineAt(previous.to).number + 1 === lineNumber) {
+			boundaries[boundaries.length - 1] = { ...previous, to: line.to };
+			continue;
+		}
+		boundaries.push({ from: line.from, kind, to: line.to });
 	}
 	return boundaries;
 }
@@ -659,6 +715,7 @@ function topLevelBoundaries(
 		...hypermdParagraphs(state),
 		...hypermdHeadingBoundaries(state),
 		...hypermdListBoundaries(state),
+		...hypermdComplexBoundaries(state),
 	]));
 	return within === undefined ? all : boundaryNeighborhood(all, within);
 }
@@ -810,9 +867,11 @@ function authorityFromBlocks(
 	state: EditorState,
 	blocks: readonly TopLevelBlockBoundary[],
 ): ParagraphAuthority {
-	const boundaries = blocks.map(({ from, to }) => ({ from, to }));
+	const boundaries = blocks
+		.filter(({ kind }) => capabilitiesForTopLevelBlock(kind).gapBoundary)
+		.map(({ from, to }) => ({ from, to }));
 	const paragraphs = blocks
-		.filter(({ kind }) => kind === 'paragraph')
+		.filter(({ kind }) => capabilitiesForTopLevelBlock(kind).paragraphEnter)
 		.map(({ from, to }) => ({ from, to }));
 	return {
 		blocks,
@@ -854,6 +913,39 @@ export function discoverParagraphAuthorityWithin(
 		authority: authorityFromBlocks(state, blocks),
 		coveredRanges,
 	};
+}
+
+export function verticalEntryPosition(
+	state: EditorState,
+	block: TopLevelBlockBoundary,
+	forward: boolean,
+): number {
+	if (block.kind === 'blockquote') {
+		const line = state.doc.lineAt(forward ? block.from : Math.max(block.from, block.to - 1));
+		if (!forward) return line.to;
+		const quotePrefix = /^(?:[ \t]*>[ \t]?)+/u.exec(line.text)?.[0] ?? '';
+		const quotedContent = line.text.slice(quotePrefix.length);
+		const calloutPrefix = /^\[![^\]\r\n]+\][+-]?[ \t]*/u.exec(quotedContent)?.[0] ?? '';
+		return line.from + quotePrefix.length + calloutPrefix.length;
+	}
+	if (block.kind === 'code-block') {
+		const first = state.doc.lineAt(block.from);
+		const last = state.doc.lineAt(Math.max(block.from, block.to - 1));
+		if (forward) {
+			if (first.number === last.number) return first.to;
+			const next = state.doc.line(first.number + 1);
+			return next.number === last.number &&
+				/^[ \t]*(?:`{3,}|~{3,})[ \t]*$/u.test(next.text)
+				? first.to
+				: next.from;
+		}
+		if (/^[ \t]*(?:`{3,}|~{3,})[ \t]*$/u.test(last.text) &&
+			last.number > first.number + 1) {
+			return state.doc.line(last.number - 1).to;
+		}
+		return last.to;
+	}
+	return forward ? block.from : block.to;
 }
 
 interface ParagraphPath {

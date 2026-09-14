@@ -7,7 +7,58 @@ export type TopLevelBlockBoundaryKind =
 	| 'paragraph'
 	| 'heading'
 	| 'list-item'
-	| 'separatorless-list-literal';
+	| 'separatorless-list-literal'
+	| 'blockquote'
+	| 'code-block'
+	| 'table';
+
+export interface TopLevelBlockCapabilities {
+	readonly containment: 'leaf' | 'container';
+	readonly gapBoundary: boolean;
+	readonly paragraphEnter: boolean;
+	readonly verticalEntry: 'paraflow' | 'host';
+	readonly verticalNavigation: 'paraflow' | 'host';
+}
+
+const blockCapabilities: Readonly<Record<
+	TopLevelBlockBoundaryKind,
+	TopLevelBlockCapabilities
+>> = Object.freeze({
+	paragraph: Object.freeze({
+		containment: 'leaf', gapBoundary: true,
+		paragraphEnter: true, verticalEntry: 'paraflow', verticalNavigation: 'paraflow',
+	}),
+	heading: Object.freeze({
+		containment: 'leaf', gapBoundary: true,
+		paragraphEnter: false, verticalEntry: 'paraflow', verticalNavigation: 'paraflow',
+	}),
+	'list-item': Object.freeze({
+		containment: 'container', gapBoundary: true,
+		paragraphEnter: false, verticalEntry: 'paraflow', verticalNavigation: 'paraflow',
+	}),
+	'separatorless-list-literal': Object.freeze({
+		containment: 'leaf', gapBoundary: true,
+		paragraphEnter: false, verticalEntry: 'paraflow', verticalNavigation: 'paraflow',
+	}),
+	blockquote: Object.freeze({
+		containment: 'container', gapBoundary: true,
+		paragraphEnter: false, verticalEntry: 'paraflow', verticalNavigation: 'host',
+	}),
+	'code-block': Object.freeze({
+		containment: 'container', gapBoundary: true,
+		paragraphEnter: false, verticalEntry: 'paraflow', verticalNavigation: 'host',
+	}),
+	table: Object.freeze({
+		containment: 'container', gapBoundary: true,
+		paragraphEnter: false, verticalEntry: 'host', verticalNavigation: 'host',
+	}),
+});
+
+export function capabilitiesForTopLevelBlock(
+	kind: TopLevelBlockBoundaryKind,
+): TopLevelBlockCapabilities {
+	return blockCapabilities[kind];
+}
 
 export interface TopLevelBlockBoundary extends ParagraphBlock {
 	readonly kind: TopLevelBlockBoundaryKind;
