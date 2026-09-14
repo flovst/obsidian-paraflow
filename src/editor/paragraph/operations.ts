@@ -243,13 +243,19 @@ export function resolveVerticalSelection(
 			const alignmentAnchor = forward
 				? Math.min(entryRange.to, entry + 1)
 				: Math.max(entryRange.from, entry - 1);
-			const aligned = visual.alignGoalOnVisualLine?.({
-				assoc: bias,
-				position: alignmentAnchor,
-			}, goalX) ?? {
-				assoc: bias,
-				position: entry,
-			};
+			const entryContentCoordinates = visual.coordsAtPos({
+				assoc: 1,
+				position: entryRange.from,
+			});
+			const aligned = entryContentCoordinates && goalX <= entryContentCoordinates.left
+				? { assoc: bias, position: entryRange.from }
+				: visual.alignGoalOnVisualLine?.({
+					assoc: bias,
+					position: alignmentAnchor,
+				}, goalX) ?? {
+					assoc: bias,
+					position: entry,
+				};
 			const alignedOnEntryLine = Math.max(
 				entryRange.from,
 				Math.min(entryRange.to, aligned.position),
