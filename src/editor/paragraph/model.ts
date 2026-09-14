@@ -3,6 +3,16 @@ export interface ParagraphBlock {
 	readonly to: number;
 }
 
+export type TopLevelBlockBoundaryKind =
+	| 'paragraph'
+	| 'heading'
+	| 'list-item'
+	| 'separatorless-list-literal';
+
+export interface TopLevelBlockBoundary extends ParagraphBlock {
+	readonly kind: TopLevelBlockBoundaryKind;
+}
+
 export interface AtxHeadingBlock extends ParagraphBlock {
 	readonly contentFrom: number;
 	readonly level: 1 | 2 | 3 | 4 | 5 | 6;
@@ -30,6 +40,7 @@ export interface ParagraphRun {
 }
 
 export interface ParagraphAuthority {
+	readonly blocks: readonly TopLevelBlockBoundary[];
 	readonly complete: boolean;
 	readonly paragraphs: readonly ParagraphBlock[];
 	readonly boundaries: readonly ParagraphBlock[];

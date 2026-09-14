@@ -8,6 +8,7 @@ import type {
 	ParagraphGap,
 	ParagraphPhysicalRow,
 	ParagraphRun,
+	TopLevelBlockBoundary,
 } from './model.js';
 import { isSeparatorlessListMarkerLine } from '../structured-list/prefix.js';
 import { enumerateListItems, isObsidianListLineName } from '../structured-list/syntax.js';
@@ -220,19 +221,19 @@ export function hypermdBlockRangesAround(
 	return merged;
 }
 
-function hypermdParagraphs(state: EditorState): readonly ParagraphBlock[] {
+function hypermdParagraphs(state: EditorState): readonly TopLevelBlockBoundary[] {
 	// HyperMD omits syntax nodes for unstyled text. Complete token coverage still
 	// proves ordinary lines by excluding every host-marked block line.
 	const blocked = blockedHypermdLines(state);
-	const paragraphs: ParagraphBlock[] = [];
-	let open: ParagraphBlock | null = null;
+	const paragraphs: TopLevelBlockBoundary[] = [];
+	let open: TopLevelBlockBoundary | null = null;
 	for (let lineNumber = 1; lineNumber <= state.doc.lines; lineNumber += 1) {
 		const line = state.doc.line(lineNumber);
 		const ordinary = line.text.trim().length > 0 && !blocked.has(lineNumber);
 		if (ordinary) {
 			open = open
-				? { from: open.from, to: line.to }
-				: { from: line.from, to: line.to };
+				? { from: open.from, kind: open.kind, to: line.to }
+				: { from: line.from, kind: 'paragraph', to: line.to };
 			continue;
 		}
 		if (open) paragraphs.push(open);
@@ -249,8 +250,7 @@ interface HypermdLineEnvelope {
 	readonly toLine: number;
 }
 
-interface HypermdParagraphSlice {
-	readonly paragraphs: readonly ParagraphBlock[];
+interface HypermdAuthoritySlice {
 	readonly coveredRanges: readonly ParagraphGap[];
 }
 
@@ -323,34 +323,17 @@ function mergeHypermdEnvelopes(
 	return merged;
 }
 
-function hypermdParagraphSlice(
+function hypermdAuthoritySlice(
 	state: EditorState,
 	ranges: readonly ParagraphGap[],
-): HypermdParagraphSlice {
+): HypermdAuthoritySlice {
 	const blockRanges = hypermdBlockRangesAround(state, ranges);
 	const seeds = [...ranges, ...blockRanges];
 	const cache = new Map<number, HypermdLineKind>();
 	const envelopes = mergeHypermdEnvelopes(
 		seeds.map((range) => expandHypermdEnvelope(state, range, cache)),
 	);
-	const paragraphs: ParagraphBlock[] = [];
-	for (const envelope of envelopes) {
-		let open: ParagraphBlock | null = null;
-		for (let lineNumber = envelope.fromLine; lineNumber <= envelope.toLine; lineNumber += 1) {
-			const line = state.doc.line(lineNumber);
-			if (hypermdLineKind(state, lineNumber, cache) === 'ordinary') {
-				open = open
-					? { from: open.from, to: line.to }
-					: { from: line.from, to: line.to };
-				continue;
-			}
-			if (open) paragraphs.push(open);
-			open = null;
-		}
-		if (open) paragraphs.push(open);
-	}
 	return {
-		paragraphs,
 		coveredRanges: envelopes.map((envelope) => ({
 			from: state.doc.line(envelope.fromLine).from,
 			to: state.doc.line(envelope.toLine).to,
@@ -363,40 +346,22 @@ export interface ParagraphAuthoritySlice {
 	readonly coveredRanges: readonly ParagraphGap[];
 }
 
-function topLevelParagraphs(
-	state: EditorState,
-	within?: readonly ParagraphGap[],
-): readonly ParagraphBlock[] {
-	if (isHypermdState(state)) {
-		return within === undefined
-			? hypermdParagraphs(state)
-			: hypermdParagraphSlice(state, within).paragraphs;
-	}
-	const paragraphs: ParagraphBlock[] = [];
-	for (
-		let node = syntaxTree(state).topNode.firstChild;
-		node !== null;
-		node = node.nextSibling
-	) {
-		if (node.name === 'Paragraph') paragraphs.push({ from: node.from, to: node.to });
-	}
-	return within === undefined
-		? paragraphs
-		: topLevelNodesAround(state, within)
-			.filter((node) => node.name === 'Paragraph')
-			.map((node) => ({ from: node.from, to: node.to }));
-}
-
-function standardBoundaryBlocks(nodes: readonly SyntaxNode[]): readonly ParagraphBlock[] {
-	const boundaries: ParagraphBlock[] = [];
+function standardBoundaryBlocks(nodes: readonly SyntaxNode[]): readonly TopLevelBlockBoundary[] {
+	const boundaries: TopLevelBlockBoundary[] = [];
 	for (const node of nodes) {
-		if (node.name === 'Paragraph' || /^(?:ATXHeading[1-6]|SetextHeading[12])$/u.test(node.name)) {
-			boundaries.push({ from: node.from, to: node.to });
+		if (node.name === 'Paragraph') {
+			boundaries.push({ from: node.from, kind: 'paragraph', to: node.to });
+			continue;
+		}
+		if (/^(?:ATXHeading[1-6]|SetextHeading[12])$/u.test(node.name)) {
+			boundaries.push({ from: node.from, kind: 'heading', to: node.to });
 			continue;
 		}
 		if (node.name !== 'BulletList' && node.name !== 'OrderedList') continue;
 		for (let item = node.firstChild; item; item = item.nextSibling) {
-			if (item.name === 'ListItem') boundaries.push({ from: item.from, to: item.to });
+			if (item.name === 'ListItem') {
+				boundaries.push({ from: item.from, kind: 'list-item', to: item.to });
+			}
 		}
 	}
 	return boundaries;
@@ -405,8 +370,8 @@ function standardBoundaryBlocks(nodes: readonly SyntaxNode[]): readonly Paragrap
 function separatorlessListLiteralLines(
 	state: EditorState,
 	within?: readonly ParagraphGap[],
-): readonly ParagraphBlock[] {
-	const lines = new Map<number, ParagraphBlock>();
+): readonly TopLevelBlockBoundary[] {
+	const lines = new Map<number, TopLevelBlockBoundary>();
 	const scan = (from?: number, to?: number): void => {
 		syntaxTree(state).iterate({
 			...(from === undefined ? {} : { from }),
@@ -415,7 +380,11 @@ function separatorlessListLiteralLines(
 				if (node.name !== 'ListItem' && !isObsidianListLineName(node.name)) return;
 				const line = state.doc.lineAt(node.from);
 				if (!isSeparatorlessListMarkerLine(line.text)) return;
-				lines.set(line.from, { from: line.from, to: line.to });
+				lines.set(line.from, {
+					from: line.from,
+					kind: 'separatorless-list-literal',
+					to: line.to,
+				});
 			},
 		});
 	};
@@ -429,9 +398,10 @@ function separatorlessListLiteralLines(
 
 function trimBoundarySegment(
 	state: EditorState,
+	boundary: TopLevelBlockBoundary,
 	from: number,
 	to: number,
-): ParagraphBlock | null {
+): TopLevelBlockBoundary | null {
 	if (from >= to) return null;
 	const firstLine = state.doc.lineAt(Math.min(from, state.doc.length)).number;
 	const finalPosition = Math.max(from, Math.min(to - 1, state.doc.length));
@@ -450,19 +420,19 @@ function trimBoundarySegment(
 	}
 	return firstNonEmpty === null || lastNonEmpty === null
 		? null
-		: { from: firstNonEmpty, to: lastNonEmpty };
+		: { from: firstNonEmpty, kind: boundary.kind, to: lastNonEmpty };
 }
 
 function splitBoundariesAtSeparatorlessLiterals(
 	state: EditorState,
-	boundaries: readonly ParagraphBlock[],
+	boundaries: readonly TopLevelBlockBoundary[],
 	within?: readonly ParagraphGap[],
-): readonly ParagraphBlock[] {
+): readonly TopLevelBlockBoundary[] {
 	const literals = separatorlessListLiteralLines(state, within);
 	if (literals.length === 0) return boundaries;
 	const sortedBoundaries = [...boundaries]
 		.sort((left, right) => left.from - right.from || left.to - right.to);
-	const split: ParagraphBlock[] = [];
+	const split: TopLevelBlockBoundary[] = [];
 	let literalIndex = 0;
 	for (const boundary of sortedBoundaries) {
 		while (literalIndex < literals.length && literals[literalIndex]!.to <= boundary.from) {
@@ -476,7 +446,7 @@ function splitBoundariesAtSeparatorlessLiterals(
 			if (literal.from < boundary.from || literal.to > boundary.to) {
 				throw new Error('Separatorless list literal crosses paragraph boundary');
 			}
-			const before = trimBoundarySegment(state, cursor, literal.from);
+			const before = trimBoundarySegment(state, boundary, cursor, literal.from);
 			if (before) split.push(before);
 			split.push(literal);
 			cursor = literal.to;
@@ -484,7 +454,7 @@ function splitBoundariesAtSeparatorlessLiterals(
 			didSplit = true;
 		}
 		if (didSplit) {
-			const after = trimBoundarySegment(state, cursor, boundary.to);
+			const after = trimBoundarySegment(state, boundary, cursor, boundary.to);
 			if (after) split.push(after);
 		} else {
 			split.push(boundary);
@@ -509,7 +479,7 @@ function lastNonEmptyLineTo(
 	throw new Error('HyperMD list boundary has no non-empty source line');
 }
 
-function hypermdListBoundaries(state: EditorState): readonly ParagraphBlock[] {
+function hypermdListBoundaries(state: EditorState): readonly TopLevelBlockBoundary[] {
 	const topLevelStarts = new Set<number>();
 	const listLines = new Set<number>();
 	syntaxTree(state).iterate({
@@ -546,7 +516,7 @@ function hypermdListBoundaries(state: EditorState): readonly ParagraphBlock[] {
 	if (openFromLine !== null) {
 		components.push({ fromLine: openFromLine, toLine: lastListLine });
 	}
-	const boundaries: ParagraphBlock[] = [];
+	const boundaries: TopLevelBlockBoundary[] = [];
 	let itemIndex = 0;
 	for (const component of components) {
 		while (itemIndex < items.length &&
@@ -569,6 +539,7 @@ function hypermdListBoundaries(state: EditorState): readonly ParagraphBlock[] {
 				: component.toLine;
 			boundaries.push({
 				from: startLine.from,
+				kind: 'list-item',
 				to: lastNonEmptyLineTo(state, startLine.number, finalLine),
 			});
 		}
@@ -576,13 +547,13 @@ function hypermdListBoundaries(state: EditorState): readonly ParagraphBlock[] {
 	return boundaries;
 }
 
-function hypermdHeadingBoundaries(state: EditorState): readonly ParagraphBlock[] {
-	const boundaries = new Map<number, ParagraphBlock>();
+function hypermdHeadingBoundaries(state: EditorState): readonly TopLevelBlockBoundary[] {
+	const boundaries = new Map<number, TopLevelBlockBoundary>();
 	syntaxTree(state).iterate({
 		enter: (node) => {
 			if (!isHypermdHeadingName(node.name)) return;
 			const line = state.doc.lineAt(node.from);
-			boundaries.set(line.from, { from: line.from, to: line.to });
+			boundaries.set(line.from, { from: line.from, kind: 'heading', to: line.to });
 		},
 	});
 	return [...boundaries.values()];
@@ -636,7 +607,9 @@ export function discoverAtxHeadings(state: EditorState): readonly AtxHeadingBloc
 	return [...headings.values()].sort((left, right) => left.from - right.from);
 }
 
-function validateBoundaryBlocks(boundaries: readonly ParagraphBlock[]): readonly ParagraphBlock[] {
+function validateBoundaryBlocks(
+	boundaries: readonly TopLevelBlockBoundary[],
+): readonly TopLevelBlockBoundary[] {
 	const sorted = [...boundaries].sort((left, right) => left.from - right.from || left.to - right.to);
 	for (let index = 1; index < sorted.length; index += 1) {
 		if (sorted[index - 1]!.to > sorted[index]!.from) {
@@ -647,9 +620,9 @@ function validateBoundaryBlocks(boundaries: readonly ParagraphBlock[]): readonly
 }
 
 function boundaryNeighborhood(
-	boundaries: readonly ParagraphBlock[],
+	boundaries: readonly TopLevelBlockBoundary[],
 	ranges: readonly ParagraphGap[],
-): readonly ParagraphBlock[] {
+): readonly TopLevelBlockBoundary[] {
 	const selected = new Set<number>();
 	for (const range of ranges) {
 		let firstAfter = boundaries.findIndex((boundary) => boundary.to >= range.from);
@@ -669,7 +642,7 @@ function boundaryNeighborhood(
 function topLevelBoundaries(
 	state: EditorState,
 	within?: readonly ParagraphGap[],
-): readonly ParagraphBlock[] {
+): readonly TopLevelBlockBoundary[] {
 	if (!isHypermdState(state)) {
 		const nodes = within === undefined
 			? (() => {
@@ -680,13 +653,7 @@ function topLevelBoundaries(
 				return result;
 			})()
 			: topLevelNodesAround(state, within);
-		return validateBoundaryBlocks(splitBoundariesAtSeparatorlessLiterals(
-			state,
-			standardBoundaryBlocks(nodes),
-			within === undefined
-				? undefined
-				: nodes.map((node) => ({ from: node.from, to: node.to })),
-		));
+		return standardBoundariesForNodes(state, nodes, within === undefined);
 	}
 	const all = validateBoundaryBlocks(splitBoundariesAtSeparatorlessLiterals(state, [
 		...hypermdParagraphs(state),
@@ -694,6 +661,20 @@ function topLevelBoundaries(
 		...hypermdListBoundaries(state),
 	]));
 	return within === undefined ? all : boundaryNeighborhood(all, within);
+}
+
+function standardBoundariesForNodes(
+	state: EditorState,
+	nodes: readonly SyntaxNode[],
+	completeDocument: boolean,
+): readonly TopLevelBlockBoundary[] {
+	return validateBoundaryBlocks(splitBoundariesAtSeparatorlessLiterals(
+		state,
+		standardBoundaryBlocks(nodes),
+		completeDocument
+			? undefined
+			: nodes.map((node) => ({ from: node.from, to: node.to })),
+	));
 }
 
 function addNodeNeighborhood(
@@ -825,21 +806,31 @@ function discoverRuns(
 	return runs;
 }
 
-export function discoverParagraphAuthority(
+function authorityFromBlocks(
 	state: EditorState,
-	within?: readonly ParagraphGap[],
+	blocks: readonly TopLevelBlockBoundary[],
 ): ParagraphAuthority {
-	if (!syntaxTreeAvailable(state, state.doc.length)) {
-		return { boundaries: [], complete: false, paragraphs: [], runs: [] };
-	}
-	const paragraphs = topLevelParagraphs(state, within);
-	const boundaries = topLevelBoundaries(state, within);
+	const boundaries = blocks.map(({ from, to }) => ({ from, to }));
+	const paragraphs = blocks
+		.filter(({ kind }) => kind === 'paragraph')
+		.map(({ from, to }) => ({ from, to }));
 	return {
+		blocks,
 		boundaries,
 		complete: true,
 		paragraphs,
 		runs: discoverRuns(state, paragraphs, boundaries),
 	};
+}
+
+export function discoverParagraphAuthority(
+	state: EditorState,
+	within?: readonly ParagraphGap[],
+): ParagraphAuthority {
+	if (!syntaxTreeAvailable(state, state.doc.length)) {
+		return { blocks: [], boundaries: [], complete: false, paragraphs: [], runs: [] };
+	}
+	return authorityFromBlocks(state, topLevelBoundaries(state, within));
 }
 
 export function discoverParagraphAuthorityWithin(
@@ -848,23 +839,19 @@ export function discoverParagraphAuthorityWithin(
 ): ParagraphAuthoritySlice {
 	if (!syntaxTreeAvailable(state, state.doc.length)) {
 		return {
-			authority: { boundaries: [], complete: false, paragraphs: [], runs: [] },
+			authority: { blocks: [], boundaries: [], complete: false, paragraphs: [], runs: [] },
 			coveredRanges: [],
 		};
 	}
-	const hypermd = isHypermdState(state) ? hypermdParagraphSlice(state, ranges) : null;
+	const hypermd = isHypermdState(state) ? hypermdAuthoritySlice(state, ranges) : null;
 	const nodes = hypermd ? [] : topLevelNodesAround(state, ranges);
-	const paragraphs = hypermd?.paragraphs ?? topLevelParagraphs(state, ranges);
-	const boundaries = topLevelBoundaries(state, hypermd?.coveredRanges ?? ranges);
 	const coveredRanges = hypermd?.coveredRanges ??
 		nodes.map((node) => ({ from: node.from, to: node.to }));
+	const blocks = hypermd
+		? topLevelBoundaries(state, coveredRanges)
+		: standardBoundariesForNodes(state, nodes, false);
 	return {
-		authority: {
-			boundaries,
-			complete: true,
-			paragraphs,
-			runs: discoverRuns(state, paragraphs, boundaries),
-		},
+		authority: authorityFromBlocks(state, blocks),
 		coveredRanges,
 	};
 }
@@ -913,7 +900,7 @@ export function ordinaryParagraphAtCaret(
 				if (!current.type.isAnonymous) return null;
 			}
 		}
-		return paragraph;
+		return { from: paragraph.from, to: paragraph.to };
 	}
 	const paths: ParagraphPath[] = [];
 	if (position > 0) paths.push(paragraphPath(tree.resolveInner(position, -1)));
