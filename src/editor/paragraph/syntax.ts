@@ -915,37 +915,41 @@ export function discoverParagraphAuthorityWithin(
 	};
 }
 
-export function verticalEntryPosition(
+export function verticalEntryRange(
 	state: EditorState,
 	block: TopLevelBlockBoundary,
 	forward: boolean,
-): number {
+): ParagraphBlock | null {
 	if (block.kind === 'blockquote') {
 		const line = state.doc.lineAt(forward ? block.from : Math.max(block.from, block.to - 1));
-		if (!forward) return line.to;
 		const quotePrefix = /^(?:[ \t]*>[ \t]?)+/u.exec(line.text)?.[0] ?? '';
 		const quotedContent = line.text.slice(quotePrefix.length);
-		const calloutPrefix = /^\[![^\]\r\n]+\][+-]?[ \t]*/u.exec(quotedContent)?.[0] ?? '';
-		return line.from + quotePrefix.length + calloutPrefix.length;
+		const calloutPrefix = forward
+			? /^\[![^\]\r\n]+\][+-]?[ \t]*/u.exec(quotedContent)?.[0] ?? ''
+			: '';
+		return {
+			from: line.from + quotePrefix.length + calloutPrefix.length,
+			to: line.to,
+		};
 	}
 	if (block.kind === 'code-block') {
 		const first = state.doc.lineAt(block.from);
 		const last = state.doc.lineAt(Math.max(block.from, block.to - 1));
+		if (first.number === last.number) return null;
 		if (forward) {
-			if (first.number === last.number) return first.to;
 			const next = state.doc.line(first.number + 1);
-			return next.number === last.number &&
-				/^[ \t]*(?:`{3,}|~{3,})[ \t]*$/u.test(next.text)
-				? first.to
-				: next.from;
+			if (next.number === last.number &&
+				/^[ \t]*(?:`{3,}|~{3,})[ \t]*$/u.test(next.text)) return null;
+			return { from: next.from, to: next.to };
 		}
-		if (/^[ \t]*(?:`{3,}|~{3,})[ \t]*$/u.test(last.text) &&
-			last.number > first.number + 1) {
-			return state.doc.line(last.number - 1).to;
+		if (/^[ \t]*(?:`{3,}|~{3,})[ \t]*$/u.test(last.text)) {
+			if (last.number <= first.number + 1) return null;
+			const previous = state.doc.line(last.number - 1);
+			return { from: previous.from, to: previous.to };
 		}
-		return last.to;
+		return { from: last.from, to: last.to };
 	}
-	return forward ? block.from : block.to;
+	return block;
 }
 
 interface ParagraphPath {

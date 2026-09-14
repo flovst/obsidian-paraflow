@@ -7,7 +7,7 @@ import {
 	headingAtCaret,
 	normalizeHeadingSelectionEndpoint,
 } from './heading-projection.js';
-import { verticalEntryPosition } from './syntax.js';
+import { verticalEntryRange } from './syntax.js';
 import { normalizeStructuredListSelectionEndpoint } from '../structured-list/selection-protection.js';
 import { capabilitiesForTopLevelBlock } from './model.js';
 import type { ParagraphAuthority, TopLevelBlockBoundary } from './model.js';
@@ -237,11 +237,12 @@ export function resolveVerticalSelection(
 		const capabilities = capabilitiesForTopLevelBlock(destinationBlock.kind);
 		if (capabilities.verticalEntry === 'host') return null;
 		if (capabilities.verticalNavigation === 'host') {
-			const entry = verticalEntryPosition(state, destinationBlock, forward);
-			const entryLine = state.doc.lineAt(entry);
+			const entryRange = verticalEntryRange(state, destinationBlock, forward);
+			if (!entryRange) return null;
+			const entry = forward ? entryRange.from : entryRange.to;
 			const alignmentAnchor = forward
-				? Math.min(entryLine.to, entry + 1)
-				: Math.max(entryLine.from, entry - 1);
+				? Math.min(entryRange.to, entry + 1)
+				: Math.max(entryRange.from, entry - 1);
 			const aligned = visual.alignGoalOnVisualLine?.({
 				assoc: bias,
 				position: alignmentAnchor,
@@ -250,8 +251,8 @@ export function resolveVerticalSelection(
 				position: entry,
 			};
 			const alignedOnEntryLine = Math.max(
-				entryLine.from,
-				Math.min(entryLine.to, aligned.position),
+				entryRange.from,
+				Math.min(entryRange.to, aligned.position),
 			);
 			candidate = {
 				assoc: bias,
