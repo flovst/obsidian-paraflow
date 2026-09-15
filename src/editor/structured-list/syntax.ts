@@ -1,6 +1,7 @@
 import { syntaxTree } from '@codemirror/language';
 import type { EditorState } from '@codemirror/state';
 import type { Tree } from '@lezer/common';
+import { classifyWhitespaceLine } from './context-analysis.js';
 import type { ListItemSyntax, SourceRange } from './model.js';
 import { isSeparatorlessListMarkerLine, prefixPolicy } from './prefix.js';
 
@@ -134,15 +135,29 @@ function continuesObsidianItem(
 		next.level >= owner.level;
 }
 
-function normalizedObsidianItems(lines: readonly ObsidianSyntaxLine[]): readonly ListItemSyntax[] {
+function hasOnlyWhitespaceLinesBetween(
+	state: EditorState,
+	previousLineNumber: number,
+	nextLineNumber: number,
+): boolean {
+	for (let lineNumber = previousLineNumber + 1; lineNumber < nextLineNumber; lineNumber += 1) {
+		if (classifyWhitespaceLine(state.doc.line(lineNumber).text) === null) return false;
+	}
+	return true;
+}
+
+function normalizedObsidianItems(
+	state: EditorState,
+	lines: readonly ObsidianSyntaxLine[],
+): readonly ListItemSyntax[] {
 	return lines.flatMap((line, index): readonly ListItemSyntax[] => {
 		if (!line.syntax) return [];
 		let subtreeTo = line.syntax.markerLine.to;
 		let previousLineNumber = line.lineNumber;
 		for (let nextIndex = index + 1; nextIndex < lines.length; nextIndex += 1) {
 			const next = lines[nextIndex];
-			if (!next || next.lineNumber !== previousLineNumber + 1) break;
-			if (!continuesObsidianItem(line, next)) break;
+			if (!next || !continuesObsidianItem(line, next)) break;
+			if (!hasOnlyWhitespaceLinesBetween(state, previousLineNumber, next.lineNumber)) break;
 			subtreeTo = next.range.to;
 			previousLineNumber = next.lineNumber;
 		}
@@ -158,7 +173,7 @@ function allListItems(state: EditorState): readonly ListItemSyntax[] {
 	const standard = standardItems(state, facts);
 	return standard.length > 0
 		? standard
-		: normalizedObsidianItems(obsidianListLines(state, facts));
+		: normalizedObsidianItems(state, obsidianListLines(state, facts));
 }
 
 function intersects(item: SourceRange, ranges: readonly SourceRange[]): boolean {
@@ -179,7 +194,7 @@ export function discoverListItem(state: EditorState, position: number): ListItem
 				(left.to - left.from) - (right.to - right.from))[0];
 		return deepest ? syntaxForItem(state, range(deepest.from, deepest.to)) : null;
 	}
-	return normalizedObsidianItems(obsidianListLines(state, facts))
+	return normalizedObsidianItems(state, obsidianListLines(state, facts))
 		.filter((item) => item.itemNode.from <= position && position <= item.itemNode.to)
 		.sort((left, right) =>
 			(left.itemNode.to - left.itemNode.from) - (right.itemNode.to - right.itemNode.from))[0] ?? null;
