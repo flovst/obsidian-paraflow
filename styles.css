@@ -15,7 +15,7 @@
 	--paraflow-live-list-base-indent: 0.25em;
 	--paraflow-live-list-indent: 30px;
 	--paraflow-live-list-content-offset: 0.625em;
-	--paraflow-live-list-hanging-indent: 1em;
+	--paraflow-live-list-hanging-indent: 0.625em;
 	--paraflow-end-spacing: 100px;
 	--paraflow-h1-size: 2.25em;
 	--paraflow-h2-size: 1.75em;
@@ -383,6 +383,12 @@
 
 .markdown-source-view.mod-cm6.is-live-preview
 	> .cm-editor.paraflow-structured-list-active
+	.HyperMD-task-line {
+	--paraflow-live-list-hanging-indent: 1.25em;
+}
+
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor.paraflow-structured-list-active
 	.HyperMD-list-line-1 {
 	padding-inline-start: calc(
 		var(--paraflow-live-list-base-indent) + var(--paraflow-live-list-content-offset) +
@@ -470,10 +476,9 @@
 	> .cm-editor.paraflow-structured-list-active
 	.paraflow-list-owned-line-1 {
 	padding-inline-start: calc(
-		var(--paraflow-live-list-base-indent) + var(--paraflow-live-list-content-offset) +
-			var(--paraflow-live-list-hanging-indent)
+		var(--paraflow-live-list-base-indent) + var(--paraflow-live-list-content-offset)
 	) !important;
-	text-indent: calc(0px - var(--paraflow-live-list-hanging-indent)) !important;
+	text-indent: 0 !important;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
@@ -481,9 +486,9 @@
 	.paraflow-list-owned-line-2 {
 	padding-inline-start: calc(
 		var(--paraflow-live-list-base-indent) + var(--paraflow-live-list-indent) +
-			var(--paraflow-live-list-content-offset) + var(--paraflow-live-list-hanging-indent)
+			var(--paraflow-live-list-content-offset)
 	) !important;
-	text-indent: calc(0px - var(--paraflow-live-list-hanging-indent)) !important;
+	text-indent: 0 !important;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
@@ -491,9 +496,9 @@
 	.paraflow-list-owned-line-3 {
 	padding-inline-start: calc(
 		var(--paraflow-live-list-base-indent) + 2 * var(--paraflow-live-list-indent) +
-			var(--paraflow-live-list-content-offset) + var(--paraflow-live-list-hanging-indent)
+			var(--paraflow-live-list-content-offset)
 	) !important;
-	text-indent: calc(0px - var(--paraflow-live-list-hanging-indent)) !important;
+	text-indent: 0 !important;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
@@ -501,9 +506,9 @@
 	.paraflow-list-owned-line-4 {
 	padding-inline-start: calc(
 		var(--paraflow-live-list-base-indent) + 3 * var(--paraflow-live-list-indent) +
-			var(--paraflow-live-list-content-offset) + var(--paraflow-live-list-hanging-indent)
+			var(--paraflow-live-list-content-offset)
 	) !important;
-	text-indent: calc(0px - var(--paraflow-live-list-hanging-indent)) !important;
+	text-indent: 0 !important;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
@@ -511,9 +516,9 @@
 	.paraflow-list-owned-line-5 {
 	padding-inline-start: calc(
 		var(--paraflow-live-list-base-indent) + 4 * var(--paraflow-live-list-indent) +
-			var(--paraflow-live-list-content-offset) + var(--paraflow-live-list-hanging-indent)
+			var(--paraflow-live-list-content-offset)
 	) !important;
-	text-indent: calc(0px - var(--paraflow-live-list-hanging-indent)) !important;
+	text-indent: 0 !important;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
@@ -521,9 +526,9 @@
 	.paraflow-list-owned-line-6 {
 	padding-inline-start: calc(
 		var(--paraflow-live-list-base-indent) + 5 * var(--paraflow-live-list-indent) +
-			var(--paraflow-live-list-content-offset) + var(--paraflow-live-list-hanging-indent)
+			var(--paraflow-live-list-content-offset)
 	) !important;
-	text-indent: calc(0px - var(--paraflow-live-list-hanging-indent)) !important;
+	text-indent: 0 !important;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
