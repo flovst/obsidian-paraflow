@@ -1,6 +1,7 @@
 import { EditorSelection, type Extension } from '@codemirror/state';
 import { EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view';
 import { createInputStateExtension } from './input-state.js';
+import { createGapSelectionPresentation } from '../paragraph/selection-presentation.js';
 
 export type VisualAssociation = -1 | 0 | 1;
 
@@ -125,6 +126,18 @@ export function createVisualNavigationAdapter(view: EditorView): VisualNavigatio
 	};
 }
 
-export function createEditorRuntimeExtension(): Extension {
-	return [createInputStateExtension(), createGoalXStoreExtension()];
+export interface EditorRuntimeExtensionOptions {
+	readonly isSelectionPresentationActive?: (view: EditorView) => boolean;
+}
+
+export function createEditorRuntimeExtension(
+	options: EditorRuntimeExtensionOptions = {},
+): Extension {
+	return [
+		createInputStateExtension(),
+		createGoalXStoreExtension(),
+		createGapSelectionPresentation({
+			isActive: options.isSelectionPresentationActive ?? (() => true),
+		}),
+	];
 }

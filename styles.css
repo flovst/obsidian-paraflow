@@ -703,6 +703,30 @@
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor.paraflow-gap-selection-presentation-active
+	.cm-content::selection,
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor.paraflow-gap-selection-presentation-active
+	.cm-content *::selection {
+	background-color: transparent !important;
+}
+
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor.paraflow-gap-selection-presentation-active
+	> .cm-scroller
+	> .cm-selectionLayer {
+	display: none;
+}
+
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor.paraflow-gap-selection-presentation-active
+	> .cm-scroller
+	> .paraflow-gap-selection-layer
+	.cm-selectionBackground {
+	background: var(--text-selection);
+}
+
+.markdown-source-view.mod-cm6.is-live-preview
 	> .cm-editor.paraflow-structured-list-active
 	.list-bullet {
 	display: inline-flex;

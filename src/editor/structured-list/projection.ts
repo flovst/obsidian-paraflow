@@ -925,6 +925,45 @@ export function getStructuredListProjectionState(
 	return state.field(structuredListProjectionField, false) ?? null;
 }
 
+export function getStructuredListSelectionTransparentRanges(
+	state: EditorState,
+): readonly SourceRange[] {
+	const projection = state.field(structuredListProjectionField, false);
+	if (!projection?.active) return [];
+	return projection.entries.flatMap((entry) => {
+		const blankLines = entry.ownedLines
+			.filter(({ kind }) => kind === 'blank')
+			.map(({ range }) => state.doc.lineAt(range.from))
+			.sort((left, right) => left.number - right.number);
+		const groups = blankLines.reduce<Array<typeof blankLines>>((result, line) => {
+			const group = result.at(-1);
+			if (!group || group.at(-1)!.number + 1 !== line.number) result.push([line]);
+			else group.push(line);
+			return result;
+		}, []);
+		return groups.flatMap((group) => {
+			const first = group[0]!;
+			const last = group.at(-1)!;
+			const followingContent = entry.ownedLines.some(({ kind, range }) =>
+				kind !== 'blank' && range.from > last.to) ||
+				projection.entries.some((candidate) =>
+					candidate.item.from > last.to && candidate.item.from < entry.item.to);
+			if (!followingContent || first.number === 1 || last.number === state.doc.lines) return [];
+			const editable = group.filter((_, index) =>
+				index % 2 === 1 && !(group.length % 2 === 0 && index === group.length - 1));
+			const ranges: SourceRange[] = [];
+			let from = state.doc.line(first.number - 1).to;
+			for (const line of editable) {
+				if (from < line.from) ranges.push(Object.freeze({ from, to: line.from }));
+				from = line.to;
+			}
+			const to = state.doc.line(last.number + 1).from;
+			if (from < to) ranges.push(Object.freeze({ from, to }));
+			return ranges;
+		});
+	});
+}
+
 export function createStructuredListProjection(
 	options: StructuredListProjectionOptions,
 ): Extension {

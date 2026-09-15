@@ -44,7 +44,10 @@ export default class ParaFlowPlugin extends Plugin {
 			registerEditorExtension: (extension) => this.registerEditorExtension(extension),
 			updateOptions: () => this.app.workspace.updateOptions(),
 		}, {
-			navigationCore: () => createEditorRuntimeExtension(),
+			navigationCore: () => createEditorRuntimeExtension({
+				isSelectionPresentationActive: (view) =>
+					isParaFlowLivePreview(view.state) && isPrimaryLivePreviewEditor(view),
+			}),
 			paragraph: () => createParagraphExtension({
 				isLivePreview: isParaFlowLivePreview,
 				isSurface: isPrimaryLivePreviewEditor,
