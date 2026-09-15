@@ -54,8 +54,6 @@ export function inlineHtmlBreakRangeForNode(
 		if (match.index === undefined) continue;
 		const from = line.from + match.index;
 		const to = from + match[0].length;
-		const outside = `${line.text.slice(0, match.index)}${line.text.slice(match.index + match[0].length)}`;
-		if (outside.trim().length === 0) continue;
 		if (node.from < to && from < node.to) return { from, to };
 	}
 	return null;
@@ -91,6 +89,54 @@ function isHypermdState(state: EditorState): boolean {
 	return found;
 }
 
+function lineContentEdge(
+	state: EditorState,
+	position: number,
+	edge: 'start' | 'end',
+): number {
+	const line = state.doc.lineAt(position);
+	if (edge === 'start') return line.from + (/^[ \t]*/u.exec(line.text)?.[0].length ?? 0);
+	return line.to - (/[ \t]*$/u.exec(line.text)?.[0].length ?? 0);
+}
+
+function hypermdDelimitedBoundaries(state: EditorState): readonly TopLevelBlockBoundary[] {
+	const boundaries: TopLevelBlockBoundary[] = [];
+	let mathStartLine: number | null = null;
+	let htmlStartLine: number | null = null;
+	syntaxTree(state).iterate({
+		enter: (node) => {
+			const tokens = nodeNameTokens(node.name);
+			const inlineHtmlBreak = inlineHtmlBreakRangeForNode(state, node.node);
+			if (tokens.includes('math-block') &&
+				node.from === lineContentEdge(state, node.from, 'start')) {
+				mathStartLine = state.doc.lineAt(node.from).number;
+			} else if (mathStartLine !== null && tokens.includes('formatting-math-end') &&
+				node.to === lineContentEdge(state, node.to, 'end')) {
+				boundaries.push({
+					from: state.doc.line(mathStartLine).from,
+					kind: 'math-block',
+					to: state.doc.lineAt(node.to).to,
+				});
+				mathStartLine = null;
+			}
+
+			if (!inlineHtmlBreak && tokens.includes('hmd-html-begin') &&
+				node.from === lineContentEdge(state, node.from, 'start')) {
+				htmlStartLine = state.doc.lineAt(node.from).number;
+			} else if (!inlineHtmlBreak && htmlStartLine !== null && tokens.includes('hmd-html-end') &&
+				node.to === lineContentEdge(state, node.to, 'end')) {
+				boundaries.push({
+					from: state.doc.line(htmlStartLine).from,
+					kind: 'html-block',
+					to: state.doc.lineAt(node.to).to,
+				});
+				htmlStartLine = null;
+			}
+		},
+	});
+	return boundaries;
+}
+
 function blockedHypermdLines(state: EditorState): ReadonlySet<number> {
 	const blocked = new Set<number>();
 	syntaxTree(state).iterate({
@@ -101,6 +147,11 @@ function blockedHypermdLines(state: EditorState): ReadonlySet<number> {
 			for (let line = fromLine; line <= toLine; line += 1) blocked.add(line);
 		},
 	});
+	for (const boundary of hypermdDelimitedBoundaries(state)) {
+		const fromLine = state.doc.lineAt(boundary.from).number;
+		const toLine = state.doc.lineAt(boundary.to).number;
+		for (let line = fromLine; line <= toLine; line += 1) blocked.add(line);
+	}
 	return blocked;
 }
 
@@ -362,11 +413,15 @@ function standardBoundaryBlocks(nodes: readonly SyntaxNode[]): readonly TopLevel
 			boundaries.push({ from: node.from, kind: 'heading', to: node.to });
 			continue;
 		}
-		const complexKind = node.name === 'Blockquote'
+		const complexKind: TopLevelBlockBoundaryKind | null = node.name === 'Blockquote'
 			? 'blockquote'
 			: node.name === 'FencedCode'
 				? 'code-block'
-				: node.name === 'Table' ? 'table' : null;
+				: node.name === 'Table'
+					? 'table'
+					: node.name === 'HorizontalRule'
+						? 'thematic-break'
+						: node.name === 'HTMLBlock' ? 'html-block' : null;
 		if (complexKind) {
 			boundaries.push({ from: node.from, kind: complexKind, to: node.to });
 			continue;
@@ -387,11 +442,21 @@ function hypermdComplexKind(name: string): TopLevelBlockBoundaryKind | null {
 	if (tokens.some((token) => token.startsWith('HyperMD-codeblock')) ||
 		tokens.includes('hmd-codeblock')) return 'code-block';
 	if (tokens.some((token) => token.startsWith('HyperMD-table'))) return 'table';
+	if (tokens.some((token) => token.startsWith('HyperMD-hr'))) return 'thematic-break';
 	return null;
 }
 
 function hypermdComplexBoundaries(state: EditorState): readonly TopLevelBlockBoundary[] {
 	const lines = new Map<number, TopLevelBlockBoundaryKind>();
+	const assign = (fromLine: number, toLine: number, kind: TopLevelBlockBoundaryKind): void => {
+		for (let lineNumber = fromLine; lineNumber <= toLine; lineNumber += 1) {
+			const existing = lines.get(lineNumber);
+			if (existing && existing !== kind) {
+				throw new Error('Conflicting complete HyperMD block containment');
+			}
+			lines.set(lineNumber, kind);
+		}
+	};
 	syntaxTree(state).iterate({
 		enter: (node) => {
 			const kind = hypermdComplexKind(node.name);
@@ -399,15 +464,16 @@ function hypermdComplexBoundaries(state: EditorState): readonly TopLevelBlockBou
 			const fromLine = state.doc.lineAt(node.from).number;
 			const finalPosition = node.to > node.from ? node.to - 1 : node.to;
 			const toLine = state.doc.lineAt(finalPosition).number;
-			for (let lineNumber = fromLine; lineNumber <= toLine; lineNumber += 1) {
-				const existing = lines.get(lineNumber);
-				if (existing && existing !== kind) {
-					throw new Error('Conflicting complete HyperMD block containment');
-				}
-				lines.set(lineNumber, kind);
-			}
+			assign(fromLine, toLine, kind);
 		},
 	});
+	for (const boundary of hypermdDelimitedBoundaries(state)) {
+		assign(
+			state.doc.lineAt(boundary.from).number,
+			state.doc.lineAt(boundary.to).number,
+			boundary.kind,
+		);
+	}
 	const sorted = [...lines].sort(([left], [right]) => left - right);
 	const boundaries: TopLevelBlockBoundary[] = [];
 	for (const [lineNumber, kind] of sorted) {

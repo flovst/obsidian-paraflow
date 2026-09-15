@@ -10,7 +10,10 @@ export type TopLevelBlockBoundaryKind =
 	| 'separatorless-list-literal'
 	| 'blockquote'
 	| 'code-block'
-	| 'table';
+	| 'table'
+	| 'thematic-break'
+	| 'math-block'
+	| 'html-block';
 
 export interface TopLevelBlockCapabilities {
 	readonly containment: 'leaf' | 'container';
@@ -49,6 +52,18 @@ const blockCapabilities: Readonly<Record<
 		paragraphEnter: false, verticalEntry: 'paraflow', verticalNavigation: 'host',
 	}),
 	table: Object.freeze({
+		containment: 'container', gapBoundary: true,
+		paragraphEnter: false, verticalEntry: 'host', verticalNavigation: 'host',
+	}),
+	'thematic-break': Object.freeze({
+		containment: 'leaf', gapBoundary: true,
+		paragraphEnter: false, verticalEntry: 'host', verticalNavigation: 'host',
+	}),
+	'math-block': Object.freeze({
+		containment: 'container', gapBoundary: true,
+		paragraphEnter: false, verticalEntry: 'host', verticalNavigation: 'host',
+	}),
+	'html-block': Object.freeze({
 		containment: 'container', gapBoundary: true,
 		paragraphEnter: false, verticalEntry: 'host', verticalNavigation: 'host',
 	}),
