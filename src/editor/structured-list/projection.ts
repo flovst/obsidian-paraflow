@@ -41,6 +41,10 @@ export interface StructuredListProjectionState {
 	readonly rangeIndex: StructuredListRangeIndex;
 }
 
+export interface StructuredListTaskToken extends SourceRange {
+	readonly checked: boolean;
+}
+
 export type StructuredListProjectionWork = 'authority' | 'contexts' | 'enumerate';
 
 interface ProjectionEntry extends ProjectionAuthorityItem {
@@ -72,6 +76,7 @@ interface ProjectionAuthorityItem {
 	readonly ownedLines: readonly ProjectionOwnedLine[];
 	readonly prefix: SourceRange;
 	readonly replacement: SourceRange;
+	readonly taskToken: SourceRange | null;
 }
 
 interface ProjectionAuthority {
@@ -360,6 +365,9 @@ function entryForContext(
 			from: markerEnd - context.block.prefix.markerText.length,
 			to: markerEnd,
 		},
+		taskToken: context.block.prefix.taskToken
+			? { ...context.block.prefix.taskToken }
+			: null,
 		widget: new StructuredListMarkerWidget(marker),
 	};
 }
@@ -371,12 +379,13 @@ function projectionAuthority(
 	recordProjectionWork(state, 'authority');
 	return {
 		envelopes: completeListEnvelopes(state),
-		items: entries.map(({ item, marker, ownedLines, prefix, replacement }) => ({
+		items: entries.map(({ item, marker, ownedLines, prefix, replacement, taskToken }) => ({
 			item,
 			marker,
 			ownedLines,
 			prefix,
 			replacement,
+			taskToken,
 		})),
 		syntax: projectionSyntaxAuthority(state),
 	};
@@ -439,6 +448,7 @@ function mapAuthority(
 			})),
 			prefix: mapRange(transaction, item.prefix),
 			replacement: mapRange(transaction, item.replacement),
+			taskToken: item.taskToken ? mapRange(transaction, item.taskToken) : null,
 		})),
 		syntax: mappedSyntax,
 	};
@@ -476,6 +486,9 @@ function sameAuthorityItem(
 	const leftRanges = [left.item, left.prefix, left.replacement];
 	const rightRanges = [right.item, right.prefix, right.replacement];
 	return pairwiseEqual(leftRanges, rightRanges, sameRange) && sameMarker(left.marker, right.marker) &&
+		(left.taskToken === null
+			? right.taskToken === null
+			: right.taskToken !== null && sameRange(left.taskToken, right.taskToken)) &&
 		pairwiseEqual(left.ownedLines, right.ownedLines, (leftLine, rightLine) =>
 			leftLine.depth === rightLine.depth &&
 			leftLine.kind === rightLine.kind &&
@@ -710,6 +723,18 @@ function validateOwnedLine(
 	ownedLineStarts.add(line.range.from);
 }
 
+function validateTaskToken(entry: ProjectionEntry): void {
+	if ((entry.marker.kind === 'task') !== (entry.taskToken !== null)) {
+		throw new Error('Task projection must retain exactly one task token');
+	}
+	if (!entry.taskToken) return;
+	if (entry.taskToken.from < entry.prefix.from ||
+		entry.taskToken.from >= entry.taskToken.to ||
+		entry.taskToken.to > entry.prefix.to) {
+		throw new Error('Task token must remain inside its protected prefix');
+	}
+}
+
 function validateEntry(
 	state: EditorState,
 	entry: ProjectionEntry,
@@ -723,6 +748,7 @@ function validateEntry(
 	if (entry.replacement.from < entry.prefix.from || entry.replacement.to > entry.prefix.to) {
 		throw new Error('Marker replacement must remain inside its protected prefix');
 	}
+	validateTaskToken(entry);
 	for (const line of entry.ownedLines) {
 		validateOwnedLine(state, entry, line, ownedLineStarts);
 	}
@@ -825,6 +851,7 @@ function mapEntry(transaction: Transaction, entry: ProjectionEntry): ProjectionE
 		})),
 		prefix: mapRange(transaction, entry.prefix),
 		replacement: mapRange(transaction, entry.replacement),
+		taskToken: entry.taskToken ? mapRange(transaction, entry.taskToken) : null,
 		widget: entry.widget,
 	};
 }
@@ -923,6 +950,20 @@ export function getStructuredListProjectionState(
 	state: EditorState,
 ): StructuredListProjectionState | null {
 	return state.field(structuredListProjectionField, false) ?? null;
+}
+
+export function getStructuredListTaskTokens(
+	state: EditorState,
+): readonly StructuredListTaskToken[] {
+	const projection = state.field(structuredListProjectionField, false);
+	if (!projection?.active) return [];
+	return projection.entries.flatMap(({ taskToken }) => {
+		if (!taskToken) return [];
+		return [{
+			...taskToken,
+			checked: /^\[[xX]\]/u.test(state.doc.sliceString(taskToken.from, taskToken.to)),
+		}];
+	});
 }
 
 export function getStructuredListSelectionTransparentRanges(
