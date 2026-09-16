@@ -57,6 +57,26 @@ export interface GapSelectionPresentationOptions {
 	readonly isActive: (view: EditorView) => boolean;
 }
 
+interface SelectionCoordinates {
+	readonly bottom: number;
+	readonly left: number;
+	readonly right: number;
+	readonly top: number;
+}
+
+export function singleLineSelectionRectangle(
+	startCoordinates: SelectionCoordinates,
+	firstCharacter: SelectionCoordinates,
+	lastCharacter: SelectionCoordinates,
+): SelectionCoordinates {
+	return {
+		bottom: Math.max(startCoordinates.bottom, lastCharacter.bottom),
+		left: Math.min(firstCharacter.left, lastCharacter.left),
+		right: Math.max(firstCharacter.right, lastCharacter.right),
+		top: Math.min(startCoordinates.top, lastCharacter.top),
+	};
+}
+
 export function selectionLineSegments(
 	state: EditorState,
 	ranges: readonly SelectionRange[],
@@ -121,8 +141,12 @@ function markersForLine(view: EditorView, range: SelectionRange): readonly Layer
 	if (visibleFrom >= range.to) return [];
 	const visibleRange = EditorSelection.range(visibleFrom, range.to);
 	const from = view.coordsAtPos(visibleRange.from, 1);
+	const firstCharacter = view.coordsForChar(visibleRange.from);
 	const lastCharacter = view.coordsForChar(visibleRange.to - 1);
 	if (!from || !lastCharacter) return [];
+	if (!firstCharacter) {
+		return RectangleMarker.forRange(view, 'cm-selectionBackground', visibleRange);
+	}
 	if (Math.abs(from.top - lastCharacter.top) > 1 || view.bidiSpans(line).length > 1) {
 		return RectangleMarker.forRange(view, 'cm-selectionBackground', visibleRange);
 	}
@@ -132,14 +156,13 @@ function markersForLine(view: EditorView, range: SelectionRange): readonly Layer
 		? scrollRect.left
 		: scrollRect.right - scroll.clientWidth * view.scaleX) - scroll.scrollLeft * view.scaleX;
 	const baseTop = scrollRect.top - scroll.scrollTop * view.scaleY;
-	const left = Math.min(from.left, lastCharacter.left);
-	const right = Math.max(from.right, lastCharacter.right);
+	const rectangle = singleLineSelectionRectangle(from, firstCharacter, lastCharacter);
 	return [new RectangleMarker(
 		'cm-selectionBackground',
-		left - baseLeft,
-		Math.min(from.top, lastCharacter.top) - baseTop,
-		right - left,
-		Math.max(from.bottom, lastCharacter.bottom) - Math.min(from.top, lastCharacter.top),
+		rectangle.left - baseLeft,
+		rectangle.top - baseTop,
+		rectangle.right - rectangle.left,
+		rectangle.bottom - rectangle.top,
 	)];
 }
 
