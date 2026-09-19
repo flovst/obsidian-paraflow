@@ -5,7 +5,7 @@ import {
 	type Extension,
 	type Transaction,
 } from '@codemirror/state';
-import { EditorView, ViewPlugin } from '@codemirror/view';
+import { ViewPlugin } from '@codemirror/view';
 import {
 	excludedSelectionModeForTransaction,
 	recognizedNormalSelectionTransaction,
@@ -43,16 +43,22 @@ function canOwnSelection(transaction: Transaction): boolean {
 		excludedSelectionModeForTransaction(transaction) === null;
 }
 
+function pointerWasPressed(transaction: Transaction): boolean {
+	return transaction.startState.field(pointerPressedStateField);
+}
+
 export const selectionPresentationSessionField = StateField.define<SelectionPresentationSession>({
 	create: () => idleSession,
 	update(value, transaction) {
 		if (transaction.effects.some((effect) => effect.is(beginClearing))) {
-			return value.owned ? { owned: true, phase: 'clearing' } : idleSession;
+			return value.owned && canOwnSelection(transaction) ?
+				{ owned: true, phase: 'clearing' } : idleSession;
 		}
 		if (transaction.effects.some((effect) => effect.is(settleSession))) {
 			return value.owned && canOwnSelection(transaction) ?
 				{ owned: true, phase: 'settled' } : idleSession;
 		}
+		if (value.owned && !canOwnSelection(transaction)) return idleSession;
 		if (!transaction.selection) return value;
 		if (!canOwnSelection(transaction)) return idleSession;
 		if (transaction.isUserEvent('select.pointer')) {
@@ -64,7 +70,10 @@ export const selectionPresentationSessionField = StateField.define<SelectionPres
 		if (recognizedNormalSelectionTransaction(transaction)) {
 			return { owned: true, phase: 'settled' };
 		}
-		return value.owned ? value : idleSession;
+		if (transaction.newSelection.eq(transaction.startState.selection) || pointerWasPressed(transaction)) {
+			return value;
+		}
+		return idleSession;
 	},
 });
 
@@ -77,12 +86,6 @@ export function selectionPresentationSession(state: EditorState): SelectionPrese
 const selectionPresentationSessionPlugin = ViewPlugin.define((view) => {
 	const ownerDocument = view.dom.ownerDocument;
 	let active = true;
-	const onMouseDown = (event: MouseEvent) => {
-		if (event.button !== 0) return;
-		const effects: StateEffect<unknown>[] = [pointerPressed.of(true)];
-		if (selectionPresentationSession(view.state).owned) effects.push(beginClearing.of(null));
-		view.dispatch({ effects });
-	};
 	const onMouseUp = (event: MouseEvent) => {
 		if (event.button !== 0 || !view.state.field(pointerPressedStateField)) return;
 		queueMicrotask(() => {
@@ -90,15 +93,22 @@ const selectionPresentationSessionPlugin = ViewPlugin.define((view) => {
 			view.dispatch({ effects: [pointerPressed.of(false), settleSession.of(null)] });
 		});
 	};
-	view.contentDOM.addEventListener('mousedown', onMouseDown, true);
 	ownerDocument.addEventListener('mouseup', onMouseUp);
 	return {
 		destroy() {
 			active = false;
-			view.contentDOM.removeEventListener('mousedown', onMouseDown, true);
 			ownerDocument.removeEventListener('mouseup', onMouseUp);
 		},
 	};
+}, {
+	eventObservers: {
+		mousedown(event, view) {
+			if (event.button !== 0) return;
+			const effects: StateEffect<unknown>[] = [pointerPressed.of(true)];
+			if (selectionPresentationSession(view.state).owned) effects.push(beginClearing.of(null));
+			view.dispatch({ effects });
+		},
+	},
 });
 
 export function createSelectionPresentationSessionExtension(): Extension {

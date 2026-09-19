@@ -7,7 +7,6 @@ import {
 } from '@codemirror/state';
 import {
 	Decoration,
-	Direction,
 	EditorView,
 	layer,
 	RectangleMarker,
@@ -24,6 +23,7 @@ import {
 } from '../structured-list/projection.js';
 import type { SourceRange } from '../structured-list/model.js';
 import { classifyCurrentSelectionMode } from '../runtime/input-state.js';
+import { selectionPresentationSession } from '../runtime/selection-session.js';
 import { getParagraphProjectionState } from './projection.js';
 
 const ACTIVE_CLASS = 'paraflow-gap-selection-presentation-active';
@@ -42,6 +42,10 @@ class SelectionTaskCheckboxWidget extends WidgetType {
 	}
 
 	toDOM(view: EditorView): HTMLElement {
+		const label = view.dom.ownerDocument.createElement('label');
+		label.className = 'task-list-label paraflow-selection-task-label';
+		label.setAttribute('aria-hidden', 'true');
+		label.setAttribute('contenteditable', 'false');
 		const checkbox = view.dom.ownerDocument.createElement('input');
 		checkbox.className = 'task-list-item-checkbox paraflow-selection-task-checkbox';
 		checkbox.type = 'checkbox';
@@ -49,7 +53,8 @@ class SelectionTaskCheckboxWidget extends WidgetType {
 		checkbox.tabIndex = -1;
 		checkbox.setAttribute('aria-hidden', 'true');
 		checkbox.setAttribute('contenteditable', 'false');
-		return checkbox;
+		label.append(checkbox);
+		return label;
 	}
 }
 
@@ -57,59 +62,65 @@ export interface GapSelectionPresentationOptions {
 	readonly isActive: (view: EditorView) => boolean;
 }
 
-interface SelectionCoordinates {
-	readonly bottom: number;
-	readonly left: number;
-	readonly right: number;
-	readonly top: number;
+function markerOnlyPrefixRange(
+	state: EditorState,
+	prefix: SourceRange,
+): SourceRange {
+	const line = state.doc.lineAt(prefix.from);
+	return line.from === prefix.from && line.to === prefix.to && line.to < state.doc.length
+		? { from: prefix.from, to: prefix.to + 1 }
+		: prefix;
 }
 
-export function singleLineSelectionRectangle(
-	startCoordinates: SelectionCoordinates,
-	firstCharacter: SelectionCoordinates,
-	lastCharacter: SelectionCoordinates,
-): SelectionCoordinates {
-	return {
-		bottom: Math.max(startCoordinates.bottom, lastCharacter.bottom),
-		left: Math.min(firstCharacter.left, lastCharacter.left),
-		right: Math.max(firstCharacter.right, lastCharacter.right),
-		top: Math.min(startCoordinates.top, lastCharacter.top),
-	};
+function mergeSourceRanges(ranges: readonly SourceRange[]): readonly SourceRange[] {
+	const sorted = [...ranges]
+		.sort((left, right) => left.from - right.from || left.to - right.to);
+	const merged: SourceRange[] = [];
+	for (const range of sorted) {
+		const previous = merged.at(-1);
+		if (!previous || range.from > previous.to) {
+			merged.push({ from: range.from, to: range.to });
+		} else if (range.to > previous.to) {
+			merged[merged.length - 1] = { from: previous.from, to: range.to };
+		}
+	}
+	return merged;
 }
 
-export function selectionLineSegments(
+function selectionExclusions(
+	state: EditorState,
+	structuralGaps: readonly SourceRange[],
+	protectedPrefixes: readonly SourceRange[],
+): readonly SourceRange[] {
+	return mergeSourceRanges([
+		...structuralGaps,
+		...protectedPrefixes.map((prefix) => markerOnlyPrefixRange(state, prefix)),
+	]);
+}
+
+export function selectionSourceFragments(
 	state: EditorState,
 	ranges: readonly SelectionRange[],
-	gaps: readonly SourceRange[],
+	structuralGaps: readonly SourceRange[],
+	protectedPrefixes: readonly SourceRange[],
 ): readonly SelectionRange[] {
-	return ranges.flatMap((range) => {
-		if (range.empty) return [];
-		const segments: SelectionRange[] = [];
-		const firstLine = state.doc.lineAt(range.from).number;
-		const lastLine = state.doc.lineAt(range.to).number;
-		for (let lineNumber = firstLine; lineNumber <= lastLine; lineNumber += 1) {
-			const line = state.doc.line(lineNumber);
-			const transparent = gaps.some((gap) =>
-				(gap.from < line.from || gap.from === 0 && line.from === 0) &&
-				line.to < gap.to);
-			if (transparent) continue;
-			const from = Math.max(range.from, line.from);
-			const to = Math.min(range.to, line.to);
-			if (from < to) {
-				segments.push(EditorSelection.range(from, to));
-				continue;
+	const exclusions = selectionExclusions(state, structuralGaps, protectedPrefixes);
+	const fragments: SourceRange[] = [];
+	for (const range of ranges) {
+		if (range.empty) continue;
+		let cursor = range.from;
+		for (const exclusion of exclusions) {
+			if (exclusion.to <= cursor) continue;
+			if (exclusion.from >= range.to) break;
+			if (cursor < exclusion.from) {
+				fragments.push({ from: cursor, to: Math.min(exclusion.from, range.to) });
 			}
-			if (line.length === 0 && lineNumber < state.doc.lines) {
-				const newlineTo = state.doc.line(lineNumber + 1).from;
-				const newlineFrom = Math.max(range.from, line.to);
-				const selectedNewlineTo = Math.min(range.to, newlineTo);
-				if (newlineFrom < selectedNewlineTo) {
-					segments.push(EditorSelection.range(newlineFrom, selectedNewlineTo));
-				}
-			}
+			cursor = Math.max(cursor, exclusion.to);
+			if (cursor >= range.to) break;
 		}
-		return segments;
-	});
+		if (cursor < range.to) fragments.push({ from: cursor, to: range.to });
+	}
+	return mergeSourceRanges(fragments).map(({ from, to }) => EditorSelection.range(from, to));
 }
 
 function structuralGaps(state: EditorState): readonly SourceRange[] {
@@ -119,51 +130,24 @@ function structuralGaps(state: EditorState): readonly SourceRange[] {
 	];
 }
 
-function intersectsGap(range: SelectionRange, gap: SourceRange): boolean {
-	return range.from < gap.to && gap.from < range.to;
+function selectionPresentationExclusions(state: EditorState): readonly SourceRange[] {
+	return selectionExclusions(
+		state,
+		structuralGaps(state),
+		getStructuredListProjectionState(state)?.rangeIndex.protectedRanges ?? [],
+	);
+}
+
+function intersectsExclusion(range: SelectionRange, exclusion: SourceRange): boolean {
+	return range.from < exclusion.to && exclusion.from < range.to;
 }
 
 function ownsSelection(view: EditorView, options: GapSelectionPresentationOptions): boolean {
 	if (!options.isActive(view)) return false;
-	const gaps = structuralGaps(view.state);
+	if (!selectionPresentationSession(view.state).owned) return false;
+	const exclusions = selectionPresentationExclusions(view.state);
 	return view.state.selection.ranges.some((range) =>
-		!range.empty && gaps.some((gap) => intersectsGap(range, gap)));
-}
-
-function markersForLine(view: EditorView, range: SelectionRange): readonly LayerMarker[] {
-	const line = view.state.doc.lineAt(range.from);
-	if (range.to > line.to) {
-		return RectangleMarker.forRange(view, 'cm-selectionBackground', range);
-	}
-	const prefix = getStructuredListProjectionState(view.state)?.rangeIndex.protectedRanges
-		.find(({ from }) => from === line.from);
-	const visibleFrom = Math.max(range.from, prefix?.to ?? range.from);
-	if (visibleFrom >= range.to) return [];
-	const visibleRange = EditorSelection.range(visibleFrom, range.to);
-	const from = view.coordsAtPos(visibleRange.from, 1);
-	const firstCharacter = view.coordsForChar(visibleRange.from);
-	const lastCharacter = view.coordsForChar(visibleRange.to - 1);
-	if (!from || !lastCharacter) return [];
-	if (!firstCharacter) {
-		return RectangleMarker.forRange(view, 'cm-selectionBackground', visibleRange);
-	}
-	if (Math.abs(from.top - lastCharacter.top) > 1 || view.bidiSpans(line).length > 1) {
-		return RectangleMarker.forRange(view, 'cm-selectionBackground', visibleRange);
-	}
-	const scroll = view.scrollDOM;
-	const scrollRect = scroll.getBoundingClientRect();
-	const baseLeft = (view.textDirection === Direction.LTR
-		? scrollRect.left
-		: scrollRect.right - scroll.clientWidth * view.scaleX) - scroll.scrollLeft * view.scaleX;
-	const baseTop = scrollRect.top - scroll.scrollTop * view.scaleY;
-	const rectangle = singleLineSelectionRectangle(from, firstCharacter, lastCharacter);
-	return [new RectangleMarker(
-		'cm-selectionBackground',
-		rectangle.left - baseLeft,
-		rectangle.top - baseTop,
-		rectangle.right - rectangle.left,
-		rectangle.bottom - rectangle.top,
-	)];
+		!range.empty && exclusions.some((candidate) => intersectsExclusion(range, candidate)));
 }
 
 function projectionChanged(update: ViewUpdate): boolean {
@@ -215,9 +199,14 @@ export function createGapSelectionPresentation(
 			class: 'paraflow-gap-selection-layer',
 			markers(view): readonly LayerMarker[] {
 				if (!ownsSelection(view, options)) return [];
-				const gaps = structuralGaps(view.state);
-				return selectionLineSegments(view.state, view.state.selection.ranges, gaps)
-					.flatMap((range) => markersForLine(view, range));
+				const fragments = selectionSourceFragments(
+					view.state,
+					view.state.selection.ranges,
+					structuralGaps(view.state),
+					getStructuredListProjectionState(view.state)?.rangeIndex.protectedRanges ?? [],
+				);
+				return fragments.flatMap((fragment) =>
+					RectangleMarker.forRange(view, 'cm-selectionBackground', fragment));
 			},
 			update(update): boolean {
 				return update.docChanged || update.selectionSet || update.viewportChanged ||
