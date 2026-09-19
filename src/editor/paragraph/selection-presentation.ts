@@ -92,8 +92,41 @@ function selectionExclusions(
 	structuralGaps: readonly SourceRange[],
 	protectedPrefixes: readonly SourceRange[],
 ): readonly SourceRange[] {
+	const editableAnchors = getParagraphProjectionState(state)?.rangeIndex.editableAnchors ?? [];
+	const listGaps = getStructuredListSelectionTransparentRanges(state);
+	const orderedListGaps = [...listGaps].sort((left, right) =>
+		left.from - right.from || left.to - right.to);
+	const editableBoundaries = orderedListGaps.flatMap((gap, index) => {
+		const next = orderedListGaps[index + 1];
+		if (!next || gap.to !== next.from) return [];
+		const line = state.doc.lineAt(gap.to);
+		if (line.from !== gap.to || line.length !== 0 || line.number === state.doc.lines) return [];
+		return [{ from: gap.to, to: state.doc.line(line.number + 1).from }];
+	});
+	const anchorRanges = editableAnchors.map((anchor) => ({ from: anchor, to: anchor + 1 }));
+	const normalizedGaps = structuralGaps.flatMap((gap) => {
+		const isListGap = listGaps.some((candidate) =>
+			candidate.from === gap.from && candidate.to === gap.to);
+		const preservedRanges = [
+			...anchorRanges,
+			...(isListGap ? editableBoundaries : []),
+		].sort((left, right) => left.from - right.from || left.to - right.to);
+		const preserved = preservedRanges.filter((range) =>
+			gap.from < range.to && range.from < gap.to);
+		if (preserved.length === 0) return [gap];
+		const ranges: SourceRange[] = [];
+		let from = gap.from;
+		for (const range of preserved) {
+			const preservedFrom = Math.max(gap.from, range.from);
+			const preservedTo = Math.min(gap.to, range.to);
+			if (from < preservedFrom) ranges.push({ from, to: preservedFrom });
+			from = Math.max(from, preservedTo);
+		}
+		if (from < gap.to) ranges.push({ from, to: gap.to });
+		return ranges;
+	});
 	return mergeSourceRanges([
-		...structuralGaps,
+		...normalizedGaps,
 		...protectedPrefixes.map((prefix) => markerOnlyPrefixRange(state, prefix)),
 	]);
 }
