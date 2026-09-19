@@ -126,9 +126,9 @@ function edgeRanges(
 function hypermdContainerRanges(
 	state: EditorState,
 	node: SyntaxNode,
+	source: string,
 ): readonly InlineSelectionSourceRange[] {
 	const tokens = nameTokens(node.name);
-	const source = state.sliceDoc(node.from, node.to);
 	if (tokens.includes('inline-code')) {
 		const opening = /^`+/u.exec(source)?.[0] ?? '';
 		if (opening.length > 0 && source.endsWith(opening) && source.length > opening.length * 2) {
@@ -182,14 +182,15 @@ function rangesForNode(
 	}
 
 	const tokens = nameTokens(node.name);
-	const source = state.sliceDoc(node.from, node.to);
+	let source: string | undefined;
+	const nodeSource = (): string => source ??= state.sliceDoc(node.from, node.to);
 	const formatting = tokens.some((token) => token.startsWith('formatting-'));
 	if (formatting) {
-		if (/^(?:\*{1,2}|_{1,2}|==|`+)$/u.test(source) &&
+		if (/^(?:\*{1,2}|_{1,2}|==|`+)$/u.test(nodeSource()) &&
 			tokens.some((token) => /(?:em|strong|highlight|code)/u.test(token))) {
 			return [delimiterRange(node)];
 		}
-		if (['[', ']', '(', ')'].includes(source) &&
+		if (['[', ']', '(', ')'].includes(nodeSource()) &&
 			tokens.some((token) => token.includes('link'))) {
 			const link = hypermdStandardInlineLink(state, node);
 			const delimiter = link?.delimiterRanges.find((range) =>
@@ -203,7 +204,47 @@ function rangesForNode(
 			? [destination]
 			: [];
 	}
-	return /[-_]/u.test(node.name) ? hypermdContainerRanges(state, node) : [];
+	return /[-_]/u.test(node.name)
+		? hypermdContainerRanges(state, node, nodeSource())
+		: [];
+}
+
+function sameSyntaxNode(left: SyntaxNode, right: SyntaxNode): boolean {
+	return left.from === right.from && left.to === right.to && left.type === right.type;
+}
+
+function commonSelectionAncestor(
+	tree: Tree,
+	from: number,
+	to: number,
+): SyntaxNode {
+	const start = tree.resolveInner(from, 1);
+	const endAncestors: SyntaxNode[] = [];
+	for (let node: SyntaxNode | null = tree.resolveInner(to, -1); node; node = node.parent) {
+		endAncestors.push(node);
+	}
+	for (let node: SyntaxNode | null = start; node; node = node.parent) {
+		if (endAncestors.some((candidate) => sameSyntaxNode(node, candidate))) return node;
+	}
+	return tree.topNode;
+}
+
+function visitSelectionSyntaxNodes(
+	tree: Tree,
+	selection: SelectionRange,
+	visit: (node: SyntaxNode) => void,
+): void {
+	const root = commonSelectionAncestor(tree, selection.from, selection.to);
+	for (let ancestor = root.parent; ancestor; ancestor = ancestor.parent) visit(ancestor);
+	const visitIntersecting = (node: SyntaxNode): void => {
+		visit(node);
+		for (let child = node.childAfter(selection.from);
+			child && child.from < selection.to;
+			child = child.nextSibling) {
+			if (selection.from < child.to) visitIntersecting(child);
+		}
+	};
+	visitIntersecting(root);
 }
 
 export function discoverInlineSelectionSourceRanges(
@@ -212,24 +253,27 @@ export function discoverInlineSelectionSourceRanges(
 ): readonly InlineSelectionSourceRange[] {
 	const coverage = requiredRanges?.filter((range) => !range.empty);
 	if (coverage?.length === 0) return [];
-	const requiredFrom = coverage
-		? Math.min(...coverage.map((range) => range.from))
-		: 0;
 	const requiredTo = coverage
 		? Math.max(...coverage.map((range) => range.to))
 		: state.doc.length;
 	if (!syntaxTreeAvailable(state, requiredTo)) return [];
 	const ranges = new Map<string, InlineSelectionSourceRange>();
-	syntaxTree(state).iterate({
-		from: requiredFrom,
-		to: requiredTo,
-		enter: (ref) => {
-			for (const range of rangesForNode(state, ref.node)) {
-				if (range.from >= range.to) continue;
-				ranges.set(`${range.from}:${range.to}`, range);
-			}
-		},
-	});
+	const tree = syntaxTree(state);
+	const addNodeRanges = (node: SyntaxNode): void => {
+		for (const range of rangesForNode(state, node)) {
+			if (range.from >= range.to) continue;
+			ranges.set(`${range.from}:${range.to}`, range);
+		}
+	};
+	if (coverage) {
+		for (const selection of coverage) {
+			visitSelectionSyntaxNodes(tree, selection, addNodeRanges);
+		}
+	} else {
+		tree.iterate({
+			enter: (ref) => addNodeRanges(ref.node),
+		});
+	}
 	const ordered = [...ranges.values()].sort((left, right) =>
 		left.from - right.from || left.to - right.to);
 	const nonOverlapping: InlineSelectionSourceRange[] = [];

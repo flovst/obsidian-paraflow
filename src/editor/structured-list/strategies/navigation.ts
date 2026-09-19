@@ -101,7 +101,15 @@ function previousVisualLine(
 	execution: ExecutionFor<'left-content-start'>,
 	startRaw: VisualPosition,
 ): NavigationDestination | null {
-	const previousRaw = execution.services.visual.moveByChar(startRaw, false);
+	let previousRaw = execution.services.visual.moveByChar(startRaw, false);
+	const crossedPrefix = execution.services.rangeIndex.protectedRanges.find((range) =>
+		range.from === previousRaw.position && range.to === startRaw.position);
+	if (crossedPrefix) {
+		previousRaw = execution.services.visual.moveByChar({
+			assoc: -1,
+			position: crossedPrefix.from,
+		}, false);
+	}
 	const previous = resolved(execution.services, previousRaw, -1);
 	if (!previous || samePoint(previousRaw, startRaw)) return null;
 	const endRaw = execution.services.visual.visualLineEnd(previous);

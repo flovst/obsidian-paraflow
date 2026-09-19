@@ -17,6 +17,7 @@ import {
 	requireParagraphProjectionState,
 } from './projection.js';
 import { normalizeStructuredListSelectionEndpoint } from '../structured-list/selection-protection.js';
+import { getStructuredListSelectionTransparentRanges } from '../structured-list/projection.js';
 import { normalizeHeadingSelectionEndpoint } from './heading-projection.js';
 
 export interface ParagraphSelectionProtectionOptions {
@@ -54,7 +55,11 @@ function recognizedParagraphSelectionTransaction(transaction: Transaction): bool
 		event === 'move.character' || event === 'move.line';
 }
 
-function pointerEndpoint(position: number, index: ParagraphRangeIndex): {
+function pointerEndpoint(
+	position: number,
+	index: ParagraphRangeIndex,
+	listGaps: readonly { readonly from: number; readonly to: number }[],
+): {
 	readonly assoc: -1 | 1;
 	readonly position: number;
 } {
@@ -62,13 +67,28 @@ function pointerEndpoint(position: number, index: ParagraphRangeIndex): {
 		? index.gaps.find((gap) => gap.from === 0)
 		: undefined;
 	if (leadingGap) return { assoc: 1, position: leadingGap.to };
-	const gap = index.containingGap(position);
+	const gap = index.containingGap(position) ?? listGaps.find((candidate) =>
+		candidate.from < position && position < candidate.to);
 	if (!gap) return { assoc: 1, position };
 	const leftDistance = position - gap.from;
 	const rightDistance = gap.to - position;
 	return leftDistance < rightDistance
 		? { assoc: -1, position: gap.from }
 		: { assoc: 1, position: gap.to };
+}
+
+function normalizedGapEndpoint(
+	position: number,
+	bias: -1 | 1,
+	index: ParagraphRangeIndex,
+	listGaps: readonly { readonly from: number; readonly to: number }[],
+): number {
+	const paragraphPosition = index.normalize(position, bias);
+	if (paragraphPosition !== position) return paragraphPosition;
+	const gap = listGaps.find((candidate) =>
+		candidate.from < position && position < candidate.to);
+	if (!gap) return position;
+	return bias < 0 ? gap.from : gap.to;
 }
 
 function cursorSelection(
@@ -119,10 +139,12 @@ function normalizedSelection(transaction: Transaction): EditorSelection | null {
 	if (!projection) return null;
 	if (!projection.authority.complete) return null;
 	const index = projection.rangeIndex;
+	const listGaps = getStructuredListSelectionTransparentRanges(transaction.state);
 	const range = transaction.newSelection.main;
 	const pointer = transaction.isUserEvent('select.pointer');
 	if (range.empty) {
-		const gap = index.containingGap(range.head);
+		const gap = index.containingGap(range.head) ?? listGaps.find((candidate) =>
+			candidate.from < range.head && range.head < candidate.to);
 		const directBlock = normalizeBlockEndpoint(
 			transaction.state,
 			range.head,
@@ -133,7 +155,7 @@ function normalizedSelection(transaction: Transaction): EditorSelection | null {
 		if (!gap && !onLeadingGapHead && directBlock.position === range.head) return null;
 		const bias = endpointBias(transaction, range);
 		const mapped = pointer
-			? pointerEndpoint(range.head, index)
+			? pointerEndpoint(range.head, index, listGaps)
 			: {
 				assoc: bias,
 				position: index.normalize(range.head, bias),
@@ -149,12 +171,12 @@ function normalizedSelection(transaction: Transaction): EditorSelection | null {
 	const headBias = direction === 1 ? -1 : 1;
 	const anchor = normalizeBlockEndpoint(
 		transaction.state,
-		index.normalize(range.anchor, direction),
+		normalizedGapEndpoint(range.anchor, direction, index, listGaps),
 		direction,
 	);
 	const head = normalizeBlockEndpoint(
 		transaction.state,
-		index.normalize(range.head, headBias),
+		normalizedGapEndpoint(range.head, headBias, index, listGaps),
 		headBias,
 	);
 	if (anchor.position === range.anchor && head.position === range.head) return null;

@@ -13,6 +13,7 @@ import { createParagraphProjection } from './projection.js';
 import { createParagraphSelectionProtection } from './selection-protection.js';
 import { createHeadingProjection } from './heading-projection.js';
 import { createLineBreakProjection } from './line-break-projection.js';
+import { createInlineSelectionProjection } from './inline-selection-projection.js';
 
 const PARAGRAPH_ACTIVE_CLASS = 'paraflow-paragraph-editing-active';
 
@@ -135,6 +136,7 @@ export function createParagraphExtension(options: ParagraphExtensionOptions): Ex
 			(view) => isActive(view, options),
 			options.lineBreakMarkersEnabled,
 		),
+		createInlineSelectionProjection((view) => isActive(view, options)),
 		createParagraphKeymap(options),
 		createParagraphSelectionProtection({
 			isLivePreview: options.isLivePreview,

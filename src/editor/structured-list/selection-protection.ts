@@ -43,7 +43,9 @@ function mappedEndpoint(
 	position: number,
 	bias: -1 | 1,
 ): number {
-	const startBoundary = rangeIndex.protectedRanges.find((range) => range.from === position);
+	const startBoundary = bias === 1
+		? rangeIndex.protectedRanges.find((range) => range.from === position)
+		: null;
 	if (startBoundary) return startBoundary.to;
 	const prefixPosition = rangeIndex.mapEndpoint(position, bias);
 	if (prefixPosition !== position) return prefixPosition;
@@ -121,7 +123,16 @@ function mappedSelection(transaction: Transaction): EditorSelection | null {
 			? pointerEndpoint(anchor, transparentRanges)
 			: null;
 		return pointer
-			? preservedCursorSelection(range, pointer.position, pointer.assoc)
+			? preservedCursorSelection(
+				range,
+				mappedEndpoint(
+					rangeIndex,
+					transparentRanges,
+					pointer.position,
+					pointer.assoc,
+				),
+				pointer.assoc,
+			)
 			: preservedCursorSelection(
 				range,
 				mappedEndpoint(rangeIndex, transparentRanges, anchor, 1),

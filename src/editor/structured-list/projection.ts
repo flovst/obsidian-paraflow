@@ -48,6 +48,7 @@ export interface StructuredListTaskToken extends SourceRange {
 export type StructuredListProjectionWork = 'authority' | 'contexts' | 'enumerate';
 
 interface ProjectionEntry extends ProjectionAuthorityItem {
+	readonly collapsedSeparator: SourceRange | null;
 	readonly widget: StructuredListMarkerWidget;
 }
 
@@ -353,7 +354,13 @@ function entryForContext(
 	const marker = markerForProjection(context, prefixPolicy);
 	const outerMarker = context.block.prefix.outerMarker;
 	const markerEnd = outerMarker.to - context.block.prefix.separatorText.length;
+	const collapsedSeparator = context.block.prefix.taskToken === null &&
+		context.block.content.from === context.block.content.to &&
+		context.block.prefix.separatorText.length > 1
+		? { from: markerEnd + 1, to: outerMarker.to }
+		: null;
 	return {
+		collapsedSeparator,
 		item: { ...context.block.item },
 		marker,
 		ownedLines: context.ownedLines.map((line) => ({
@@ -789,6 +796,12 @@ function decorationsFor(entries: readonly ProjectionEntry[]): DecorationSet {
 			entry.replacement.from,
 			entry.replacement.to,
 		),
+		...(entry.collapsedSeparator
+			? [Decoration.replace({}).range(
+				entry.collapsedSeparator.from,
+				entry.collapsedSeparator.to,
+			)]
+			: []),
 		...entry.ownedLines.map((line) =>
 			Decoration.line({ attributes: { class: ownedLineClass(line) } }).range(line.range.from)),
 	]);
@@ -843,6 +856,9 @@ function livePreviewEnabled(state: EditorState): boolean {
 
 function mapEntry(transaction: Transaction, entry: ProjectionEntry): ProjectionEntry {
 	return {
+		collapsedSeparator: entry.collapsedSeparator
+			? mapRange(transaction, entry.collapsedSeparator)
+			: null,
 		item: mapRange(transaction, entry.item),
 		marker: entry.marker,
 		ownedLines: entry.ownedLines.map((line) => ({

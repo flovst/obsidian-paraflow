@@ -562,17 +562,17 @@
 	> .cm-editor.paraflow-paragraph-editing-active
 	.paraflow-heading-badge {
 	position: absolute;
-	inset-inline-end: 0.55em;
-	top: 50%;
+	inset-inline-end: 10px;
+	top: 4px;
 	box-sizing: border-box;
-	padding: 0 0.2em;
+	padding: 0 3px;
 	border: 1px solid var(--background-modifier-border);
+	border-color: color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
 	border-radius: 2px;
-	color: var(--text-faint);
-	font-size: 0.5em;
+	color: color-mix(in srgb, var(--text-faint) 72%, transparent);
+	font-size: 10px;
 	font-weight: 400;
-	line-height: 1.25;
-	transform: translateY(-50%);
+	line-height: 14px;
 	visibility: hidden;
 	white-space: nowrap;
 }
@@ -902,6 +902,9 @@
 	display: none;
 }
 
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor.paraflow-structured-list-active
+	.paraflow-selection-task-label,
 .markdown-source-view.mod-cm6.is-live-preview
 	> .cm-editor.paraflow-structured-list-active
 	.paraflow-selection-task-checkbox {
