@@ -10,8 +10,11 @@ import {
 	excludedSelectionModeForTransaction,
 	recognizedNormalSelectionTransaction,
 } from '../runtime/input-state.js';
-import type { StructuredListRangeIndex } from './model.js';
-import { getStructuredListProjectionState } from './projection.js';
+import type { SourceRange, StructuredListRangeIndex } from './model.js';
+import {
+	getStructuredListProjectionState,
+	getStructuredListSelectionTransparentRanges,
+} from './projection.js';
 
 function exactWholeDocument(state: EditorState): boolean {
 	const selection = state.selection;
@@ -36,13 +39,32 @@ function sharedProtectedBoundary(
 
 function mappedEndpoint(
 	rangeIndex: StructuredListRangeIndex,
+	transparentRanges: readonly SourceRange[],
 	position: number,
 	bias: -1 | 1,
 ): number {
-	const startBoundary = bias === 1
-		? rangeIndex.protectedRanges.find((range) => range.from === position)
-		: null;
-	return startBoundary?.to ?? rangeIndex.mapEndpoint(position, bias);
+	const startBoundary = rangeIndex.protectedRanges.find((range) => range.from === position);
+	if (startBoundary) return startBoundary.to;
+	const prefixPosition = rangeIndex.mapEndpoint(position, bias);
+	if (prefixPosition !== position) return prefixPosition;
+	const transparentRange = transparentRanges.find((range) =>
+		range.from < position && position < range.to);
+	if (!transparentRange) return position;
+	return bias < 0 ? transparentRange.from : transparentRange.to;
+}
+
+function pointerEndpoint(
+	position: number,
+	transparentRanges: readonly SourceRange[],
+): { readonly assoc: -1 | 1; readonly position: number } | null {
+	const range = transparentRanges.find((candidate) =>
+		candidate.from < position && position < candidate.to);
+	if (!range) return null;
+	const leftDistance = position - range.from;
+	const rightDistance = range.to - position;
+	return leftDistance < rightDistance
+		? { assoc: -1, position: range.from }
+		: { assoc: 1, position: range.to };
 }
 
 export function normalizeStructuredListSelectionEndpoint(
@@ -51,13 +73,24 @@ export function normalizeStructuredListSelectionEndpoint(
 	bias: -1 | 1,
 ): number {
 	const rangeIndex = getStructuredListProjectionState(state)?.rangeIndex;
-	return rangeIndex ? mappedEndpoint(rangeIndex, position, bias) : position;
+	return rangeIndex
+		? mappedEndpoint(
+			rangeIndex,
+			getStructuredListSelectionTransparentRanges(state),
+			position,
+			bias,
+		)
+		: position;
 }
 
-function preservedCursorSelection(range: SelectionRange, position: number): EditorSelection {
+function preservedCursorSelection(
+	range: SelectionRange,
+	position: number,
+	assoc: number = range.assoc,
+): EditorSelection {
 	return EditorSelection.create([EditorSelection.cursor(
 		position,
-		range.assoc,
+		assoc,
 		range.bidiLevel ?? undefined,
 		range.goalColumn,
 	)]);
@@ -77,12 +110,22 @@ function preservedRangeSelection(
 }
 
 function mappedSelection(transaction: Transaction): EditorSelection | null {
-	const rangeIndex = getStructuredListProjectionState(transaction.state)?.rangeIndex;
-	if (!rangeIndex) return null;
+	const projection = getStructuredListProjectionState(transaction.state);
+	if (!projection) return null;
+	const rangeIndex = projection.rangeIndex;
+	const transparentRanges = getStructuredListSelectionTransparentRanges(transaction.state);
 	const range = transaction.newSelection.main;
 	const { anchor, head } = range;
 	if (anchor === head) {
-		return preservedCursorSelection(range, mappedEndpoint(rangeIndex, anchor, 1));
+		const pointer = transaction.isUserEvent('select.pointer')
+			? pointerEndpoint(anchor, transparentRanges)
+			: null;
+		return pointer
+			? preservedCursorSelection(range, pointer.position, pointer.assoc)
+			: preservedCursorSelection(
+				range,
+				mappedEndpoint(rangeIndex, transparentRanges, anchor, 1),
+			);
 	}
 	const sharedBoundary = sharedProtectedBoundary(rangeIndex, anchor, head);
 	if (sharedBoundary !== null) {
@@ -91,8 +134,8 @@ function mappedSelection(transaction: Transaction): EditorSelection | null {
 	const direction = anchor < head ? 1 : -1;
 	return preservedRangeSelection(
 		range,
-		mappedEndpoint(rangeIndex, anchor, direction),
-		mappedEndpoint(rangeIndex, head, direction === 1 ? -1 : 1),
+		mappedEndpoint(rangeIndex, transparentRanges, anchor, direction),
+		mappedEndpoint(rangeIndex, transparentRanges, head, direction === 1 ? -1 : 1),
 	);
 }
 

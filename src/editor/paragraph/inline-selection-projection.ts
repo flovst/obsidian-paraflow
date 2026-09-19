@@ -212,12 +212,17 @@ export function discoverInlineSelectionSourceRanges(
 ): readonly InlineSelectionSourceRange[] {
 	const coverage = requiredRanges?.filter((range) => !range.empty);
 	if (coverage?.length === 0) return [];
+	const requiredFrom = coverage
+		? Math.min(...coverage.map((range) => range.from))
+		: 0;
 	const requiredTo = coverage
 		? Math.max(...coverage.map((range) => range.to))
 		: state.doc.length;
 	if (!syntaxTreeAvailable(state, requiredTo)) return [];
 	const ranges = new Map<string, InlineSelectionSourceRange>();
 	syntaxTree(state).iterate({
+		from: requiredFrom,
+		to: requiredTo,
 		enter: (ref) => {
 			for (const range of rangesForNode(state, ref.node)) {
 				if (range.from >= range.to) continue;
