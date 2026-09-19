@@ -22,7 +22,6 @@ import {
 	getStructuredListTaskTokens,
 } from '../structured-list/projection.js';
 import type { SourceRange } from '../structured-list/model.js';
-import { classifyCurrentSelectionMode } from '../runtime/input-state.js';
 import { selectionPresentationSession } from '../runtime/selection-session.js';
 import { getParagraphProjectionState } from './projection.js';
 
@@ -87,6 +86,38 @@ function mergeSourceRanges(ranges: readonly SourceRange[]): readonly SourceRange
 	return merged;
 }
 
+function rangeKey(range: SourceRange): string {
+	return `${range.from}:${range.to}`;
+}
+
+function lowerBound(values: readonly number[], value: number): number {
+	let low = 0;
+	let high = values.length;
+	while (low < high) {
+		const middle = low + Math.floor((high - low) / 2);
+		if (values[middle]! < value) low = middle + 1;
+		else high = middle;
+	}
+	return low;
+}
+
+function subtractPreservedRanges(
+	gap: SourceRange,
+	preservedRanges: readonly SourceRange[],
+): readonly SourceRange[] {
+	if (preservedRanges.length === 0) return [gap];
+	const ranges: SourceRange[] = [];
+	let from = gap.from;
+	for (const preserved of preservedRanges) {
+		const preservedFrom = Math.max(gap.from, preserved.from);
+		const preservedTo = Math.min(gap.to, preserved.to);
+		if (from < preservedFrom) ranges.push({ from, to: preservedFrom });
+		from = Math.max(from, preservedTo);
+	}
+	if (from < gap.to) ranges.push({ from, to: gap.to });
+	return ranges;
+}
+
 function selectionExclusions(
 	state: EditorState,
 	structuralGaps: readonly SourceRange[],
@@ -96,34 +127,34 @@ function selectionExclusions(
 	const listGaps = getStructuredListSelectionTransparentRanges(state);
 	const orderedListGaps = [...listGaps].sort((left, right) =>
 		left.from - right.from || left.to - right.to);
-	const editableBoundaries = orderedListGaps.flatMap((gap, index) => {
-		const next = orderedListGaps[index + 1];
-		if (!next || gap.to !== next.from) return [];
+	const editableBoundaries = new Map<string, SourceRange>();
+	for (let index = 0; index < orderedListGaps.length - 1; index += 1) {
+		const gap = orderedListGaps[index]!;
+		const next = orderedListGaps[index + 1]!;
+		if (gap.to !== next.from) continue;
 		const line = state.doc.lineAt(gap.to);
-		if (line.from !== gap.to || line.length !== 0 || line.number === state.doc.lines) return [];
-		return [{ from: gap.to, to: state.doc.line(line.number + 1).from }];
-	});
-	const anchorRanges = editableAnchors.map((anchor) => ({ from: anchor, to: anchor + 1 }));
-	const normalizedGaps = structuralGaps.flatMap((gap) => {
-		const isListGap = listGaps.some((candidate) =>
-			candidate.from === gap.from && candidate.to === gap.to);
-		const preservedRanges = [
-			...anchorRanges,
-			...(isListGap ? editableBoundaries : []),
-		].sort((left, right) => left.from - right.from || left.to - right.to);
-		const preserved = preservedRanges.filter((range) =>
-			gap.from < range.to && range.from < gap.to);
-		if (preserved.length === 0) return [gap];
-		const ranges: SourceRange[] = [];
-		let from = gap.from;
-		for (const range of preserved) {
-			const preservedFrom = Math.max(gap.from, range.from);
-			const preservedTo = Math.min(gap.to, range.to);
-			if (from < preservedFrom) ranges.push({ from, to: preservedFrom });
-			from = Math.max(from, preservedTo);
+		if (line.from !== gap.to || line.length !== 0 || line.number === state.doc.lines) continue;
+		editableBoundaries.set(rangeKey(next), {
+			from: gap.to,
+			to: state.doc.line(line.number + 1).from,
+		});
+	}
+	const orderedGaps = [...structuralGaps].sort((left, right) =>
+		left.from - right.from || left.to - right.to);
+	const listGapKeys = new Set(listGaps.map(rangeKey));
+	const normalizedGaps = orderedGaps.flatMap((gap) => {
+		const anchorIndex = lowerBound(editableAnchors, gap.from);
+		const preservedRanges: SourceRange[] = [];
+		for (let index = anchorIndex; index < editableAnchors.length; index += 1) {
+			const anchor = editableAnchors[index]!;
+			if (anchor >= gap.to) break;
+			preservedRanges.push({ from: anchor, to: anchor + 1 });
 		}
-		if (from < gap.to) ranges.push({ from, to: gap.to });
-		return ranges;
+		if (listGapKeys.has(rangeKey(gap))) {
+			const boundary = editableBoundaries.get(rangeKey(gap));
+			if (boundary) preservedRanges.unshift(boundary);
+		}
+		return subtractPreservedRanges(gap, preservedRanges);
 	});
 	return mergeSourceRanges([
 		...normalizedGaps,
@@ -131,13 +162,24 @@ function selectionExclusions(
 	]);
 }
 
-export function selectionSourceFragments(
-	state: EditorState,
+const selectionExclusionsCache = new WeakMap<EditorState, readonly SourceRange[]>();
+
+function selectionPresentationExclusions(state: EditorState): readonly SourceRange[] {
+	const cached = selectionExclusionsCache.get(state);
+	if (cached) return cached;
+	const exclusions = selectionExclusions(
+		state,
+		structuralGaps(state),
+		getStructuredListProjectionState(state)?.rangeIndex.protectedRanges ?? [],
+	);
+	selectionExclusionsCache.set(state, exclusions);
+	return exclusions;
+}
+
+function selectionFragmentsFromExclusions(
 	ranges: readonly SelectionRange[],
-	structuralGaps: readonly SourceRange[],
-	protectedPrefixes: readonly SourceRange[],
+	exclusions: readonly SourceRange[],
 ): readonly SelectionRange[] {
-	const exclusions = selectionExclusions(state, structuralGaps, protectedPrefixes);
 	const fragments: SourceRange[] = [];
 	for (const range of ranges) {
 		if (range.empty) continue;
@@ -156,19 +198,23 @@ export function selectionSourceFragments(
 	return mergeSourceRanges(fragments).map(({ from, to }) => EditorSelection.range(from, to));
 }
 
+export function selectionSourceFragments(
+	state: EditorState,
+	ranges: readonly SelectionRange[],
+	structuralGaps: readonly SourceRange[],
+	protectedPrefixes: readonly SourceRange[],
+): readonly SelectionRange[] {
+	return selectionFragmentsFromExclusions(
+		ranges,
+		selectionExclusions(state, structuralGaps, protectedPrefixes),
+	);
+}
+
 function structuralGaps(state: EditorState): readonly SourceRange[] {
 	return [
 		...(getParagraphProjectionState(state)?.rangeIndex.gaps ?? []),
 		...getStructuredListSelectionTransparentRanges(state),
 	];
-}
-
-function selectionPresentationExclusions(state: EditorState): readonly SourceRange[] {
-	return selectionExclusions(
-		state,
-		structuralGaps(state),
-		getStructuredListProjectionState(state)?.rangeIndex.protectedRanges ?? [],
-	);
 }
 
 function intersectsExclusion(range: SelectionRange, exclusion: SourceRange): boolean {
@@ -192,10 +238,10 @@ function projectionChanged(update: ViewUpdate): boolean {
 
 function selectedTaskDecorations(
 	view: EditorView,
-	options: GapSelectionPresentationOptions,
+	active: boolean,
+	owned: boolean,
 ): DecorationSet {
-	if (!options.isActive(view)) return Decoration.none;
-	if (classifyCurrentSelectionMode(view.state) !== 'continuous') return Decoration.none;
+	if (!active || !owned) return Decoration.none;
 	const ranges = view.state.selection.ranges.filter(({ empty }) => !empty);
 	if (ranges.length === 0) return Decoration.none;
 	return Decoration.set(getStructuredListTaskTokens(view.state)
@@ -211,14 +257,23 @@ export function createGapSelectionPresentation(
 ): Extension {
 	const taskCheckboxProjection = ViewPlugin.fromClass(class {
 		decorations: DecorationSet;
+		private active: boolean;
+		private owned: boolean;
 
 		constructor(readonly view: EditorView) {
-			this.decorations = selectedTaskDecorations(view, options);
+			this.active = options.isActive(view);
+			this.owned = this.active ? selectionPresentationSession(view.state).owned : false;
+			this.decorations = selectedTaskDecorations(view, this.active, this.owned);
 		}
 
 		update(update: ViewUpdate): void {
-			if (!update.selectionSet && !update.docChanged && !projectionChanged(update)) return;
-			this.decorations = selectedTaskDecorations(this.view, options);
+			const active = options.isActive(this.view);
+			const owned = active ? selectionPresentationSession(update.state).owned : false;
+			if (!update.selectionSet && !update.docChanged && !projectionChanged(update) &&
+				active === this.active && owned === this.owned) return;
+			this.active = active;
+			this.owned = owned;
+			this.decorations = selectedTaskDecorations(this.view, active, owned);
 		}
 	}, {
 		decorations: (value) => value.decorations,
@@ -232,11 +287,9 @@ export function createGapSelectionPresentation(
 			class: 'paraflow-gap-selection-layer',
 			markers(view): readonly LayerMarker[] {
 				if (!ownsSelection(view, options)) return [];
-				const fragments = selectionSourceFragments(
-					view.state,
+				const fragments = selectionFragmentsFromExclusions(
 					view.state.selection.ranges,
-					structuralGaps(view.state),
-					getStructuredListProjectionState(view.state)?.rangeIndex.protectedRanges ?? [],
+					selectionPresentationExclusions(view.state),
 				);
 				return fragments.flatMap((fragment) =>
 					RectangleMarker.forRange(view, 'cm-selectionBackground', fragment));
