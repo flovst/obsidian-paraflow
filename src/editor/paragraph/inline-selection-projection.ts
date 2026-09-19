@@ -35,6 +35,77 @@ function standardInlineLink(node: SyntaxNode): SyntaxNode | null {
 	return link?.getChild('URL') ? link : null;
 }
 
+interface HypermdStandardInlineLink {
+	readonly delimiterRanges: readonly InlineSelectionSourceRange[];
+	readonly destinationRange: InlineSelectionSourceRange | null;
+}
+
+function directChildren(node: SyntaxNode): readonly SyntaxNode[] {
+	const children: SyntaxNode[] = [];
+	for (let child = node.firstChild; child; child = child.nextSibling) children.push(child);
+	return children;
+}
+
+function hypermdLinkDelimiter(
+	state: EditorState,
+	node: SyntaxNode,
+): string | null {
+	if (node.name !== 'formatting_formatting-link_link') return null;
+	const source = state.sliceDoc(node.from, node.to);
+	return source.length === 1 && ['[', ']', '(', ')'].includes(source) ? source : null;
+}
+
+function analyzeHypermdStandardInlineLink(
+	state: EditorState,
+	container: SyntaxNode,
+): HypermdStandardInlineLink | null {
+	if (container.name !== 'formatting_formatting-link_link' ||
+		state.sliceDoc(container.from, container.from + 1) !== '[' ||
+		(container.from > 0 && state.sliceDoc(container.from - 1, container.from) === '!')) return null;
+	const children = directChildren(container);
+	const delimiters = children.flatMap((child) => {
+		const source = hypermdLinkDelimiter(state, child);
+		return source ? [{ node: child, source }] : [];
+	});
+	const opening = delimiters.find(({ node, source }) =>
+		source === '[' && node.from === container.from);
+	const closing = [...delimiters].reverse().find(({ node, source }) =>
+		source === ')' && node.to === container.to);
+	if (!opening || !closing) return null;
+	const separator = delimiters.find(({ node, source }, index) => {
+		const next = delimiters[index + 1];
+		return source === ']' && next?.source === '(' && node.to === next.node.from &&
+			opening.node.to <= node.from && next.node.to <= closing.node.from;
+	});
+	if (!separator) return null;
+	const separatorIndex = delimiters.indexOf(separator);
+	const openParenthesis = delimiters[separatorIndex + 1]!.node;
+	const destinationFrom = openParenthesis.to;
+	const destinationTo = closing.node.from;
+	const url = children.find((child) =>
+		nameTokens(child.name).some((token) => token.includes('url')) &&
+		child.from === destinationFrom && child.to === destinationTo);
+	if (destinationFrom < destinationTo && !url) return null;
+	return {
+		delimiterRanges: [opening.node, separator.node, openParenthesis, closing.node]
+			.map((node) => delimiterRange(node)),
+		destinationRange: destinationFrom < destinationTo
+			? { from: destinationFrom, kind: 'link-destination', to: destinationTo }
+			: null,
+	};
+}
+
+function hypermdStandardInlineLink(
+	state: EditorState,
+	node: SyntaxNode,
+): HypermdStandardInlineLink | null {
+	for (let current: SyntaxNode | null = node; current; current = current.parent) {
+		const link = analyzeHypermdStandardInlineLink(state, current);
+		if (link) return link;
+	}
+	return null;
+}
+
 function delimiterRange(
 	node: SyntaxNode,
 	kind: InlineSelectionSourceKind = 'delimiter',
@@ -80,21 +151,11 @@ function hypermdContainerRanges(
 			return edgeRanges(node, opening.length);
 		}
 	}
-	if (tokens.some((token) => token.includes('link')) &&
-		source.startsWith('[') && source.endsWith(')')) {
-		const split = source.indexOf('](');
-		if (split > 0 && split + 2 < source.length) {
-			return [
-				{ from: node.from, kind: 'delimiter', to: node.from + 1 },
-				{ from: node.from + split, kind: 'delimiter', to: node.from + split + 2 },
-				{
-					from: node.from + split + 2,
-					kind: 'link-destination',
-					to: node.to - 1,
-				},
-				{ from: node.to - 1, kind: 'delimiter', to: node.to },
-			];
-		}
+	const link = analyzeHypermdStandardInlineLink(state, node);
+	if (link) {
+		return link.destinationRange
+			? [...link.delimiterRanges, link.destinationRange]
+			: link.delimiterRanges;
 	}
 	return [];
 }
@@ -130,20 +191,31 @@ function rangesForNode(
 		}
 		if (['[', ']', '(', ')'].includes(source) &&
 			tokens.some((token) => token.includes('link'))) {
-			return [delimiterRange(node)];
+			const link = hypermdStandardInlineLink(state, node);
+			const delimiter = link?.delimiterRanges.find((range) =>
+				range.from === node.from && range.to === node.to);
+			return delimiter ? [delimiter] : [];
 		}
 	}
-	if (node.name !== 'URL' && tokens.some((token) => token.includes('url')) &&
-		hasAncestor(node, (name) => nameTokens(name).some((token) => token.includes('link')))) {
-		return [delimiterRange(node, 'link-destination')];
+	if (node.name !== 'URL' && tokens.some((token) => token.includes('url'))) {
+		const destination = hypermdStandardInlineLink(state, node)?.destinationRange;
+		return destination && destination.from === node.from && destination.to === node.to
+			? [destination]
+			: [];
 	}
 	return /[-_]/u.test(node.name) ? hypermdContainerRanges(state, node) : [];
 }
 
 export function discoverInlineSelectionSourceRanges(
 	state: EditorState,
+	requiredRanges?: readonly SelectionRange[],
 ): readonly InlineSelectionSourceRange[] {
-	if (!syntaxTreeAvailable(state, state.doc.length)) return [];
+	const coverage = requiredRanges?.filter((range) => !range.empty);
+	if (coverage?.length === 0) return [];
+	const requiredTo = coverage
+		? Math.max(...coverage.map((range) => range.to))
+		: state.doc.length;
+	if (!syntaxTreeAvailable(state, requiredTo)) return [];
 	const ranges = new Map<string, InlineSelectionSourceRange>();
 	syntaxTree(state).iterate({
 		enter: (ref) => {
@@ -168,7 +240,10 @@ export function discoverInlineSelectionSourceRanges(
 			to: Math.max(previous.to, range.to),
 		};
 	}
-	return nonOverlapping;
+	return coverage
+		? nonOverlapping.filter((range) =>
+			coverage.some((selection) => intersectsSelection(range, selection)))
+		: nonOverlapping;
 }
 
 function intersectsSelection(
@@ -181,8 +256,7 @@ function intersectsSelection(
 function decorationsFor(view: EditorView, active: boolean, owned: boolean): DecorationSet {
 	if (!active || !owned) return Decoration.none;
 	const selections = view.state.selection.ranges.filter((range) => !range.empty);
-	const ranges = discoverInlineSelectionSourceRanges(view.state)
-		.filter((range) => selections.some((selection) => intersectsSelection(range, selection)))
+	const ranges = discoverInlineSelectionSourceRanges(view.state, selections)
 		.map((range) => Decoration.replace({}).range(range.from, range.to));
 	return Decoration.set(ranges, true);
 }
