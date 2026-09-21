@@ -1,61 +1,24 @@
 import {
 	EditorSelection,
-	Prec,
 	type EditorState,
 	type Extension,
 	type SelectionRange,
 } from '@codemirror/state';
 import {
-	Decoration,
 	EditorView,
 	layer,
 	RectangleMarker,
-	ViewPlugin,
-	WidgetType,
-	type DecorationSet,
 	type LayerMarker,
 	type ViewUpdate,
 } from '@codemirror/view';
 import {
 	getStructuredListProjectionState,
 	getStructuredListSelectionTransparentRanges,
-	getStructuredListTaskTokens,
 } from '../structured-list/projection.js';
 import type { SourceRange } from '../structured-list/model.js';
-import { selectionPresentationSession } from '../runtime/selection-session.js';
 import { getParagraphProjectionState } from './projection.js';
 
 const ACTIVE_CLASS = 'paraflow-gap-selection-presentation-active';
-
-class SelectionTaskCheckboxWidget extends WidgetType {
-	constructor(readonly checked: boolean) {
-		super();
-	}
-
-	eq(other: WidgetType): boolean {
-		return other instanceof SelectionTaskCheckboxWidget && other.checked === this.checked;
-	}
-
-	ignoreEvent(): boolean {
-		return true;
-	}
-
-	toDOM(view: EditorView): HTMLElement {
-		const label = view.dom.ownerDocument.createElement('label');
-		label.className = 'task-list-label paraflow-selection-task-label';
-		label.setAttribute('aria-hidden', 'true');
-		label.setAttribute('contenteditable', 'false');
-		const checkbox = view.dom.ownerDocument.createElement('input');
-		checkbox.className = 'task-list-item-checkbox paraflow-selection-task-checkbox';
-		checkbox.type = 'checkbox';
-		checkbox.checked = this.checked;
-		checkbox.tabIndex = -1;
-		checkbox.setAttribute('aria-hidden', 'true');
-		checkbox.setAttribute('contenteditable', 'false');
-		label.append(checkbox);
-		return label;
-	}
-}
 
 export interface GapSelectionPresentationOptions {
 	readonly isActive: (view: EditorView) => boolean;
@@ -184,7 +147,15 @@ function selectionFragmentsFromExclusions(
 	for (const range of ranges) {
 		if (range.empty) continue;
 		let cursor = range.from;
-		for (const exclusion of exclusions) {
+		let low = 0;
+		let high = exclusions.length;
+		while (low < high) {
+			const middle = low + Math.floor((high - low) / 2);
+			if (exclusions[middle]!.to <= cursor) low = middle + 1;
+			else high = middle;
+		}
+		for (let index = low; index < exclusions.length; index += 1) {
+			const exclusion = exclusions[index]!;
 			if (exclusion.to <= cursor) continue;
 			if (exclusion.from >= range.to) break;
 			if (cursor < exclusion.from) {
@@ -196,6 +167,26 @@ function selectionFragmentsFromExclusions(
 		if (cursor < range.to) fragments.push({ from: cursor, to: range.to });
 	}
 	return mergeSourceRanges(fragments).map(({ from, to }) => EditorSelection.range(from, to));
+}
+
+function lineLocalPaintRanges(
+	state: EditorState,
+	fragments: readonly SelectionRange[],
+): readonly SelectionRange[] {
+	const ranges: SelectionRange[] = [];
+	for (const fragment of fragments) {
+		const firstLine = state.doc.lineAt(fragment.from).number;
+		const lastLine = state.doc.lineAt(fragment.to).number;
+		for (let lineNumber = firstLine; lineNumber <= lastLine; lineNumber += 1) {
+			const line = state.doc.line(lineNumber);
+			const from = Math.max(fragment.from, line.from);
+			const to = Math.min(fragment.to, line.to);
+			if (from < to) {
+				ranges.push(EditorSelection.range(from, to));
+			}
+		}
+	}
+	return ranges;
 }
 
 export function selectionSourceFragments(
@@ -210,6 +201,54 @@ export function selectionSourceFragments(
 	);
 }
 
+export function selectionPaintRanges(
+	state: EditorState,
+	ranges: readonly SelectionRange[],
+	structuralGaps: readonly SourceRange[],
+	protectedPrefixes: readonly SourceRange[],
+): readonly SelectionRange[] {
+	return lineLocalPaintRanges(
+		state,
+		selectionFragmentsFromExclusions(
+			ranges,
+			selectionExclusions(state, structuralGaps, protectedPrefixes),
+		),
+	);
+}
+
+function intersectRanges(
+	ranges: readonly SelectionRange[],
+	visibleRanges: readonly SourceRange[],
+): readonly SelectionRange[] {
+	const intersections: SelectionRange[] = [];
+	for (const range of ranges) {
+		if (range.empty) continue;
+		for (const visible of visibleRanges) {
+			if (visible.to <= range.from) continue;
+			if (visible.from >= range.to) break;
+			const from = Math.max(range.from, visible.from);
+			const to = Math.min(range.to, visible.to);
+			if (from < to) intersections.push(EditorSelection.range(from, to));
+		}
+	}
+	return intersections;
+}
+
+export function selectionPaintRangesInVisibleRanges(
+	state: EditorState,
+	ranges: readonly SelectionRange[],
+	visibleRanges: readonly SourceRange[],
+	exclusions: readonly SourceRange[],
+): readonly SelectionRange[] {
+	return lineLocalPaintRanges(
+		state,
+		selectionFragmentsFromExclusions(
+			intersectRanges(ranges, visibleRanges),
+			exclusions,
+		),
+	);
+}
+
 function structuralGaps(state: EditorState): readonly SourceRange[] {
 	return [
 		...(getParagraphProjectionState(state)?.rangeIndex.gaps ?? []),
@@ -217,16 +256,8 @@ function structuralGaps(state: EditorState): readonly SourceRange[] {
 	];
 }
 
-function intersectsExclusion(range: SelectionRange, exclusion: SourceRange): boolean {
-	return range.from < exclusion.to && exclusion.from < range.to;
-}
-
-function ownsSelection(view: EditorView, options: GapSelectionPresentationOptions): boolean {
-	if (!options.isActive(view)) return false;
-	if (!selectionPresentationSession(view.state).owned) return false;
-	const exclusions = selectionPresentationExclusions(view.state);
-	return view.state.selection.ranges.some((range) =>
-		!range.empty && exclusions.some((candidate) => intersectsExclusion(range, candidate)));
+function presentsSelection(view: EditorView, options: GapSelectionPresentationOptions): boolean {
+	return options.isActive(view);
 }
 
 function projectionChanged(update: ViewUpdate): boolean {
@@ -236,62 +267,25 @@ function projectionChanged(update: ViewUpdate): boolean {
 		getStructuredListProjectionState(update.state);
 }
 
-function selectedTaskDecorations(
-	view: EditorView,
-	active: boolean,
-	owned: boolean,
-): DecorationSet {
-	if (!active || !owned) return Decoration.none;
-	const ranges = view.state.selection.ranges.filter(({ empty }) => !empty);
-	if (ranges.length === 0) return Decoration.none;
-	return Decoration.set(getStructuredListTaskTokens(view.state)
-		.filter((token) => ranges.some((range) =>
-			range.from < token.to && token.from < range.to))
-		.map((token) => Decoration.replace({
-			widget: new SelectionTaskCheckboxWidget(token.checked),
-		}).range(token.from, token.to)), true);
-}
-
 export function createGapSelectionPresentation(
 	options: GapSelectionPresentationOptions,
 ): Extension {
-	const taskCheckboxProjection = ViewPlugin.fromClass(class {
-		decorations: DecorationSet;
-		private active: boolean;
-		private owned: boolean;
-
-		constructor(readonly view: EditorView) {
-			this.active = options.isActive(view);
-			this.owned = this.active ? selectionPresentationSession(view.state).owned : false;
-			this.decorations = selectedTaskDecorations(view, this.active, this.owned);
-		}
-
-		update(update: ViewUpdate): void {
-			const active = options.isActive(this.view);
-			const owned = active ? selectionPresentationSession(update.state).owned : false;
-			if (!update.selectionSet && !update.docChanged && !projectionChanged(update) &&
-				active === this.active && owned === this.owned) return;
-			this.active = active;
-			this.owned = owned;
-			this.decorations = selectedTaskDecorations(this.view, active, owned);
-		}
-	}, {
-		decorations: (value) => value.decorations,
-	});
 	return [
 		EditorView.editorAttributes.of((view) => ({
-			class: ownsSelection(view, options) ? ACTIVE_CLASS : '',
+			class: presentsSelection(view, options) ? ACTIVE_CLASS : '',
 		})),
 		layer({
 			above: false,
 			class: 'paraflow-gap-selection-layer',
 			markers(view): readonly LayerMarker[] {
-				if (!ownsSelection(view, options)) return [];
-				const fragments = selectionFragmentsFromExclusions(
+				if (!presentsSelection(view, options)) return [];
+				const paintRanges = selectionPaintRangesInVisibleRanges(
+					view.state,
 					view.state.selection.ranges,
+					view.visibleRanges,
 					selectionPresentationExclusions(view.state),
 				);
-				return fragments.flatMap((fragment) =>
+				return paintRanges.flatMap((fragment) =>
 					RectangleMarker.forRange(view, 'cm-selectionBackground', fragment));
 			},
 			update(update): boolean {
@@ -299,6 +293,5 @@ export function createGapSelectionPresentation(
 					update.geometryChanged || projectionChanged(update);
 			},
 		}),
-		Prec.highest(taskCheckboxProjection),
 	];
 }
