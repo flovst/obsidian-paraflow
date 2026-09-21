@@ -994,6 +994,13 @@
 
 .markdown-source-view.mod-cm6.is-live-preview
 	> .cm-editor.paraflow-structured-list-active
+	.paraflow-selection-task-prefix {
+	display: inline;
+	white-space: pre;
+}
+
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor.paraflow-structured-list-active
 	.paraflow-selection-task-checkbox {
 	pointer-events: none;
 }

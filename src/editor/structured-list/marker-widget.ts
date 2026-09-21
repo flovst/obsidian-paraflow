@@ -109,3 +109,50 @@ export class StructuredListMarkerWidget extends WidgetType {
 		return true;
 	}
 }
+
+export class SelectedTaskPrefixWidget extends WidgetType {
+	constructor(
+		readonly marker: StructuredListMarker,
+		readonly checked: boolean,
+		readonly markerSeparator: string,
+		readonly contentSeparator: string,
+	) {
+		super();
+	}
+
+	eq(other: WidgetType): boolean {
+		return other instanceof SelectedTaskPrefixWidget &&
+			sameMarker(other.marker, this.marker) &&
+			other.checked === this.checked &&
+			other.markerSeparator === this.markerSeparator &&
+			other.contentSeparator === this.contentSeparator;
+	}
+
+	ignoreEvent(): boolean {
+		return true;
+	}
+
+	toDOM(view: EditorView): HTMLElement {
+		const prefix = view.dom.ownerDocument.createElement('span');
+		prefix.className = 'paraflow-selection-task-prefix';
+		prefix.setAttribute('aria-hidden', 'true');
+		prefix.setAttribute('contenteditable', 'false');
+		const marker = view.dom.ownerDocument.createElement('span');
+		updateOwnedMarker(marker, this.marker);
+		const markerSeparator = view.dom.ownerDocument.createElement('span');
+		markerSeparator.className = 'paraflow-selection-task-marker-separator';
+		markerSeparator.textContent = this.markerSeparator;
+		const checkbox = view.dom.ownerDocument.createElement('input');
+		checkbox.className = 'task-list-item-checkbox paraflow-selection-task-checkbox';
+		checkbox.type = 'checkbox';
+		checkbox.checked = this.checked;
+		checkbox.tabIndex = -1;
+		checkbox.setAttribute('aria-hidden', 'true');
+		checkbox.setAttribute('contenteditable', 'false');
+		const contentSeparator = view.dom.ownerDocument.createElement('span');
+		contentSeparator.className = 'paraflow-selection-task-content-separator';
+		contentSeparator.textContent = this.contentSeparator;
+		prefix.append(marker, markerSeparator, checkbox, contentSeparator);
+		return prefix;
+	}
+}
