@@ -692,8 +692,10 @@ function atxHeadingFromLine(
 	if (line.from !== from || line.to !== to) return null;
 	const prefix = /^(#{1,6})(?:[ \t]+|$)/u.exec(line.text);
 	if (!prefix || prefix[1]!.length !== level) return null;
+	const contentFrom = line.from + prefix[0].length;
+	if (state.sliceDoc(contentFrom, line.to).trim().length === 0) return null;
 	return {
-		contentFrom: line.from + prefix[0].length,
+		contentFrom,
 		from: line.from,
 		level: level as AtxHeadingBlock['level'],
 		prefixFrom: line.from,

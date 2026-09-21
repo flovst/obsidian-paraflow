@@ -10,7 +10,7 @@
 	--paraflow-line-height: 1.6;
 	--paraflow-blank-line-height: 0.65em;
 	--paraflow-block-gap: 0.8em;
-	--paraflow-heading-following-gap: 0.8em;
+	--paraflow-heading-following-gap: 0.25em;
 	--paraflow-reading-list-indent: 30px;
 	--paraflow-reading-list-line-height: 1.5;
 	--paraflow-live-list-base-indent: 0.25em;
@@ -560,6 +560,12 @@
 
 .markdown-source-view.mod-cm6.is-live-preview
 	> .cm-editor.paraflow-paragraph-editing-active
+	.paraflow-heading-focused-line {
+	position: relative;
+}
+
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor.paraflow-paragraph-editing-active
 	.paraflow-heading-edit-line {
 	position: relative;
 	color: var(--text-normal) !important;
@@ -606,19 +612,19 @@
 	> .cm-editor.paraflow-paragraph-editing-active
 	.paraflow-heading-badge {
 	position: absolute;
-	inset-inline-start: -34px;
+	inset-inline-end: calc(100% + 4px);
 	inset-block-start: 50%;
 	transform: translateY(-50%);
 	box-sizing: border-box;
-	min-inline-size: 24px;
-	padding: 0 3px;
-	border: 1px solid var(--background-modifier-border);
+	min-inline-size: 20px;
+	padding: 0 2px;
+	border: 1.5px solid var(--background-modifier-border);
 	border-color: color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
 	border-radius: 2px;
 	color: color-mix(in srgb, var(--text-faint) 72%, transparent);
 	font-size: 10px;
 	font-weight: 400;
-	line-height: 14px;
+	line-height: 12px;
 	white-space: nowrap;
 }
 
