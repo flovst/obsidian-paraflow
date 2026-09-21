@@ -110,21 +110,17 @@ export class StructuredListMarkerWidget extends WidgetType {
 	}
 }
 
-export class SelectedTaskPrefixWidget extends WidgetType {
+export class SelectedTaskTokenWidget extends WidgetType {
 	constructor(
-		readonly marker: StructuredListMarker,
 		readonly checked: boolean,
-		readonly markerSeparator: string,
 		readonly contentSeparator: string,
 	) {
 		super();
 	}
 
 	eq(other: WidgetType): boolean {
-		return other instanceof SelectedTaskPrefixWidget &&
-			sameMarker(other.marker, this.marker) &&
+		return other instanceof SelectedTaskTokenWidget &&
 			other.checked === this.checked &&
-			other.markerSeparator === this.markerSeparator &&
 			other.contentSeparator === this.contentSeparator;
 	}
 
@@ -133,15 +129,10 @@ export class SelectedTaskPrefixWidget extends WidgetType {
 	}
 
 	toDOM(view: EditorView): HTMLElement {
-		const prefix = view.dom.ownerDocument.createElement('span');
-		prefix.className = 'paraflow-selection-task-prefix';
-		prefix.setAttribute('aria-hidden', 'true');
-		prefix.setAttribute('contenteditable', 'false');
-		const marker = view.dom.ownerDocument.createElement('span');
-		updateOwnedMarker(marker, this.marker);
-		const markerSeparator = view.dom.ownerDocument.createElement('span');
-		markerSeparator.className = 'paraflow-selection-task-marker-separator';
-		markerSeparator.textContent = this.markerSeparator;
+		const token = view.dom.ownerDocument.createElement('span');
+		token.className = 'paraflow-selection-task-token';
+		token.setAttribute('aria-hidden', 'true');
+		token.setAttribute('contenteditable', 'false');
 		const checkbox = view.dom.ownerDocument.createElement('input');
 		checkbox.className = 'task-list-item-checkbox paraflow-selection-task-checkbox';
 		checkbox.type = 'checkbox';
@@ -152,7 +143,7 @@ export class SelectedTaskPrefixWidget extends WidgetType {
 		const contentSeparator = view.dom.ownerDocument.createElement('span');
 		contentSeparator.className = 'paraflow-selection-task-content-separator';
 		contentSeparator.textContent = this.contentSeparator;
-		prefix.append(marker, markerSeparator, checkbox, contentSeparator);
-		return prefix;
+		token.append(checkbox, contentSeparator);
+		return token;
 	}
 }

@@ -23,7 +23,7 @@ import { buildProjectionContexts } from './context.js';
 import { structuralEditAnnotation } from './edit-plan.js';
 import {
 	markerForProjection,
-	SelectedTaskPrefixWidget,
+	SelectedTaskTokenWidget,
 	StructuredListMarkerWidget,
 	type StructuredListMarker,
 } from './marker-widget.js';
@@ -830,14 +830,15 @@ function selectedTaskDecorations(view: EditorView, active: boolean): DecorationS
 		const token = entry.taskToken;
 		if (!token || !selections.some((selection) =>
 			selection.from < token.to && token.from < selection.to)) return [];
+		const tokenSource = view.state.doc.sliceString(token.from, token.to);
+		const tokenMatch = /^\[([ xX])\]([ \t]+)$/u.exec(tokenSource);
+		if (!tokenMatch) throw new Error('Projected task token must include its content separator');
 		return [Decoration.replace({
-			widget: new SelectedTaskPrefixWidget(
-				entry.marker,
-				/^\[[xX]\]/u.test(view.state.doc.sliceString(token.from, token.to)),
-				view.state.doc.sliceString(entry.replacement.to, token.from),
-				view.state.doc.sliceString(token.to, entry.prefix.to),
+			widget: new SelectedTaskTokenWidget(
+				tokenMatch[1]!.toLowerCase() === 'x',
+				tokenMatch[2]!,
 			),
-		}).range(entry.replacement.from, entry.prefix.to)];
+		}).range(token.from, token.to)];
 	}), true);
 }
 
