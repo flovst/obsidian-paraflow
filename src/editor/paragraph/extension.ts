@@ -136,7 +136,10 @@ export function createParagraphExtension(options: ParagraphExtensionOptions): Ex
 			(view) => isActive(view, options),
 			options.lineBreakMarkersEnabled,
 		),
-		createInlineSelectionProjection((view) => isActive(view, options)),
+		createInlineSelectionProjection((state) => {
+            const identity = state.field(surfaceIdentityField, false);
+            return options.isLivePreview(state) && (identity?.active ?? true);
+        }),
 		createParagraphKeymap(options),
 		createParagraphSelectionProtection({
 			isLivePreview: options.isLivePreview,

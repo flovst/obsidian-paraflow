@@ -10,6 +10,7 @@
 	--paraflow-line-height: 1.6;
 	--paraflow-blank-line-height: 0.65em;
 	--paraflow-block-gap: 0.8em;
+	--paraflow-heading-following-gap: 0.8em;
 	--paraflow-reading-list-indent: 30px;
 	--paraflow-reading-list-line-height: 1.5;
 	--paraflow-live-list-base-indent: 0.25em;
@@ -550,7 +551,6 @@
 	.paraflow-heading-marker {
 	display: inline-block;
 	inline-size: 0;
-	position: relative;
 	block-size: 0;
 	font: inherit;
 	line-height: inherit;
@@ -560,11 +560,57 @@
 
 .markdown-source-view.mod-cm6.is-live-preview
 	> .cm-editor.paraflow-paragraph-editing-active
+	.paraflow-heading-edit-line {
+	position: relative;
+	color: var(--text-normal) !important;
+	font-size: 1em !important;
+	font-weight: 400 !important;
+	line-height: var(--paraflow-line-height) !important;
+}
+
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor.paraflow-paragraph-editing-active
+	.paraflow-heading-edit-line--empty-body,
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor.paraflow-paragraph-editing-active
+	.paraflow-heading-edit-line--active-body {
+	font-weight: 600 !important;
+}
+
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor.paraflow-paragraph-editing-active
+	:is(.paraflow-heading-edit-line--h1, .paraflow-heading-edit-line--h2) {
+	padding-bottom: 0 !important;
+}
+
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor.paraflow-paragraph-editing-active
+	:is(.paraflow-heading-edit-line--h1, .paraflow-heading-edit-line--h2)::after {
+	content: none !important;
+}
+
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor.paraflow-paragraph-editing-active
+	.paraflow-heading-edit-prefix {
+	color: var(--text-faint) !important;
+	font-weight: 400 !important;
+}
+
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor.paraflow-paragraph-editing-active
+	.paraflow-heading-edit-body {
+	font-weight: 600 !important;
+}
+
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor.paraflow-paragraph-editing-active
 	.paraflow-heading-badge {
 	position: absolute;
-	inset-inline-end: 10px;
-	top: 4px;
+	inset-inline-start: -34px;
+	inset-block-start: 50%;
+	transform: translateY(-50%);
 	box-sizing: border-box;
+	min-inline-size: 24px;
 	padding: 0 3px;
 	border: 1px solid var(--background-modifier-border);
 	border-color: color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
@@ -573,27 +619,13 @@
 	font-size: 10px;
 	font-weight: 400;
 	line-height: 14px;
-	visibility: hidden;
 	white-space: nowrap;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
 	> .cm-editor.paraflow-paragraph-editing-active
-	.HyperMD-header-3.cm-active
-	.paraflow-heading-badge,
-.markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-paragraph-editing-active
-	.HyperMD-header-4.cm-active
-	.paraflow-heading-badge,
-.markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-paragraph-editing-active
-	.HyperMD-header-5.cm-active
-	.paraflow-heading-badge,
-.markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-paragraph-editing-active
-	.HyperMD-header-6.cm-active
-	.paraflow-heading-badge {
-	visibility: visible;
+	.paraflow-heading-following-line {
+	padding-block-start: var(--paraflow-heading-following-gap) !important;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
@@ -729,6 +761,64 @@
 	> .paraflow-gap-selection-layer
 	.cm-selectionBackground {
 	background: var(--text-selection);
+	box-shadow:
+		0 -2px 0 var(--text-selection),
+		0 2px 0 var(--text-selection);
+}
+
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor.paraflow-paragraph-editing-active
+	.paraflow-inline-source-active,
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor.paraflow-paragraph-editing-active
+	.paraflow-inline-source-active * {
+	color: var(--text-faint) !important;
+	font-family: inherit !important;
+	font-size: 1em !important;
+	font-style: normal !important;
+	font-weight: 400 !important;
+	line-height: inherit !important;
+	text-decoration: none !important;
+	background: transparent !important;
+	border: 0 !important;
+	border-radius: 0 !important;
+	padding: 0 !important;
+}
+
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor.paraflow-paragraph-editing-active
+	.paraflow-inline-body--highlight {
+	background: var(--text-highlight-bg) !important;
+}
+
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor.paraflow-paragraph-editing-active
+	.paraflow-inline-body--inline-code {
+	background: var(--paraflow-code-background) !important;
+	border: 1px solid var(--background-modifier-border) !important;
+	border-radius: 3px !important;
+	padding: 0 0.2em !important;
+	font-family: var(--font-monospace) !important;
+	font-size: 0.9em !important;
+}
+
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor.paraflow-paragraph-editing-active
+	.paraflow-inline-body--strong {
+	font-weight: 700 !important;
+}
+
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor.paraflow-paragraph-editing-active
+	.paraflow-inline-body--emphasis {
+	font-style: italic !important;
+}
+
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor.paraflow-paragraph-editing-active
+	.paraflow-inline-body--strong-emphasis {
+	font-style: italic !important;
+	font-weight: 700 !important;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
@@ -902,9 +992,6 @@
 	display: none;
 }
 
-.markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-structured-list-active
-	.paraflow-selection-task-label,
 .markdown-source-view.mod-cm6.is-live-preview
 	> .cm-editor.paraflow-structured-list-active
 	.paraflow-selection-task-checkbox {
