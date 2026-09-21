@@ -24,6 +24,14 @@ export default class ParaFlowPlugin extends Plugin {
 	private editorLifecycle: EditorExtensionLifecycle | null = null;
 	private settingsUpdate: Promise<void> = Promise.resolve();
 
+	get disableSelectedTextDrag(): boolean {
+		return this.settings.disableSelectedTextDrag;
+	}
+
+	get editLinksOnPlainClick(): boolean {
+		return this.settings.editLinksOnPlainClick;
+	}
+
 	get paragraphEditingEnabled(): boolean {
 		return this.settings.paragraphEditingEnabled;
 	}
@@ -45,10 +53,12 @@ export default class ParaFlowPlugin extends Plugin {
 			updateOptions: () => this.app.workspace.updateOptions(),
 		}, {
 			navigationCore: () => createEditorRuntimeExtension({
-				isSelectionPresentationActive: (view) =>
-					isParaFlowLivePreview(view.state) && isPrimaryLivePreviewEditor(view),
+				disableSelectedTextDrag: () => this.settings.disableSelectedTextDrag,
+				isSelectionPresentationActive: isPrimaryLivePreviewEditor,
+				isSelectionPresentationStateActive: isParaFlowLivePreview,
 			}),
 			paragraph: () => createParagraphExtension({
+				editLinksOnPlainClick: () => this.settings.editLinksOnPlainClick,
 				isLivePreview: isParaFlowLivePreview,
 				isSurface: isPrimaryLivePreviewEditor,
 				lineBreakMarkersEnabled: () => this.settings.lineBreakMarkersEnabled,
@@ -76,6 +86,36 @@ export default class ParaFlowPlugin extends Plugin {
 			};
 			await this.saveData(nextSettings);
 			lifecycle.setEnabled('paragraph', enabled);
+			this.settings = nextSettings;
+		});
+		this.settingsUpdate = update.catch(() => undefined);
+		await update;
+	}
+
+	async setEditLinksOnPlainClick(enabled: boolean): Promise<void> {
+		const update = this.settingsUpdate.then(async () => {
+			if (!this.editorLifecycle) throw new Error('ParaFlow lifecycle is not initialized');
+			if (enabled === this.settings.editLinksOnPlainClick) return;
+			const nextSettings: ParaFlowSettings = {
+				...this.settings,
+				editLinksOnPlainClick: enabled,
+			};
+			await this.saveData(nextSettings);
+			this.settings = nextSettings;
+		});
+		this.settingsUpdate = update.catch(() => undefined);
+		await update;
+	}
+
+	async setDisableSelectedTextDrag(enabled: boolean): Promise<void> {
+		const update = this.settingsUpdate.then(async () => {
+			if (!this.editorLifecycle) throw new Error('ParaFlow lifecycle is not initialized');
+			if (enabled === this.settings.disableSelectedTextDrag) return;
+			const nextSettings: ParaFlowSettings = {
+				...this.settings,
+				disableSelectedTextDrag: enabled,
+			};
+			await this.saveData(nextSettings);
 			this.settings = nextSettings;
 		});
 		this.settingsUpdate = update.catch(() => undefined);

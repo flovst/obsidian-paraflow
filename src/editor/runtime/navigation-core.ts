@@ -1,8 +1,9 @@
-import { EditorSelection, type Extension } from '@codemirror/state';
+import { EditorSelection, type EditorState, type Extension } from '@codemirror/state';
 import { EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view';
 import { createInputStateExtension } from './input-state.js';
 import { createSelectionPresentationSessionExtension } from './selection-session.js';
 import { createGapSelectionPresentation } from '../paragraph/selection-presentation.js';
+import { createSelectionDragPolicy } from './selection-drag-policy.js';
 
 export type VisualAssociation = -1 | 0 | 1;
 
@@ -128,7 +129,9 @@ export function createVisualNavigationAdapter(view: EditorView): VisualNavigatio
 }
 
 export interface EditorRuntimeExtensionOptions {
+	readonly disableSelectedTextDrag?: () => boolean;
 	readonly isSelectionPresentationActive?: (view: EditorView) => boolean;
+	readonly isSelectionPresentationStateActive?: (state: EditorState) => boolean;
 }
 
 export function createEditorRuntimeExtension(
@@ -137,7 +140,14 @@ export function createEditorRuntimeExtension(
 	return [
 		createInputStateExtension(),
 		createGoalXStoreExtension(),
-		createSelectionPresentationSessionExtension(),
+		createSelectionPresentationSessionExtension({
+			isActiveState: options.isSelectionPresentationStateActive,
+			isActiveView: options.isSelectionPresentationActive,
+		}),
+		createSelectionDragPolicy({
+			disableSelectedTextDrag: options.disableSelectedTextDrag ?? (() => true),
+			isActive: options.isSelectionPresentationActive ?? (() => true),
+		}),
 		createGapSelectionPresentation({
 			isActive: options.isSelectionPresentationActive ?? (() => true),
 		}),

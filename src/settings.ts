@@ -1,10 +1,14 @@
 export interface ParaFlowSettings {
+	disableSelectedTextDrag: boolean;
+	editLinksOnPlainClick: boolean;
 	lineBreakMarkersEnabled: boolean;
 	paragraphEditingEnabled: boolean;
 	structuredListEditingEnabled: boolean;
 }
 
 export const DEFAULT_SETTINGS: ParaFlowSettings = Object.freeze({
+	disableSelectedTextDrag: true,
+	editLinksOnPlainClick: true,
 	lineBreakMarkersEnabled: true,
 	paragraphEditingEnabled: false,
 	structuredListEditingEnabled: false,
@@ -23,7 +27,19 @@ export function normalizeSettings(value: unknown): ParaFlowSettings {
 	const lineBreakMarkersEnabled = 'lineBreakMarkersEnabled' in value
 		? value.lineBreakMarkersEnabled
 		: undefined;
+	const editLinksOnPlainClick = 'editLinksOnPlainClick' in value
+		? value.editLinksOnPlainClick
+		: undefined;
+	const disableSelectedTextDrag = 'disableSelectedTextDrag' in value
+		? value.disableSelectedTextDrag
+		: undefined;
 	return {
+		disableSelectedTextDrag: typeof disableSelectedTextDrag === 'boolean'
+			? disableSelectedTextDrag
+			: DEFAULT_SETTINGS.disableSelectedTextDrag,
+		editLinksOnPlainClick: typeof editLinksOnPlainClick === 'boolean'
+			? editLinksOnPlainClick
+			: DEFAULT_SETTINGS.editLinksOnPlainClick,
 		lineBreakMarkersEnabled: typeof lineBreakMarkersEnabled === 'boolean'
 			? lineBreakMarkersEnabled
 			: DEFAULT_SETTINGS.lineBreakMarkersEnabled,

@@ -4,6 +4,8 @@ import type ParaFlowPlugin from './main.js';
 const STRUCTURED_LIST_DESCRIPTION = 'Affects recognized standard Markdown lists in Live Preview only.';
 const PARAGRAPH_DESCRIPTION = 'Affects parser-confirmed ordinary paragraphs in Live Preview only.';
 const LINE_BREAK_MARKERS_DESCRIPTION = 'Shows muted markers for Markdown hard line breaks and inline HTML breaks in Live Preview.';
+const LINK_CLICK_DESCRIPTION = 'Places the caret and reveals Markdown link source on a plain click. Use Ctrl/Cmd-click to open the link.';
+const TEXT_DRAG_DESCRIPTION = 'Prevents dragging an existing text selection to move it within the editor.';
 
 export class ParaFlowSettingTab extends PluginSettingTab {
 	constructor(private readonly paraFlow: ParaFlowPlugin) {
@@ -35,6 +37,22 @@ export class ParaFlowSettingTab extends PluginSettingTab {
 				.setValue(this.paraFlow.structuredListEditingEnabled)
 				.onChange(async (enabled) => {
 					await this.paraFlow.setStructuredListEditingEnabled(enabled);
+				}));
+		new Setting(this.containerEl)
+			.setName('Edit links on plain click')
+			.setDesc(LINK_CLICK_DESCRIPTION)
+			.addToggle((toggle) => toggle
+				.setValue(this.paraFlow.editLinksOnPlainClick)
+				.onChange(async (enabled) => {
+					await this.paraFlow.setEditLinksOnPlainClick(enabled);
+				}));
+		new Setting(this.containerEl)
+			.setName('Disable selected text dragging')
+			.setDesc(TEXT_DRAG_DESCRIPTION)
+			.addToggle((toggle) => toggle
+				.setValue(this.paraFlow.disableSelectedTextDrag)
+				.onChange(async (enabled) => {
+					await this.paraFlow.setDisableSelectedTextDrag(enabled);
 				}));
 	}
 }

@@ -14,10 +14,12 @@ import { createParagraphSelectionProtection } from './selection-protection.js';
 import { createHeadingProjection } from './heading-projection.js';
 import { createLineBreakProjection } from './line-break-projection.js';
 import { createInlineSelectionProjection } from './inline-selection-projection.js';
+import { createLinkInteraction } from './link-interaction.js';
 
 const PARAGRAPH_ACTIVE_CLASS = 'paraflow-paragraph-editing-active';
 
 export interface ParagraphExtensionOptions extends ParagraphKeymapOptions {
+	readonly editLinksOnPlainClick?: () => boolean;
 	readonly lineBreakMarkersEnabled?: () => boolean;
 }
 
@@ -131,15 +133,28 @@ export function createParagraphExtension(options: ParagraphExtensionOptions): Ex
 			tokenViews,
 		),
 		createParagraphProjection({ isActive: (view) => isActive(view, options) }),
-		createHeadingProjection((view) => isActive(view, options)),
+		createHeadingProjection(
+			(view) => isActive(view, options),
+			(state) => {
+				const identity = state.field(surfaceIdentityField, false);
+				return options.isLivePreview(state) && (identity?.active ?? true);
+			},
+		),
 		createLineBreakProjection(
 			(view) => isActive(view, options),
 			options.lineBreakMarkersEnabled,
 		),
-		createInlineSelectionProjection((state) => {
-            const identity = state.field(surfaceIdentityField, false);
-            return options.isLivePreview(state) && (identity?.active ?? true);
-        }),
+		createInlineSelectionProjection(
+			(state) => {
+				const identity = state.field(surfaceIdentityField, false);
+				return options.isLivePreview(state) && (identity?.active ?? true);
+			},
+			(view) => isActive(view, options),
+		),
+		createLinkInteraction({
+			editLinksOnPlainClick: options.editLinksOnPlainClick ?? (() => true),
+			isActive: (view) => isActive(view, options),
+		}),
 		createParagraphKeymap(options),
 		createParagraphSelectionProtection({
 			isLivePreview: options.isLivePreview,
