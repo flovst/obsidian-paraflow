@@ -8,6 +8,7 @@ import {
 	EditorView,
 	layer,
 	RectangleMarker,
+	ViewPlugin,
 	type LayerMarker,
 	type ViewUpdate,
 } from '@codemirror/view';
@@ -125,18 +126,40 @@ function selectionExclusions(
 	]);
 }
 
-const selectionExclusionsCache = new WeakMap<EditorState, readonly SourceRange[]>();
-
 function selectionPresentationExclusions(state: EditorState): readonly SourceRange[] {
-	const cached = selectionExclusionsCache.get(state);
-	if (cached) return cached;
-	const exclusions = selectionExclusions(
+	return selectionExclusions(
 		state,
 		structuralGaps(state),
 		getStructuredListProjectionState(state)?.rangeIndex.protectedRanges ?? [],
 	);
-	selectionExclusionsCache.set(state, exclusions);
-	return exclusions;
+}
+
+class SelectionExclusionSnapshot {
+	private paragraph = getParagraphProjectionState(this.view.state);
+	private structuredList = getStructuredListProjectionState(this.view.state);
+	ranges = selectionPresentationExclusions(this.view.state);
+
+	constructor(private readonly view: EditorView) {}
+
+	update(update: ViewUpdate): void {
+		const paragraph = getParagraphProjectionState(update.state);
+		const structuredList = getStructuredListProjectionState(update.state);
+		if (!update.docChanged && paragraph === this.paragraph &&
+			structuredList === this.structuredList) return;
+		this.paragraph = paragraph;
+		this.structuredList = structuredList;
+		this.ranges = selectionPresentationExclusions(update.state);
+	}
+}
+
+const selectionExclusionSnapshotPlugin = ViewPlugin.fromClass(SelectionExclusionSnapshot);
+
+export function selectionPresentationExclusionsForView(
+	view: EditorView,
+): readonly SourceRange[] {
+	const snapshot = view.plugin(selectionExclusionSnapshotPlugin);
+	if (!snapshot) throw new Error('Selection exclusion snapshot is not installed');
+	return snapshot.ranges;
 }
 
 function selectionFragmentsFromExclusions(
@@ -271,6 +294,7 @@ export function createGapSelectionPresentation(
 	options: GapSelectionPresentationOptions,
 ): Extension {
 	return [
+		selectionExclusionSnapshotPlugin,
 		EditorView.editorAttributes.of((view) => ({
 			class: presentsSelection(view, options) ? ACTIVE_CLASS : '',
 		})),
@@ -283,7 +307,7 @@ export function createGapSelectionPresentation(
 					view.state,
 					view.state.selection.ranges,
 					view.visibleRanges,
-					selectionPresentationExclusions(view.state),
+					selectionPresentationExclusionsForView(view),
 				);
 				return paintRanges.flatMap((fragment) =>
 					RectangleMarker.forRange(view, 'cm-selectionBackground', fragment));
