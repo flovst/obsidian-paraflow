@@ -978,6 +978,11 @@ function applyProjectionDecision(
 	transaction: Transaction,
 	decision: ProjectionUpdateDecision,
 ): ProjectionFieldState {
+	if (!transaction.docChanged &&
+		value.authority !== null &&
+		decision.analysis === null &&
+		decision.invalidation.kind === 'map-only' &&
+		decision.mappedSyntax === undefined) return value;
 	if (decision.invalidation.kind === 'rebuild-all') {
 		return decision.analysis ? stateFromAnalysis(decision.analysis) : rebuildAll(transaction.state);
 	}
