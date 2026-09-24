@@ -1,4 +1,4 @@
-import { WidgetType, type EditorView } from '@codemirror/view';
+import { WidgetType, type EditorView, type Rect } from '@codemirror/view';
 import type { PrefixPolicy, ProjectionListContext } from './model.js';
 
 export type StructuredListMarkerShape = 'disc' | 'ring' | 'square';
@@ -132,6 +132,17 @@ export class TaskPrefixWidget extends WidgetType {
 		return !FORWARDED_MOUSE_EVENTS.has(event.type);
 	}
 
+	coordsAt(dom: HTMLElement, pos: number, side: number): Rect | null {
+		const prefixRects = dom.getClientRects();
+		const metric = dom.querySelector<HTMLElement>('.paraflow-task-caret-metric');
+		const metricRect = metric?.getBoundingClientRect();
+		if (prefixRects.length === 0 || !metricRect || metricRect.top >= metricRect.bottom) return null;
+		const after = pos > 0 || side > 0;
+		const prefixRect = prefixRects[after ? prefixRects.length - 1 : 0]!;
+		const x = after ? prefixRect.right : prefixRect.left;
+		return { bottom: metricRect.bottom, left: x, right: x, top: metricRect.top };
+	}
+
 	toDOM(view: EditorView): HTMLElement {
 		const prefix = view.dom.ownerDocument.createElement('span');
 		prefix.className = 'paraflow-task-prefix';
@@ -152,7 +163,10 @@ export class TaskPrefixWidget extends WidgetType {
 		separator.className = 'paraflow-task-content-separator';
 		separator.setAttribute('aria-hidden', 'true');
 		separator.textContent = this.contentSeparator;
-		prefix.append(marker, markerSeparator, checkbox, separator);
+		const caretMetric = view.dom.ownerDocument.createElement('span');
+		caretMetric.className = 'paraflow-task-caret-metric';
+		caretMetric.setAttribute('aria-hidden', 'true');
+		prefix.append(marker, markerSeparator, checkbox, separator, caretMetric);
 		return prefix;
 	}
 }
