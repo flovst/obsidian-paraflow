@@ -1,7 +1,9 @@
+import { isolateHistory } from '@codemirror/commands';
 import {
 	Annotation,
 	ChangeSet,
 	StateField,
+	Transaction,
 	type ChangeSpec,
 	type EditorSelection,
 } from '@codemirror/state';
@@ -147,6 +149,14 @@ export const OPERATION_REGION_KINDS = {
 
 export const structuralEditAnnotation = Annotation.define<HandledOperationId>();
 export const structuralExceptionAnnotation = Annotation.define<EditPlan['exceptionId']>();
+
+const enterOperations = new Set<HandledOperationId>([
+	'enter-empty-nested',
+	'enter-empty-top-level',
+	'enter-non-empty',
+	'enter-task-non-empty',
+	'shift-enter',
+]);
 
 export const exceptionSinkStateField = StateField.define<EditPlan['exceptionId']>({
 	create: () => null,
@@ -310,11 +320,15 @@ function dispatchValidatedEditPlan(
 	expectedOperation: HandledOperationId,
 	plan: EditPlan,
 ): void {
+	const historyAnnotations = enterOperations.has(expectedOperation)
+		? [Transaction.userEvent.of('input'), isolateHistory.of('before')]
+		: [];
 	view.dispatch({
 		annotations: [
 			selectionModeAnnotation.of('normal'),
 			structuralEditAnnotation.of(expectedOperation),
 			structuralExceptionAnnotation.of(plan.exceptionId),
+			...historyAnnotations,
 		],
 		changes: plan.changes,
 		scrollIntoView: true,
