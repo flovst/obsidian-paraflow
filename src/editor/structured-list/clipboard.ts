@@ -2,7 +2,7 @@ import type { SelectionContext, SelectionSegment } from './model.js';
 
 function listFamily(segment: SelectionSegment): 'ordered' | 'unordered' | null {
 	if (!segment.prefix) return null;
-	return segment.prefix.kind === 'ordered' ? 'ordered' : 'unordered';
+	return segment.prefix.orderedValue !== null ? 'ordered' : 'unordered';
 }
 
 function serializedSegment(context: SelectionContext, segment: SelectionSegment): string {

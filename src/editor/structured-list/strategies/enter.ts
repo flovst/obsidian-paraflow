@@ -82,7 +82,7 @@ function originalTaskState(context: ListContext): TaskState {
 }
 
 function nextOrderedValue(context: ListContext): number | undefined {
-	if (context.current.prefix.kind !== 'ordered') return undefined;
+	if (context.current.prefix.orderedValue === null) return undefined;
 	const current = context.topology.orderedSequence?.renderedValue ??
 		context.current.prefix.orderedValue;
 	return current === null ? undefined : current + 1;
