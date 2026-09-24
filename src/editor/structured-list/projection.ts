@@ -5,7 +5,6 @@ import {
 	RangeSet,
 	RangeValue,
 	StateField,
-	type EditorSelection,
 	type EditorState,
 	type Extension,
 	type Transaction,
@@ -18,13 +17,12 @@ import {
 	type ViewUpdate,
 } from '@codemirror/view';
 import type { SyntaxNode, Tree } from '@lezer/common';
-import { selectionProjectionCoverage } from '../runtime/selection-session.js';
 import { buildProjectionContexts } from './context.js';
 import { structuralEditAnnotation } from './edit-plan.js';
 import {
 	markerForProjection,
-	SelectedTaskTokenWidget,
 	StructuredListMarkerWidget,
+	TaskPrefixWidget,
 	type StructuredListMarker,
 } from './marker-widget.js';
 import type {
@@ -802,10 +800,12 @@ function ownedLineClass(line: ProjectionOwnedLine): string {
 
 function decorationsFor(entries: readonly ProjectionEntry[]): DecorationSet {
 	const ranges = entries.flatMap((entry) => [
-		Decoration.replace({ widget: entry.widget }).range(
-			entry.replacement.from,
-			entry.replacement.to,
-		),
+		...(entry.taskToken
+			? []
+			: [Decoration.replace({ widget: entry.widget }).range(
+				entry.replacement.from,
+				entry.replacement.to,
+			)]),
 		...(entry.collapsedSeparator
 			? [Decoration.replace({}).range(
 				entry.collapsedSeparator.from,
@@ -818,52 +818,47 @@ function decorationsFor(entries: readonly ProjectionEntry[]): DecorationSet {
 	return Decoration.set(ranges, true);
 }
 
-function selectedTaskDecorations(view: EditorView, active: boolean): DecorationSet {
+function taskPrefixDecorations(view: EditorView, active: boolean): DecorationSet {
 	if (!active) return Decoration.none;
-	const coverage = selectionProjectionCoverage(view.state);
-	if (!coverage) return Decoration.none;
 	const projection = view.state.field(structuredListProjectionField, false);
 	if (!projection?.active) return Decoration.none;
-	const selections = coverage.ranges.filter(({ empty }) => !empty);
-	if (selections.length === 0) return Decoration.none;
 	return Decoration.set(projection.entries.flatMap((entry) => {
 		const token = entry.taskToken;
-		if (!token || !selections.some((selection) =>
-			selection.from < token.to && token.from < selection.to)) return [];
+		if (!token) return [];
 		const tokenSource = view.state.doc.sliceString(token.from, token.to);
 		const tokenMatch = /^\[([ xX])\]([ \t]+)$/u.exec(tokenSource);
 		if (!tokenMatch) throw new Error('Projected task token must include its content separator');
-		return [Decoration.replace({
-			widget: new SelectedTaskTokenWidget(
-				tokenMatch[1]!.toLowerCase() === 'x',
-				tokenMatch[2]!,
-			),
-		}).range(token.from, token.to)];
+		return [
+			Decoration.replace({
+				widget: new TaskPrefixWidget(
+					entry.marker,
+					view.state.doc.sliceString(entry.replacement.to, token.from),
+					tokenMatch[1]!.toLowerCase() === 'x',
+					tokenMatch[2]!,
+				),
+			}).range(entry.replacement.from, token.to),
+		];
 	}), true);
 }
 
-function createSelectedTaskProjection(isActive: (view: EditorView) => boolean): Extension {
+function createTaskPrefixProjection(isActive: (view: EditorView) => boolean): Extension {
 	return Prec.highest(ViewPlugin.fromClass(class {
 		decorations: DecorationSet;
 		private active: boolean;
-		private coverage: EditorSelection | null;
 
 		constructor(readonly view: EditorView) {
 			this.active = isActive(view);
-			this.coverage = this.active ? selectionProjectionCoverage(view.state) : null;
-			this.decorations = selectedTaskDecorations(view, this.active);
+			this.decorations = taskPrefixDecorations(view, this.active);
 		}
 
 		update(update: ViewUpdate): void {
 			const active = isActive(this.view);
-			const coverage = active ? selectionProjectionCoverage(update.state) : null;
 			if (!update.docChanged &&
 				getStructuredListProjectionState(update.startState) ===
 					getStructuredListProjectionState(update.state) &&
-				active === this.active && coverage === this.coverage) return;
+				active === this.active) return;
 			this.active = active;
-			this.coverage = coverage;
-			this.decorations = selectedTaskDecorations(this.view, active);
+			this.decorations = taskPrefixDecorations(this.view, active);
 		}
 	}, {
 		decorations: (value) => value.decorations,
@@ -1096,6 +1091,6 @@ export function createStructuredListProjection(
 		EditorView.atomicRanges.of((view) => isActive(view)
 			? view.state.field(structuredListProjectionField).atomicRanges
 			: RangeSet.empty),
-		createSelectedTaskProjection(isActive),
+		createTaskPrefixProjection(isActive),
 	];
 }

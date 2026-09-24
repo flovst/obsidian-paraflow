@@ -2,12 +2,17 @@ import { syntaxTree, syntaxTreeAvailable } from '@codemirror/language';
 import {
 	EditorSelection,
 	Prec,
-	StateField,
 	type EditorState,
 	type Extension,
 	type SelectionRange,
 } from '@codemirror/state';
-import { Decoration, EditorView, type DecorationSet } from '@codemirror/view';
+import {
+	Decoration,
+	EditorView,
+	ViewPlugin,
+	type DecorationSet,
+	type ViewUpdate,
+} from '@codemirror/view';
 import type { SyntaxNode, Tree } from '@lezer/common';
 import { classifyCurrentSelectionMode } from '../runtime/input-state.js';
 import { selectionProjectionCoverage } from '../runtime/selection-session.js';
@@ -41,15 +46,6 @@ export interface InlineSemanticConstruct {
 interface SourceSpan {
 	readonly from: number;
 	readonly to: number;
-}
-
-interface ProjectionState {
-	readonly active: boolean;
-	readonly coverage: EditorSelection | null;
-	readonly decorations: DecorationSet;
-	readonly mode: ReturnType<typeof classifyCurrentSelectionMode>;
-	readonly selection: EditorSelection;
-	readonly tree: Tree;
 }
 
 interface DiscoveryContext {
@@ -952,103 +948,87 @@ export function inlineSemanticConstructAt(
 	);
 }
 
-function selectionDecorations(
-	state: EditorState,
-	coverage: EditorSelection,
-): DecorationSet {
-	const selections = coverage.ranges.filter((range) => !range.empty);
-	const ranges = discoverInlineSelectionSourceRanges(state, selections)
-		.map((range) => Decoration.replace({}).range(range.from, range.to));
-	return Decoration.set(ranges, true);
+function bodyDecorations(item: InlineSemanticConstruct): ReturnType<Decoration['range']>[] {
+	let from = item.editFrom;
+	const body: ReturnType<Decoration['range']>[] = [];
+	for (const range of [...item.sourceRanges].sort((left, right) =>
+		left.from - right.from || left.to - right.to)) {
+		const to = Math.max(from, Math.min(range.from, item.editTo));
+		if (from < to) {
+			body.push(Decoration.mark({
+				class: `${INLINE_BODY_CLASS} ${INLINE_BODY_CLASS}--${item.kind}`,
+			}).range(from, to));
+		}
+		from = Math.max(from, Math.min(range.to, item.editTo));
+	}
+	if (from < item.editTo) {
+		body.push(Decoration.mark({
+			class: `${INLINE_BODY_CLASS} ${INLINE_BODY_CLASS}--${item.kind}`,
+		}).range(from, item.editTo));
+	}
+	return body;
 }
 
-function caretDecorations(state: EditorState): DecorationSet {
-	if (classifyCurrentSelectionMode(state) !== 'caret') return Decoration.none;
-	const caret = state.selection.main;
-	const constructs = discoverInlineSemanticConstructs(state, [caret]);
-	const active = touchingConstruct(constructs, caret.head);
+function projectionDecorations(
+	state: EditorState,
+	visibleRanges: readonly { readonly from: number; readonly to: number }[],
+	coverage: EditorSelection | null,
+): DecorationSet {
+	const visibleSelections = visibleRanges.map(({ from, to }) => EditorSelection.range(from, to));
+	const constructs = discoverInlineSemanticConstructs(state, visibleSelections);
+	const hasSelection = coverage?.ranges.some((range) => !range.empty) ?? false;
+	const caret = !hasSelection && classifyCurrentSelectionMode(state) === 'caret'
+		? state.selection.main
+		: null;
+	const active = caret ? touchingConstruct(constructs, caret.head) : null;
 	const ranges = constructs.flatMap((item) => {
 		const source = item.sourceRanges.map((range) =>
 			(item === active
 				? Decoration.mark({ class: ACTIVE_INLINE_SOURCE_CLASS })
 				: Decoration.replace({}))
 				.range(range.from, range.to));
-		if (item !== active) return source;
-		let from = item.editFrom;
-		const body: ReturnType<Decoration['range']>[] = [];
-		for (const range of [...item.sourceRanges].sort((left, right) =>
-			left.from - right.from || left.to - right.to)) {
-			const to = Math.max(from, Math.min(range.from, item.editTo));
-			if (from < to) {
-				body.push(Decoration.mark({
-					class: `${INLINE_BODY_CLASS} ${INLINE_BODY_CLASS}--${item.kind}`,
-				}).range(from, to));
-			}
-			from = Math.max(from, Math.min(range.to, item.editTo));
-		}
-		if (from < item.editTo) {
-			body.push(Decoration.mark({
-				class: `${INLINE_BODY_CLASS} ${INLINE_BODY_CLASS}--${item.kind}`,
-			}).range(from, item.editTo));
-		}
-		return [...source, ...body];
+		return [...source, ...bodyDecorations(item)];
 	});
 	return Decoration.set(ranges, true);
-}
-
-function decorationsFor(
-	state: EditorState,
-	active: boolean,
-	coverage: EditorSelection | null,
-): DecorationSet {
-	if (!active) return Decoration.none;
-	if (coverage?.ranges.some((range) => !range.empty)) {
-		return selectionDecorations(state, coverage);
-	}
-	return caretDecorations(state);
-}
-
-function createProjectionState(
-	state: EditorState,
-	isActive: (state: EditorState) => boolean,
-): ProjectionState {
-	const active = isActive(state);
-	const coverage = active ? selectionProjectionCoverage(state) : null;
-	const mode = active ? classifyCurrentSelectionMode(state) : 'unknown';
-	return {
-		active,
-		coverage,
-		decorations: decorationsFor(state, active, coverage),
-		mode,
-		selection: state.selection,
-		tree: syntaxTree(state),
-	};
 }
 
 export function createInlineSelectionProjection(
 	isStateActive: (state: EditorState) => boolean,
 	isViewActive: (view: EditorView) => boolean = () => true,
 ): Extension {
-	const projectionField = StateField.define<ProjectionState>({
-		create(state) {
-			return createProjectionState(state, isStateActive);
-		},
-		update(value, transaction) {
-			const active = isStateActive(transaction.state);
-			const coverage = active ? selectionProjectionCoverage(transaction.state) : null;
-			const mode = active ? classifyCurrentSelectionMode(transaction.state) : 'unknown';
-			const tree = syntaxTree(transaction.state);
-			if (!transaction.docChanged && active === value.active && coverage === value.coverage &&
-				mode === value.mode && tree === value.tree &&
-				transaction.state.selection.eq(value.selection)) return value;
-			return createProjectionState(transaction.state, isStateActive);
-		},
-	});
-	return [
-		projectionField,
-		Prec.highest(EditorView.decorations.of((view) =>
-			isViewActive(view)
-				? view.state.field(projectionField).decorations
-				: Decoration.none)),
-	];
+	return Prec.highest(ViewPlugin.fromClass(class {
+		decorations: DecorationSet;
+		private active: boolean;
+
+		constructor(private readonly view: EditorView) {
+			this.active = this.isActive();
+			this.decorations = this.build(this.active);
+		}
+
+		update(update: ViewUpdate): void {
+			const active = this.isActive();
+			if (!update.docChanged && !update.selectionSet && !update.viewportChanged &&
+				active === this.active &&
+				syntaxTree(update.startState) === syntaxTree(update.state) &&
+				selectionProjectionCoverage(update.startState) ===
+					selectionProjectionCoverage(update.state)) return;
+			this.active = active;
+			this.decorations = this.build(active);
+		}
+
+		private isActive(): boolean {
+			return isStateActive(this.view.state) && isViewActive(this.view);
+		}
+
+		private build(active: boolean): DecorationSet {
+			if (!active) return Decoration.none;
+			return projectionDecorations(
+				this.view.state,
+				this.view.visibleRanges,
+				selectionProjectionCoverage(this.view.state),
+			);
+		}
+	}, {
+		decorations: (value) => value.decorations,
+	}));
 }
