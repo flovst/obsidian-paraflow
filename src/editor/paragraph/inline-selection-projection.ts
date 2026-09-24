@@ -969,13 +969,19 @@ function bodyDecorations(item: InlineSemanticConstruct): ReturnType<Decoration['
 	return body;
 }
 
+function hasLineLocalSourceRanges(state: EditorState, item: InlineSemanticConstruct): boolean {
+	return item.sourceRanges.every(({ from, to }) =>
+		state.doc.lineAt(from).number === state.doc.lineAt(to).number);
+}
+
 function projectionDecorations(
 	state: EditorState,
 	visibleRanges: readonly { readonly from: number; readonly to: number }[],
 	coverage: EditorSelection | null,
 ): DecorationSet {
 	const visibleSelections = visibleRanges.map(({ from, to }) => EditorSelection.range(from, to));
-	const constructs = discoverInlineSemanticConstructs(state, visibleSelections);
+	const constructs = discoverInlineSemanticConstructs(state, visibleSelections)
+		.filter((item) => hasLineLocalSourceRanges(state, item));
 	const hasSelection = coverage?.ranges.some((range) => !range.empty) ?? false;
 	const caret = !hasSelection && classifyCurrentSelectionMode(state) === 'caret'
 		? state.selection.main
