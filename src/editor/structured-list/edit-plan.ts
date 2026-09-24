@@ -351,6 +351,19 @@ export function dispatchEditPlan(
 	dispatchValidatedEditPlan(view, expectedOperation, plan);
 }
 
+export function dispatchTaskCheckboxToggle(view: EditorView, tokenFrom: number): void {
+	const token = view.state.doc.sliceString(tokenFrom, tokenFrom + 3);
+	if (!/^\[[ xX]\]$/u.test(token)) return;
+	view.dispatch({
+		annotations: [Transaction.userEvent.of('input'), isolateHistory.of('full')],
+		changes: {
+			from: tokenFrom + 1,
+			to: tokenFrom + 2,
+			insert: token[1]?.toLowerCase() === 'x' ? ' ' : 'x',
+		},
+	});
+}
+
 function applyClipboardResult(
 	view: EditorView,
 	expectedOperation: HandledOperationId,

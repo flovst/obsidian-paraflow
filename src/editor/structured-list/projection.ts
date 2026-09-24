@@ -835,6 +835,7 @@ function taskPrefixDecorations(view: EditorView, active: boolean): DecorationSet
 					view.state.doc.sliceString(entry.replacement.to, token.from),
 					tokenMatch[1]!.toLowerCase() === 'x',
 					tokenMatch[2]!,
+					token.from,
 				),
 			}).range(entry.replacement.from, token.to),
 		];
@@ -863,6 +864,63 @@ function createTaskPrefixProjection(isActive: (view: EditorView) => boolean): Ex
 	}, {
 		decorations: (value) => value.decorations,
 	}));
+}
+
+function createTaskContentCaret(isActive: (view: EditorView) => boolean): Extension {
+	return ViewPlugin.fromClass(class {
+		private readonly caret: HTMLElement;
+		private readonly onScroll = (): void => this.schedule();
+
+		constructor(readonly view: EditorView) {
+			this.caret = view.dom.ownerDocument.createElement('span');
+			this.caret.className = 'paraflow-task-content-caret';
+			this.caret.setAttribute('aria-hidden', 'true');
+			view.dom.append(this.caret);
+			view.scrollDOM.addEventListener('scroll', this.onScroll);
+			this.schedule();
+		}
+
+		update(update: ViewUpdate): void {
+			if (update.selectionSet || update.docChanged || update.focusChanged ||
+				update.viewportChanged || update.geometryChanged) this.schedule();
+		}
+
+		private schedule(): void {
+			this.view.requestMeasure({
+				read: () => {
+					const selection = this.view.state.selection;
+					const head = selection.main.head;
+					if (!isActive(this.view) || !this.view.hasFocus ||
+						selection.ranges.length !== 1 || !selection.main.empty ||
+						!getStructuredListTaskTokens(this.view.state).some((token) => token.to === head)) {
+						return null;
+					}
+					const position = this.view.coordsAtPos(head);
+					if (!position) return null;
+					const editor = this.view.dom.getBoundingClientRect();
+					return {
+						height: position.bottom - position.top,
+						left: position.left - editor.left,
+						top: position.top - editor.top,
+					};
+				},
+				write: (position) => {
+					const visible = position !== null && position.height > 0;
+					this.view.dom.classList.toggle('paraflow-task-content-caret-active', visible);
+					if (!visible) return;
+					this.caret.style.height = `${position.height}px`;
+					this.caret.style.left = `${position.left}px`;
+					this.caret.style.top = `${position.top}px`;
+				},
+			});
+		}
+
+		destroy(): void {
+			this.view.scrollDOM.removeEventListener('scroll', this.onScroll);
+			this.view.dom.classList.remove('paraflow-task-content-caret-active');
+			this.caret.remove();
+		}
+	});
 }
 
 function rangeIndexFor(entries: readonly ProjectionEntry[]): StructuredListRangeIndex {
@@ -973,16 +1031,24 @@ function mapOnlyProjectionState(
 	);
 }
 
+function canReuseProjectionState(
+	value: ProjectionFieldState,
+	transaction: Transaction,
+	decision: ProjectionUpdateDecision,
+): boolean {
+	return !transaction.docChanged &&
+		value.authority !== null &&
+		decision.analysis === null &&
+		decision.invalidation.kind === 'map-only' &&
+		decision.mappedSyntax === undefined;
+}
+
 function applyProjectionDecision(
 	value: ProjectionFieldState,
 	transaction: Transaction,
 	decision: ProjectionUpdateDecision,
 ): ProjectionFieldState {
-	if (!transaction.docChanged &&
-		value.authority !== null &&
-		decision.analysis === null &&
-		decision.invalidation.kind === 'map-only' &&
-		decision.mappedSyntax === undefined) return value;
+	if (canReuseProjectionState(value, transaction, decision)) return value;
 	if (decision.invalidation.kind === 'rebuild-all') {
 		return decision.analysis ? stateFromAnalysis(decision.analysis) : rebuildAll(transaction.state);
 	}
@@ -1097,5 +1163,6 @@ export function createStructuredListProjection(
 			? view.state.field(structuredListProjectionField).atomicRanges
 			: RangeSet.empty),
 		createTaskPrefixProjection(isActive),
+		createTaskContentCaret(isActive),
 	];
 }

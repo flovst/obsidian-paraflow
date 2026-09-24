@@ -134,6 +134,20 @@ function hypermdDelimitedBoundaries(state: EditorState): readonly TopLevelBlockB
 			}
 		},
 	});
+	if (mathStartLine !== null) {
+		boundaries.push({
+			from: state.doc.line(mathStartLine).from,
+			kind: 'math-block',
+			to: state.doc.length,
+		});
+	}
+	if (htmlStartLine !== null) {
+		boundaries.push({
+			from: state.doc.line(htmlStartLine).from,
+			kind: 'html-block',
+			to: state.doc.length,
+		});
+	}
 	return boundaries;
 }
 

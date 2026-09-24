@@ -1,4 +1,5 @@
 import { WidgetType, type EditorView, type Rect } from '@codemirror/view';
+import { dispatchTaskCheckboxToggle } from './edit-plan.js';
 import type { PrefixPolicy, ProjectionListContext } from './model.js';
 
 export type StructuredListMarkerShape = 'disc' | 'ring' | 'square';
@@ -110,12 +111,26 @@ export class StructuredListMarkerWidget extends WidgetType {
 	}
 }
 
+function taskCaretMetricRect(dom: HTMLElement): DOMRect | null {
+	const metric = dom.querySelector<HTMLElement>('.paraflow-task-caret-metric');
+	const rect = metric?.getBoundingClientRect();
+	return rect && rect.top < rect.bottom ? rect : null;
+}
+
+function taskPrefixBoundaryX(dom: HTMLElement, after: boolean): number | null {
+	const rects = dom.getClientRects();
+	const rect = rects[after ? rects.length - 1 : 0];
+	if (!rect) return null;
+	return after ? rect.right : rect.left;
+}
+
 export class TaskPrefixWidget extends WidgetType {
 	constructor(
 		readonly marker: StructuredListMarker,
 		readonly markerSeparator: string,
 		readonly checked: boolean,
 		readonly contentSeparator: string,
+		readonly taskTokenFrom: number,
 	) {
 		super();
 	}
@@ -125,7 +140,8 @@ export class TaskPrefixWidget extends WidgetType {
 			sameMarker(other.marker, this.marker) &&
 			other.markerSeparator === this.markerSeparator &&
 			other.checked === this.checked &&
-			other.contentSeparator === this.contentSeparator;
+			other.contentSeparator === this.contentSeparator &&
+			other.taskTokenFrom === this.taskTokenFrom;
 	}
 
 	ignoreEvent(event: Event): boolean {
@@ -133,13 +149,10 @@ export class TaskPrefixWidget extends WidgetType {
 	}
 
 	coordsAt(dom: HTMLElement, pos: number, side: number): Rect | null {
-		const prefixRects = dom.getClientRects();
-		const metric = dom.querySelector<HTMLElement>('.paraflow-task-caret-metric');
-		const metricRect = metric?.getBoundingClientRect();
-		if (prefixRects.length === 0 || !metricRect || metricRect.top >= metricRect.bottom) return null;
 		const after = pos > 0 || side > 0;
-		const prefixRect = prefixRects[after ? prefixRects.length - 1 : 0]!;
-		const x = after ? prefixRect.right : prefixRect.left;
+		const metricRect = taskCaretMetricRect(dom);
+		const x = taskPrefixBoundaryX(dom, after);
+		if (!metricRect || x === null) return null;
 		return { bottom: metricRect.bottom, left: x, right: x, top: metricRect.top };
 	}
 
@@ -159,6 +172,11 @@ export class TaskPrefixWidget extends WidgetType {
 		checkbox.checked = this.checked;
 		checkbox.tabIndex = -1;
 		checkbox.dataset.task = this.checked ? 'x' : '';
+		checkbox.addEventListener('click', (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+			dispatchTaskCheckboxToggle(view, this.taskTokenFrom);
+		});
 		const separator = view.dom.ownerDocument.createElement('span');
 		separator.className = 'paraflow-task-content-separator';
 		separator.setAttribute('aria-hidden', 'true');
