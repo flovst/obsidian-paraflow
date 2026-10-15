@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import esbuild from 'esbuild';
 import process from 'process';
 import { builtinModules } from 'node:module';
@@ -15,6 +16,7 @@ const context = await esbuild.context({
 		js: banner,
 	},
 	entryPoints: ['src/main.ts'],
+	define: { __PARAFLOW_CLASSIC_CSS__: JSON.stringify(readFileSync('themes/builtin-classic/theme.css', 'utf8')) },
 	bundle: true,
 	external: [
 		'obsidian',
@@ -30,7 +32,6 @@ const context = await esbuild.context({
 		'@lezer/common',
 		'@lezer/highlight',
 		'@lezer/lr',
-		'@lezer/markdown',
 		...builtinModules,
 	],
 	format: 'cjs',

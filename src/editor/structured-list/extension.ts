@@ -1,4 +1,7 @@
+import { structuredListBaseTheme } from '../../themes/base-styles.js';
+import { syntaxTreeAvailable } from '@codemirror/language';
 import {
+	EditorSelection,
 	StateEffect,
 	StateField,
 	type EditorState,
@@ -6,7 +9,7 @@ import {
 	type StateEffectType,
 } from '@codemirror/state';
 import { EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view';
-import { classifyCurrentSelectionMode } from '../runtime/input-state.js';
+import { classifyCurrentSelectionMode, requireCompositionState, selectionModeAnnotation } from '../runtime/input-state.js';
 import {
 	createVisualNavigationAdapter,
 	requireGoalXStore,
@@ -38,7 +41,9 @@ import {
 	createStructuredListProjection,
 	getStructuredListProjectionState,
 } from './projection.js';
-import { createSelectionProtection } from './selection-protection.js';
+import { createSelectionProtection, normalizeStructuredListCaretEndpoint } from './selection-protection.js';
+import { discoverListItem } from './syntax.js';
+import { createListBodyPrefixMaintenance } from './body-prefix.js';
 
 export { exceptionSinkStateField } from './edit-plan.js';
 
@@ -82,6 +87,76 @@ function removeStateView(
 	});
 }
 
+function activationCaretEligible(view: EditorView): boolean {
+	if (view.composing || requireCompositionState(view.state)) return false;
+	if (view.state.selection.ranges.length !== 1 || !view.state.selection.main.empty) return false;
+	return ['unknown', 'caret'].includes(classifyCurrentSelectionMode(view.state));
+}
+
+function normalizedActivationCaret(state: EditorState): EditorSelection | undefined {
+	const range = state.selection.main;
+	const position = normalizeStructuredListCaretEndpoint(state, range.head, range.assoc < 0 ? -1 : 1);
+	if (position === range.head) {
+		return classifyCurrentSelectionMode(state) === 'unknown' && discoverListItem(state, range.head)
+			? state.selection : undefined;
+	}
+	return EditorSelection.create([EditorSelection.cursor(
+		position, 1, range.bidiLevel ?? undefined, range.goalColumn,
+	)]);
+}
+
+class ActivationCaret {
+	private pending: EditorSelection | null;
+	private destroyed = false;
+
+	constructor(private readonly view: EditorView, active: boolean) {
+		this.pending = active ? view.state.selection : null;
+	}
+
+	destroy(): void {
+		this.pending = null;
+		this.destroyed = true;
+	}
+
+	update(update: ViewUpdate, active: boolean, wasActive: boolean): void {
+		if (!active || !activationCaretEligible(this.view)) {
+			this.pending = null;
+			return;
+		}
+		if (!wasActive) {
+			this.pending = update.state.selection;
+			this.schedule();
+			return;
+		}
+		if (!this.pending) return;
+		if (update.docChanged || update.selectionSet) {
+			this.pending = null;
+			return;
+		}
+		if (syntaxTreeAvailable(update.state, update.state.doc.lineAt(this.pending.main.head).to)) this.schedule();
+	}
+
+	takeSelection(): EditorSelection | undefined {
+		if (!this.pending) return undefined;
+		const state = this.view.state;
+		if (!activationCaretEligible(this.view) || !state.selection.eq(this.pending, true)) {
+			this.pending = null;
+			return undefined;
+		}
+		if (!syntaxTreeAvailable(state, state.doc.lineAt(this.pending.main.head).to)) return undefined;
+		this.pending = null;
+		return normalizedActivationCaret(state);
+	}
+
+	private schedule(): void {
+		void Promise.resolve().then(() => {
+			if (this.destroyed) return;
+			const selection = this.takeSelection();
+			if (selection) this.view.dispatch({ selection, annotations: selectionModeAnnotation.of('normal') });
+		});
+	}
+}
+
 function createActivationExtension(
 	options: StructuredListExtensionOptions,
 	stateViews: Map<EditorState, StateViewCounts>,
@@ -98,10 +173,12 @@ function createActivationExtension(
 			private destroyed = false;
 			private readonly identity = {};
 			private state: EditorState;
+			private readonly caret: ActivationCaret;
 
 			constructor(private readonly view: EditorView) {
 				this.active = isActive(view, options);
 				this.state = view.state;
+				this.caret = new ActivationCaret(view, this.active);
 				addStateView(stateViews, this.state, this.active);
 				this.syncIdentityActivity();
 				// CodeMirror forbids dispatch during ViewPlugin construction.
@@ -110,21 +187,28 @@ function createActivationExtension(
 
 			destroy(): void {
 				this.destroyed = true;
+				this.caret.destroy();
 				removeStateView(stateViews, this.state, this.active);
 				activeIdentities.delete(this.identity);
 			}
 
 			update(update: ViewUpdate): void {
+				const wasActive = this.active;
 				removeStateView(stateViews, this.state, this.active);
 				this.active = isActive(this.view, options);
 				this.state = update.state;
 				addStateView(stateViews, this.state, this.active);
 				this.syncIdentityActivity();
+				this.caret.update(update, this.active, wasActive);
 			}
 
 			private installIdentity(): void {
 				if (this.destroyed || this.view.state.field(identityField, false) === undefined) return;
-				this.view.dispatch({ effects: setIdentity.of(this.identity) });
+				const selection = this.caret.takeSelection();
+				this.view.dispatch({
+					effects: setIdentity.of(this.identity), selection,
+					annotations: selection ? selectionModeAnnotation.of('normal') : undefined,
+				});
 			}
 
 			private syncIdentityActivity(): void {
@@ -349,6 +433,7 @@ export function createStructuredListExtension(
 			options.isLivePreview(state) && activeIdentities.has(identity);
 	};
 	return [
+		structuredListBaseTheme,
 		identityField,
 		createActivationExtension(
 			options,
@@ -365,6 +450,7 @@ export function createStructuredListExtension(
 		createMouseComposition(options),
 		createClipboardExtension(options),
 		createSelectionProtection({ isLivePreview: isActiveState }),
+		createListBodyPrefixMaintenance(isActiveState),
 		exceptionSinkStateField,
 	];
 }

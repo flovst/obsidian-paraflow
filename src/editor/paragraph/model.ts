@@ -5,6 +5,7 @@ export interface ParagraphBlock {
 
 export type TopLevelBlockBoundaryKind =
 	| 'paragraph'
+	| 'media'
 	| 'heading'
 	| 'list-item'
 	| 'separatorless-list-literal'
@@ -12,6 +13,7 @@ export type TopLevelBlockBoundaryKind =
 	| 'code-block'
 	| 'table'
 	| 'thematic-break'
+	| 'footnote-definition'
 	| 'math-block'
 	| 'html-block';
 
@@ -59,6 +61,14 @@ const blockCapabilities: Readonly<Record<
 		containment: 'leaf', gapBoundary: true,
 		paragraphEnter: false, verticalEntry: 'host', verticalNavigation: 'host',
 	}),
+	media: Object.freeze({
+		containment: 'leaf', gapBoundary: true,
+		paragraphEnter: false, verticalEntry: 'host', verticalNavigation: 'host',
+	}),
+	'footnote-definition': Object.freeze({
+		containment: 'container', gapBoundary: true,
+		paragraphEnter: false, verticalEntry: 'host', verticalNavigation: 'host',
+	}),
 	'math-block': Object.freeze({
 		containment: 'container', gapBoundary: true,
 		paragraphEnter: false, verticalEntry: 'host', verticalNavigation: 'host',
@@ -77,6 +87,15 @@ export function capabilitiesForTopLevelBlock(
 
 export interface TopLevelBlockBoundary extends ParagraphBlock {
 	readonly kind: TopLevelBlockBoundaryKind;
+	readonly headingLevel?: 1 | 2 | 3 | 4 | 5 | 6;
+}
+
+/** Visual families survive projection so each block can supply its own edge tokens. */
+export function paragraphBoundaryTag(block: TopLevelBlockBoundary | undefined): string {
+	if (!block) return 'block';
+	if (block.kind === 'paragraph') return 'p';
+	if (block.kind === 'heading') return `h${block.headingLevel!}`;
+	return block.kind;
 }
 
 export interface AtxHeadingBlock extends ParagraphBlock {
@@ -84,6 +103,16 @@ export interface AtxHeadingBlock extends ParagraphBlock {
 	readonly level: 1 | 2 | 3 | 4 | 5 | 6;
 	readonly prefixFrom: number;
 	readonly prefixTo: number;
+}
+
+export interface SetextHeadingBlock extends ParagraphBlock {
+	readonly contentFrom: number;
+	readonly contentTo: number;
+	readonly level: 1 | 2;
+	readonly underlineFrom: number;
+	readonly underlineTo: number;
+	readonly topLevel: boolean;
+	readonly lines: readonly { readonly from: number; readonly contentFrom: number; readonly to: number }[];
 }
 
 export interface ParagraphGap {
@@ -111,4 +140,15 @@ export interface ParagraphAuthority {
 	readonly paragraphs: readonly ParagraphBlock[];
 	readonly boundaries: readonly ParagraphBlock[];
 	readonly runs: readonly ParagraphRun[];
+}
+
+/** Editable empty bodies delimit ordinary paragraphs within a multi-gap run. */
+export function paragraphGapTags(blocks: readonly TopLevelBlockBoundary[], run: ParagraphRun):
+	(position: number) => { before: string; after: string } {
+	const before = paragraphBoundaryTag(blocks.find(block => block.to === run.from));
+	const after = paragraphBoundaryTag(blocks.find(block => block.from === run.to));
+	const editable = run.rows.filter(row => row.kind === 'editable');
+	const first = editable[0]?.at ?? Infinity;
+	const last = editable.at(-1)?.at ?? -Infinity;
+	return position => ({ before: first <= position ? 'p' : before, after: last > position ? 'p' : after });
 }

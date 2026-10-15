@@ -9,6 +9,7 @@ import type {
 	BoundaryAnchor,
 } from '../model.js';
 import type { ExecutionFor, OperationResult } from '../operations.js';
+import { markdownColumns } from '../prefix.js';
 import {
 	composeEditPlan,
 	convertItemToParagraph,
@@ -63,6 +64,7 @@ function validOperation<K extends BackspaceOperation>(
 ): boolean {
 	return execution.intent.operation === operation &&
 		execution.intent.direction === 'backward' &&
+		execution.context.caretContent.kind === 'marker-line' &&
 		execution.context.editScope.operation === operation;
 }
 
@@ -430,8 +432,10 @@ function nonEmptyPlan(
 	const before = prerequisites.boundaries.preceding;
 	if (!matchesNonEmptyTopology(execution, before)) return null;
 	const reclassified = hasTopLevelReclassification(execution.context, before);
-	const effectiveDelta = desiredIndent(execution.context, reclassified).length -
-		(execution.context.current.content.from - execution.context.current.lineFrom);
+	const effectiveDelta = markdownColumns(desiredIndent(execution.context, reclassified)) -
+		markdownColumns(execution.context.source.slice({
+			from: execution.context.current.lineFrom, to: execution.context.current.prefix.outerMarker.to,
+		}));
 	const boundaryFragments = forwardBoundaryFragments(
 		execution,
 		prerequisites.boundaries,
@@ -487,14 +491,36 @@ function emptyTopLevelReplacement(context: ListContext): EmptyReplacement {
 	if (context.topology.atDocumentEnd) {
 		return { caretOffset: desired.length + 1, text: `\n${desired}` };
 	}
-	return { caretOffset: desired.length + 1, text: `\n${desired}\n` };
+	const following = context.topology.whitespaceBoundaries.find(boundary =>
+		boundary.fromAnchor === 'current-marker-line' && boundary.toAnchor === 'following-block');
+	const existingSeparator = following !== undefined && /\n[ \t]*\n/u.test(context.source.slice(following.range));
+	return { caretOffset: desired.length + 1, text: `\n${desired}${existingSeparator ? '' : '\n'}` };
 }
 
 function emptyOwnedIndentDelta(context: ListContext): number {
 	const firstOwned = context.topology.ownedBlocks[0];
-	if (firstOwned) return physicalIndent(context).length - firstOwned.indentText.length;
-	return paragraphIndent(context.topology.precedingContainer).length -
-		(context.current.content.from - context.current.lineFrom);
+	if (firstOwned) return markdownColumns(physicalIndent(context)) - markdownColumns(firstOwned.indentText);
+	return markdownColumns(paragraphIndent(context.topology.precedingContainer)) -
+		markdownColumns(context.source.slice({ from: context.current.lineFrom, to: context.current.content.from }));
+}
+
+function reuseNestedEmptySeparators(context: ListContext, replacement: EmptyReplacement): EmptyReplacement {
+	const indent = physicalIndent(context);
+	const lineFrom = context.current.lineFrom;
+	const lineTo = context.current.markerLine.to;
+	const previousFrom = context.source.text.lastIndexOf('\n', lineFrom - 2) + 1;
+	const nextTo = context.source.text.indexOf('\n', lineTo + 1);
+	const before = context.source.slice({ from: previousFrom, to: lineFrom });
+	const after = context.source.slice({ from: lineTo, to: nextTo < 0 ? context.source.length : nextTo + 1 });
+	const leading = `${indent}\n`;
+	const trailing = `\n${indent}`;
+	if (/^[ \t]*\n$/u.test(before) && replacement.text.startsWith(leading)) {
+		replacement = { text: replacement.text.slice(leading.length), caretOffset: replacement.caretOffset - leading.length };
+	}
+	if (/^\n[ \t]*\n/u.test(after) && replacement.text.endsWith(trailing)) {
+		replacement = { ...replacement, text: replacement.text.slice(0, -trailing.length) };
+	}
+	return replacement;
 }
 
 function emptyItemFragment(
@@ -507,7 +533,7 @@ function emptyItemFragment(
 		return removeEmptyItemAndPromoteOwnedBlocks(context, currentItemId, delta);
 	}
 	const replacement = nested
-		? emptyNestedReplacement(context)
+		? reuseNestedEmptySeparators(context, emptyNestedReplacement(context))
 		: emptyTopLevelReplacement(context);
 	return replaceEmptyItem(
 		context,

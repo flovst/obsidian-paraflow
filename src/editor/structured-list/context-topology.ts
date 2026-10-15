@@ -1,11 +1,13 @@
 import {
 	containingLine,
 	isOnlyBoundaryWhitespace,
+	isEditableOwnedWhitespace,
 	sourceRange,
 	type AnalyzedItem,
 	type SourceAnalysis,
 	type SourceLine,
 } from './context-analysis.js';
+import { hasListGroupBoundary } from './group-boundary.js';
 import {
 	buildNormalizedBoundaries,
 	buildWhitespaceFacts,
@@ -21,9 +23,7 @@ import type {
 	OwnedBlock,
 	ProjectionListContext,
 	ProjectionOwnedLine,
-	ShiftTabTrailingBlankPolicy,
 	SourceRange,
-	WhitespaceBoundaryFact,
 } from './model.js';
 
 interface ItemRelations {
@@ -44,7 +44,8 @@ function siblingsAreAdjacent(
 ): boolean {
 	if (!left || !right || itemFamily(left) !== itemFamily(right)) return false;
 	const between = analysis.source.text.slice(left.block.item.to, right.line.from);
-	return isOnlyBoundaryWhitespace(between);
+	return isOnlyBoundaryWhitespace(between) && !hasListGroupBoundary(analysis.source.text,
+		left.block.item.to, right.line.from);
 }
 
 function directSiblingRun(
@@ -105,20 +106,26 @@ function deepestOwner(
 	return owner;
 }
 
+function ownedBlockKind(line: SourceLine, descendant: boolean, paragraphBroken: boolean): OwnedBlock['kind'] {
+	if (line.codeLeaf) return 'code-leaf';
+	if (descendant) return 'descendant';
+	return paragraphBroken ? 'additional-paragraph' : 'continuation';
+}
+
 function ownedBlocks(analysis: SourceAnalysis, item: AnalyzedItem): readonly OwnedBlock[] {
 	const owned: OwnedBlock[] = [];
 	let paragraphBroken = false;
 	for (const line of analysis.lines) {
 		if (line.from <= item.line.from || line.from >= item.block.item.to) continue;
-		if (line.whitespaceKind !== null) {
+		const owner = deepestOwner(analysis, item, line);
+		if (line.whitespaceKind !== null && !isEditableOwnedWhitespace(analysis, owner, line)) {
 			paragraphBroken = true;
 			continue;
 		}
-		const owner = deepestOwner(analysis, item, line);
 		const descendant = owner !== item;
 		owned.push({
 			indentText: line.indentText,
-			kind: descendant ? 'descendant' : paragraphBroken ? 'additional-paragraph' : 'continuation',
+			kind: ownedBlockKind(line, descendant, paragraphBroken),
 			range: sourceRange(line.from, line.to),
 			relativeDepth: descendant ? owner.depth - item.depth : 0,
 		});
@@ -131,6 +138,7 @@ function followingForOwned(
 	item: AnalyzedItem,
 	owned: OwnedBlock,
 ): FollowingBoundary {
+	if (owned.kind === 'code-leaf') return { kind: 'unsupported' };
 	if (owned.kind === 'descendant') {
 		const descendant = analysis.items.find((candidate) =>
 			candidate.depth > item.depth && candidate.line.from === owned.range.from);
@@ -256,29 +264,14 @@ function precedingBlock(relations: ItemRelations): ListBlockRef | null {
 	return optionalBlock(relations.previousSibling) ?? optionalBlock(relations.parent);
 }
 
-function shiftTabTrailingBlankPolicy(
-	analysis: SourceAnalysis,
-	item: AnalyzedItem,
-	relations: ItemRelations,
-	owned: readonly OwnedBlock[],
-	whitespace: readonly WhitespaceBoundaryFact[],
-): ShiftTabTrailingBlankPolicy {
-	if (item.depth !== 1 || !relations.previousSibling || !relations.nextSibling) {
-		return { kind: 'none' };
-	}
-	if (!nextNonWhitespaceLine(analysis, relations.nextSibling.block.item.to)) {
-		return { kind: 'none' };
-	}
-	const fromAnchor = owned.length === 0
-		? 'current-marker-line'
-		: `owned-block:${owned.length - 1}`;
-	const beforeBoundaryIndex = whitespace.findIndex((boundary) =>
-		boundary.fromAnchor === fromAnchor && boundary.toAnchor === 'following-block');
-	return beforeBoundaryIndex < 0 ? { kind: 'none' } : {
-		beforeBoundaryIndex,
-		kind: 'around-next-sibling',
-		nextSibling: relations.nextSibling.block,
-	};
+function orderedIndentStart(analysis: SourceAnalysis, previous: AnalyzedItem | null): number {
+	if (!previous) return 1;
+	const previousIndex = analysis.items.indexOf(previous);
+	const lastChild = analysis.items.filter(candidate => candidate.parentIndex === previousIndex).at(-1);
+	if (!lastChild || lastChild.block.prefix.orderedValue === null) return 1;
+	const sequence = orderedSequence(lastChild, directSiblingRun(analysis, lastChild));
+	if (!sequence) throw new Error('An ordered child requires a normalized ordered sequence');
+	return sequence.renderedValue + 1;
 }
 
 export function buildListTopology(
@@ -301,6 +294,7 @@ export function buildListTopology(
 		followingStructuralBoundary: matchingBoundary(structural, following),
 		nextSibling: optionalBlock(relations.nextSibling),
 		orderedSequence: orderedSequence(item, relations.siblings),
+		orderedIndentStart: orderedIndentStart(analysis, relations.previousSibling),
 		parentOrderedSequence: relations.parent && parentRelations
 			? orderedSequence(relations.parent, parentRelations.siblings)
 			: null,
@@ -309,13 +303,6 @@ export function buildListTopology(
 		precedingContainer: precedingBlock(relations),
 		previousSibling: optionalBlock(relations.previousSibling),
 		siblingPosition: siblingPosition(relations.siblingIndex, relations.siblings.length),
-		shiftTabTrailingBlankPolicy: shiftTabTrailingBlankPolicy(
-			analysis,
-			item,
-			relations,
-			owned,
-			whitespace,
-		),
 		structuralBoundaries: structural,
 		whitespaceBoundaries: whitespace,
 	};

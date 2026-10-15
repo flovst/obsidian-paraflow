@@ -1,130 +1,336 @@
-/*
- * ParaFlow Typora-style visual layer.
- *
- * Bundled plugin entry point. Projection-dependent Live Preview list rules are
- * active only while the structured-list editor extension owns the view.
- */
+/* ParaFlow editor support. Optional typography lives in themes/builtin-classic. */
+/* Compact text hints share their arrow size; content popovers keep native layout. */
+body[data-paraflow-theme] .tooltip {
+	--tooltip-padding: .3em .6em;
+	--tooltip-line-height: 1.35;
+}
+body[data-paraflow-theme] .tooltip .tooltip-arrow { border-width: 4px; top: -4px; margin-left: -4px; }
+body[data-paraflow-theme] .tooltip.mod-top .tooltip-arrow { top: 100%; }
+body[data-paraflow-theme] .tooltip.mod-right .tooltip-arrow { top: calc(50% - 4px); left: -4px; }
+body[data-paraflow-theme] .tooltip.mod-left .tooltip-arrow { top: calc(50% - 4px); left: calc(100% + 4px); }
+.cm-editor .cm-tooltip:is(.paraflow-math-tooltip, :has(> .paraflow-footnote-tooltip)) { line-height: 1.35; }
+.cm-editor .cm-tooltip:is(.paraflow-math-tooltip, :has(> .paraflow-footnote-tooltip)) .cm-tooltip-arrow { height: 4px; }
+.cm-editor .cm-tooltip:is(.paraflow-math-tooltip, :has(> .paraflow-footnote-tooltip)) .cm-tooltip-arrow::before {
+	left: 3px;
+	border-left-width: 4px;
+	border-right-width: 4px;
+	border-top-color: #111;
+	border-bottom-color: #111;
+}
+.cm-editor .cm-tooltip:is(.paraflow-math-tooltip, :has(> .paraflow-footnote-tooltip)) .cm-tooltip-arrow::after { border: 0; }
+.cm-editor .cm-tooltip-above:is(.paraflow-math-tooltip, :has(> .paraflow-footnote-tooltip)) .cm-tooltip-arrow { bottom: -4px; }
+.cm-editor .cm-tooltip-above:is(.paraflow-math-tooltip, :has(> .paraflow-footnote-tooltip)) .cm-tooltip-arrow::before { border-top-width: 4px; }
+.cm-editor .cm-tooltip-below:is(.paraflow-math-tooltip, :has(> .paraflow-footnote-tooltip)) .cm-tooltip-arrow { top: -4px; }
+.cm-editor .cm-tooltip-below:is(.paraflow-math-tooltip, :has(> .paraflow-footnote-tooltip)) .cm-tooltip-arrow::before { border-bottom-width: 4px; }
 
-.markdown-source-view.mod-cm6:not(:is(.cm-table-widget *)),
+.markdown-source-view.mod-cm6.is-live-preview:not(:is(.cm-table-widget *)),
 .markdown-reading-view {
-	--paraflow-line-height: 1.6;
-	--paraflow-blank-line-height: 0.65em;
-	--paraflow-block-gap: 0.8em;
-	--paraflow-heading-following-gap: 0.25em;
-	--paraflow-reading-list-indent: 30px;
-	--paraflow-reading-list-line-height: 1.5;
-	--paraflow-live-list-base-indent: 0.25em;
-	--paraflow-live-list-indent: 30px;
-	--paraflow-live-list-content-offset: 0.625em;
-	--paraflow-live-list-hanging-indent: 0.625em;
-	--paraflow-end-spacing: 100px;
-	--paraflow-h1-size: 2.25em;
-	--paraflow-h2-size: 1.75em;
-	--paraflow-h3-size: 1.5em;
-	--paraflow-h4-size: 1.25em;
-	--paraflow-h5-size: 1em;
-	--paraflow-h6-size: 1em;
-	--paraflow-content-width: 800px;
-	--paraflow-code-background: var(--background-secondary);
-	--paraflow-heading-divider-color: var(--background-modifier-border);
+	--paraflow-source-color: color-mix(in srgb, var(--text-faint) 80%, var(--background-primary));
+	--paraflow-surface-color: var(--background-secondary);
+	--paraflow-border-color: var(--background-modifier-border);
+	--paraflow-block-code-border: 1px solid var(--paraflow-border-color);
+	--paraflow-block-code-padding: .35em .65em;
+	--paraflow-list-marker-slot: 1.5em;
+	--paraflow-list-row-padding: .3em;
+	--paraflow-quote-border: var(--background-modifier-border);
+	--paraflow-quote-inset: calc(var(--paraflow-quote-padding-left, 24px) + max(4px, var(--paraflow-quote-border-width, 4px)));
 }
 
-.theme-light .markdown-source-view.mod-cm6:not(:is(.cm-table-widget *)),
+/* Keep replacement buffers inside the heading line box without removing caret anchors. */
+.markdown-source-view.mod-cm6.is-live-preview:not(.markdown-embed *):not(.cm-table-widget *)
+	> .cm-editor.paraflow-paragraph-editing-active
+	> .cm-scroller > .cm-sizer > .cm-contentContainer > .cm-content
+	> .paraflow-heading-line > img.cm-widgetBuffer {
+	vertical-align: top;
+}
+
+.theme-light .markdown-source-view.mod-cm6.is-live-preview,
 .theme-light .markdown-reading-view {
-	--paraflow-heading-divider-color: #eeeeee;
+	--paraflow-source-color: #cacaca;
+	--paraflow-surface-color: #f8f8f8;
+	--paraflow-border-color: #e6e6e6;
 }
 
-.markdown-source-view.mod-cm6:not(:is(.cm-table-widget *)) {
-	--h1-size: var(--paraflow-h1-size);
-	--h2-size: var(--paraflow-h2-size);
-	--h3-size: var(--paraflow-h3-size);
-	--h4-size: var(--paraflow-h4-size);
-	--h5-size: var(--paraflow-h5-size);
-	--h6-size: var(--paraflow-h6-size);
-	--line-height-normal: var(--paraflow-line-height);
-	--list-spacing: 0;
-	--code-background: var(--paraflow-code-background);
+.markdown-source-view.mod-cm6.is-live-preview kbd,
+.markdown-reading-view kbd {
+	border: 1px solid var(--paraflow-border-color);
+	border-radius: 3px;
+	background: var(--paraflow-surface-color);
+	box-shadow: 0 1px 0 var(--paraflow-border-color);
+	padding: 0 .25em;
+	line-height: inherit;
 }
 
-.markdown-source-view.mod-cm6:not(:is(.cm-table-widget *))
-	> .cm-editor
-	> .cm-scroller
-	> .cm-sizer
-	> .cm-contentContainer
-	> .cm-content {
-	line-height: var(--paraflow-line-height);
+.markdown-source-view.mod-cm6.is-live-preview .cm-editor.paraflow-callout-active .callout:not(.paraflow-callout-line):not(.paraflow-callout-rail):not(.paraflow-callout-icon .callout),
+.markdown-reading-view .callout.paraflow-display-callout {
+	background: transparent;
+	border: 0;
+	position: relative;
+	border-radius: 0;
+	padding: var(--paraflow-callout-padding, 12px) var(--paraflow-callout-padding, 12px) var(--paraflow-callout-padding, 12px) var(--paraflow-callout-inset, 24px);
+	box-shadow: none;
+	mix-blend-mode: normal;
+	color: var(--paraflow-content-color, var(--text-normal));
+	font-style: normal;
+}
+.markdown-source-view.mod-cm6.is-live-preview .cm-editor.paraflow-callout-active .callout:not(.paraflow-callout-line):not(.paraflow-callout-rail):not(.paraflow-callout-icon .callout).paraflow-callout-list-tail,
+.markdown-reading-view .callout.paraflow-display-callout.paraflow-callout-list-tail {
+	padding-bottom: 0;
+}
+.markdown-source-view.mod-cm6.is-live-preview .cm-editor.paraflow-callout-active .callout:not(.paraflow-callout-line):not(.paraflow-callout-rail):not(.paraflow-callout-icon .callout)::before,
+.markdown-reading-view .callout.paraflow-display-callout::before {
+	content: '';
+	position: absolute;
+	inset-block: 0;
+	inset-inline-start: 0;
+	width: 4px;
+	background: var(--callout-color);
+	pointer-events: none;
 }
 
-.workspace-leaf-content[data-type='markdown']
-	.markdown-reading-view
-	> .markdown-preview-view
-	> .markdown-preview-sizer {
-	line-height: var(--paraflow-line-height);
+.markdown-source-view.mod-cm6.is-live-preview .cm-editor.paraflow-callout-active .cm-callout > .callout {
+	margin: 0;
+}
+.markdown-source-view.mod-cm6.is-live-preview > .cm-editor.paraflow-callout-active .cm-content > .paraflow-container-boundary-gap {
+	contain: none !important;
+}
+.markdown-source-view.mod-cm6.is-live-preview .cm-editor.paraflow-callout-active .cm-callout .callout-title,
+.markdown-reading-view .callout.paraflow-display-callout .callout-title {
+	line-height: var(--paraflow-callout-title-leading, 1.3);
+	align-items: center;
+	gap: var(--paraflow-callout-title-gap, .375em);
+}
+.markdown-source-view.mod-cm6.is-live-preview .cm-editor.paraflow-callout-active .cm-callout .callout-icon,
+.markdown-reading-view .callout.paraflow-display-callout .callout-icon {
+	display: inline-flex;
+	align-items: center;
+	flex: none;
+	width: 1em;
+	height: 1em;
+	margin: 0;
+}
+.markdown-source-view.mod-cm6.is-live-preview .cm-editor.paraflow-callout-active .cm-callout .callout-icon svg,
+.markdown-reading-view .callout.paraflow-display-callout .callout-icon svg {
+	width: 1em;
+	height: 1em;
+}
+.markdown-reading-view .paraflow-display-callout .callout-content p:not(:is(li *, .markdown-embed *)) {
+	line-height: var(--paraflow-line-height, 1.6);
+}
+:is(.markdown-source-view.mod-cm6.is-live-preview .cm-editor.paraflow-callout-active .cm-callout,
+	.markdown-reading-view .paraflow-display-callout) .callout-title + .callout-content:not(:empty) {
+	margin-block-start: var(--paraflow-callout-title-body-gap, var(--paraflow-callout-gap, var(--font-text-size, 1rem)));
+}
+:is(.markdown-source-view.mod-cm6.is-live-preview .cm-editor.paraflow-callout-active .cm-callout,
+	.markdown-reading-view .paraflow-display-callout) :is(.callout-content, blockquote) > *,
+.markdown-reading-view blockquote.paraflow-display-quote > * {
+	margin-block: 0;
+}
+:is(.markdown-source-view.mod-cm6.is-live-preview .cm-editor.paraflow-callout-active .cm-callout,
+	.markdown-reading-view .paraflow-display-callout) :is(.callout-content, blockquote) > * + *,
+.markdown-reading-view blockquote.paraflow-display-quote > * + * {
+	margin-block-start: var(--paraflow-callout-gap, calc(.8 * var(--font-text-size, 1rem)));
+}
+:is(.markdown-source-view.mod-cm6.is-live-preview .cm-editor.paraflow-callout-active .cm-callout blockquote,
+	.markdown-reading-view blockquote.paraflow-display-quote):not(.markdown-embed *) {
+	border: 0;
+	position: relative;
+	margin-inline: 0;
+	padding-block: 0;
+	padding-inline: var(--paraflow-quote-inset, 28px) 0;
+	background: transparent;
+	color: var(--paraflow-quote-text, var(--text-muted));
+	font-style: var(--paraflow-quote-font-style, normal);
+}
+:is(.markdown-source-view.mod-cm6.is-live-preview .cm-editor.paraflow-callout-active .cm-callout blockquote,
+	.markdown-reading-view blockquote.paraflow-display-quote):not(.markdown-embed *)::before {
+	content: '';
+	position: absolute;
+	inset-block: 0;
+	inset-inline-start: 0;
+	width: max(4px, var(--paraflow-quote-border-width, 4px));
+	background: var(--paraflow-quote-border, var(--background-modifier-border));
+	pointer-events: none;
+}
+.markdown-source-view.mod-cm6.is-live-preview .cm-editor.paraflow-callout-active .cm-callout .callout-content :is(ul, ol),
+.markdown-reading-view :is(.paraflow-display-callout, .paraflow-display-quote) :is(ul, ol) {
+	margin-inline: 0;
+	padding-inline-start: calc(var(--paraflow-live-list-base-indent, .5em) + var(--paraflow-live-list-content-offset, .75em) + var(--paraflow-live-list-hanging-indent, .625em));
+}
+.markdown-source-view.mod-cm6.is-live-preview .cm-editor.paraflow-callout-active .cm-callout .callout-content :is(ul, ol) {
+	--list-marker-color: currentColor;
+	--list-marker-color-hover: currentColor;
+}
+.markdown-reading-view :is(.paraflow-display-callout, .paraflow-display-quote) :is(ul, ol) {
+	--list-marker-color: var(--paraflow-marker-color, var(--text-normal));
+	--list-marker-color-hover: var(--paraflow-marker-color, var(--text-normal));
+}
+.markdown-source-view.mod-cm6.is-live-preview .cm-editor.paraflow-callout-active .cm-callout .callout-content li,
+.markdown-reading-view :is(.paraflow-display-callout, .paraflow-display-quote) li {
+	margin: 0;
+	padding-block: var(--paraflow-list-row-padding, .3em);
+	line-height: var(--paraflow-list-line-height, 1.5);
+}
+.markdown-source-view.mod-cm6.is-live-preview .cm-editor.paraflow-callout-active .cm-callout .callout-content li > :is(ul, ol),
+.markdown-reading-view :is(.paraflow-display-callout, .paraflow-display-quote) li > :is(ul, ol) {
+	margin-block: 0;
+	margin-block-start: var(--paraflow-list-row-padding, .3em);
+	padding-inline-start: var(--paraflow-live-list-indent, 30px);
+}
+.markdown-source-view.mod-cm6.is-live-preview .cm-editor.paraflow-callout-active .cm-callout .callout-content li:has(> ul, > ol),
+.markdown-reading-view :is(.paraflow-display-callout, .paraflow-display-quote) li:has(> ul, > ol) {
+	padding-block-end: 0;
+}
+.markdown-source-view.mod-cm6.is-live-preview > .cm-editor.paraflow-callout-active {
+	--blockquote-border-thickness: 4px;
 }
 
-.workspace-leaf-content[data-type='markdown']
-	.markdown-reading-view
-	> .markdown-preview-view
-	> .markdown-preview-sizer
-	:is(.callout, .markdown-embed) {
-	line-height: var(--line-height-normal);
+.markdown-source-view.mod-cm6.is-live-preview > .cm-editor.paraflow-callout-active :is(.paraflow-quote-line, .paraflow-quote-block),
+.markdown-reading-view blockquote.paraflow-display-quote {
+	color: var(--paraflow-quote-text, var(--text-muted));
+	font-style: var(--paraflow-quote-font-style, normal);
+	--paraflow-marker-color: var(--paraflow-quote-text, var(--text-muted));
 }
 
-.workspace-leaf-content[data-type='markdown']
-	.markdown-reading-view
-	> .markdown-preview-view
-	> .markdown-preview-sizer
-	:is(p, li, blockquote):not(:is(.callout *, .markdown-embed *)) {
-	line-height: var(--paraflow-line-height);
+.markdown-source-view.mod-cm6.is-live-preview .paraflow-inline-html > p {
+	display: inline;
+	margin: 0;
 }
 
-.markdown-source-view.mod-cm6:not(:is(.cm-table-widget *))
-	> .cm-editor
-	> .cm-scroller
-	> .cm-sizer {
-	max-width: var(--paraflow-content-width);
-	margin-inline: auto;
+/* Math keeps the host's TeX glyph variants; only its surrounding metrics change. */
+.markdown-source-view.mod-cm6.is-live-preview,
+.markdown-reading-view,
+.print .markdown-preview-view {
+	--paraflow-math-inline-size: calc(.95ex / .442);
+	--paraflow-math-block-size: calc(1ex / .442);
+	--paraflow-math-command-color: color-mix(in srgb, var(--text-normal) 65%, var(--text-accent));
 }
 
-.workspace-leaf-content[data-type='markdown']
-	.markdown-reading-view
-	> .markdown-preview-view
-	> .markdown-preview-sizer {
-	max-width: var(--paraflow-content-width);
-	margin-inline: auto;
+:is(.markdown-source-view.mod-cm6.is-live-preview, .markdown-reading-view, .print .markdown-preview-view)
+	:is(.math-inline, .paraflow-math-rendered:not(.paraflow-math-block-preview, .math-block), .paraflow-math-tooltip) > mjx-container:is([jax="CHTML"], [jax="SVG"]) {
+	font-size: var(--paraflow-math-inline-size);
 }
 
-.markdown-source-view.mod-cm6:not(:is(.cm-table-widget *))
-	> .cm-editor
-	> .cm-scroller
-	> .cm-sizer
-	> .cm-contentContainer
-	> .cm-content
-	> .cm-line {
-	margin-inline: 0 !important;
-	margin-block: 0 !important;
+:is(.markdown-source-view.mod-cm6.is-live-preview, .markdown-reading-view, .print .markdown-preview-view)
+	:is(.math-block, .paraflow-math-block-preview) > mjx-container:is([jax="CHTML"], [jax="SVG"]) {
+	font-size: var(--paraflow-math-block-size);
 }
 
+.paraflow-svg-math {
+	/* SVG uses ex units; match the TeX output's reference metrics across themes. */
+	font-family: "Times New Roman", serif;
+}
+
+.paraflow-math-rendered > .paraflow-svg-math {
+	color: var(--paraflow-math-rendered-color, inherit);
+}
+
+.theme-light .paraflow-math-rendered > .paraflow-svg-math {
+	color: var(--paraflow-math-rendered-color, #4d4d4d);
+}
+
+/* Match the LP preview interior; semantic block gaps own the outer spacing. */
+.markdown-reading-view .math-block.paraflow-math-rendered {
+	padding: .4em .5em;
+	line-height: var(--paraflow-line-height, var(--line-height-normal, 1.6));
+}
+
+.markdown-reading-view .math-block.paraflow-math-rendered > mjx-container[display="true"] {
+	margin: 0;
+	max-width: 100%;
+	overflow-x: auto;
+	overflow-y: hidden;
+}
+
+.markdown-source-view.mod-cm6.is-live-preview .paraflow-math-error {
+	color: var(--text-error);
+}
+
+/* Native PDF export renders directly under .print, without a Reading wrapper. */
+@media print {
+	.print .markdown-preview-view kbd {
+		border: 1px solid var(--paraflow-border-color, var(--background-modifier-border));
+		border-radius: 3px;
+		background: var(--paraflow-surface-color, var(--background-secondary));
+		box-shadow: 0 1px 0 var(--paraflow-border-color, var(--background-modifier-border));
+		padding: 0 .25em;
+		line-height: inherit;
+	}
+
+	.print .markdown-preview-view .callout.paraflow-display-callout {
+		background: transparent;
+		border: 0;
+		border-inline-start: 4px solid var(--callout-color);
+		border-radius: 0;
+		padding: var(--paraflow-callout-padding, 12px) var(--paraflow-callout-padding, 12px) var(--paraflow-callout-padding, 12px) calc(var(--paraflow-callout-inset, 24px) - 4px);
+		box-shadow: none;
+	}
+
+	.print .markdown-preview-view blockquote.paraflow-display-quote {
+		border-inline-start-width: 4px;
+	}
+
+	.print .markdown-preview-view table.paraflow-display-table {
+		display: table;
+		width: 100%;
+		max-width: 100%;
+		overflow: visible;
+		table-layout: auto;
+		border-collapse: collapse;
+	}
+}
+
+.markdown-source-view.mod-cm6.is-live-preview:not(:is(.cm-table-widget *)) {
+ --paraflow-line-height: var(--line-height-normal, 1.6);
+ --paraflow-blank-line-height: 0.65em;
+ --paraflow-block-gap: 0.8em;
+ --paraflow-heading-following-gap: 0.25em;
+ --paraflow-live-list-base-indent: 0.5em;
+ --paraflow-live-list-indent: 30px;
+ --paraflow-live-list-content-offset: 0.75em;
+ --paraflow-live-list-hanging-indent: 0.625em;
+ --paraflow-h1-size: var(--h1-size);
+ --paraflow-h2-size: var(--h2-size);
+ --paraflow-h3-size: var(--h3-size);
+ --paraflow-h4-size: var(--h4-size);
+ --paraflow-h5-size: var(--h5-size);
+ --paraflow-h6-size: var(--h6-size);
+ --paraflow-heading-divider-color: var(--background-modifier-border);
+}
+
+/* Rendered labels retain their decoration when the host drops selected-link marks. */
+.paraflow-inline-body--link,
+.paraflow-inline-body--wikilink {
+	text-decoration-line: underline;
+}
+
+:is(.paraflow-inline-body--link, .paraflow-inline-body--wikilink) .cm-underline,
+.cm-underline:has(:is(.paraflow-inline-body--link, .paraflow-inline-body--wikilink)) {
+	text-decoration-line: none;
+}
+
+/* Native list geometry is owned only by the active list module or a projected quote row. */
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-structured-list-active
-	.HyperMD-list-line:not(.paraflow-list-owned-blank-line):not(.paraflow-list-owned-line--native-depth)
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	:where(.paraflow-structured-list-active *, .paraflow-callout-line).HyperMD-list-line:not(.paraflow-list-owned-blank-line):not(.paraflow-list-owned-line--native-depth)
 	.cm-hmd-list-indent,
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-structured-list-active
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
 	.paraflow-list-owned-line:not(.paraflow-list-owned-blank-line):not(
 		.paraflow-list-owned-line--native-depth
 	)
 	.cm-hmd-list-indent {
 	font-family: var(--font-monospace) !important;
 	font-size: 0;
+	line-height: 0;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-structured-list-active
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
 	.paraflow-list-owned-blank-line
 	.cm-hmd-list-indent,
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-structured-list-active
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
 	.paraflow-list-owned-line--native-depth
 	.cm-hmd-list-indent {
 	font: inherit;
@@ -132,267 +338,42 @@
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-structured-list-active
-	.cm-hmd-list-indent
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	:where(.paraflow-structured-list-active *, .paraflow-callout-line *).cm-hmd-list-indent
 	.cm-indent::before {
 	content: none !important;
 }
 
-.markdown-source-view.mod-cm6:not(:is(.cm-table-widget *))
-	> .cm-editor
-	> .cm-scroller
-	> .cm-sizer
-	> .cm-contentContainer
-	> .cm-content {
-	padding-bottom: var(--paraflow-end-spacing) !important;
-}
-
-.markdown-source-view.mod-cm6:not(:is(.cm-table-widget *))
-	> .cm-editor
-	> .cm-scroller
-	> .cm-sizer
-	> .cm-contentContainer
-	> .cm-content
-	> .cm-line:has(> br:only-child) {
-	min-height: var(--paraflow-blank-line-height);
-	padding-block: 0;
-	line-height: var(--paraflow-blank-line-height);
-}
-
-.markdown-source-view.mod-cm6 .HyperMD-header-1,
-.workspace-leaf-content[data-type='markdown']
-	.markdown-reading-view
-	> .markdown-preview-view
-	> .markdown-preview-sizer
-	h1:not(:is(.callout *, .markdown-embed *)) {
-	font-size: var(--paraflow-h1-size);
-	line-height: 1.2;
-}
-
-.markdown-source-view.mod-cm6 .HyperMD-header-2,
-.workspace-leaf-content[data-type='markdown']
-	.markdown-reading-view
-	> .markdown-preview-view
-	> .markdown-preview-sizer
-	h2:not(:is(.callout *, .markdown-embed *)) {
-	font-size: var(--paraflow-h2-size);
-	line-height: 1.225;
-}
-
-.markdown-source-view.mod-cm6 .HyperMD-header-3,
-.workspace-leaf-content[data-type='markdown']
-	.markdown-reading-view
-	> .markdown-preview-view
-	> .markdown-preview-sizer
-	h3:not(:is(.callout *, .markdown-embed *)) {
-	font-size: var(--paraflow-h3-size);
-	line-height: 1.43;
-}
-
-.markdown-source-view.mod-cm6 .HyperMD-header-4,
-.workspace-leaf-content[data-type='markdown']
-	.markdown-reading-view
-	> .markdown-preview-view
-	> .markdown-preview-sizer
-	h4:not(:is(.callout *, .markdown-embed *)) {
-	font-size: var(--paraflow-h4-size);
-}
-
-.markdown-source-view.mod-cm6 .HyperMD-header-5,
-.workspace-leaf-content[data-type='markdown']
-	.markdown-reading-view
-	> .markdown-preview-view
-	> .markdown-preview-sizer
-	h5:not(:is(.callout *, .markdown-embed *)) {
-	font-size: var(--paraflow-h5-size);
-}
-
-.markdown-source-view.mod-cm6 .HyperMD-header-6,
-.workspace-leaf-content[data-type='markdown']
-	.markdown-reading-view
-	> .markdown-preview-view
-	> .markdown-preview-sizer
-	h6:not(:is(.callout *, .markdown-embed *)) {
-	color: var(--text-muted);
-	font-size: var(--paraflow-h6-size);
-}
-
-.markdown-source-view.mod-cm6 .HyperMD-header-1,
-.markdown-source-view.mod-cm6 .HyperMD-header-2 {
-	position: relative;
-	box-sizing: border-box;
-	padding-bottom: 0.2em;
-	border-bottom: 0;
-}
-
-.workspace-leaf-content[data-type='markdown']
-	.markdown-reading-view
-	> .markdown-preview-view
-	> .markdown-preview-sizer
-	:is(h1, h2):not(:is(.callout *, .markdown-embed *)) {
-	position: relative;
-	box-sizing: border-box;
-	padding-bottom: 0.2em;
-	border-bottom: 0;
-}
-
-.workspace-leaf-content[data-type='markdown']
-	.markdown-reading-view
-	> .markdown-preview-view
-	> .markdown-preview-sizer
-	:is(h1, h2):not(:is(.callout *, .markdown-embed *))::after,
-.markdown-source-view.mod-cm6 .HyperMD-header-1::after,
-.markdown-source-view.mod-cm6 .HyperMD-header-2::after {
-	content: '';
-	position: absolute;
-	right: 0;
-	bottom: 0.16em;
-	left: 0;
-	height: 1px;
-	background: var(--paraflow-heading-divider-color);
-}
-
-.workspace-leaf-content[data-type='markdown']
-	.markdown-reading-view
-	> .markdown-preview-view
-	> .markdown-preview-sizer
-	:is(p, blockquote, ul, ol, dl, table):not(
-		:is(.callout *, .markdown-embed *)
-	) {
-	margin-block: var(--paraflow-block-gap);
-}
-
-.workspace-leaf-content[data-type='markdown']
-	.markdown-reading-view
-	> .markdown-preview-view
-	> .markdown-preview-sizer
-	:is(ul, ol):not(:is(.callout *, .markdown-embed *)) {
-	margin-inline-start: 0 !important;
-	padding-inline-start: var(--paraflow-reading-list-indent) !important;
-}
-
-.workspace-leaf-content[data-type='markdown']
-	.markdown-reading-view
-	> .markdown-preview-view
-	> .markdown-preview-sizer
-	:is(ul, ol):not(:is(.callout *, .markdown-embed *))
-	> li {
-	margin-inline-start: 0 !important;
-}
-
-.workspace-leaf-content[data-type='markdown']
-	.markdown-reading-view
-	> .markdown-preview-view.show-indentation-guide
-	> .markdown-preview-sizer
-	li
-	> :is(ul, ol):not(:is(.callout *, .markdown-embed *))::before {
-	content: none !important;
-	border-inline-end: 0 !important;
-}
-
-.workspace-leaf-content[data-type='markdown']
-	.markdown-reading-view
-	> .markdown-preview-view
-	> .markdown-preview-sizer
-	:is(li > ul, li > ol):not(:is(.callout *, .markdown-embed *)) {
-	margin-block: 0;
-}
-
-.workspace-leaf-content[data-type='markdown']
-	.markdown-reading-view
-	> .markdown-preview-view
-	> .markdown-preview-sizer
-	li.task-list-item:is([data-task='x'], [data-task='X'])
-	> :is(ul, ol):not(:is(.callout *, .markdown-embed *)) {
-	display: inline-block;
-	inline-size: 100%;
-	vertical-align: top;
-	color: var(--text-normal);
-	text-decoration: none;
-}
-
-.workspace-leaf-content[data-type='markdown']
-	.markdown-reading-view
-	> .markdown-preview-view
-	> .markdown-preview-sizer
-	li:not(:is(.callout *, .markdown-embed *)) {
-	margin-block: 0;
-	line-height: var(--paraflow-reading-list-line-height);
-}
-
-.workspace-leaf-content[data-type='markdown']
-	.markdown-reading-view
-	> .markdown-preview-view
-	> .markdown-preview-sizer
-	li:not(.task-list-item):not(:is(.callout *, .markdown-embed *))::marker {
-	color: var(--text-normal);
-	font-size: 1.05em;
-}
-
-.workspace-leaf-content[data-type='markdown']
-	.markdown-reading-view
-	> .markdown-preview-view
-	> .markdown-preview-sizer
-	.list-bullet:not(:is(.callout *, .markdown-embed *)) {
-	display: none !important;
-}
-
-.workspace-leaf-content[data-type='markdown']
-	.markdown-reading-view
-	> .markdown-preview-view
-	> .markdown-preview-sizer
-	ul:not(.contains-task-list):not(:is(.callout *, .markdown-embed *)) {
-	list-style-type: disc;
-}
-
-.workspace-leaf-content[data-type='markdown']
-	.markdown-reading-view
-	> .markdown-preview-view
-	> .markdown-preview-sizer
-	ul:not(.contains-task-list)
-	ul:not(.contains-task-list):not(:is(.callout *, .markdown-embed *)) {
-	list-style-type: circle;
-}
-
-.workspace-leaf-content[data-type='markdown']
-	.markdown-reading-view
-	> .markdown-preview-view
-	> .markdown-preview-sizer
-	ul:not(.contains-task-list)
-	ul:not(.contains-task-list)
-	ul:not(.contains-task-list):not(:is(.callout *, .markdown-embed *)) {
-	list-style-type: square;
-}
-
-.workspace-leaf-content[data-type='markdown']
-	.markdown-reading-view
-	> .markdown-preview-view
-	> .markdown-preview-sizer
-	ul:not(.contains-task-list)
-	ul:not(.contains-task-list)
-	ul:not(.contains-task-list)
-	ul:not(.contains-task-list):not(:is(.callout *, .markdown-embed *)) {
-	list-style-type: square;
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	:where(.paraflow-structured-list-active *, .paraflow-callout-line).HyperMD-list-line:not(.paraflow-code-line) {
+	padding-block: var(--paraflow-list-row-padding, .3em);
+	line-height: var(--paraflow-list-line-height, var(--paraflow-line-height));
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-structured-list-active
-	.HyperMD-list-line {
-	padding-block: 0.25em;
-	line-height: var(--paraflow-line-height);
-}
-
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	:where(.paraflow-structured-list-active *, .paraflow-callout-line).HyperMD-task-line:not(.paraflow-code-line),
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-structured-list-active
-	.HyperMD-task-line {
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	.paraflow-list-owned-line--task {
 	--paraflow-live-list-hanging-indent: 1.25em;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-structured-list-active
-	.HyperMD-list-line-1 {
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	.HyperMD-task-line:has(.paraflow-list-marker--ordered),
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	.paraflow-list-owned-line--ordered-task {
+	--paraflow-live-list-hanging-indent: 2.25em;
+}
+
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	:where(.paraflow-structured-list-active *, .paraflow-callout-line).HyperMD-list-line-1:not(.paraflow-code-line):not(.paraflow-list-owned-line) {
 	padding-inline-start: calc(
-		var(--paraflow-live-list-base-indent) + var(--paraflow-live-list-content-offset) +
+		var(--paraflow-container-inset, 0px) + var(--paraflow-live-list-base-indent) + var(--paraflow-live-list-content-offset) +
 			var(--paraflow-live-list-hanging-indent)
 	) !important;
 	text-indent: calc(
@@ -402,10 +383,10 @@
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-structured-list-active
-	.HyperMD-list-line-2 {
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	:where(.paraflow-structured-list-active *, .paraflow-callout-line).HyperMD-list-line-2:not(.paraflow-code-line):not(.paraflow-list-owned-line) {
 	padding-inline-start: calc(
-		var(--paraflow-live-list-base-indent) + var(--paraflow-live-list-indent) +
+		var(--paraflow-container-inset, 0px) + var(--paraflow-live-list-base-indent) + var(--paraflow-live-list-indent) +
 			var(--paraflow-live-list-content-offset) + var(--paraflow-live-list-hanging-indent)
 	) !important;
 	text-indent: calc(
@@ -415,10 +396,10 @@
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-structured-list-active
-	.HyperMD-list-line-3 {
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	:where(.paraflow-structured-list-active *, .paraflow-callout-line).HyperMD-list-line-3:not(.paraflow-code-line):not(.paraflow-list-owned-line) {
 	padding-inline-start: calc(
-		var(--paraflow-live-list-base-indent) + 2 * var(--paraflow-live-list-indent) +
+		var(--paraflow-container-inset, 0px) + var(--paraflow-live-list-base-indent) + 2 * var(--paraflow-live-list-indent) +
 			var(--paraflow-live-list-content-offset) + var(--paraflow-live-list-hanging-indent)
 	) !important;
 	text-indent: calc(
@@ -428,10 +409,10 @@
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-structured-list-active
-	.HyperMD-list-line-4 {
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	:where(.paraflow-structured-list-active *, .paraflow-callout-line).HyperMD-list-line-4:not(.paraflow-code-line):not(.paraflow-list-owned-line) {
 	padding-inline-start: calc(
-		var(--paraflow-live-list-base-indent) + 3 * var(--paraflow-live-list-indent) +
+		var(--paraflow-container-inset, 0px) + var(--paraflow-live-list-base-indent) + 3 * var(--paraflow-live-list-indent) +
 			var(--paraflow-live-list-content-offset) + var(--paraflow-live-list-hanging-indent)
 	) !important;
 	text-indent: calc(
@@ -441,10 +422,10 @@
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-structured-list-active
-	.HyperMD-list-line-5 {
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	:where(.paraflow-structured-list-active *, .paraflow-callout-line).HyperMD-list-line-5:not(.paraflow-code-line):not(.paraflow-list-owned-line) {
 	padding-inline-start: calc(
-		var(--paraflow-live-list-base-indent) + 4 * var(--paraflow-live-list-indent) +
+		var(--paraflow-container-inset, 0px) + var(--paraflow-live-list-base-indent) + 4 * var(--paraflow-live-list-indent) +
 			var(--paraflow-live-list-content-offset) + var(--paraflow-live-list-hanging-indent)
 	) !important;
 	text-indent: calc(
@@ -454,10 +435,10 @@
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-structured-list-active
-	.HyperMD-list-line-6 {
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	:where(.paraflow-structured-list-active *, .paraflow-callout-line).HyperMD-list-line-6:not(.paraflow-code-line):not(.paraflow-list-owned-line) {
 	padding-inline-start: calc(
-		var(--paraflow-live-list-base-indent) + 5 * var(--paraflow-live-list-indent) +
+		var(--paraflow-container-inset, 0px) + var(--paraflow-live-list-base-indent) + 5 * var(--paraflow-live-list-indent) +
 			var(--paraflow-live-list-content-offset) + var(--paraflow-live-list-hanging-indent)
 	) !important;
 	text-indent: calc(
@@ -467,77 +448,153 @@
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-structured-list-active
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	:where(.paraflow-structured-list-active *, .paraflow-callout-line).paraflow-list-marker-line:not(.paraflow-code-line):not(.paraflow-list-owned-line) {
+	padding-inline-start: calc(
+		var(--paraflow-container-inset, 0px) + var(--paraflow-live-list-base-indent) +
+			var(--paraflow-list-depth) * var(--paraflow-live-list-indent) +
+			var(--paraflow-live-list-content-offset) + var(--paraflow-live-list-hanging-indent)
+	) !important;
+	text-indent: calc(
+		0px - var(--paraflow-live-list-content-offset) - var(--paraflow-live-list-hanging-indent)
+	) !important;
+}
+
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
 	.paraflow-list-owned-line {
-	padding-block: 0.25em;
-	line-height: var(--paraflow-line-height);
+	padding-block: var(--paraflow-list-row-padding, .3em);
+	line-height: var(--paraflow-list-line-height, var(--paraflow-line-height));
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-structured-list-active
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	:is(.paraflow-list-marker-line, .paraflow-list-owned-line):has(+ .paraflow-list-continuation-line) {
+	padding-block-end: 0;
+}
+
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	.paraflow-list-continuation-line:not(.paraflow-list-empty-body-line) {
+	padding-block-start: 0;
+}
+
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	.paraflow-list-owned-line:is(.paraflow-list-owned-line--unordered, .paraflow-list-owned-line--ordered, .paraflow-list-owned-line--task):not(.paraflow-list-owned-blank-line):not(.paraflow-list-owned-line--native-depth),
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	.paraflow-list-empty-body-line:is(.paraflow-list-owned-line--unordered, .paraflow-list-owned-line--ordered, .paraflow-list-owned-line--task) {
+	--paraflow-list-owned-hanging-indent: var(--paraflow-live-list-hanging-indent);
+}
+
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	.paraflow-list-empty-body {
+	display: inline-block;
+	width: 0;
+	font: inherit;
+	text-indent: 0;
+}
+
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
 	.paraflow-list-owned-line-1 {
 	padding-inline-start: calc(
-		var(--paraflow-live-list-base-indent) + var(--paraflow-live-list-content-offset)
+		var(--paraflow-container-inset, 0px) + var(--paraflow-live-list-base-indent) + var(--paraflow-live-list-content-offset) + var(--paraflow-list-owned-hanging-indent, 0px)
 	) !important;
 	text-indent: 0 !important;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-structured-list-active
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
 	.paraflow-list-owned-line-2 {
 	padding-inline-start: calc(
-		var(--paraflow-live-list-base-indent) + var(--paraflow-live-list-indent) +
-			var(--paraflow-live-list-content-offset)
+		var(--paraflow-container-inset, 0px) + var(--paraflow-live-list-base-indent) + var(--paraflow-live-list-indent) +
+			var(--paraflow-live-list-content-offset) + var(--paraflow-list-owned-hanging-indent, 0px)
 	) !important;
 	text-indent: 0 !important;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-structured-list-active
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
 	.paraflow-list-owned-line-3 {
 	padding-inline-start: calc(
-		var(--paraflow-live-list-base-indent) + 2 * var(--paraflow-live-list-indent) +
-			var(--paraflow-live-list-content-offset)
+		var(--paraflow-container-inset, 0px) + var(--paraflow-live-list-base-indent) + 2 * var(--paraflow-live-list-indent) +
+			var(--paraflow-live-list-content-offset) + var(--paraflow-list-owned-hanging-indent, 0px)
 	) !important;
 	text-indent: 0 !important;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-structured-list-active
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
 	.paraflow-list-owned-line-4 {
 	padding-inline-start: calc(
-		var(--paraflow-live-list-base-indent) + 3 * var(--paraflow-live-list-indent) +
-			var(--paraflow-live-list-content-offset)
+		var(--paraflow-container-inset, 0px) + var(--paraflow-live-list-base-indent) + 3 * var(--paraflow-live-list-indent) +
+			var(--paraflow-live-list-content-offset) + var(--paraflow-list-owned-hanging-indent, 0px)
 	) !important;
 	text-indent: 0 !important;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-structured-list-active
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
 	.paraflow-list-owned-line-5 {
 	padding-inline-start: calc(
-		var(--paraflow-live-list-base-indent) + 4 * var(--paraflow-live-list-indent) +
-			var(--paraflow-live-list-content-offset)
+		var(--paraflow-container-inset, 0px) + var(--paraflow-live-list-base-indent) + 4 * var(--paraflow-live-list-indent) +
+			var(--paraflow-live-list-content-offset) + var(--paraflow-list-owned-hanging-indent, 0px)
 	) !important;
 	text-indent: 0 !important;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-structured-list-active
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
 	.paraflow-list-owned-line-6 {
 	padding-inline-start: calc(
-		var(--paraflow-live-list-base-indent) + 5 * var(--paraflow-live-list-indent) +
-			var(--paraflow-live-list-content-offset)
+		var(--paraflow-container-inset, 0px) + var(--paraflow-live-list-base-indent) + 5 * var(--paraflow-live-list-indent) +
+			var(--paraflow-live-list-content-offset) + var(--paraflow-list-owned-hanging-indent, 0px)
 	) !important;
 	text-indent: 0 !important;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-structured-list-active
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
 	.paraflow-list-owned-blank-line {
 	min-height: var(--paraflow-blank-line-height);
-	padding-block: 0;
+	padding-block: 0 !important;
 	line-height: var(--paraflow-blank-line-height);
+}
+
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	.paraflow-list-blank-gap-head {
+	min-height: var(--paraflow-blank-line-height) !important;
+	line-height: var(--paraflow-blank-line-height) !important;
+	padding-block: 0 !important;
+}
+
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	.paraflow-list-blank-gap-head > .cm-widgetBuffer {
+	height: 0 !important;
+	vertical-align: baseline;
+}
+
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	.paraflow-list-blank-editable {
+	--paraflow-list-owned-hanging-indent: var(--paraflow-live-list-hanging-indent);
+	min-height: calc(1em * var(--paraflow-line-height)) !important;
+	line-height: var(--paraflow-line-height) !important;
+	padding-block: 0 !important;
+}
+
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	.paraflow-list-blank-folded {
+	height: 0 !important;
+	min-height: 0 !important;
+	line-height: 0 !important;
+	padding-block: 0 !important;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
@@ -612,20 +669,30 @@
 	> .cm-editor.paraflow-paragraph-editing-active
 	.paraflow-heading-badge {
 	position: absolute;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
 	inset-inline-end: calc(100% + 4px);
 	inset-block-start: 50%;
 	transform: translateY(-50%);
 	box-sizing: border-box;
 	min-inline-size: 20px;
 	padding: 0 2px;
-	border: 1.5px solid var(--background-modifier-border);
-	border-color: color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
+	border: 1.5px solid var(--paraflow-border-color);
 	border-radius: 2px;
-	color: color-mix(in srgb, var(--text-faint) 72%, transparent);
+	color: var(--paraflow-source-color);
+	font-family: var(--font-interface);
 	font-size: 10px;
 	font-weight: 400;
 	line-height: 12px;
 	white-space: nowrap;
+}
+
+.markdown-source-view.mod-cm6.is-live-preview .paraflow-heading-badge-label {
+	display: block;
+	line-height: 12px;
+	transform: translateY(.5px);
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
@@ -635,11 +702,11 @@
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-paragraph-editing-active
+	> .cm-editor
 	.paraflow-line-break-marker {
 	margin-inline-start: 0.2em;
-	color: var(--text-faint);
-	font-size: 0.75em;
+	color: var(--paraflow-source-color, var(--text-faint));
+	font-size: 1em;
 	font-weight: 400;
 	line-height: 1;
 	-webkit-user-select: none;
@@ -647,12 +714,44 @@
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor
+	.paraflow-html-break-hint,
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor
+	.paraflow-html-break-hint * {
+	color: var(--paraflow-source-color, var(--text-faint)) !important;
+	font-family: var(--font-text) !important;
+	font-size: 1em !important;
+	font-style: normal !important;
+	font-weight: 400 !important;
+	line-height: inherit !important;
+	vertical-align: baseline;
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
+.markdown-source-view.mod-cm6.is-live-preview .paraflow-inline-body--strikethrough {
+	text-decoration: line-through;
+}
+
+.markdown-source-view.mod-cm6.is-live-preview
 	> .cm-editor.paraflow-paragraph-editing-active
-	.paraflow-line-break-marker[data-break-kind='html']
-	+ .cm-widgetBuffer
-	+ .cm-widgetBuffer
-	+ .cm-html-embed {
-	display: none !important;
+	.cm-url:has(> .paraflow-inline-source-active) {
+	text-decoration-line: none !important;
+}
+
+.markdown-source-view.mod-cm6.is-live-preview
+	.cm-formatting-strikethrough.cm-strikethrough:has(.paraflow-inline-source-active--strikethrough),
+.markdown-source-view.mod-cm6.is-live-preview
+	.paraflow-inline-source-active--strikethrough .cm-formatting-strikethrough.cm-strikethrough {
+	text-decoration-line: none !important;
+}
+
+.markdown-source-view.mod-cm6.is-live-preview .paraflow-invalid-native-strike,
+.markdown-source-view.mod-cm6.is-live-preview .paraflow-invalid-native-strike .cm-strikethrough,
+.markdown-source-view.mod-cm6.is-live-preview .cm-strikethrough:has(.paraflow-invalid-native-strike) {
+	text-decoration-line: none !important;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
@@ -731,7 +830,7 @@
 
 .markdown-source-view.mod-cm6.is-live-preview
 	> .cm-editor.paraflow-paragraph-editing-active
-	.paraflow-paragraph-empty-row {
+	.paraflow-paragraph-empty-row:not(.paraflow-list-owned-blank-line) {
 	min-height: calc(1em * var(--paraflow-line-height)) !important;
 	line-height: var(--paraflow-line-height) !important;
 }
@@ -747,11 +846,18 @@
 
 .markdown-source-view.mod-cm6.is-live-preview
 	> .cm-editor.paraflow-gap-selection-presentation-active
-	.cm-content::selection,
+	.cm-content:not(.cm-table-widget *)::selection,
 .markdown-source-view.mod-cm6.is-live-preview
 	> .cm-editor.paraflow-gap-selection-presentation-active
-	.cm-content *::selection {
+	.cm-content :not(:is(.cm-table-widget, .cm-table-widget *, .paraflow-html-table-editor, .paraflow-html-table-editor *))::selection {
 	background-color: transparent !important;
+}
+
+/* Table editors own their selection paint, including inherited browser highlights. */
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor.paraflow-gap-selection-presentation-active
+	:is(.cm-table-widget, .paraflow-html-table-editor)::selection {
+	background-color: var(--text-selection);
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
@@ -767,19 +873,18 @@
 	> .paraflow-gap-selection-layer
 	.cm-selectionBackground {
 	background: var(--text-selection);
-	box-shadow:
-		0 -2px 0 var(--text-selection),
-		0 2px 0 var(--text-selection);
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
 	> .cm-editor.paraflow-paragraph-editing-active
 	.paraflow-inline-source-active,
 .markdown-source-view.mod-cm6.is-live-preview
+	.cm-table-widget .cm-content .cm-formatting:is(.cm-formatting-code, .cm-formatting-strong, .cm-formatting-em, .cm-formatting-strikethrough, .cm-formatting-highlight, .cm-formatting-link, .cm-formatting-link-string),
+.markdown-source-view.mod-cm6.is-live-preview
 	> .cm-editor.paraflow-paragraph-editing-active
 	.paraflow-inline-source-active * {
-	color: var(--text-faint) !important;
-	font-family: inherit !important;
+	color: var(--paraflow-source-color, var(--text-faint)) !important;
+	font-family: var(--font-text) !important;
 	font-size: 1em !important;
 	font-style: normal !important;
 	font-weight: 400 !important;
@@ -824,37 +929,39 @@
 .markdown-source-view.mod-cm6.is-live-preview
 	> .cm-editor.paraflow-paragraph-editing-active
 	.paraflow-inline-body--highlight {
-	background: var(--text-highlight-bg) !important;
+	background: var(--paraflow-highlight-background, var(--highlight-background, var(--text-highlight-bg))) !important;
+	color: var(--paraflow-highlight-color, inherit);
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
 	> .cm-editor.paraflow-paragraph-editing-active
 	.paraflow-inline-body--inline-code {
-	background: var(--paraflow-code-background) !important;
-	border: 1px solid var(--background-modifier-border) !important;
-	border-radius: 3px !important;
-	padding: 0 0.2em !important;
-	font-family: var(--font-monospace) !important;
-	font-size: 0.9em !important;
+	color: var(--paraflow-inline-code-color, var(--code-normal)) !important;
+	background: var(--paraflow-inline-code-background, var(--paraflow-code-background, var(--code-background))) !important;
+	border: var(--paraflow-inline-code-border, 1px solid var(--paraflow-border-color, var(--background-modifier-border))) !important;
+	border-radius: var(--paraflow-inline-code-radius, 3px) !important;
+	padding: var(--paraflow-inline-code-padding, 0 0.2em) !important;
+	font-family: var(--paraflow-inline-code-font, var(--font-monospace)) !important;
+	font-size: var(--paraflow-inline-code-size, 0.9em) !important;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
 	> .cm-editor.paraflow-paragraph-editing-active
 	.paraflow-inline-body--strong {
-	font-weight: 700 !important;
+	font-weight: var(--paraflow-strong-weight, 700) !important;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
 	> .cm-editor.paraflow-paragraph-editing-active
 	.paraflow-inline-body--emphasis {
-	font-style: italic !important;
+	font-style: var(--paraflow-emphasis-style, italic) !important;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
 	> .cm-editor.paraflow-paragraph-editing-active
 	.paraflow-inline-body--strong-emphasis {
-	font-style: italic !important;
-	font-weight: 700 !important;
+	font-style: var(--paraflow-emphasis-style, italic) !important;
+	font-weight: var(--paraflow-strong-weight, 700) !important;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
@@ -868,7 +975,7 @@
 	font: inherit;
 	line-height: 1;
 	vertical-align: middle;
-	margin-inline-end: -0.625em;
+	margin-inline-end: -0.5em;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
@@ -884,12 +991,12 @@
 	position: relative !important;
 	box-sizing: border-box;
 	flex: 0 0 auto;
-	width: var(--paraflow-live-marker-size, 0.375em);
-	height: var(--paraflow-live-marker-size, 0.375em);
+	width: var(--paraflow-marker-size, var(--paraflow-live-marker-size, 0.375em));
+	height: var(--paraflow-marker-size, var(--paraflow-live-marker-size, 0.375em));
 	aspect-ratio: 1;
-	border: var(--paraflow-live-marker-border, 0);
-	border-radius: var(--paraflow-live-marker-radius, 0);
-	background: var(--paraflow-live-marker-background, transparent);
+	border: var(--paraflow-marker-border, var(--paraflow-live-marker-border, 0));
+	border-radius: var(--paraflow-marker-radius, var(--paraflow-live-marker-radius, 0));
+	background: var(--paraflow-marker-background, var(--paraflow-live-marker-background, transparent));
 	top: 0 !important;
 	transform: none !important;
 }
@@ -921,7 +1028,7 @@
 	.HyperMD-list-line-1:not(.HyperMD-task-line)
 	.list-bullet::after {
 	--paraflow-live-marker-radius: 50%;
-	--paraflow-live-marker-background: var(--text-normal);
+	--paraflow-live-marker-background: var(--paraflow-marker-color, var(--text-normal));
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
@@ -929,7 +1036,7 @@
 	.HyperMD-list-line-2:not(.HyperMD-task-line)
 	.list-bullet::after {
 	--paraflow-live-marker-size: 0.4375em;
-	--paraflow-live-marker-border: 1px solid var(--text-normal);
+	--paraflow-live-marker-border: 1px solid var(--paraflow-marker-color, var(--text-normal));
 	--paraflow-live-marker-radius: 50%;
 }
 
@@ -950,12 +1057,35 @@
 	.HyperMD-list-line-6:not(.HyperMD-task-line)
 	.list-bullet::after {
 	--paraflow-live-marker-radius: 0;
-	--paraflow-live-marker-background: var(--text-normal);
+	--paraflow-live-marker-background: var(--paraflow-marker-color, var(--text-normal));
 }
 
-/* ParaFlow replaces protected Live Preview prefixes with owned marker widgets. */
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-structured-list-active
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	.paraflow-list-separator {
+	display: inline-block;
+	width: calc(2 * var(--paraflow-live-list-content-offset) + var(--paraflow-live-list-hanging-indent) - 1em);
+	padding: 0 !important;
+	margin: 0;
+	font: inherit;
+	text-indent: 0;
+	white-space: pre;
+	text-align: end;
+}
+
+/* Source separators own their advance regardless of the host's token nesting. */
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	.cm-formatting-list:has(.paraflow-list-separator),
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	.paraflow-list-separator .cm-formatting-list {
+	padding: 0 !important;
+	margin: 0 !important;
+}
+
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
 	.paraflow-list-marker {
 	display: inline-flex;
 	align-items: center;
@@ -972,80 +1102,115 @@
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-structured-list-active
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
 	.paraflow-list-marker--unordered:not(.paraflow-list-marker--task) {
 	width: 1em;
+	height: 1lh;
+	line-height: inherit;
+	vertical-align: top;
 	color: transparent;
 	margin-inline-end: calc(0px - var(--paraflow-live-list-content-offset));
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-structured-list-active
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
 	.paraflow-list-marker--ordered {
 	position: relative;
+	vertical-align: baseline;
 	inset-inline-start: 0.125em;
 	width: 1em;
 	justify-content: flex-end;
 	white-space: nowrap;
 	overflow: visible;
+}
+
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	.paraflow-list-marker--ordered:not(.paraflow-list-marker--task) {
 	margin-inline-end: calc(0px - var(--paraflow-live-list-content-offset));
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-structured-list-active
-	.paraflow-list-marker--unordered:not(.paraflow-list-marker--task)::after {
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	.paraflow-list-marker--unordered:not(.paraflow-list-marker--task)::after,
+.markdown-source-view.mod-cm6.is-live-preview > .cm-editor.paraflow-callout-active
+	.cm-callout .callout-content ul > li:not(.task-list-item)::before {
 	content: '';
 	position: relative;
 	box-sizing: border-box;
 	flex: 0 0 auto;
-	width: var(--paraflow-live-marker-size, 0.375em);
-	height: var(--paraflow-live-marker-size, 0.375em);
+	width: var(--paraflow-marker-size, var(--paraflow-live-marker-size, 0.375em));
+	height: var(--paraflow-marker-size, var(--paraflow-live-marker-size, 0.375em));
 	aspect-ratio: 1;
-	border: var(--paraflow-live-marker-border, 0);
-	border-radius: var(--paraflow-live-marker-radius, 0);
-	background: var(--paraflow-live-marker-background, transparent);
+	border: var(--paraflow-marker-border, var(--paraflow-live-marker-border, 0));
+	border-radius: var(--paraflow-marker-radius, var(--paraflow-live-marker-radius, 0));
+	background: var(--paraflow-marker-background, var(--paraflow-live-marker-background, transparent));
 	top: 0;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-structured-list-active
-	.paraflow-list-marker--disc::after {
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	.paraflow-list-marker--disc::after,
+.markdown-source-view.mod-cm6.is-live-preview > .cm-editor.paraflow-callout-active
+	.cm-callout .callout-content > ul > li:not(.task-list-item)::before {
 	--paraflow-live-marker-radius: 50%;
-	--paraflow-live-marker-background: var(--text-normal);
+	--paraflow-live-marker-background: var(--paraflow-marker-color, var(--text-normal));
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-structured-list-active
-	.paraflow-list-marker--ring::after {
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	.paraflow-list-marker--ring::after,
+.markdown-source-view.mod-cm6.is-live-preview > .cm-editor.paraflow-callout-active
+	.cm-callout .callout-content > :is(ul, ol) > li > ul > li:not(.task-list-item)::before {
 	--paraflow-live-marker-size: 0.4375em;
-	--paraflow-live-marker-border: 1px solid var(--text-normal);
+	--paraflow-live-marker-border: 1px solid var(--paraflow-marker-color, var(--text-normal));
 	--paraflow-live-marker-radius: 50%;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-structured-list-active
-	.paraflow-list-marker--square::after {
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	.paraflow-list-marker--square::after,
+.markdown-source-view.mod-cm6.is-live-preview > .cm-editor.paraflow-callout-active
+	.cm-callout .callout-content > :is(ul, ol) > li > :is(ul, ol) ul > li:not(.task-list-item)::before {
 	--paraflow-live-marker-radius: 0;
-	--paraflow-live-marker-background: var(--text-normal);
+	--paraflow-live-marker-background: var(--paraflow-marker-color, var(--text-normal));
+}
+
+.markdown-source-view.mod-cm6.is-live-preview > .cm-editor.paraflow-callout-active
+	.cm-callout .callout-content ul > li:not(.task-list-item) {
+	position: relative;
+	list-style: none;
+}
+.markdown-source-view.mod-cm6.is-live-preview > .cm-editor.paraflow-callout-active
+	.cm-callout .callout-content ul > li:not(.task-list-item)::before {
+	position: absolute;
+	inset-inline-start: calc(0px - var(--paraflow-live-list-content-offset) - var(--paraflow-live-list-hanging-indent) + .5em - var(--paraflow-marker-size, var(--paraflow-live-marker-size, .375em)) / 2);
+	top: calc(var(--paraflow-list-row-padding, .3em) + .75em - var(--paraflow-marker-size, var(--paraflow-live-marker-size, .375em)) / 2);
+}
+.markdown-source-view.mod-cm6.is-live-preview > .cm-editor.paraflow-callout-active
+	.cm-callout .callout-content :is(ul, ol)::before {
+	display: none;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-structured-list-active
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
 	.paraflow-list-marker--task.paraflow-list-marker--unordered {
 	display: none;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-structured-list-active
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
 	.paraflow-task-prefix {
 	display: inline-flex;
 	align-items: center;
+	min-width: calc(var(--paraflow-live-list-content-offset) + var(--paraflow-live-list-hanging-indent));
 	line-height: inherit;
+	text-indent: 0;
 	vertical-align: middle;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-structured-list-active
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
 	.paraflow-task-checkbox {
 	flex: 0 0 auto;
 	margin: 0 0.375em 0 0 !important;
@@ -1053,10 +1218,10 @@
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-structured-list-active
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
 	.paraflow-task-marker-separator,
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-structured-list-active
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
 	.paraflow-task-content-separator {
 	display: inline-block;
 	white-space: pre;
@@ -1064,12 +1229,17 @@
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-structured-list-active
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	.paraflow-task-content-separator {
+	flex: 1 0 auto;
+}
+
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
 	.paraflow-task-caret-metric {
 	align-self: center;
 	display: block;
 	flex: 0 0 0;
-	height: 1em;
 	overflow: hidden;
 	pointer-events: none;
 	width: 0;
@@ -1104,140 +1274,171 @@
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-structured-list-active
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
 	.HyperMD-task-line:has(.paraflow-task-checkbox)
 	.task-list-item-checkbox:not(.paraflow-task-checkbox) {
 	display: none;
 }
-
-.workspace-leaf-content[data-type='markdown']
-	.markdown-reading-view
-	> .markdown-preview-view
-	> .markdown-preview-sizer
-	code:not(pre code):not(:is(.callout *, .markdown-embed *)),
-.markdown-source-view.mod-cm6 span.cm-inline-code {
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 3px;
-	background: var(--paraflow-code-background);
-	padding: 0 0.2em;
-	font-size: 0.9em;
-}
-
-.workspace-leaf-content[data-type='markdown']
-	.markdown-reading-view
-	> .markdown-preview-view
-	> .markdown-preview-sizer
-	pre:not(:is(.callout *, .markdown-embed *)) {
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 3px;
-	background: var(--paraflow-code-background);
-}
-
-.markdown-source-view.mod-cm6 .HyperMD-codeblock {
-	background: var(--paraflow-code-background);
-	font-size: 0.9em;
-}
-
-.workspace-leaf-content[data-type='markdown']
-	.markdown-reading-view
-	> .markdown-preview-view
-	> .markdown-preview-sizer
-	table:not(:is(.callout *, .markdown-embed *)),
-.markdown-source-view.mod-cm6 table {
-	width: 100%;
-	table-layout: auto;
-	border-collapse: collapse;
-}
-
-.markdown-source-view.mod-cm6 .cm-table-widget {
-	width: 100%;
-}
-
-.markdown-source-view.mod-cm6:not(:is(.cm-table-widget *))
-	.cm-table-widget :is(table, .table-wrapper) {
-	width: 100%;
-}
-
-.workspace-leaf-content[data-type='markdown']
-	.markdown-reading-view
-	> .markdown-preview-view
-	> .markdown-preview-sizer
-	:is(th, td):not(:is(.callout *, .markdown-embed *)),
-.markdown-source-view.mod-cm6 :is(th, td) {
-	border: 1px solid var(--background-modifier-border);
-	padding: 6px 13px;
-}
-
-.workspace-leaf-content[data-type='markdown']
-	.markdown-reading-view
-	> .markdown-preview-view
-	> .markdown-preview-sizer
-	thead:not(:is(.callout *, .markdown-embed *)),
-.markdown-source-view.mod-cm6 thead {
-	background: var(--background-secondary);
-}
-
-.workspace-leaf-content[data-type='markdown']
-	.markdown-reading-view
-	> .markdown-preview-view
-	> .markdown-preview-sizer
-	tbody:not(:is(.callout *, .markdown-embed *))
-	tr:nth-child(even),
-.markdown-source-view.mod-cm6 tbody tr:nth-child(even) {
-	background: var(--background-secondary);
-}
-
-.markdown-source-view.mod-cm6 .image-embed,
-.markdown-source-view.mod-cm6 .mermaid,
-.workspace-leaf-content[data-type='markdown']
-	.markdown-reading-view
-	> .markdown-preview-view
-	> .markdown-preview-sizer
-	:is(.image-embed, .mermaid):not(:is(.callout *, .markdown-embed *)) {
+.paraflow-settings-categories {
 	display: flex;
-	justify-content: center;
+	flex-wrap: wrap;
+	gap: 0.4em;
+	margin-block-end: 1em;
 }
 
-.markdown-source-view.mod-cm6 .image-embed img,
-.markdown-source-view.mod-cm6 .mermaid svg,
-.workspace-leaf-content[data-type='markdown']
-	.markdown-reading-view
-	> .markdown-preview-view
-	> .markdown-preview-sizer
-	.image-embed:not(:is(.callout *, .markdown-embed *)) img,
-.workspace-leaf-content[data-type='markdown']
-	.markdown-reading-view
-	> .markdown-preview-view
-	> .markdown-preview-sizer
-	.mermaid:not(:is(.callout *, .markdown-embed *)) svg {
-	display: block;
-	max-width: 100%;
-	margin-inline: auto;
+.paraflow-settings-categories button[aria-pressed='true'] {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+.markdown-source-view.mod-cm6.is-live-preview .paraflow-body-indent {
+	text-indent: 2em !important;
+}
+.markdown-source-view.mod-cm6.is-live-preview > .cm-editor.paraflow-paragraph-editing-active :is(.paraflow-literal-inline-marker,.cm-inline-code:has(.paraflow-literal-inline-marker),.cm-highlight:has(.paraflow-literal-inline-marker)) {
+  color: inherit !important;
+  font-family: inherit !important;
+  font-size: inherit !important;
+  font-style: inherit !important;
+  font-weight: inherit !important;
+  line-height: inherit !important;
+  text-decoration: none !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
 }
 
-.workspace-leaf-content[data-type='markdown']
-	> .view-content
-	.markdown-reading-view
-	> .markdown-preview-view
-	> .markdown-preview-sizer,
-.workspace-leaf-content[data-type='markdown']
-	> .view-content.markdown-reading-view
-	> .markdown-preview-view
-	> .markdown-preview-sizer {
-	min-height: 0 !important;
-	padding-bottom: var(--paraflow-end-spacing) !important;
+/* Reading list structure survives both native rendering and MarkdownRenderer replacement. */
+.markdown-reading-view :is(ul, ol):has(> li):not(.markdown-embed *) {
+	font-family: var(--paraflow-list-font, var(--font-text));
+	font-size: var(--paraflow-list-size, var(--font-text-size));
+	margin-inline-start: 0;
+	padding-inline-start: calc(var(--paraflow-live-list-base-indent, .5em) + var(--paraflow-live-list-content-offset, .75em) + var(--paraflow-live-list-hanging-indent, .625em));
+}
+.markdown-reading-view :is(ul, ol) > li:not(.markdown-embed *) {
+	--paraflow-list-row-top-padding: var(--paraflow-list-row-padding, .3em);
+	margin-inline-start: 0 !important;
+	margin-block: 0;
+	padding-block: var(--paraflow-list-row-padding, .3em);
+	padding-block-start: var(--paraflow-list-row-top-padding);
+}
+.markdown-reading-view :is(ul, ol) > li:not(.markdown-embed *) > :is(ul, ol):has(> li) {
+	margin-block: 0;
+	margin-block-start: var(--paraflow-list-row-padding, .3em);
+	padding-inline-start: var(--paraflow-live-list-indent, 30px);
+}
+.markdown-reading-view :is(ul, ol) > li:not(.markdown-embed *):has(> ul, > ol) {
+	padding-block-end: 0;
+}
+.markdown-reading-view ul > li:has(> .list-bullet):not(.task-list-item):not(.markdown-embed *) {
+	position: relative;
+	list-style: none !important;
+}
+.markdown-reading-view ul > li:not(.task-list-item):not(.markdown-embed *) > .list-bullet {
+	display: none !important;
+}
+.markdown-reading-view ul > li:has(> .list-bullet):not(.task-list-item):not(.markdown-embed *)::marker {
+	content: '';
+}
+.markdown-reading-view ul > li:has(> .list-bullet):not(.task-list-item):not(.markdown-embed *)::before {
+	--paraflow-live-marker-size: .375em;
+	--paraflow-live-marker-radius: 50%;
+	--paraflow-live-marker-background: var(--paraflow-marker-color, var(--text-normal));
+	--paraflow-live-marker-border: 0;
+	content: '';
+	position: absolute;
+	box-sizing: border-box;
+	width: var(--paraflow-marker-size, var(--paraflow-live-marker-size));
+	height: var(--paraflow-marker-size, var(--paraflow-live-marker-size));
+	border: var(--paraflow-marker-border, var(--paraflow-live-marker-border));
+	border-radius: var(--paraflow-marker-radius, var(--paraflow-live-marker-radius));
+	background: var(--paraflow-marker-background, var(--paraflow-live-marker-background));
+	inset-inline-start: calc(0px - var(--paraflow-live-list-content-offset, .75em) - var(--paraflow-live-list-hanging-indent, .625em) + .5em - var(--paraflow-marker-size, var(--paraflow-live-marker-size)) / 2);
+	top: calc(var(--paraflow-list-row-top-padding, .3em) + .5lh - var(--paraflow-marker-size, var(--paraflow-live-marker-size)) / 2);
+	pointer-events: none;
+}
+.markdown-reading-view :is(ul, ol) > li > ul > li:has(> .list-bullet):not(.task-list-item):not(.markdown-embed *)::before {
+	--paraflow-live-marker-size: .4375em;
+	--paraflow-live-marker-background: transparent;
+	--paraflow-live-marker-border: 1px solid var(--paraflow-marker-color, var(--text-normal));
+}
+.markdown-reading-view :is(ul, ol) > li > :is(ul, ol) ul > li:has(> .list-bullet):not(.task-list-item):not(.markdown-embed *)::before {
+	--paraflow-live-marker-size: .375em;
+	--paraflow-live-marker-radius: 0;
+	--paraflow-live-marker-background: var(--paraflow-marker-color, var(--text-normal));
+	--paraflow-live-marker-border: 0;
 }
 
-@media (min-width: 1400px) {
-	.markdown-source-view.mod-cm6,
-	.markdown-reading-view {
-		--paraflow-content-width: 964px;
-	}
+/* Native HTML embeds lack Obsidian's markdown-rendered ancestor. */
+.markdown-source-view.mod-cm6.is-live-preview :where(mark) {
+	background: var(--paraflow-highlight-background, var(--highlight-background, var(--text-highlight-bg)));
+	color: var(--paraflow-highlight-color, inherit);
 }
 
-@media (min-width: 1800px) {
-	.markdown-source-view.mod-cm6,
-	.markdown-reading-view {
-		--paraflow-content-width: 1140px;
-	}
+/* Explicit color identity takes precedence over content-theme default mark paint. */
+:is(.markdown-source-view.mod-cm6.is-live-preview, .markdown-reading-view) mark[data-highlight="red"] {
+	background-color: var(--highlight-background-red) !important;
+}
+:is(.markdown-source-view.mod-cm6.is-live-preview, .markdown-reading-view) mark[data-highlight="orange"] {
+	background-color: var(--highlight-background-orange) !important;
+}
+:is(.markdown-source-view.mod-cm6.is-live-preview, .markdown-reading-view) mark[data-highlight="yellow"] {
+	background-color: var(--highlight-background-yellow) !important;
+}
+:is(.markdown-source-view.mod-cm6.is-live-preview, .markdown-reading-view) mark[data-highlight="green"] {
+	background-color: var(--highlight-background-green) !important;
+}
+:is(.markdown-source-view.mod-cm6.is-live-preview, .markdown-reading-view) mark[data-highlight="blue"] {
+	background-color: var(--highlight-background-blue) !important;
+}
+:is(.markdown-source-view.mod-cm6.is-live-preview, .markdown-reading-view) mark[data-highlight="purple"] {
+	background-color: var(--highlight-background-purple) !important;
+}
+
+/* Keep native task bodies on the same hanging slot as the protected LP prefix. */
+.markdown-source-view.mod-cm6.is-live-preview > .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+ .paraflow-task-prefix:not(:has(.paraflow-list-marker--ordered)) {
+ position: relative;
+ height: 1lh;
+ vertical-align: top;
+}
+.markdown-source-view.mod-cm6.is-live-preview > .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+ .paraflow-task-prefix:not(:has(.paraflow-list-marker--ordered)) .paraflow-task-checkbox {
+ position: absolute;
+ inset-inline-start: 0;
+ top: calc(50% - var(--checkbox-size, 1em) / 2);
+ margin: 0 !important;
+}
+.markdown-reading-view ul > li.task-list-item:not(.markdown-embed *) {
+ position: relative;
+ padding-inline-start: .625em;
+}
+.markdown-reading-view ul > li.task-list-item:not(.markdown-embed *) > .task-list-item-checkbox {
+ font: inherit;
+ position: absolute;
+ inset-inline-start: calc(0px - var(--paraflow-live-list-content-offset, .75em) - var(--paraflow-live-list-hanging-indent, .625em));
+ top: calc(var(--paraflow-list-row-top-padding, .3em) + .5lh - var(--checkbox-size, 1em) / 2);
+ margin: 0 !important;
+}
+.markdown-reading-view ol > li:not(.markdown-embed *)::marker {
+ color: var(--paraflow-marker-color, var(--text-normal));
+}
+
+/* Source delimiters are text; the code body retains its native paint. */
+.markdown-source-view.mod-cm6:not(.is-live-preview):not(.cm-table-widget *)
+ > .cm-editor > .cm-scroller > .cm-sizer > .cm-contentContainer > .cm-content
+ > .cm-line .cm-formatting-code.cm-inline-code {
+	background: transparent;
+	padding: 0;
+	border: 0;
+}
+
+.markdown-reading-view :is(ul, ol) > li:not(.markdown-embed *) > :is(ul, ol):has(> li)::before {
+	content: none !important;
+	border-inline-end: 0 !important;
+}
+
+.markdown-reading-view ul > li.task-list-item:not(.markdown-embed *) > :is(ul, ol):has(> li) {
+	position: relative;
+	inset-inline-start: -.625em;
 }

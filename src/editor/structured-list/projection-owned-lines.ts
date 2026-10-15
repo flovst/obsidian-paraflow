@@ -3,6 +3,7 @@ import type {
 	SourceAnalysis,
 	SourceLine,
 } from './context-analysis.js';
+import { isEditableOwnedWhitespace } from './context-analysis.js';
 import type {
 	ProjectionOwnedLine,
 	ProjectionOwnedLineKind,
@@ -54,17 +55,19 @@ function ownedLine(
 		depth: owner.depth,
 		kind,
 		ownerKind: owner.block.prefix.kind,
+		prefix: { from: line.from, to: kind === 'blank' ? line.to : line.from + line.indentText.length },
 		range: { from: line.from, to: line.to },
 		rendering: owner.depth < 6 ? 'projected' : 'native-depth',
 	};
 }
 
 function ownedKind(
+	analysis: SourceAnalysis,
 	owner: AnalyzedItem,
 	line: SourceLine,
 	lastWhitespaceFrom: number | null,
 ): ProjectionOwnedLineKind {
-	if (line.whitespaceKind !== null) return 'blank';
+	if (line.whitespaceKind !== null && !isEditableOwnedWhitespace(analysis, owner, line)) return 'blank';
 	return lastWhitespaceFrom !== null && lastWhitespaceFrom > owner.line.from
 		? 'additional-paragraph'
 		: 'continuation';
@@ -106,13 +109,13 @@ function appendOwnedLine(
 	lastWhitespaceFrom: number | null,
 	completeSyntaxAuthority: boolean,
 ): void {
-	if (markerLineStarts.has(line.from)) return;
+	if (markerLineStarts.has(line.from) || line.codeLeaf) return;
 	const ownerIndex = deepestOwner(analysis, activeIndexes, line, completeSyntaxAuthority);
 	if (ownerIndex === null) return;
 	const owner = analysis.items[ownerIndex];
 	const lines = ownedByItem[ownerIndex];
 	if (!owner || !lines) throw new Error('Projection-owned line is missing its analyzed owner');
-	lines.push(ownedLine(owner, line, ownedKind(owner, line, lastWhitespaceFrom)));
+	lines.push(ownedLine(owner, line, ownedKind(analysis, owner, line, lastWhitespaceFrom)));
 }
 
 export function buildProjectionOwnedLines(

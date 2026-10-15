@@ -76,7 +76,7 @@ function selectionSegments(
 	for (const line of analysis.lines) {
 		const source = sourceRange(Math.max(from, line.from), Math.min(to, line.newlineTo));
 		if (source.to <= source.from) continue;
-		const owner = itemForLine(analysis, line);
+		const owner = line.codeLeaf ? null : itemForLine(analysis, line);
 		const markerLine = owner?.line.from === line.from;
 		segments.push({
 			kind: owner ? 'list-content' : 'ordinary',

@@ -45,6 +45,8 @@ const beginClearing = StateEffect.define<EditorSelection>();
 const beginRelease = StateEffect.define<null>();
 const settleSession = StateEffect.define<null>();
 const viewPresentationActive = StateEffect.define<boolean>();
+/** A rendered-source hit begins a fresh native mouse selection at its exact source offset. */
+export const beginSourcePointer = StateEffect.define<null>();
 type PointerReleaseReconciliation = 'idle' | 'awaiting-echo' | 'echoed';
 type SelectionPresentationStatePredicate = (state: EditorState) => boolean;
 type SelectionPresentationViewPredicate = (view: EditorView) => boolean;
@@ -66,7 +68,8 @@ const selectionPresentationViewPredicates = Facet.define<
 const selectionPresentationViewActiveField = StateField.define<boolean>({
 	create: (state) => state.facet(selectionPresentationViewPredicates).length === 0,
 	update(value, transaction) {
-		if (transaction.reconfigured) {
+		if (transaction.reconfigured && transaction.startState.facet(selectionPresentationViewPredicates) !==
+			transaction.state.facet(selectionPresentationViewPredicates)) {
 			return transaction.state.facet(selectionPresentationViewPredicates).length === 0;
 		}
 		const effect = transaction.effects.find((candidate) =>
@@ -88,6 +91,7 @@ function isSelectionPresentationViewActive(view: EditorView): boolean {
 const pointerPressedStateField = StateField.define<boolean>({
 	create: () => false,
 	update(value, transaction) {
+		if (transaction.effects.some(effect => effect.is(beginSourcePointer))) return true;
 		if (transaction.docChanged || transaction.reconfigured ||
 			!isSelectionPresentationStateActive(transaction.state)) return false;
 		const effect = transaction.effects.find((candidate) => candidate.is(pointerPressed));
@@ -198,6 +202,7 @@ function isPointerReleaseTail(transaction: Transaction): boolean {
 export const selectionPresentationSessionField = StateField.define<SelectionPresentationSession>({
 	create: () => idleSession,
 	update(value, transaction) {
+		if (transaction.effects.some(effect => effect.is(beginSourcePointer))) return idleSession;
 		if (transaction.docChanged || transaction.reconfigured ||
 			!isSelectionPresentationStateActive(transaction.state)) return idleSession;
 		const clearing = transaction.effects.find((effect) => effect.is(beginClearing));
@@ -262,6 +267,10 @@ export function selectionProjectionCoverage(state: EditorState): EditorSelection
 	return state.selection.ranges.some(({ empty }) => !empty) ? state.selection : null;
 }
 
+export function selectionPointerPressed(state: EditorState): boolean {
+	return state.field(pointerPressedStateField, false) ?? false;
+}
+
 const selectionPresentationSessionPlugin = ViewPlugin.define((view) => {
 	const ownerDocument = view.dom.ownerDocument;
 	const ownerWindow = ownerDocument.defaultView;
@@ -303,15 +312,20 @@ const selectionPresentationSessionPlugin = ViewPlugin.define((view) => {
 	if (view.state.facet(selectionPresentationViewPredicates).length > 0) {
 		queueViewActivity(presentationActive);
 	}
-	const onMouseUp = (event: MouseEvent) => {
-		if (event.button !== 0 || !view.state.field(pointerPressedStateField)) return;
+	const releasePointer = () => {
+		if (!view.state.field(pointerPressedStateField)) return;
 		queueMicrotask(() => {
 			if (!alive || !view.state.field(pointerPressedStateField)) return;
 			view.dispatch({ effects: [pointerPressed.of(false), beginRelease.of(null)] });
 			queueReleaseCommit();
 		});
 	};
+	const onMouseUp = (event: MouseEvent) => {
+		if (event.button === 0) releasePointer();
+	};
 	ownerDocument.addEventListener('mouseup', onMouseUp);
+	ownerDocument.addEventListener('pointercancel', releasePointer);
+	ownerWindow?.addEventListener('blur', releasePointer);
 	return {
 		update() {
 			const usesViewGate = view.state.facet(selectionPresentationViewPredicates).length > 0;
@@ -326,6 +340,8 @@ const selectionPresentationSessionPlugin = ViewPlugin.define((view) => {
 			alive = false;
 			cancelReleaseFrame();
 			ownerDocument.removeEventListener('mouseup', onMouseUp);
+			ownerDocument.removeEventListener('pointercancel', releasePointer);
+			ownerWindow?.removeEventListener('blur', releasePointer);
 		},
 	};
 }, {

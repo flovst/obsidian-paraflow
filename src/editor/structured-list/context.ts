@@ -20,8 +20,10 @@ import type {
 	ListContext,
 	ListItemSyntax,
 	NavigationContext,
+	OwnedBlock,
 	ProjectionListContext,
 	SelectionContext,
+	SourceRange,
 } from './model.js';
 import { buildProjectionOwnedLines } from './projection-owned-lines.js';
 import { discoverListItem, enumerateListItems } from './syntax.js';
@@ -34,10 +36,33 @@ function caretGate(state: EditorState, runtime: ContextRuntime): boolean {
 		!runtime.imeComposing && state.selection.main.empty;
 }
 
-function caretZone(item: AnalyzedItem, position: number): ListContext['caretZone'] {
-	if (item.block.content.from === item.block.content.to) return 'empty';
-	if (position <= item.block.content.from) return 'start';
-	return position >= item.block.content.to ? 'end' : 'middle';
+function navigationGate(state: EditorState, runtime: ContextRuntime): boolean {
+	return caretGate(state, runtime) || (runtime.operation === 'up-down' &&
+		runtime.selectionMode === 'continuous' && runtime.selectionsCount === 1 && !runtime.imeComposing);
+}
+
+function caretZone(content: SourceRange, position: number): ListContext['caretZone'] {
+	if (content.from === content.to) return 'empty';
+	if (position <= content.from) return 'start';
+	return position >= content.to ? 'end' : 'middle';
+}
+
+function consecutiveParagraphLines(left: OwnedBlock, right: OwnedBlock): boolean {
+	return left.kind !== 'descendant' && left.kind !== 'code-leaf' && right.kind !== 'descendant' && right.kind !== 'code-leaf' &&
+		left.range.to + 1 === right.range.from;
+}
+
+function paragraphSubtreeIndexes(
+	blocks: ListContext['topology']['ownedBlocks'],
+	activeIndex: number,
+): readonly number[] {
+	let first = activeIndex;
+	let last = activeIndex;
+	while (first > 0 && consecutiveParagraphLines(blocks[first - 1]!, blocks[first]!)) first -= 1;
+	while (last + 1 < blocks.length && consecutiveParagraphLines(blocks[last]!, blocks[last + 1]!)) last += 1;
+	// Structural membership includes code leaves inside descendants, independent of paragraph ownership.
+	while (last + 1 < blocks.length && blocks[last + 1]!.relativeDepth > 0) last += 1;
+	return Array.from({ length: last - first + 1 }, (_, index) => first + index);
 }
 
 function buildAnalyzedListContext(
@@ -48,11 +73,23 @@ function buildAnalyzedListContext(
 	runtime: ContextRuntime,
 ): ListContext {
 	const topology = buildListTopology(analysis, item);
+	const ownedBlockIndex = topology.ownedBlocks.findIndex((block) =>
+		block.kind !== 'descendant' && block.kind !== 'code-leaf' && block.range.from <= position && position <= block.range.to);
+	const owned = topology.ownedBlocks[ownedBlockIndex];
+	const caretContent: ListContext['caretContent'] = owned && owned.kind !== 'descendant' && owned.kind !== 'code-leaf'
+		? {
+			kind: owned.kind,
+			ownedBlockIndex,
+			subtreeBlockIndexes: paragraphSubtreeIndexes(topology.ownedBlocks, ownedBlockIndex),
+			range: { from: owned.range.from + owned.indentText.length, to: owned.range.to },
+		}
+		: { kind: 'marker-line', ownedBlockIndex: null, subtreeBlockIndexes: [], range: item.block.content };
 	return {
 		caret: position,
-		caretZone: caretZone(item, position),
+		caretContent,
+		caretZone: caretZone(caretContent.range, position),
 		current: item.block,
-		editScope: buildListScope(analysis, item.block, topology, position, runtime),
+		editScope: buildListScope(analysis, item.block, topology, position, runtime, caretContent),
 		selection: selectionSnapshot(state.selection),
 		source: analysis.source,
 		topology,
@@ -70,6 +107,7 @@ export function buildListContext(
 ): ListContext | null {
 	if (!caretGate(state, runtime)) return null;
 	const analysis = enumerateAnalysis(state);
+	if (containingLine(analysis.lines, position).codeLeaf) return null;
 	const item = itemAtPosition(analysis, position);
 	return item && discoverListItem(state, position)
 		? buildAnalyzedListContext(analysis, item, position, state, runtime)
@@ -100,12 +138,12 @@ export function buildNavigationContext(
 	runtime: ContextRuntime,
 	assoc: NavigationContext['assoc'] = state.selection.main.assoc,
 ): NavigationContext | null {
-	if (!caretGate(state, runtime)) return null;
+	if (!navigationGate(state, runtime)) return null;
 	const analysis = enumerateAnalysis(state);
 	const item = itemAtPosition(analysis, position);
-	if (!item) return { ...ordinaryNavigationContext(analysis, position, state, runtime), assoc };
-	if (!discoverListItem(state, position)) return null;
+	if (!item || containingLine(analysis.lines, position).codeLeaf) return { ...ordinaryNavigationContext(analysis, position, state, runtime), assoc };
 	const list = buildAnalyzedListContext(analysis, item, position, state, runtime);
+	if (!discoverListItem(state, position) && list.caretContent.kind === 'marker-line') return null;
 	return { assoc, editScope: list.editScope, kind: 'list', list };
 }
 

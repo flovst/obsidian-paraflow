@@ -1,4 +1,4 @@
-import { EditorSelection, type ChangeSpec } from '@codemirror/state';
+import { ChangeSet, EditorSelection, type ChangeSpec } from '@codemirror/state';
 import type {
 	EditPlan,
 	EditPlanFragment,
@@ -18,6 +18,7 @@ import type {
 	WhitespaceBoundaryFact,
 } from './model.js';
 import type { HandledOperationId } from './operations.js';
+import { markdownColumns } from './prefix.js';
 
 const sameId = (left: EditRegionId, right: EditRegionId): boolean =>
 	left.kind === right.kind && left.index === right.index;
@@ -126,10 +127,12 @@ export function replaceCurrentPrefix(
 	replacement: string,
 ): EditPlanFragment {
 	prefixRegion(context, prefixRegionId);
+	const to = context.current.prefix.full.to;
+	const sentinel = context.source.slice({ from: to - 1, to }) === '\u200b' ? '\u200b' : '';
 	return fragment(context.editScope, [prefixRegionId], [{
 		from: context.current.prefix.full.from,
-		insert: replacement,
-		to: context.current.prefix.full.to,
+		insert: replacement + sentinel,
+		to,
 	}], null);
 }
 
@@ -149,7 +152,8 @@ export function replaceListBlockPrefix(
 	if (source.slice({ from: block.prefix.full.from, to }) === '') {
 		throw new Error('Normalized list-block prefix is empty');
 	}
-	return fragment(scope, [regionId], [{ from, insert: replacement, to }], null);
+	const sentinel = source.slice({ from: to - 1, to }) === '\u200b' ? '\u200b' : '';
+	return fragment(scope, [regionId], [{ from, insert: replacement + sentinel, to }], null);
 }
 
 export function insertAfterListBlock(
@@ -262,10 +266,9 @@ function firstOwnedDescendant(context: ListContext): ListContext['topology']['ow
 	return firstOwned;
 }
 
-function promotedOwnedContentOffset(
+function promotedOwnedContentStart(
 	context: ListContext,
 	replacementRange: SourceRange,
-	ownedIndentDelta: number,
 ): number {
 	const firstOwned = firstOwnedDescendant(context);
 	if (replacementRange.to >= context.source.length || context.source.text[replacementRange.to] !== '\n') {
@@ -275,11 +278,7 @@ function promotedOwnedContentOffset(
 	if (firstFollowing.kind !== 'list-item' || firstFollowing.block.lineFrom !== firstOwned.range.from) {
 		throw new Error('First owned descendant does not match the normalized following list item');
 	}
-	const offset = firstFollowing.block.content.from - firstFollowing.block.lineFrom + ownedIndentDelta;
-	if (!Number.isInteger(offset) || offset < 0) {
-		throw new RangeError('Promoted descendant content offset is invalid');
-	}
-	return offset;
+	return firstFollowing.block.content.from;
 }
 
 export function removeEmptyItemAndPromoteOwnedBlocks(
@@ -289,22 +288,23 @@ export function removeEmptyItemAndPromoteOwnedBlocks(
 ): EditPlanFragment {
 	const region = regionFor(context.editScope, itemRegionId, 'current-item');
 	const replacementRange = emptyItemReplacementRange(context, region.range, true);
-	const promotedContentOffset = promotedOwnedContentOffset(
+	const promotedContentStart = promotedOwnedContentStart(
 		context,
 		replacementRange,
-		ownedIndentDelta,
 	);
 	const ownedChanges = emptyItemOwnedChanges(
 		context,
 		region.range,
 		ownedIndentDelta,
 	);
-	return fragment(context.editScope, [itemRegionId], [{
+	const changes = [{
 		from: replacementRange.from,
 		insert: '',
 		to: replacementRange.to + 1,
-	}, ...ownedChanges], EditorSelection.create([
-		EditorSelection.cursor(replacementRange.from + promotedContentOffset),
+	}, ...ownedChanges];
+	const caret = ChangeSet.of(changes, context.source.length).mapPos(promotedContentStart, 1);
+	return fragment(context.editScope, [itemRegionId], changes, EditorSelection.create([
+		EditorSelection.cursor(caret),
 	]));
 }
 
@@ -348,10 +348,18 @@ function indentationChanges(
 	}
 	return starts.flatMap((relativeStart) => {
 		const from = range.from + relativeStart;
-		if (deltaColumns > 0) return [{ from, insert: ' '.repeat(deltaColumns), to: from }];
 		const indentation = /^[ \t]*/u.exec(text.slice(relativeStart))?.[0] ?? '';
-		const remove = Math.min(indentation.length, Math.abs(deltaColumns));
-		return remove === 0 ? [] : [{ from, insert: '', to: from + remove }];
+		const target = Math.max(0, markdownColumns(indentation) + deltaColumns);
+		let kept = 0, column = 0;
+		while (kept < indentation.length) {
+			const next = column + (indentation[kept] === '\t' ? 4 - column % 4 : 1);
+			if (next > target) break;
+			column = next;
+			kept += 1;
+		}
+		const insert = ' '.repeat(target - column);
+		return kept === indentation.length && insert.length === 0 ? []
+			: [{ from: from + kept, insert, to: from + indentation.length }];
 	});
 }
 
@@ -453,6 +461,21 @@ export function rewriteWhitespaceBoundary(
 	}
 	return fragment(scope, [boundaryRegionId], [
 		{ from: boundary.range.from, insert: replacement, to: boundary.range.to },
+	], null);
+}
+
+export function appendWhitespaceBoundary(
+	scope: EditScope,
+	boundary: WhitespaceBoundaryFact,
+	boundaryRegionId: EditRegionId,
+	text: string,
+): EditPlanFragment {
+	const region = regionFor(scope, boundaryRegionId, 'whitespace-boundary');
+	if (!sameRange(region.range, boundary.range)) {
+		throw new Error('Expected a matching whitespace-boundary region');
+	}
+	return fragment(scope, [boundaryRegionId], [
+		{ from: boundary.range.to, to: boundary.range.to, insert: text },
 	], null);
 }
 

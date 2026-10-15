@@ -71,6 +71,16 @@ export const selectionModeClassifierFacet = Facet.define<
 
 export const selectionModeAnnotation = Annotation.define<SelectionMode>();
 
+/** Native keyboard extension must cross hidden gaps in the head's movement direction. */
+export function selectionHeadMovementBias(transaction: Transaction): -1 | 1 | null {
+	if (transaction.docChanged || transaction.annotation(Transaction.userEvent) !== 'select') return null;
+	const before = transaction.startState.selection;
+	const after = transaction.newSelection;
+	if (before.ranges.length !== 1 || after.ranges.length !== 1 ||
+		before.main.anchor !== after.main.anchor || before.main.head === after.main.head) return null;
+	return after.main.head < before.main.head ? -1 : 1;
+}
+
 function isExcludedMode(mode: SelectionMode | null | undefined): mode is ExcludedSelectionMode {
 	return mode !== null && mode !== undefined && mode !== 'normal';
 }
@@ -192,10 +202,12 @@ export function recognizedNormalSelectionTransaction(transaction: Transaction): 
 		hasTrustedUserEvent(transaction, trustedSelectionUserEvents);
 }
 
-const compositionPlugin = ViewPlugin.define(() => ({}), {
+const compositionPlugin = ViewPlugin.define(() => ({destroyed:false,destroy(){this.destroyed=true;}}), {
 	eventHandlers: {
 		compositionend(_event, view) {
-			view.dispatch({ effects: compositionEnded.of(null) });
+			// Native CM queues its final DOM flush before invoking custom handlers.
+			// A synchronous redraw here can overwrite that still-pending composition commit.
+			queueMicrotask(()=>{if(!this.destroyed&&!view.compositionStarted&&view.state.field(compositionStateField,false))view.dispatch({effects:compositionEnded.of(null)});});
 			return false;
 		},
 		compositionstart(_event, view) {

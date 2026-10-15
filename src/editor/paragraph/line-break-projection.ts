@@ -1,9 +1,26 @@
 import { syntaxTree, syntaxTreeAvailable } from '@codemirror/language';
-import { RangeSet, RangeValue, StateField, type EditorState, type Extension } from '@codemirror/state';
-import { Decoration, EditorView, WidgetType, type DecorationSet } from '@codemirror/view';
+import { Prec, StateField, type EditorState, type Extension, type Range } from '@codemirror/state';
+import { Decoration, EditorView, ViewPlugin, WidgetType, type DecorationSet } from '@codemirror/view';
 import type { Tree } from '@lezer/common';
-import type { ParagraphBlock } from './model.js';
-import { discoverParagraphAuthority, inlineHtmlBreakRangeForNode } from './syntax.js';
+import { parser } from '@lezer/markdown';
+import { metadataGrammar, nativeInlineGrammarFor } from '../callout/syntax.js';
+import { mathRangeIndex } from '../math/syntax.js';
+import { bindRenderedSourceClick, createRenderedSourceClickExtension } from '../runtime/rendered-source-click.js';
+import { createRenderedSourceNavigation, renderedSourceHit, type VisualPosition } from '../runtime/navigation-core.js';
+import { createNativeDecorationOwnership, nativeBlockOwnership, nativeInlineOwnership, isNativeReplacement } from '../runtime/native-decoration-ownership.js';
+
+const lineBreakOwners = new WeakMap<EditorView, () => boolean>();
+
+const htmlBreak = /^<br[ \t]*\/?[ \t]*>$/iu;
+const breakGrammar = parser.configure([metadataGrammar, {
+	defineNodes: [{ name: 'StandaloneBreaks', block: true }],
+	parseBlock: [{ name: 'StandaloneBreaks', before: 'HTMLBlock', parse(context, line) {
+		if (line.indent >= line.baseIndent + 4 || !/^(?:<br[ \t]*\/?[ \t]*>[ \t]*)+$/iu.test(line.text.slice(line.pos))) return false;
+		context.addElement(context.elt('StandaloneBreaks', context.lineStart + line.pos, context.lineStart + line.text.length));
+		context.nextLine();
+		return true;
+	} }],
+}]);
 
 export type LineBreakKind = 'hard' | 'html';
 
@@ -14,106 +31,149 @@ export interface LineBreakProjectionEntry {
 }
 
 export interface LineBreakProjectionState {
-	readonly atomicRanges: RangeSet<RangeValue>;
 	readonly complete: boolean;
-	readonly decorations: DecorationSet;
 	readonly entries: readonly LineBreakProjectionEntry[];
 }
 
 interface LineBreakFieldState extends LineBreakProjectionState {
 	readonly tree: Tree;
+	readonly decorationsByOptions: readonly DecorationSet[];
 }
-
-class LineBreakRangeValue extends RangeValue {}
 
 class LineBreakWidget extends WidgetType {
-	constructor(private readonly kind: LineBreakKind) { super(); }
+	private static readonly cleanups = new WeakMap<HTMLElement, () => void>();
+	constructor(private readonly kind: LineBreakKind, private readonly text: string, private readonly from = 0) { super(); }
 
 	eq(other: WidgetType): boolean {
-		return other instanceof LineBreakWidget && other.kind === this.kind;
+		return other instanceof LineBreakWidget && other.kind === this.kind &&
+			other.text === this.text && other.from === this.from;
 	}
 
-	ignoreEvent(): boolean { return true; }
+	ignoreEvent(): boolean { return this.kind === 'hard'; }
 
-	toDOM(): HTMLElement {
-		const marker = createSpan();
-		marker.className = 'paraflow-line-break-marker';
-		marker.dataset.breakKind = this.kind;
-		marker.setAttribute('aria-hidden', 'true');
-		marker.textContent = this.kind === 'html' ? '<br>' : '↓';
-		return marker;
+	toDOM(view: EditorView): HTMLElement {
+		const document = view.dom.ownerDocument;
+		const root = document.createElement('span');
+		root.className = 'paraflow-line-break-marker' + (this.kind === 'html' ? ' paraflow-html-break-hint' : '');
+		root.dataset.breakKind = this.kind;
+		root.setAttribute('aria-hidden', 'true');
+		root.textContent = this.text;
+		if (this.kind === 'html') {
+			root.dataset.breakFrom = String(this.from);
+			LineBreakWidget.cleanups.set(root, bindRenderedSourceClick(view, root, (node, offset) =>
+				node === root.firstChild ? this.from + offset : node === root ? this.from + (offset ? this.text.length : 0) : null,
+				() => lineBreakOwners.get(view)?.() ?? false));
+		}
+		return root;
+	}
+	coordsAt(dom: HTMLElement, position: number): DOMRect | null {
+		return this.kind === 'html' ? sourceCharacterRect(dom, position) : null;
+	}
+	destroy(dom: HTMLElement): void {
+		if (this.kind === 'html') { LineBreakWidget.cleanups.get(dom)!(); LineBreakWidget.cleanups.delete(dom); }
 	}
 }
 
-function containingParagraph(
-	paragraphs: readonly ParagraphBlock[],
-	from: number,
-	to: number,
-): boolean {
-	return paragraphs.some((paragraph) => paragraph.from <= from && to <= paragraph.to);
+function sourceCharacterRect(element: HTMLElement, offset: number): DOMRect {
+	const range = element.ownerDocument.createRange();
+	range.setStart(element.firstChild!, offset);
+	range.collapse(true);
+	return range.getBoundingClientRect();
 }
 
-function hardBreaks(
-	state: EditorState,
-	paragraphs: readonly ParagraphBlock[],
-): readonly LineBreakProjectionEntry[] {
+function breakCharacterAt(view: EditorView, { x, y }: { x: number; y: number }): VisualPosition | null {
+	for (const entry of requireLineBreakProjectionState(view.state).entries) {
+		if (entry.kind !== 'html') continue;
+		const hint = view.contentDOM.querySelector<HTMLElement>(`[data-break-from="${entry.from}"]`);
+		if (!hint) continue;
+		const rect = hint.getBoundingClientRect();
+		if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) continue;
+		let closest = 0;
+		let distance = Infinity;
+		for (let offset = 0; offset <= entry.to - entry.from; offset += 1) {
+			const current = Math.abs(sourceCharacterRect(hint, offset).left - x);
+			if (current < distance) { closest = offset; distance = current; }
+		}
+		return { position: entry.from + closest, assoc: 1 };
+	}
+	return null;
+}
+
+class HtmlBreakWidget extends WidgetType {
+	eq(other: WidgetType): boolean { return other instanceof HtmlBreakWidget; }
+	get lineBreaks(): number { return 1; }
+	ignoreEvent(): boolean { return false; }
+	toDOM(view: EditorView): HTMLElement {
+		const root = view.dom.ownerDocument.createElement('span');
+		root.className = 'paraflow-html-break';
+		root.append(view.dom.ownerDocument.createElement('br'));
+		return root;
+	}
+}
+
+function discoverEntries(state: EditorState): readonly LineBreakProjectionEntry[] {
+	const excluded: Array<{ from: number; to: number }> = [];
+	syntaxTree(state).iterate({ enter(node) {
+		if (/(?:^|[ _])(?:math|comment)(?:$|[ _-])/u.test(node.name)) excluded.push({ from: node.from, to: node.to });
+	} });
 	const entries: LineBreakProjectionEntry[] = [];
-	for (const paragraph of paragraphs) {
-		const firstLine = state.doc.lineAt(paragraph.from).number;
-		const lastLine = state.doc.lineAt(paragraph.to).number;
-		for (let lineNumber = firstLine; lineNumber < lastLine; lineNumber += 1) {
-			const line = state.doc.line(lineNumber);
-			const suffix = / {2,}$/u.exec(line.text)?.[0];
-			if (!suffix) continue;
-			entries.push({ from: line.to - suffix.length, kind: 'hard', to: line.to });
+	const source = state.doc.toString();
+	const add = (from: number, to: number, kind: LineBreakKind): void => {
+		if (!excluded.some(range => range.from < to && from < range.to)) entries.push({ from, to, kind });
+	};
+	// A document parse retains source coordinates through list/quote prefixes and
+	// excludes literal code, math and comments before their contents are visited.
+	breakGrammar.configure(nativeInlineGrammarFor(mathRangeIndex(state).expressions)).parse(source).iterate({ enter(node) {
+		if (node.name === 'HardBreak') add(node.from, node.to - 1, 'hard');
+		else if (node.name === 'HTMLTag' && htmlBreak.test(source.slice(node.from, node.to))) add(node.from, node.to, 'html');
+		else if (node.name === 'StandaloneBreaks') {
+			for (const match of source.slice(node.from, node.to).matchAll(/<br[ \t]*\/?[ \t]*>/giu))
+				add(node.from + match.index, node.from + match.index + match[0].length, 'html');
+		}
+	} });
+	return Object.freeze(entries);
+}
+
+function project(state: EditorState, entries: readonly LineBreakProjectionEntry[], options: number): DecorationSet {
+	const decorations: Range<Decoration>[] = [];
+	for (const entry of entries) {
+		if (entry.kind === 'hard') {
+			if (options & 1) decorations.push(Decoration.widget({ side: 1,
+				widget: new LineBreakWidget('hard', '↓') }).range(entry.to));
+			continue;
+		}
+		const active = (options & 4) !== 0 && state.selection.ranges.some(range =>
+			range.empty && entry.from <= range.head && range.head <= entry.to);
+		if (active) {
+			decorations.push(Decoration.mark({ class: 'paraflow-html-break-source paraflow-html-break-hint' }).range(entry.from, entry.to));
+		} else {
+			decorations.push(Decoration.replace({ widget: options & 2 ?
+				new LineBreakWidget('html', state.doc.sliceString(entry.from, entry.to), entry.from) : undefined }).range(entry.from, entry.to));
+		}
+		// Source editing and hint visibility must not change the owner of the break.
+		// A physical newline directly after the tag already supplies that break.
+		if (entry.to === state.doc.length || state.doc.lineAt(entry.to).to !== entry.to) {
+			decorations.push(Decoration.widget({ side: -1, widget: new HtmlBreakWidget() }).range(entry.to));
 		}
 	}
-	return entries;
+	return Decoration.set(decorations, true);
 }
 
-function htmlBreaks(
-	state: EditorState,
-	paragraphs: readonly ParagraphBlock[],
-): readonly LineBreakProjectionEntry[] {
-	const entries = new Map<string, LineBreakProjectionEntry>();
-	syntaxTree(state).iterate({
-		enter: (node) => {
-			const range = inlineHtmlBreakRangeForNode(state, node.node);
-			if (!range || !containingParagraph(paragraphs, range.from, range.to)) return;
-			entries.set(`${range.from}:${range.to}`, { ...range, kind: 'html' });
-		},
-	});
-	return [...entries.values()];
-}
-
-function build(state: EditorState): LineBreakFieldState {
+function build(state: EditorState, previous?: LineBreakFieldState): LineBreakFieldState {
 	const tree = syntaxTree(state);
 	const complete = syntaxTreeAvailable(state, state.doc.length);
-	const authority = complete ? discoverParagraphAuthority(state) : null;
-	const entries = authority?.complete
-		? [...hardBreaks(state, authority.paragraphs), ...htmlBreaks(state, authority.paragraphs)]
-			.sort((left, right) => left.from - right.from || left.to - right.to)
-		: [];
-	const decorationRanges = entries.flatMap((entry) => entry.kind === 'html'
-		? [Decoration.widget({ side: -1, widget: new LineBreakWidget(entry.kind) }).range(entry.from)]
-		: [Decoration.replace({ widget: new LineBreakWidget(entry.kind) }).range(entry.from, entry.to)]);
-	return Object.freeze({
-		atomicRanges: RangeSet.of(entries.map((entry) =>
-			new LineBreakRangeValue().range(entry.from, entry.to)), true),
-		complete,
-		decorations: Decoration.set(decorationRanges, true),
-		entries: Object.freeze(entries),
-		tree,
+	const entries = previous?.entries ?? (complete ? discoverEntries(state) : []);
+	return Object.freeze({ complete, entries, tree,
+		decorationsByOptions: [0, 1, 2, 3, 4, 5, 6, 7].map(options => project(state, entries, options)),
 	});
 }
 
 export const lineBreakProjectionField = StateField.define<LineBreakFieldState>({
 	create: build,
 	update(value, transaction) {
-		const tree = syntaxTree(transaction.state);
-		if (!transaction.docChanged && value.tree === tree &&
+		if (!transaction.docChanged && value.tree === syntaxTree(transaction.state) &&
 			value.complete === syntaxTreeAvailable(transaction.state, transaction.state.doc.length)) {
-			return value;
+			return transaction.selection ? build(transaction.state, value) : value;
 		}
 		return build(transaction.state);
 	},
@@ -123,25 +183,43 @@ export function getLineBreakProjectionState(state: EditorState): LineBreakProjec
 	return state.field(lineBreakProjectionField, false) ?? null;
 }
 
-export function requireLineBreakProjectionState(state: EditorState): LineBreakProjectionState {
-	const value = getLineBreakProjectionState(state);
+export function requireLineBreakProjectionState(state: EditorState): LineBreakFieldState {
+	const value = state.field(lineBreakProjectionField, false);
 	if (!value) throw new Error('Line-break projection state is required');
 	return value;
 }
 
 export function createLineBreakProjection(
 	isActive: (view: EditorView) => boolean,
-	markersEnabled: () => boolean = () => true,
+	markersEnabled: (kind: LineBreakKind) => boolean = () => true,
 ): Extension {
+	const owner = (state: EditorState, view: EditorView) => {
+		if (!isActive(view)) return null;
+		const entries = requireLineBreakProjectionState(state).entries.filter(entry => entry.kind === 'html');
+		return (from: number, to: number, decoration: Decoration) => isNativeReplacement(decoration) &&
+			entries.some(entry => entry.from <= from && to <= entry.to);
+	};
 	return [
 		lineBreakProjectionField,
-		EditorView.decorations.of((view) =>
-			isActive(view) && markersEnabled()
-				? requireLineBreakProjectionState(view.state).decorations
-				: Decoration.none),
-		EditorView.atomicRanges.of((view) =>
-			isActive(view) && markersEnabled()
-				? requireLineBreakProjectionState(view.state).atomicRanges
-				: RangeSet.empty),
+		createNativeDecorationOwnership(), nativeBlockOwnership.of(owner), nativeInlineOwnership.of(owner),
+		createRenderedSourceNavigation(),
+		createRenderedSourceClickExtension(),
+		ViewPlugin.define(view => {
+			lineBreakOwners.set(view, () => isActive(view));
+			const initiallyActive = isActive(view);
+			let destroyed = false;
+			// CodeMirror adds editor DOM attributes after its first decoration pass.
+			queueMicrotask(() => {
+				if (!destroyed && initiallyActive !== isActive(view)) view.dispatch({});
+			});
+			return { destroy() { destroyed = true; lineBreakOwners.delete(view); } };
+		}),
+		renderedSourceHit.of((view, coordinates) => isActive(view) && markersEnabled('html')
+			? breakCharacterAt(view, coordinates) : null),
+		// Blurred editors retain native HTML replacements, so keep our hint there.
+		Prec.highest(EditorView.decorations.of(view => isActive(view)
+			? requireLineBreakProjectionState(view.state).decorationsByOptions[(markersEnabled('hard') ? 1 : 0) |
+				(markersEnabled('html') ? 2 : 0) | (view.hasFocus ? 4 : 0)]!
+			: Decoration.none)),
 	];
 }

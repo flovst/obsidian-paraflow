@@ -1,10 +1,13 @@
-import { syntaxTree, syntaxTreeAvailable } from '@codemirror/language';
+import { syntaxTreeAvailable } from '@codemirror/language';
+import { mathSyntaxTree as syntaxTree } from '../math/semantic-tree.js';
 import {
 	EditorSelection,
 	Prec,
+	type ChangeDesc,
 	type EditorState,
 	type Extension,
 	type SelectionRange,
+	type Text,
 } from '@codemirror/state';
 import {
 	Decoration,
@@ -14,8 +17,17 @@ import {
 	type ViewUpdate,
 } from '@codemirror/view';
 import type { SyntaxNode, Tree } from '@lezer/common';
+import { inlineHtmlConstruct, InlineHtmlWidget, type InlineHtmlRenderer } from './inline-html.js';
+import { LiteralStrikeWidget, malformedNativeStrikeRanges } from './malformed-native-strike.js';
+import { unresolvedShortcutReferences } from './literal-reference.js';
+import { ownsTildeRun } from '../shorthand/tilde-run.js';
+import { contentSyntaxTree } from '../callout/projection.js';
+import { pendingMathAt, pendingMathRanges, type PendingMathRange } from '../math/candidate-ranges.js';
+export type { InlineHtmlRenderer } from './inline-html.js';
 import { classifyCurrentSelectionMode } from '../runtime/input-state.js';
-import { selectionProjectionCoverage } from '../runtime/selection-session.js';
+import { createRenderedSourceClickExtension } from '../runtime/rendered-source-click.js';
+import { createInlineRevealPointerExtension, inlineEndpointOwners, inlineRevealPointerHeld } from '../runtime/inline-reveal.js';
+import { createNativeDecorationOwnership, nativeBlockOwnership, nativeInlineOwnership, isNativeReplacement } from '../runtime/native-decoration-ownership.js';
 
 export const ACTIVE_INLINE_SOURCE_CLASS = 'paraflow-inline-source-active';
 export const INLINE_BODY_CLASS = 'paraflow-inline-body';
@@ -28,6 +40,11 @@ export type InlineSemanticConstructKind =
 	| 'strong-emphasis'
 	| 'highlight'
 	| 'inline-code'
+	| 'strikethrough'
+	| 'literal-strike'
+	| 'escape'
+	| 'wikilink'
+	| 'inline-html'
 	| 'link';
 
 export interface InlineSelectionSourceRange {
@@ -41,6 +58,7 @@ export interface InlineSemanticConstruct {
 	readonly editTo: number;
 	readonly kind: InlineSemanticConstructKind;
 	readonly sourceRanges: readonly InlineSelectionSourceRange[];
+	readonly htmlBodies?: readonly { readonly from: number; readonly to: number; readonly tagName: string }[];
 }
 
 interface SourceSpan {
@@ -595,7 +613,7 @@ function flatHypermdFormattingMarker(
 	if (tokens.some((token) => token.includes('link'))) return null;
 	if (!tokens.includes('inline-code') &&
 		!tokens.some((token) => token.includes('highlight') || token.includes('strong') ||
-			token.includes('emphasis') || token === 'em')) return null;
+			token.includes('emphasis') || token.includes('strikethrough') || token === 'em')) return null;
 	const delimiter = knownSource ?? state.sliceDoc(node.from, node.to);
 	const hasStrong = tokens.some((token) => token.includes('strong'));
 	const hasEmphasis = tokens.some((token) => token.includes('emphasis') || token === 'em' ||
@@ -608,6 +626,9 @@ function flatHypermdFormattingMarker(
 	}
 	if (tokens.some((token) => token.includes('highlight')) && delimiter === '==') {
 		return { delimiter, kind: 'highlight' };
+	}
+	if (tokens.some((token) => token.includes('strikethrough')) && delimiter === '~~') {
+		return { delimiter, kind: 'strikethrough' };
 	}
 	if (tokens.some((token) => token.includes('strong')) &&
 		(delimiter === '**' || delimiter === '__')) {
@@ -627,6 +648,7 @@ function hypermdContentMatches(
 	const tokens = nameTokens(node.name);
 	if (kind === 'inline-code') return tokens.includes('inline-code');
 	if (kind === 'highlight') return tokens.some((token) => token.includes('highlight'));
+	if (kind === 'strikethrough') return tokens.some((token) => token.includes('strikethrough'));
 	if (kind === 'strong-emphasis') {
 		return tokens.some((token) => token.includes('strong')) &&
 			tokens.some((token) => token.includes('emphasis') || token === 'em' ||
@@ -687,6 +709,12 @@ function standardConstruct(
 	if (node.name === 'Highlight') {
 		return construct(node, 'highlight', directMarkRanges(node, 'HighlightMark'));
 	}
+	if (node.name === 'Strikethrough') {
+		return construct(node, 'strikethrough', directMarkRanges(node, 'StrikethroughMark'));
+	}
+	if (node.name === 'Escape') {
+		return construct(node, 'escape', [{ from: node.from, to: node.from + 1, kind: 'delimiter' }]);
+	}
 	return isLinkContainer(node) ? cachedInlineLinkConstruct(state, node, context) : null;
 }
 
@@ -698,6 +726,11 @@ function hypermdConstruct(
 	const tokens = nameTokens(node.name);
 	let source = knownSource;
 	const nodeSource = (): string => source ??= state.sliceDoc(node.from, node.to);
+	if (tokens.some(token => token.includes('strikethrough')) &&
+		nodeSource().startsWith('~~') && nodeSource().endsWith('~~') && nodeSource().length > 4 &&
+		!/^[~]+$/u.test(nodeSource())) {
+		return construct(node, 'strikethrough', edgeRanges(node, 2));
+	}
 	if (tokens.includes('inline-code')) {
 		const opening = /^`+/u.exec(nodeSource())?.[0] ?? '';
 		if (opening.length > 0 && nodeSource().endsWith(opening) &&
@@ -735,6 +768,37 @@ function hypermdConstruct(
 	return null;
 }
 
+function hypermdWikiConstruct(state: EditorState, node: SyntaxNode): InlineSemanticConstruct | null {
+	if (!nameTokens(node.name).includes('formatting-link-start') ||
+		state.sliceDoc(node.from, node.to) !== '[[' || hasUnescapedBangBefore(state, node.from)) return null;
+	const lineEnd = state.doc.lineAt(node.from).to;
+	let contentTo = node.to;
+	let aliasFrom: number | null = null;
+	for (let candidate = node.nextSibling; candidate && candidate.to <= lineEnd; candidate = candidate.nextSibling) {
+		if (candidate.from !== contentTo) return null;
+		const tokens = nameTokens(candidate.name);
+		if (tokens.includes('formatting-link-end') && state.sliceDoc(candidate.from, candidate.to) === ']]') {
+			if (candidate.from <= (aliasFrom ?? node.to)) return null;
+			return { editFrom: node.from, editTo: candidate.to, kind: 'wikilink', sourceRanges: [
+				delimiterRange(node),
+				...(aliasFrom === null ? [] : [{ from: node.to, to: aliasFrom, kind: 'link-destination' as const }]),
+				delimiterRange(candidate),
+			] };
+		}
+		if (!tokens.includes('hmd-internal-link')) return null;
+		if (tokens.includes('link-alias-pipe')) aliasFrom = candidate.to;
+		contentTo = candidate.to;
+	}
+	return null;
+}
+
+function hypermdEscapeConstruct(state: EditorState, node: SyntaxNode): InlineSemanticConstruct | null {
+	if (!nameTokens(node.name).includes('hmd-escape-backslash') || state.sliceDoc(node.from, node.to) !== '\\') return null;
+	const character = node.nextSibling;
+	if (!character || character.from !== node.to || !nameTokens(character.name).includes('hmd-escape-char')) return null;
+	return { editFrom: node.from, editTo: character.to, kind: 'escape', sourceRanges: [delimiterRange(node)] };
+}
+
 function constructForNode(
 	state: EditorState,
 	node: SyntaxNode,
@@ -742,14 +806,20 @@ function constructForNode(
 ): InlineSemanticConstruct | null {
 	const tokens = nameTokens(node.name);
 	const couldBeFormatting = node.name === 'Emphasis' || node.name === 'StrongEmphasis' ||
-		node.name === 'InlineCode' || node.name === 'Highlight' || tokens.includes('inline-code') ||
+		node.name === 'InlineCode' || node.name === 'Highlight' || node.name === 'Escape' ||
+		node.name === 'Strikethrough' || tokens.includes('inline-code') ||
 		tokens.some((token) => token.includes('highlight') || token.includes('strong') ||
-			token.includes('emphasis') || token === 'em');
-	if ((couldBeFormatting || isLinkContainer(node)) && (
+			token.includes('emphasis') || token.includes('strikethrough') || token.includes('hmd-escape') || token === 'em');
+	const couldBeHtml = node.name === 'HTMLTag' || tokens.some(token => token.includes('hmd-html'));
+	if ((couldBeFormatting || couldBeHtml || isLinkContainer(node)) && (
 		hasUnsupportedLinkAncestor(state, node, context) ||
 		context.unsupportedFlatHosts.contains(node.from, node.to)
 	)) return null;
 	if (node.name === 'Link' && hasStandardBracketOwner(state, node, context)) return null;
+	const native = hypermdWikiConstruct(state, node) ?? hypermdEscapeConstruct(state, node);
+	if (native) return native;
+	const html = inlineHtmlConstruct(state, node);
+	if (html) return html;
 	const standard = standardConstruct(state, node, context);
 	if (standard || node.name === 'Emphasis' || node.name === 'StrongEmphasis' ||
 		node.name === 'InlineCode' || node.name === 'Highlight' || node.name === 'Link' ||
@@ -866,6 +936,10 @@ function relevantToRange(
 	return line.from <= item.editFrom && item.editTo <= line.to;
 }
 
+const semanticConstructs = new WeakMap<Text, {
+	tree: Tree; pending: readonly PendingMathRange[]; constructs: readonly InlineSemanticConstruct[];
+}>();
+
 export function discoverInlineSemanticConstructs(
 	state: EditorState,
 	requiredRanges?: readonly SelectionRange[],
@@ -877,6 +951,11 @@ export function discoverInlineSemanticConstructs(
 		? Math.max(...spans.map((span) => span.to))
 		: state.doc.length;
 	if (!syntaxTreeAvailable(state, requiredTo)) return [];
+	const tree = syntaxTree(state), pending = pendingMathRanges(state), cached = semanticConstructs.get(state.doc);
+	// Selection, focus and preview-height changes share immutable syntax. Only a
+	// complete discovery can serve other consumers; partial parse results stay local.
+	if (cached?.tree === tree && cached.pending === pending) return requiredRanges
+		? cached.constructs.filter(item => requiredRanges.some(range => relevantToRange(state, item, range))) : cached.constructs;
 	const found = new Map<string, InlineSemanticConstruct>();
 	const context: DiscoveryContext = {
 		flatLinks: new Map(),
@@ -890,15 +969,25 @@ export function discoverInlineSemanticConstructs(
 		if (!item || item.editFrom >= item.editTo) return;
 		found.set(`${item.editFrom}:${item.editTo}:${item.kind}`, item);
 	};
-	const tree = syntaxTree(state);
+	const addHostNode = (node: SyntaxNode): void => {
+		if (!pendingMathAt(state, node.from, node.to)) addNode(node);
+	};
 	if (spans) {
-		for (const span of spans) visitSyntaxNodes(tree, span, addNode);
+		for (const span of spans) visitSyntaxNodes(tree, span, addHostNode);
 	} else {
-		tree.iterate({ enter: (ref) => addNode(ref.node) });
+		tree.iterate({ enter: (ref) => addHostNode(ref.node) });
+	}
+	// HyperMD tokenizes the entire unfinished suffix as math; ordinary ownership is local to pending ranges.
+	for (const pending of pendingMathRanges(state)) {
+		if (spans && !spans.some(span => span.from <= pending.to && pending.from <= span.to)) continue;
+		contentSyntaxTree(state).iterate({ from: pending.from, to: pending.to, enter(ref) {
+			if (pendingMathAt(state, ref.from, ref.to)) addNode(ref.node);
+		} });
 	}
 	const constructs = [...foldFlatStrongEmphasis([...found.values()])].sort((left, right) =>
 		left.editFrom - right.editFrom || right.editTo - left.editTo ||
 		left.kind.localeCompare(right.kind));
+	if (!requiredRanges) semanticConstructs.set(state.doc, { tree, pending, constructs });
 	return constructs.filter((item) => (!requiredRanges ||
 		requiredRanges.some((range) => relevantToRange(state, item, range))));
 }
@@ -948,25 +1037,30 @@ export function inlineSemanticConstructAt(
 	);
 }
 
-function bodyDecorations(item: InlineSemanticConstruct): ReturnType<Decoration['range']>[] {
+function bodyRanges(item: InlineSemanticConstruct): readonly SourceSpan[] {
 	let from = item.editFrom;
-	const body: ReturnType<Decoration['range']>[] = [];
-	for (const range of [...item.sourceRanges].sort((left, right) =>
-		left.from - right.from || left.to - right.to)) {
+	const bodies: SourceSpan[] = [];
+	for (const range of [...item.sourceRanges].sort((left, right) => left.from - right.from || left.to - right.to)) {
 		const to = Math.max(from, Math.min(range.from, item.editTo));
-		if (from < to) {
-			body.push(Decoration.mark({
-				class: `${INLINE_BODY_CLASS} ${INLINE_BODY_CLASS}--${item.kind}`,
-			}).range(from, to));
-		}
+		if (from < to) bodies.push({ from, to });
 		from = Math.max(from, Math.min(range.to, item.editTo));
 	}
-	if (from < item.editTo) {
-		body.push(Decoration.mark({
+	if (from < item.editTo) bodies.push({ from, to: item.editTo });
+	return bodies;
+}
+
+function mapConstruct(item: InlineSemanticConstruct, changes: ChangeDesc): InlineSemanticConstruct {
+	return { ...item, editFrom: changes.mapPos(item.editFrom, 1), editTo: changes.mapPos(item.editTo, -1) };
+}
+
+function bodyDecorations(item: InlineSemanticConstruct): ReturnType<Decoration['range']>[] {
+	if (item.htmlBodies) return item.htmlBodies.filter(range => range.from < range.to).map(range =>
+		Decoration.mark({ tagName: range.tagName,
+			class: `${INLINE_BODY_CLASS} ${INLINE_BODY_CLASS}--inline-html`,
+		}).range(range.from, range.to));
+	return bodyRanges(item).map(({ from, to }) => Decoration.mark({
 			class: `${INLINE_BODY_CLASS} ${INLINE_BODY_CLASS}--${item.kind}`,
-		}).range(from, item.editTo));
-	}
-	return body;
+		}).range(from, to));
 }
 
 function hasLineLocalSourceRanges(state: EditorState, item: InlineSemanticConstruct): boolean {
@@ -977,47 +1071,149 @@ function hasLineLocalSourceRanges(state: EditorState, item: InlineSemanticConstr
 function projectionDecorations(
 	state: EditorState,
 	visibleRanges: readonly { readonly from: number; readonly to: number }[],
-	coverage: EditorSelection | null,
-): DecorationSet {
+	previousActive: readonly InlineSemanticConstruct[],
+	frozenActive: readonly InlineSemanticConstruct[] | undefined,
+	isOwnerActive: () => boolean,
+	renderInlineHtml?: InlineHtmlRenderer,
+): { readonly decorations: DecorationSet; readonly active: readonly InlineSemanticConstruct[] } {
 	const visibleSelections = visibleRanges.map(({ from, to }) => EditorSelection.range(from, to));
-	const constructs = discoverInlineSemanticConstructs(state, visibleSelections)
-		.filter((item) => hasLineLocalSourceRanges(state, item));
-	const hasSelection = coverage?.ranges.some((range) => !range.empty) ?? false;
-	const caret = !hasSelection && classifyCurrentSelectionMode(state) === 'caret'
-		? state.selection.main
+	const strikeCorrections = malformedNativeStrikeRanges(state, visibleRanges);
+	const discovered = discoverInlineSemanticConstructs(state, visibleSelections)
+		.filter((item) => hasLineLocalSourceRanges(state, item) && (item.kind !== 'inline-html' || renderInlineHtml) &&
+			(item.kind !== 'strikethrough' || !ownsTildeRun(state, item.editFrom, item.editTo)));
+	for (const range of strikeCorrections) if (range.literal && !ownsTildeRun(state, range.from, range.to)) discovered.push({
+		editFrom: range.from, editTo: range.to, kind: 'literal-strike', sourceRanges: [],
+	});
+	const htmlConstructs = discovered.filter(item => item.kind === 'inline-html');
+	const constructs = discovered.filter(item => !htmlConstructs.some(html => html !== item &&
+		html.editFrom <= item.editFrom && item.editTo <= html.editTo));
+	const mode = classifyCurrentSelectionMode(state);
+	const matchingConstruct = (item: InlineSemanticConstruct | null) => item
+		? constructs.find((candidate) => candidate.editFrom === item.editFrom &&
+			candidate.editTo === item.editTo && candidate.kind === item.kind) ?? null
 		: null;
-	const active = caret ? touchingConstruct(constructs, caret.head) : null;
+	const caret = state.selection.main;
+	// Native DOM reconciliation may adjust a caret within the source just revealed.
+	const synchronizedActive = (mode === 'unknown' || mode === 'caret') && state.selection.ranges.length === 1 && caret.empty
+		? previousActive.filter(item => item.editFrom <= caret.head && caret.head <= item.editTo) : [];
+	const endpoints = inlineEndpointOwners(state, constructs.filter(item => item.kind !== 'literal-strike' || caret.empty).map(item => ({
+		from: item.editFrom, to: item.editTo, bodies: bodyRanges(item), item,
+	}))).map(owner => owner.item);
+	const active = frozenActive !== undefined ? frozenActive.map(matchingConstruct).filter((item): item is InlineSemanticConstruct => item !== null)
+		: endpoints.length > 0 ? endpoints : synchronizedActive.map(matchingConstruct).filter((item): item is InlineSemanticConstruct => item !== null);
 	const ranges = constructs.flatMap((item) => {
+		const revealed = active.includes(item);
+		if (item.kind === 'literal-strike' && !revealed) {
+			return [Decoration.replace({ widget: new LiteralStrikeWidget(item.editFrom,
+				state.sliceDoc(item.editFrom, item.editTo), isOwnerActive) }).range(item.editFrom, item.editTo)];
+		}
+		if (item.kind === 'inline-html' && !revealed) {
+			return [Decoration.replace({ widget: new InlineHtmlWidget(
+				state.sliceDoc(item.editFrom, item.editTo), renderInlineHtml!, item.editFrom, isOwnerActive,
+			) }).range(item.editFrom, item.editTo)];
+		}
 		const source = item.sourceRanges.map((range) =>
-			(item === active
-				? Decoration.mark({ class: ACTIVE_INLINE_SOURCE_CLASS })
+			(revealed
+				? Decoration.mark({ class: ACTIVE_INLINE_SOURCE_CLASS + (item.kind === 'strikethrough' ? ' paraflow-inline-source-active--strikethrough' : '') })
 				: Decoration.replace({}))
 				.range(range.from, range.to));
 		return [...source, ...bodyDecorations(item)];
 	});
-	return Decoration.set(ranges, true);
+	for (const range of strikeCorrections) {
+		ranges.push(Decoration.mark({ class: 'paraflow-invalid-native-strike' }).range(range.from, range.to));
+	}
+	for (const range of literalFormattingMarkers(state, visibleRanges)) {
+		ranges.push(Decoration.mark({ class: 'paraflow-literal-inline-marker' }).range(range.from, range.to));
+	}
+	for (const range of unresolvedShortcutReferences(state, visibleRanges)) {
+		ranges.push(Decoration.mark({ class: 'paraflow-literal-reference' }).range(range.from, range.to));
+	}
+	return { active, decorations: Decoration.set(ranges, true) };
+}
+
+function unpairedCodeBody(state: EditorState, marker: SyntaxNode, constructs: readonly InlineSemanticConstruct[]) {
+	const body = marker.nextSibling;
+	if (!nameTokens(marker.name).includes('inline-code') || !body || body.from !== marker.to ||
+		!nameTokens(body.name).includes('inline-code') ||
+		state.doc.lineAt(marker.from).to < body.to ||
+		constructs.some(item => item.kind === 'inline-code' && item.editFrom < body.to && body.from < item.editTo)) return null;
+	return { from: body.from, to: body.to };
+}
+
+export function literalFormattingMarkers(state: EditorState, visibleRanges: readonly { from: number; to: number }[]) {
+	const ranges = visibleRanges.map(range => EditorSelection.range(
+		state.doc.lineAt(range.from).from, state.doc.lineAt(range.to).to));
+	if (ranges.some(range => !syntaxTreeAvailable(state, range.to))) return [];
+	const constructs = discoverInlineSemanticConstructs(state, ranges);
+	const literals: { from: number; to: number }[] = [];
+	for (const range of ranges) syntaxTree(state).iterate({ from: range.from, to: range.to, enter(ref) {
+		const tokens = nameTokens(ref.name);
+		if (!tokens.some(token => token === 'formatting' || token.startsWith('formatting-')) ||
+			!flatHypermdFormattingMarker(state, ref.node) || ownsTildeRun(state, ref.from, ref.to)) return;
+		if (!constructs.some(item => item.sourceRanges.some(source => source.kind === 'delimiter' &&
+			source.from <= ref.from && ref.to <= source.to))) {
+			literals.push({ from: ref.from, to: ref.to });
+			const body = unpairedCodeBody(state, ref.node, constructs);
+			if (body) literals.push(body);
+		}
+	} });
+	return literals;
 }
 
 export function createInlineSelectionProjection(
 	isStateActive: (state: EditorState) => boolean,
 	isViewActive: (view: EditorView) => boolean = () => true,
+	renderInlineHtml?: InlineHtmlRenderer,
 ): Extension {
-	return Prec.highest(ViewPlugin.fromClass(class {
+	const literalMarkerOwner = (state: EditorState, view: EditorView) => {
+		if (!isStateActive(state) || !isViewActive(view)) return null;
+		const literals = literalFormattingMarkers(state, view.visibleRanges);
+		return (from: number, to: number, decoration: Decoration) => isNativeReplacement(decoration) &&
+			literals.some(item => item.from <= from && to <= item.to);
+	};
+	const htmlOwner = (state: EditorState, view: EditorView) => {
+		if (!renderInlineHtml || !isStateActive(state) || !isViewActive(view)) return null;
+		const html = discoverInlineSemanticConstructs(state).filter(item => item.kind === 'inline-html' && hasLineLocalSourceRanges(state, item));
+		return (from: number, to: number, decoration: Decoration) => isNativeReplacement(decoration) &&
+			html.some(item => item.editFrom <= from && to <= item.editTo);
+	};
+	return [EditorView.baseTheme({
+		'.cm-link:has(.paraflow-literal-reference), .paraflow-literal-reference, .paraflow-literal-reference .cm-link': {
+			color: 'inherit !important', textDecoration: 'none !important', cursor: 'text',
+		},
+	}), createInlineRevealPointerExtension(), createRenderedSourceClickExtension(), createNativeDecorationOwnership(),
+		nativeBlockOwnership.of(htmlOwner), nativeInlineOwnership.of(htmlOwner), nativeInlineOwnership.of(literalMarkerOwner), Prec.highest(ViewPlugin.fromClass(class {
 		decorations: DecorationSet;
 		private active: boolean;
+		private activeConstructs: readonly InlineSemanticConstruct[] = [];
+		private frozenConstructs: readonly InlineSemanticConstruct[] = [];
+		private pointerPressed: boolean;
+		private destroyed = false;
+		private readonly isOwnerActive = (): boolean => !this.destroyed && this.isActive();
 
 		constructor(private readonly view: EditorView) {
 			this.active = this.isActive();
+			this.pointerPressed = inlineRevealPointerHeld(view.state);
 			this.decorations = this.build(this.active);
 		}
 
 		update(update: ViewUpdate): void {
 			const active = this.isActive();
-			if (!update.docChanged && !update.selectionSet && !update.viewportChanged &&
+			const pointerPressed = inlineRevealPointerHeld(update.state);
+			const reconfigured = update.transactions.some((transaction) => transaction.reconfigured);
+			if (!update.docChanged && !update.selectionSet && !update.viewportChanged && !reconfigured &&
 				active === this.active &&
-				syntaxTree(update.startState) === syntaxTree(update.state) &&
-				selectionProjectionCoverage(update.startState) ===
-					selectionProjectionCoverage(update.state)) return;
+				pointerPressed === this.pointerPressed &&
+				pendingMathRanges(update.startState) === pendingMathRanges(update.state) &&
+				syntaxTree(update.startState) === syntaxTree(update.state)) return;
+			if (update.docChanged) {
+				this.activeConstructs = this.activeConstructs.map(item => mapConstruct(item, update.changes));
+				this.frozenConstructs = this.frozenConstructs.map(item => mapConstruct(item, update.changes));
+			} else if (pointerPressed && !this.pointerPressed) {
+				// Keep the geometry used by the native mouse-selection anchor until release.
+				this.frozenConstructs = this.activeConstructs;
+			}
+			this.pointerPressed = pointerPressed;
 			this.active = active;
 			this.decorations = this.build(active);
 		}
@@ -1026,15 +1222,26 @@ export function createInlineSelectionProjection(
 			return isStateActive(this.view.state) && isViewActive(this.view);
 		}
 
+		destroy(): void { this.destroyed = true; }
+
 		private build(active: boolean): DecorationSet {
-			if (!active) return Decoration.none;
-			return projectionDecorations(
+			if (!active) {
+				this.activeConstructs = [];
+				this.frozenConstructs = [];
+				return Decoration.none;
+			}
+			const projection = projectionDecorations(
 				this.view.state,
 				this.view.visibleRanges,
-				selectionProjectionCoverage(this.view.state),
+				this.activeConstructs,
+				this.pointerPressed ? this.frozenConstructs : undefined,
+				this.isOwnerActive,
+				renderInlineHtml,
 			);
+			this.activeConstructs = projection.active;
+			return projection.decorations;
 		}
 	}, {
 		decorations: (value) => value.decorations,
-	}));
+	}))];
 }

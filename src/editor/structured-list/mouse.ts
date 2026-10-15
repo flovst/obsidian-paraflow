@@ -1,4 +1,4 @@
-import type { EditorState, Extension } from '@codemirror/state';
+import { EditorSelection, Facet, type EditorState, type Extension } from '@codemirror/state';
 import { EditorView, ViewPlugin } from '@codemirror/view';
 import { goalXStoreFor, type VisualPosition } from '../runtime/navigation-core.js';
 import type { SourceRange } from './model.js';
@@ -10,6 +10,10 @@ import type {
 	PointerIntent,
 } from './operations.js';
 import { clickPrefixGutter } from './strategies/navigation.js';
+import { selectionModeAnnotation } from '../runtime/input-state.js';
+
+/** Coordinate adapters for list containers use the same gesture and gutter hit rules. */
+export const containerPrefixClickTargets = Facet.define<(state: EditorState, position: number) => number | null>();
 
 export type PointerOwnership =
 	| 'paraflow-gutter'
@@ -136,6 +140,17 @@ function pointerIntent(
 	} : null;
 }
 
+function selectContainerPrefix(view: EditorView, intent: PointerIntent): boolean {
+	for (const resolve of view.state.facet(containerPrefixClickTargets)) {
+		const position = resolve(view.state, intent.documentPosition);
+		if (position === null) continue;
+		view.dispatch({ selection: EditorSelection.cursor(position, 1),
+			annotations: selectionModeAnnotation.of('normal'), scrollIntoView: true });
+		return true;
+	}
+	return false;
+}
+
 function executePointerClick(
 	view: EditorView,
 	event: MouseEvent,
@@ -147,7 +162,7 @@ function executePointerClick(
 		const intent = pointerIntent(view, event, services);
 		if (!intent) return false;
 		const execution = options.createExecution(view, intent);
-		if (!execution) return false;
+		if (!execution) return selectContainerPrefix(view, intent);
 		const result = (options.handler ?? clickPrefixGutter)(execution);
 		return options.applyResult(view, execution, result);
 	} finally {

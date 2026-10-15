@@ -1,6 +1,9 @@
 import {
 	StateEffect,
 	StateField,
+	Prec,
+	EditorSelection,
+	type EditorState,
 	type Extension,
 	type StateEffectType,
 } from '@codemirror/state';
@@ -10,17 +13,26 @@ import {
 	type ParagraphKeymapOptions,
 } from './keymap.js';
 import { createParagraphProjection } from './projection.js';
-import { createParagraphSelectionProtection } from './selection-protection.js';
+import { createBlockBoundarySpacing } from './boundary-spacing.js';
+import { createParagraphSelectionProtection, normalizeParagraphSelectionEndpoint } from './selection-protection.js';
+import { getParagraphProjectionState } from './projection.js';
+import { ordinaryParagraphAtCaret } from './syntax.js';
+import { classifyCurrentSelectionMode, requireCompositionState, selectionModeAnnotation } from '../runtime/input-state.js';
+import { isVirtualTailActive } from '../runtime/virtual-tail.js';
 import { createHeadingProjection } from './heading-projection.js';
-import { createLineBreakProjection } from './line-break-projection.js';
-import { createInlineSelectionProjection } from './inline-selection-projection.js';
-import { createLinkInteraction } from './link-interaction.js';
+import { createThematicBreakProjection } from './thematic-break-projection.js';
+import { createInlineSelectionProjection, type InlineHtmlRenderer } from './inline-selection-projection.js';
+import { createLinkInteraction, type LinkInteractionOptions } from './link-interaction.js';
+import { createMathEditingExtension, type MathEditingOptions } from '../math/extension.js';
+import {requestTableFocus,tableActivationDestination} from '../table/focus-handoff.js';
 
 const PARAGRAPH_ACTIVE_CLASS = 'paraflow-paragraph-editing-active';
 
 export interface ParagraphExtensionOptions extends ParagraphKeymapOptions {
 	readonly editLinksOnPlainClick?: () => boolean;
-	readonly lineBreakMarkersEnabled?: () => boolean;
+	readonly openReferenceLink?: LinkInteractionOptions['openReferenceLink'];
+	readonly renderInlineHtml?: InlineHtmlRenderer;
+	readonly mathRendering?: Pick<MathEditingOptions, 'renderMath' | 'getCachedMath' | 'finishRenderMath'> & { readonly isFocused: (state: EditorState) => boolean };
 }
 
 function isActive(view: EditorView, options: ParagraphExtensionOptions): boolean {
@@ -68,11 +80,12 @@ function createActivationExtension(
 		EditorView.editorAttributes.of((view) => ({
 			class: isActive(view, options) ? PARAGRAPH_ACTIVE_CLASS : '',
 		})),
-		ViewPlugin.fromClass(class {
+		Prec.highest(ViewPlugin.fromClass(class {
 			private active: boolean;
 			private destroyed = false;
 			private identity: SurfaceIdentity | null;
 			private identityUpdateQueued = false;
+			private activationCaretUnchanged = false;
 			private readonly token = {};
 
 			constructor(private readonly view: EditorView) {
@@ -88,6 +101,7 @@ function createActivationExtension(
 			}
 
 			update(update: ViewUpdate): void {
+				if (update.docChanged || update.selectionSet) this.activationCaretUnchanged = false;
 				remove(this.identity, this.active);
 				this.active = isActive(this.view, options);
 				this.identity = update.state.field(surfaceIdentityField, false) ?? null;
@@ -100,15 +114,37 @@ function createActivationExtension(
 			private queueIdentityUpdate(): void {
 				if (this.identityUpdateQueued) return;
 				this.identityUpdateQueued = true;
+				this.activationCaretUnchanged = true;
+				const initializing = this.identity === null;
 				queueMicrotask(() => {
 					this.identityUpdateQueued = false;
 					if (this.destroyed) return;
-					this.view.dispatch({
-						effects: setSurfaceIdentity.of({ active: this.active, token: this.token }),
+					const state = this.view.state;
+					const range = state.selection.main;
+					const mode = classifyCurrentSelectionMode(state);
+					const active = isActive(this.view, options);
+					const activating = active && this.identity?.active !== true;
+					const eligible = activating && state.selection.ranges.length === 1 && range.empty &&
+						!this.view.composing && !requireCompositionState(state) &&
+						(mode === 'caret' || mode === 'unknown');
+					const initialize = eligible && initializing && this.activationCaretUnchanged && mode === 'unknown' &&
+						ordinaryParagraphAtCaret(state, range.head, getParagraphProjectionState(state)?.authority.paragraphs) !== null;
+					const normalize = eligible && !isVirtualTailActive(state);
+					const normalizedPosition = normalize ? normalizeParagraphSelectionEndpoint(state, range.head, -1) : range.head;
+					const tableDestination = normalize ? tableActivationDestination(this.view,normalizedPosition) : null;
+					const position = tableDestination?.position ?? normalizedPosition;
+					const transaction = state.update({
+						effects: setSurfaceIdentity.of({ active, token: this.token }),
+						...(position === range.head && !initialize ? {} : {
+							selection: position === range.head ? state.selection : EditorSelection.create([EditorSelection.cursor(position, -1, range.bidiLevel ?? undefined, range.goalColumn)]),
+							annotations: selectionModeAnnotation.of('normal'),
+						}),
 					});
+					if(tableDestination)requestTableFocus(this.view,transaction,tableDestination.from,tableDestination.bookmark,true);
+					this.view.dispatch(transaction);
 				});
 			}
-		}),
+		})),
 	];
 }
 
@@ -133,6 +169,11 @@ export function createParagraphExtension(options: ParagraphExtensionOptions): Ex
 			tokenViews,
 		),
 		createParagraphProjection({ isActive: (view) => isActive(view, options) }),
+		createBlockBoundarySpacing(state => {
+			const identity = state.field(surfaceIdentityField, false);
+			return options.isLivePreview(state) && (identity?.active ?? true);
+		}),
+		createThematicBreakProjection(view => isActive(view, options)),
 		createHeadingProjection(
 			(view) => isActive(view, options),
 			(state) => {
@@ -140,19 +181,24 @@ export function createParagraphExtension(options: ParagraphExtensionOptions): Ex
 				return options.isLivePreview(state) && (identity?.active ?? true);
 			},
 		),
-		createLineBreakProjection(
-			(view) => isActive(view, options),
-			options.lineBreakMarkersEnabled,
-		),
 		createInlineSelectionProjection(
 			(state) => {
 				const identity = state.field(surfaceIdentityField, false);
 				return options.isLivePreview(state) && (identity?.active ?? true);
 			},
 			(view) => isActive(view, options),
+			options.renderInlineHtml,
 		),
+		options.mathRendering ? createMathEditingExtension({
+			...options.mathRendering,
+			isStateActive: state => {
+				const identity = state.field(surfaceIdentityField, false);
+				return options.isLivePreview(state) && (identity?.active ?? true);
+			},
+		}) : [],
 		createLinkInteraction({
 			editLinksOnPlainClick: options.editLinksOnPlainClick ?? (() => true),
+			openReferenceLink: options.openReferenceLink,
 			isActive: (view) => isActive(view, options),
 		}),
 		createParagraphKeymap(options),

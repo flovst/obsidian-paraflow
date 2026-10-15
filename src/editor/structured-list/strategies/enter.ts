@@ -1,4 +1,5 @@
 import type { EditPlan, EditPlanFragment, EditRegionId } from '../edit-plan.js';
+import { bodyEnterText } from '../../paragraph/body-enter.js';
 import type { ExceptionId } from '../exception-registry.js';
 import type {
 	ListContext,
@@ -12,7 +13,9 @@ import type {
 	StructuralOperationId,
 } from '../operations.js';
 import {
+	appendWhitespaceBoundary,
 	composeEditPlan,
+	insertContentText,
 	renumberOrderedItems,
 	replaceCurrentPrefix,
 	replaceEmptyItem,
@@ -47,7 +50,7 @@ const nestedEmptyLayouts: Readonly<Record<SiblingPosition, EmptyLayout>> = {
 };
 
 const topLevelEmptyLayouts: Readonly<Record<Exclude<SiblingPosition, 'only'>, EmptyLayout>> = {
-	final: { caretLine: 0, lines: 1 },
+	final: { caretLine: 1, lines: 2 },
 	first: { caretLine: 0, lines: 2 },
 	middle: { caretLine: 1, lines: 3 },
 };
@@ -241,11 +244,19 @@ const nonEmptyPlanRules = [
 
 function nonEmptyPlan(execution: ExecutionFor<NonEmptyOperation>): EditPlan | null {
 	const { context } = execution;
+	if (context.caretContent.kind !== 'marker-line') return ownedBodyEnterPlan(execution);
 	if (context.caretZone === 'empty') return null;
 	const decision = nonEmptyPlanRules.find((rule) => rule.matches(context));
 	if (!decision) return null;
 	const continuation = decision.plan === continuationPlan;
 	return decision.plan(execution, taskStateForNonEmpty(context, continuation));
+}
+
+function ownedBodyEnterPlan(execution: ExecutionFor<EnterOperation>): EditPlan {
+	const { context } = execution;
+	const owned = context.topology.ownedBlocks[context.caretContent.ownedBlockIndex!]!;
+	const insert = bodyEnterText(execution.intent.operation === 'shift-enter' ? 'shift-enter' : 'enter', owned.indentText);
+	return composeEditPlan(execution.intent.operation, context.editScope, [insertContentText(context, currentContentId, insert)]);
 }
 
 function desiredEmptyIndent(context: ListContext): string {
@@ -352,6 +363,7 @@ export function enterEmptyNested(
 ): OperationResult {
 	if (!validOperation(execution, 'enter-empty-nested')) return { kind: 'pass-through' };
 	const { context } = execution;
+	if (context.caretContent.kind !== 'marker-line') return { kind: 'pass-through' };
 	if (context.caretZone !== 'empty' || context.topology.depth === 0) {
 		return { kind: 'pass-through' };
 	}
@@ -367,6 +379,7 @@ export function enterEmptyTopLevel(
 ): OperationResult {
 	if (!validOperation(execution, 'enter-empty-top-level')) return { kind: 'pass-through' };
 	const { context } = execution;
+	if (context.caretContent.kind !== 'marker-line') return { kind: 'pass-through' };
 	if (context.caretZone !== 'empty' || context.topology.depth !== 0) {
 		return { kind: 'pass-through' };
 	}
@@ -380,16 +393,59 @@ export function enterEmptyTopLevel(
 	));
 }
 
+function normalSoftBreakContext(context: ListContext): boolean {
+	const owned = context.topology.ownedBlocks;
+	return context.caretZone === 'end' && context.current.contentIndentText === '  ' &&
+		owned[0]?.kind === 'descendant' && owned.every(block => block.indentText === '  ' && block.kind !== 'code-leaf');
+}
+
+function descendantFrontSeparator(parentParagraph: boolean, boundary: WhitespaceBoundaryFact): boolean {
+	return parentParagraph && boundary.fromAnchor === 'current-marker-line' &&
+		boundary.toAnchor === 'owned-block:0' && boundary.newlineCount === 1;
+}
+
+function bareOwnedSeparator(boundary: WhitespaceBoundaryFact): boolean {
+	return boundary.fromAnchor.startsWith('owned-block:') && boundary.newlineCount === 2 &&
+		boundary.lines.length === 1 && boundary.lines[0]!.kind === 'empty';
+}
+
+function preserveParentParagraphSeparator(context: ListContext, boundary: WhitespaceBoundaryFact): boolean {
+	if (!boundary.toAnchor.startsWith('owned-block:')) return false;
+	const target = context.topology.ownedBlocks[Number(boundary.toAnchor.slice('owned-block:'.length))]!;
+	const following = context.topology.whitespaceBoundaries.find(candidate => candidate.fromAnchor === boundary.toAnchor);
+	return target.kind === 'additional-paragraph' && target.relativeDepth === 0 &&
+		following !== undefined && following.newlineCount >= 2;
+}
+
+function softBreakWhitespaceFragments(context: ListContext): readonly EditPlanFragment[] {
+	if (!normalSoftBreakContext(context)) return [];
+	const owned = context.topology.ownedBlocks;
+	const boundaries = context.topology.whitespaceBoundaries;
+	const fragments: EditPlanFragment[] = [];
+	const parentParagraph = owned.some(block => block.kind === 'additional-paragraph' && block.relativeDepth === 0);
+	for (const [index, boundary] of boundaries.entries()) {
+		const id = { index, kind: 'whitespace-boundary' } as const;
+		if (descendantFrontSeparator(parentParagraph, boundary)) {
+			fragments.push(appendWhitespaceBoundary(context.editScope, boundary, id, '\n'));
+			continue;
+		}
+		if (!bareOwnedSeparator(boundary)) continue;
+		if (preserveParentParagraphSeparator(context, boundary)) continue;
+		fragments.push(rewriteWhitespaceBoundary(context.editScope, boundary, id, '\n  \n'));
+	}
+	return fragments;
+}
+
 export function shiftEnter(execution: ExecutionFor<'shift-enter'>): OperationResult {
 	if (!validOperation(execution, 'shift-enter')) return { kind: 'pass-through' };
 	const { context } = execution;
+	if (context.caretContent.kind !== 'marker-line') return editResult(ownedBodyEnterPlan(execution));
 	if (context.caretZone === 'empty') return { kind: 'pass-through' };
 	const continuationIndent = context.current.prefix.kind === 'task'
-		? physicalIndent(context) + ' '.repeat(
-			context.current.prefix.outerMarker.to - context.current.prefix.outerMarker.from,
-		)
-		: physicalIndent(context) +
-			execution.services.prefixPolicy.contentIndent(context.current.prefix);
+		? execution.services.prefixPolicy.contentIndent(context.source.slice({
+			from: context.current.lineFrom, to: context.current.prefix.outerMarker.to,
+		}))
+		: context.current.contentIndentText;
 	const fragment = splitItem(
 		context,
 		currentContentId,
@@ -399,6 +455,6 @@ export function shiftEnter(execution: ExecutionFor<'shift-enter'>): OperationRes
 	return editResult(composeEditPlan(
 		execution.intent.operation,
 		context.editScope,
-		[fragment],
+		[fragment, ...softBreakWhitespaceFragments(context)],
 	));
 }

@@ -98,8 +98,8 @@ export class StructuredListMarkerWidget extends WidgetType {
 		return !FORWARDED_MOUSE_EVENTS.has(event.type);
 	}
 
-	toDOM(_view: EditorView): HTMLElement {
-		const dom = document.createElementNS('http://www.w3.org/1999/xhtml', 'span');
+	toDOM(view: EditorView): HTMLElement {
+		const dom = view.dom.ownerDocument.createElementNS('http://www.w3.org/1999/xhtml', 'span');
 		updateOwnedMarker(dom, this.marker);
 		return dom;
 	}
@@ -111,10 +111,53 @@ export class StructuredListMarkerWidget extends WidgetType {
 	}
 }
 
+/** Keep browser composition outside the fixed-width source-prefix slot. */
+export class StructuredListSeparatorWidget extends WidgetType {
+	eq(other: WidgetType): boolean {
+		return other.constructor === this.constructor;
+	}
+
+	ignoreEvent(event: Event): boolean {
+		return !FORWARDED_MOUSE_EVENTS.has(event.type);
+	}
+
+	coordsAt(dom: HTMLElement, pos: number, side: number): Rect | null {
+		const range = dom.ownerDocument.createRange();
+		range.selectNodeContents(dom);
+		const textRect = range.getBoundingClientRect();
+		if (textRect.top >= textRect.bottom) return null;
+		const slot = dom.getBoundingClientRect();
+		const x = pos > 0 || side > 0 ? slot.right : slot.left;
+		return { bottom: textRect.bottom, left: x, right: x, top: textRect.top };
+	}
+
+	toDOM(view: EditorView): HTMLElement {
+		const dom = view.dom.ownerDocument.createElement('span');
+		dom.className = 'paraflow-list-separator';
+		dom.setAttribute('contenteditable', 'false');
+		dom.setAttribute('aria-hidden', 'true');
+		dom.setAttribute('draggable', 'false');
+		dom.textContent = ' ';
+		return dom;
+	}
+}
+
+export class StructuredListEmptyBodyWidget extends StructuredListSeparatorWidget {
+	toDOM(view: EditorView): HTMLElement {
+		const dom = super.toDOM(view);
+		dom.className = 'paraflow-list-empty-body';
+		dom.textContent = '\u200b';
+		return dom;
+	}
+}
+
 function taskCaretMetricRect(dom: HTMLElement): DOMRect | null {
 	const metric = dom.querySelector<HTMLElement>('.paraflow-task-caret-metric');
-	const rect = metric?.getBoundingClientRect();
-	return rect && rect.top < rect.bottom ? rect : null;
+	if (!metric) return null;
+	const range = dom.ownerDocument.createRange();
+	range.selectNodeContents(metric);
+	const rect = range.getBoundingClientRect();
+	return rect.top < rect.bottom ? rect : null;
 }
 
 function taskPrefixBoundaryX(dom: HTMLElement, after: boolean): number | null {
@@ -184,6 +227,7 @@ export class TaskPrefixWidget extends WidgetType {
 		const caretMetric = view.dom.ownerDocument.createElement('span');
 		caretMetric.className = 'paraflow-task-caret-metric';
 		caretMetric.setAttribute('aria-hidden', 'true');
+		caretMetric.textContent = '\u200b';
 		prefix.append(marker, markerSeparator, checkbox, separator, caretMetric);
 		return prefix;
 	}

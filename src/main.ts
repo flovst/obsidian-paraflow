@@ -1,19 +1,56 @@
-import type { EditorState } from '@codemirror/state';
-import { editorLivePreviewField, Plugin } from 'obsidian';
+import type { EditorState, Extension } from '@codemirror/state';
+import type { EditorView } from '@codemirror/view';
+import { Component, editorEditorField, editorInfoField, editorLivePreviewField, finishRenderMath, getIcon, loadMathJax, loadPrism, MarkdownRenderChild, MarkdownRenderer, MarkdownView, Notice, normalizePath, Platform, Plugin, sanitizeHTMLToDom, TFile } from 'obsidian';
+import { createReadingMathRanges } from './reading/math-ranges';
+import { createSvgMathRenderer, type NativeMathJax } from './display/math.js';
+import { classicCss, classicManifest } from './themes/builtin.js';
+import { ThemeStore } from './themes/store.js';
+import { ThemeManager } from './themes/manager.js';
+import { contentTokenBridge, resolveThemeUrls, scopeOverrides } from './themes/runtime-css.js';
+import type { ConvertedTheme, ThemeManifest } from './themes/model.js';
+import { createThemeArchive } from './themes/import-files.js';
+import { normalizeThemeOverrides, themeOverrideCss, themePaletteCss, type ThemeOverrides } from './themes/appearance.js';
 import { createBrowserClipboardSink } from './clipboard.js';
 import {
 	createEditorExtensionLifecycle,
 	type EditorExtensionLifecycle,
 } from './editor/extension-lifecycle.js';
 import { createEditorRuntimeExtension } from './editor/runtime/navigation-core.js';
+import { createVirtualTailExtension } from './editor/runtime/virtual-tail.js';
+import { createEditorPointerExtension } from './editor/runtime/pointer.js';
 import { createParagraphExtension } from './editor/paragraph/extension.js';
+import { createLineBreakProjection, type LineBreakKind } from './editor/paragraph/line-break-projection.js';
 import {
 	createStructuredListExtension,
 	createStructuredListRuntimeServiceFactory,
 } from './editor/structured-list/extension.js';
-import { isPrimaryLivePreviewEditor } from './editor/surface.js';
+import { isPrimaryLivePreviewEditor, isPrimarySourceEditor } from './editor/surface.js';
 import { ParaFlowSettingTab } from './settings-tab.js';
 import { normalizeSettings, type ParaFlowSettings } from './settings.js';
+import { normalizeEnhancements, type EnhancementSettings } from './enhancement-settings.js';
+import { createBodyLayoutExtension } from './editor/body-layout.js';
+import { createReadingEnhancements, type ReadingEnhancements } from './reading/enhancements.js';
+import { readNativePrintSource } from './reading/source.js';
+import { createReadingMath } from './reading/math.js';
+import { createMediaTableDisplayExtension } from './editor/media-table.js';
+import { createCodeBlockExtension } from './editor/code-blocks/index.js';
+import { EnhancementStyles } from './display/styles.js';
+import { createFootnoteExtension } from './editor/footnotes/extension.js';
+import { createCommentExtension } from './editor/comments.js';
+import { createShorthandExtension } from './editor/shorthand/extension.js';
+import { createCalloutExtension } from './editor/callout/extension.js';
+import { createCalloutPresentation } from './editor/callout/presentation.js';
+import { refreshCalloutHeaderIcons, renderCalloutHeaderIcon } from './editor/callout/header-icon.js';
+import { createTableEditingIntegration } from './editor/table/obsidian-adapter.js';
+import { mathSourcePaletteExtension } from './themes/math-palette.js';
+import { createClipboardPasteExtension, pasteFromClipboard } from './editor/clipboard-paste.js';
+import { createRenderedBlockEditing } from './editor/rendered-blocks/extension.js';
+import { createIndentMaintenanceSaveExtension } from './editor/indent-maintenance-save.js';
+import { createIndentModeMaintenance } from './editor/indent-maintenance-mode.js';
+import { planListIndentMaintenance } from './editor/list-indent-maintenance.js';
+import { createSourceViewExtension } from './editor/source-view.js';
+import { createMarkdownPairingPolicy } from './editor/markdown-pairing.js';
+import { createMathMetadataIntegration } from './metadata/obsidian.js';
 
 export function isParaFlowLivePreview(state: EditorState): boolean {
 	return state.field(editorLivePreviewField, false) === true;
@@ -23,6 +60,195 @@ export default class ParaFlowPlugin extends Plugin {
 	private settings: ParaFlowSettings = normalizeSettings(null);
 	private editorLifecycle: EditorExtensionLifecycle | null = null;
 	private settingsUpdate: Promise<void> = Promise.resolve();
+	private themeStore!: ThemeStore;
+	private readonly themeManager = new ThemeManager();
+	private readonly enhancementStyles = new EnhancementStyles();
+	private disposed = false;
+	private readonly supplementalExtensions: Extension[] = [];
+	private readingEnhancements: ReadingEnhancements | null = null;
+	private tableEditing: ReturnType<typeof createTableEditingIntegration> | null = null;
+	contentThemes: ThemeManifest[] = [];
+
+	get contentThemeId(): string | null { return this.settings.contentThemeId; }
+	get enhancements(): Readonly<EnhancementSettings> { return this.settings.enhancements; }
+
+	async setEnhancement<K extends keyof EnhancementSettings>(key: K, value: EnhancementSettings[K]): Promise<void> {
+		const update = this.settingsUpdate.then(async () => {
+			if (this.disposed || this.settings.enhancements[key] === value) return;
+			const enhancements = normalizeEnhancements({ ...this.settings.enhancements, [key]: value });
+			const next = { ...this.settings, enhancements };
+			await this.saveData(next);
+			if (this.disposed) return;
+			const previous=this.settings;
+			const previousExtensions=[...this.supplementalExtensions];
+			this.settings = next;
+			try {
+				this.rebuildSupplementalExtensions();
+				this.app.workspace.updateOptions();
+				this.readingEnhancements?.refresh();
+			} catch(error) {
+				this.settings=previous;
+				this.supplementalExtensions.splice(0,this.supplementalExtensions.length,...previousExtensions);
+				const errors: unknown[] = [error];
+				// A host refresh may have updated some views before failing.
+				try { this.app.workspace.updateOptions(); } catch (rollbackError) { errors.push(rollbackError); }
+				try { this.readingEnhancements?.refresh(); } catch (rollbackError) { errors.push(rollbackError); }
+				try { await this.saveData(previous); } catch (rollbackError) { errors.push(rollbackError); }
+				if (errors.length > 1) throw new AggregateError(errors,
+					`Enhancement update failed and rollback was incomplete: ${errors.map(String).join('; ')}`);
+				throw error;
+			}
+		});
+		this.settingsUpdate = update.catch(() => undefined);
+		await update;
+	}
+
+	private rebuildSupplementalExtensions(): void {
+		const extensions: Extension[] = [];
+		extensions.push(createMarkdownPairingPolicy(isPrimarySourceEditor));
+		extensions.push(mathSourcePaletteExtension(this.settings.enhancements.mathSourcePalette));
+		const isActive=(view: EditorView) => isParaFlowLivePreview(view.state) && isPrimaryLivePreviewEditor(view);
+		extensions.push(createSourceViewExtension({
+			isSourceView: view => isPrimarySourceEditor(view) && !isParaFlowLivePreview(view.state),
+			getOptions: () => ({
+				enabled: this.settings.enhancements.sourceView,
+				activeLine: this.settings.enhancements.sourceActiveLine,
+				whitespace: this.settings.enhancements.sourceWhitespace,
+				indentGuides: this.settings.enhancements.sourceIndentGuides,
+				lineNumbers: this.settings.enhancements.sourceLineNumbers,
+				lineNumberStyle: this.settings.enhancements.sourceLineNumberStyle,
+				lineNumberPosition: this.settings.enhancements.sourceLineNumberPosition,
+				newlineMarkers: this.settings.enhancements.sourceNewlineMarkers,
+				tabSize: this.settings.enhancements.sourceTabSize,
+			}),
+		}));
+		extensions.push(createIndentMaintenanceSaveExtension({
+			getEnabled: () => this.settings.enhancements.maintainListIndentOnSave,
+			isPrimaryEditor: view => isPrimarySourceEditor(view) && this.currentEditor() === view,
+			plan: planListIndentMaintenance,
+			save: view => this.saveEditor(view),
+			onError: error => { new Notice(`列表缩进维护或保存失败：${String(error)}`); },
+		}));
+
+		extensions.push(createClipboardPasteExtension({
+			isActive: view => isPrimarySourceEditor(view) && this.currentEditor() === view,
+			enabled: () => this.settings.enhancements.pasteCloseCodeFences,
+			getMode: view => isParaFlowLivePreview(view.state) ? this.settings.enhancements.livePreviewPasteMode : this.settings.enhancements.sourcePasteMode,
+			notify: message => { new Notice(message); },
+		}));
+		extensions.push(createCommentExtension({ isActive, getMode: () => this.settings.enhancements.commentDisplay }));
+		extensions.push(createShorthandExtension({ isActive, getSettings: () => this.settings.enhancements }));
+		if (this.settings.enhancements.bodyLayout) extensions.push(createBodyLayoutExtension(
+			isActive,
+			() => this.settings.enhancements,
+		));
+		if(this.settings.enhancements.images || this.settings.enhancements.tableDisplay || this.settings.enhancements.tableEditing) extensions.push(createMediaTableDisplayExtension(view=>isParaFlowLivePreview(view.state),()=>this.settings.enhancements));
+		if(this.settings.enhancements.code) extensions.push(createCodeBlockExtension({isActive,getOptions:()=>this.settings.enhancements,loadPrism}));
+		if(this.settings.enhancements.footnotes) extensions.push(createFootnoteExtension({isActive,
+			hideDefinitionMarkers: () => this.settings.enhancements.footnoteHideDefinitionMarkers,
+			notify:message=>{new Notice(message);}}));
+		if (this.settings.enhancements.callout) extensions.push(
+			createCalloutPresentation({ isActive, isViewSupported: isPrimarySourceEditor, isActiveState: isParaFlowLivePreview,
+				renderHeader: (source, element, view) => renderCalloutHeaderIcon(source, element, view, { getIcon, sanitizeHTMLToDom }),
+			}),
+		);
+		if(this.settings.enhancements.tableEditing && this.tableEditing) extensions.push(this.tableEditing.extension);
+		this.supplementalExtensions.splice(0, this.supplementalExtensions.length, ...extensions);
+	}
+	get contentThemeOverrides(): ThemeOverrides { return this.settings.themeOverrides[this.contentThemeId ?? 'paraflow-follow'] ?? {}; }
+
+	private syncThemeDocuments(): void {
+		const documents = new Set([this.app.workspace.containerEl.ownerDocument]);
+		this.app.workspace.iterateAllLeaves(leaf => documents.add(leaf.view.containerEl.ownerDocument));
+		this.themeManager.syncDocuments(documents);
+		this.enhancementStyles.syncDocuments(documents);
+	}
+
+	private refreshCalloutIcons(): void {
+		const documents = new Set([this.app.workspace.containerEl.ownerDocument]);
+		this.app.workspace.iterateAllLeaves(leaf => documents.add(leaf.view.containerEl.ownerDocument));
+		for (const owner of documents) refreshCalloutHeaderIcons(owner);
+	}
+
+	private async prepareTheme(id: string | null, overrides = this.settings.themeOverrides[id ?? 'paraflow-follow'] ?? {}): Promise<{ id: string; css: string } | null> {
+		const themeId = id ?? 'paraflow-follow';
+		const theme = id === null ? null : await this.themeStore.read(id);
+		const scheme = overrides.colorScheme === 'host' ? 'adaptive' : overrides.colorScheme ?? theme?.manifest.colorScheme ?? 'adaptive';
+		const css = themePaletteCss(themeId, scheme) + (theme?.css ?? '') + contentTokenBridge(themeId, overrides)
+			+ themeOverrideCss(themeId, overrides) + scopeOverrides(theme?.overrides ?? '', themeId);
+		return { id: themeId, css: resolveThemeUrls(css, path => this.app.vault.adapter.getResourcePath(this.themeStore.path(themeId) + '/' + path)) };
+	}
+
+	async setContentThemeOverrides(value: ThemeOverrides): Promise<void> {
+		const update = this.settingsUpdate.then(async () => {
+			if (this.disposed) return;
+			const overrides = normalizeThemeOverrides(value);
+			const theme = await this.prepareTheme(this.contentThemeId, overrides);
+			if (this.disposed) return;
+			const nextSettings = { ...this.settings, themeOverrides: { ...this.settings.themeOverrides, [this.contentThemeId ?? 'paraflow-follow']: overrides } };
+			await this.saveData(nextSettings);
+			if (this.disposed) return;
+			this.settings = nextSettings; this.themeManager.setTheme(theme);
+			this.refreshCalloutIcons();
+		});
+		this.settingsUpdate = update.catch(() => undefined); await update;
+	}
+
+	private async initializeThemes(): Promise<void> {
+		this.themeStore = new ThemeStore(this.app.vault.adapter, normalizePath((this.manifest.dir ?? this.app.vault.configDir + '/plugins/' + this.manifest.id) + '/themes'));
+		await this.themeStore.ensureBuiltin(classicManifest, classicCss());
+		const listing = await this.themeStore.list(); this.contentThemes = listing.themes;
+		if (listing.warnings.length) new Notice('Some ParaFlow themes could not be loaded: ' + listing.warnings.join('; '));
+		try {
+			const theme = await this.prepareTheme(this.contentThemeId);
+			if (this.disposed) return;
+			this.themeManager.setTheme(theme);
+			this.refreshCalloutIcons();
+		} catch (error) {
+			new Notice('Content theme unavailable. Following Obsidian. ' + String(error));
+			this.settings = { ...this.settings, contentThemeId: null };
+			await this.saveData(this.settings);
+		}
+	}
+
+	async setContentTheme(id: string | null, reload = false): Promise<void> {
+		const update = this.settingsUpdate.then(async () => {
+			if (this.disposed) return;
+			if (id === this.contentThemeId && !reload) return;
+			const theme = await this.prepareTheme(id);
+			if (this.disposed) return;
+			const nextSettings = { ...this.settings, contentThemeId: id };
+			await this.saveData(nextSettings);
+			if (this.disposed) return;
+			this.themeManager.setTheme(theme); this.settings = nextSettings;
+			this.refreshCalloutIcons();
+		});
+		this.settingsUpdate = update.catch(() => undefined); await update;
+	}
+
+	async importContentTheme(theme: ConvertedTheme, overrides?: string): Promise<void> {
+		resolveThemeUrls(theme.css + scopeOverrides(overrides ?? '', theme.manifest.id), path => {
+			if (!theme.assets.has(path.slice('assets/'.length))) throw new Error(`Missing theme asset: ${path}`);
+			return path;
+		});
+		await this.themeStore.install(theme, overrides);
+		this.contentThemes = (await this.themeStore.list()).themes;
+	}
+
+	async exportContentTheme(): Promise<Uint8Array> {
+		if (this.contentThemeId === null || this.contentThemeId === 'builtin-classic') throw new Error('Select an imported theme to export');
+		return createThemeArchive(await this.themeStore.exportFiles(this.contentThemeId));
+	}
+
+	async contentThemeReport(): Promise<string> {
+		if (this.contentThemeId === null) throw new Error('Select a content theme first');
+		const path = this.themeStore.path(this.contentThemeId) + '/conversion-report.json';
+		return await this.themeStore.storage.exists(path) ? this.themeStore.storage.read(path) : 'This built-in theme has no conversion report.';
+	}
+
+	get hideCaretWhileDragSelecting(): boolean {
+		return this.settings.hideCaretWhileDragSelecting;
+	}
 
 	get disableSelectedTextDrag(): boolean {
 		return this.settings.disableSelectedTextDrag;
@@ -36,43 +262,205 @@ export default class ParaFlowPlugin extends Plugin {
 		return this.settings.paragraphEditingEnabled;
 	}
 
-	get lineBreakMarkersEnabled(): boolean {
-		return this.settings.lineBreakMarkersEnabled;
-	}
+	get breakMarkersEnabled(): boolean { return this.settings.breakMarkersEnabled; }
+	get htmlBreakMarkersEnabled(): boolean { return this.settings.htmlBreakMarkersEnabled; }
+	get hardBreakMarkersEnabled(): boolean { return this.settings.hardBreakMarkersEnabled; }
 
 	get structuredListEditingEnabled(): boolean {
 		return this.settings.structuredListEditingEnabled;
 	}
 
+	private currentEditor(): EditorView | null {
+		const editor = this.app.workspace.getActiveViewOfType(MarkdownView)?.editor;
+		return (editor as typeof editor & { cm?: EditorView })?.cm ?? null;
+	}
+
+	private saveEditor(view: EditorView): Promise<void> {
+		const markdown = this.app.workspace.getActiveViewOfType(MarkdownView);
+		if (!markdown || this.currentEditor() !== view) throw new Error('Save target is no longer the active editor');
+		return markdown.save();
+	}
+
 	async onload(): Promise<void> {
+		this.register(() => { this.disposed = true; this.themeManager.destroy(); this.enhancementStyles.destroy(); });
 		this.settings = normalizeSettings(await this.loadData());
+		if (this.disposed) return;
+		const modeMaintenance = createIndentModeMaintenance({
+			getEnabled: () => this.settings.enhancements.maintainListIndentOnModeChange,
+			plan: planListIndentMaintenance,
+			getTarget: () => {
+				const markdown = this.app.workspace.getActiveViewOfType(MarkdownView);
+				const editor = this.currentEditor();
+				if (!markdown?.file || !editor) return null;
+				return { owner: markdown, file: markdown.file, editor,
+					mode: markdown.getMode() === 'preview' ? 'reading' : markdown.getState().source === true ? 'source' : 'live-preview' };
+			},
+		});
+		this.registerEvent(this.app.workspace.on('layout-change', () => modeMaintenance.layoutChanged()));
+		this.registerEvent(this.app.workspace.on('active-leaf-change', () => modeMaintenance.reset()));
+		this.registerEvent(this.app.workspace.on('file-open', () => modeMaintenance.reset()));
+		this.syncThemeDocuments();
+		this.registerEvent(this.app.workspace.on('layout-change', () => this.syncThemeDocuments()));
+		this.registerEvent(this.app.workspace.on('window-open', () => this.syncThemeDocuments()));
+		this.registerEvent(this.app.workspace.on('window-close', () => this.syncThemeDocuments()));
+		this.registerEvent(this.app.workspace.on('css-change', () => this.refreshCalloutIcons()));
+		try { await this.initializeThemes(); }
+		catch (error) {
+			new Notice('Content theme setup failed. Editor features remain available. ' + String(error));
+			this.settings = { ...this.settings, contentThemeId: null };
+			this.themeManager.setTheme(null);
+			this.refreshCalloutIcons();
+		}
+		if (this.disposed) return;
 		const clipboard = createBrowserClipboardSink();
+		const metadataError = (error: unknown): void => { console.error('ParaFlow math metadata adaptation failed', error); new Notice('公式索引适配失败，请查看开发者控制台。'); };
+		try {
+			const metadata = await createMathMetadataIntegration(this.app, metadataError);
+			if (this.disposed) { metadata.destroy(); return; }
+			this.register(() => metadata.destroy());
+			this.app.workspace.onLayoutReady(() => { if (!this.disposed) void metadata.refreshExisting().catch(metadataError); });
+		} catch (error) { metadataError(error); }
+		const mathRenderer = createSvgMathRenderer({ document, loadMathJax,
+			getMathJax: () => (window as unknown as { MathJax: NativeMathJax }).MathJax });
+		const readingMath = createReadingMath({ loadMathJax, finishRenderMath, renderMath: mathRenderer.renderMath, getCachedMath: mathRenderer.getCachedMath,
+			onError: error => { console.error('ParaFlow reading math rendering failed', error); } });
+		this.register(() => { readingMath.destroy(); mathRenderer.destroy(); });
+		const readingRanges = createReadingMathRanges(async (source, target, path, own) => {
+			const component = new Component(); component.load(); own(() => component.unload());
+			await MarkdownRenderer.render(this.app, source, target, path, component);
+		}, mathRenderer.renderMath);
+		this.register(() => readingRanges.destroy());
+		this.registerMarkdownPostProcessor(async (element, context) => {
+			await readingRanges.render(element, context.getSectionInfo(element), context.sourcePath, (cleanup, onload) => {
+				const child = new MarkdownRenderChild(element); child.onunload = cleanup;
+				if (onload) child.onload = onload;
+				context.addChild(child);
+			}, context.docId);
+		}, -1100);
+		this.registerMarkdownPostProcessor(element => { readingRanges.finish(element); }, 2100);
+		this.registerMarkdownPostProcessor(element => { readingMath.capture(element); }, -1000);
+		this.registerMarkdownPostProcessor((element, context) => readingMath.render(element, (math, cleanup) => {
+			const child = new MarkdownRenderChild(math);
+			child.onunload = cleanup;
+			context.addChild(child);
+		}), 1000);
+		const renderedBlocks = createRenderedBlockEditing({
+			isStateActive: isParaFlowLivePreview, isActive: view => isParaFlowLivePreview(view.state) && isPrimaryLivePreviewEditor(view), isViewSupported: isPrimarySourceEditor,
+			sourcePath: view => view.state.field(editorInfoField).file?.path ?? '',
+			renderMarkdown: (source, target, view) => {
+				const component = new Component(); component.load();
+				return {
+					ready: MarkdownRenderer.render(this.app, source, target, view.state.field(editorInfoField).file?.path ?? '', component),
+					destroy: () => component.unload(),
+				};
+			},
+		});
 		const services = createStructuredListRuntimeServiceFactory({ clipboard });
+		// An inner quote edits its projected body before the outer list can consume the key.
+		this.registerEditorExtension(createCalloutExtension(
+			view => this.settings.enhancements.callout && isParaFlowLivePreview(view.state) && isPrimaryLivePreviewEditor(view), {
+				listEditing: () => this.settings.structuredListEditingEnabled,
+				paragraphEditing: () => this.settings.paragraphEditingEnabled,
+			},
+		));
+		this.registerEditorExtension(createEditorPointerExtension({
+			disableSelectedTextDrag: () => this.settings.disableSelectedTextDrag,
+			hideCaretWhileDragSelecting: () => this.settings.hideCaretWhileDragSelecting,
+			isActive: isPrimarySourceEditor,
+			isLivePreview: isParaFlowLivePreview,
+		}));
+		this.registerEditorExtension(createVirtualTailExtension({
+			isActive: view => isParaFlowLivePreview(view.state) && isPrimaryLivePreviewEditor(view),
+		}));
 		this.editorLifecycle = createEditorExtensionLifecycle({
 			registerEditorExtension: (extension) => this.registerEditorExtension(extension),
 			updateOptions: () => this.app.workspace.updateOptions(),
 		}, {
 			navigationCore: () => createEditorRuntimeExtension({
-				disableSelectedTextDrag: () => this.settings.disableSelectedTextDrag,
 				isSelectionPresentationActive: isPrimaryLivePreviewEditor,
 				isSelectionPresentationStateActive: isParaFlowLivePreview,
 			}),
-			paragraph: () => createParagraphExtension({
+			paragraph: () => [createParagraphExtension({
 				editLinksOnPlainClick: () => this.settings.editLinksOnPlainClick,
+				openReferenceLink: (destination, view) => {
+					if (/^(?:javascript|data|vbscript):/iu.test(destination.trim())) return;
+					if (/^(?:[a-z][a-z\d+.-]*:|\/\/)/iu.test(destination)) view.dom.ownerDocument.defaultView!.open(destination, '_external');
+					else void this.app.workspace.openLinkText(destination, view.state.field(editorInfoField).file?.path ?? '');
+				},
 				isLivePreview: isParaFlowLivePreview,
 				isSurface: isPrimaryLivePreviewEditor,
-				lineBreakMarkersEnabled: () => this.settings.lineBreakMarkersEnabled,
-			}),
+				mathRendering: { renderMath: mathRenderer.renderMath, getCachedMath: mathRenderer.getCachedMath, isFocused: state => state.field(editorEditorField, false)?.hasFocus === true },
+				renderInlineHtml: (source, element, view) => {
+					const component = new Component(); component.load();
+					let disposed = false;
+					void MarkdownRenderer.render(this.app, source, element, view.state.field(editorInfoField).file?.path ?? '', component)
+						.then(() => { if (!disposed) view.requestMeasure(); });
+					return () => { disposed = true; component.unload(); };
+				},
+			}), renderedBlocks],
+			breakMarkers: () => createLineBreakProjection(
+				(view) => isParaFlowLivePreview(view.state) && isPrimaryLivePreviewEditor(view),
+				(kind) => kind === 'html' ? this.settings.htmlBreakMarkersEnabled : this.settings.hardBreakMarkersEnabled,
+			),
 			structuredList: () => createStructuredListExtension({
 				isLivePreview: isParaFlowLivePreview,
 				isSurface: isPrimaryLivePreviewEditor,
 				services,
 			}),
 		}, {
+			breakMarkers: this.settings.breakMarkersEnabled,
 			paragraph: this.settings.paragraphEditingEnabled,
 			structuredList: this.settings.structuredListEditingEnabled,
 		});
 		this.addSettingTab(new ParaFlowSettingTab(this));
+		const currentEditor = () => this.currentEditor();
+		for (const mode of ['exact', 'smart'] as const) this.addCommand({
+			id: `paste-${mode}`, name: mode === 'exact' ? '本次精确粘贴 / Paste exact text' : '本次智能粘贴 / Smart paste',
+			checkCallback: checking => {
+				const view = currentEditor();
+				if (!view || !isPrimarySourceEditor(view) || view.state.readOnly) return false;
+				if (!checking) void pasteFromClipboard(view, mode, { getView: currentEditor, notify: message => { new Notice(message); } });
+				return true;
+			},
+		});
+		this.tableEditing=createTableEditingIntegration(this.app,{
+			isActive:view=>!Platform.isMobile&&this.settings.enhancements.tableEditing&&isParaFlowLivePreview(view.state)&&isPrimaryLivePreviewEditor(view),
+			getView:currentEditor,
+			getMergeWarning:()=>this.settings.enhancements.mergeWarning,
+			getAutoWrap:()=>this.settings.enhancements.tableAutoWrap,
+			setAutoWrap:enabled=>this.setEnhancement('tableAutoWrap',enabled),
+			getHideAddControls:()=>this.settings.enhancements.tableHideAddControls,
+			setMergeWarning:enabled=>this.setEnhancement('mergeWarning',enabled),
+		});
+		for(const command of this.tableEditing.commands)this.addCommand(command);
+		this.register(() => this.tableEditing?.destroy());
+		this.rebuildSupplementalExtensions();
+		this.registerEditorExtension(this.supplementalExtensions);
+		const reading = this.readingEnhancements = createReadingEnhancements(() => this.settings.enhancements);
+		this.register(() => { this.disposed = true; reading.destroy(); });
+		this.registerMarkdownPostProcessor(async (element, context) => {
+			const printSource = await readNativePrintSource(element, context.getSectionInfo(element) !== null, async () => {
+				const file = this.app.vault.getAbstractFileByPath(context.sourcePath);
+				return file instanceof TFile ? this.app.vault.cachedRead(file) : null;
+			});
+			if (this.disposed) return;
+			const child = new MarkdownRenderChild(element);
+			let cleanup: (() => void) | undefined;
+			child.onload = () => { cleanup = reading.register(element,
+				() => context.getSectionInfo(element)?.text ?? printSource,
+				() => {
+					const section = context.getSectionInfo(element);
+					return section ? section.text.split('\n').slice(section.lineStart, section.lineEnd + 1).join('\n') : printSource;
+				}); };
+			child.onunload = () => cleanup?.();
+			context.addChild(child);
+		});
+		this.app.workspace.onLayoutReady(() => {
+			if (this.disposed) return;
+			for (const leaf of this.app.workspace.getLeavesOfType('markdown')) {
+				if (leaf.view instanceof MarkdownView && leaf.view.getMode() === 'preview') leaf.view.previewMode.rerender(true);
+			}
+		});
 	}
 
 	async setParagraphEditingEnabled(enabled: boolean): Promise<void> {
@@ -108,15 +496,21 @@ export default class ParaFlowPlugin extends Plugin {
 	}
 
 	async setDisableSelectedTextDrag(enabled: boolean): Promise<void> {
+		await this.setPointerPreference('disableSelectedTextDrag', enabled);
+	}
+
+	async setHideCaretWhileDragSelecting(enabled: boolean): Promise<void> {
+		await this.setPointerPreference('hideCaretWhileDragSelecting', enabled);
+	}
+
+	private async setPointerPreference(key: 'disableSelectedTextDrag' | 'hideCaretWhileDragSelecting', enabled: boolean): Promise<void> {
 		const update = this.settingsUpdate.then(async () => {
 			if (!this.editorLifecycle) throw new Error('ParaFlow lifecycle is not initialized');
-			if (enabled === this.settings.disableSelectedTextDrag) return;
-			const nextSettings: ParaFlowSettings = {
-				...this.settings,
-				disableSelectedTextDrag: enabled,
-			};
+			if (enabled === this.settings[key]) return;
+			const nextSettings: ParaFlowSettings = { ...this.settings, [key]: enabled };
 			await this.saveData(nextSettings);
 			this.settings = nextSettings;
+			this.app.workspace.updateOptions();
 		});
 		this.settingsUpdate = update.catch(() => undefined);
 		await update;
@@ -139,20 +533,35 @@ export default class ParaFlowPlugin extends Plugin {
 		await update;
 	}
 
-	async setLineBreakMarkersEnabled(enabled: boolean): Promise<void> {
+	async setBreakMarkersEnabled(enabled: boolean): Promise<void> {
 		const update = this.settingsUpdate.then(async () => {
 			const lifecycle = this.editorLifecycle;
 			if (!lifecycle) throw new Error('ParaFlow lifecycle is not initialized');
-			if (enabled === this.settings.lineBreakMarkersEnabled) return;
+			if (enabled === this.settings.breakMarkersEnabled) return;
+			const nextSettings = { ...this.settings, breakMarkersEnabled: enabled };
+			await this.saveData(nextSettings);
+			lifecycle.setEnabled('break-markers', enabled);
+			this.settings = nextSettings;
+		});
+		this.settingsUpdate = update.catch(() => undefined);
+		await update;
+	}
+
+	async setLineBreakMarkersEnabled(kind: LineBreakKind, enabled: boolean): Promise<void> {
+		const key = kind === 'html' ? 'htmlBreakMarkersEnabled' : 'hardBreakMarkersEnabled';
+		const update = this.settingsUpdate.then(async () => {
+			const lifecycle = this.editorLifecycle;
+			if (!lifecycle) throw new Error('ParaFlow lifecycle is not initialized');
+			if (enabled === this.settings[key]) return;
 			const previous = this.settings;
 			const nextSettings: ParaFlowSettings = {
 				...previous,
-				lineBreakMarkersEnabled: enabled,
+				[key]: enabled,
 			};
 			await this.saveData(nextSettings);
 			this.settings = nextSettings;
 			try {
-				lifecycle.refresh('paragraph');
+				lifecycle.refresh('break-markers');
 			} catch (error) {
 				this.settings = previous;
 				throw error;

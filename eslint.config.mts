@@ -21,6 +21,7 @@ export default defineConfig(
 			},
 			parserOptions: {
 				projectService: {
+					maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING: 17,
 					allowDefaultProject: [
 						'eslint.config.mts',
 						'manifest.json',
@@ -33,6 +34,15 @@ export default defineConfig(
 		},
 	},
 	...obsidianmd.configs.recommended,
+	{
+		files: ['src/settings-tab.ts', 'src/themes/import-modal.ts'],
+		rules: { 'obsidianmd/ui/sentence-case': ['warn', { enforceCamelCaseLower: true, brands: ['Typora', 'ParaFlow', 'Obsidian', 'Markdown'], ignoreWords: ['ZIP'] }] },
+	},
+	{
+		// Theme and module style owners manage one stylesheet per window and remove it on close or unload.
+		files: ['src/themes/manager.ts', 'src/display/styles.ts'],
+		rules: { 'obsidianmd/no-forbidden-elements': 'off' },
+	},
 
 	{
 		files: ['src/editor/structured-list/**/*.ts'],
@@ -45,5 +55,6 @@ export default defineConfig(
 			],
 		},
 	},
+
 
 );

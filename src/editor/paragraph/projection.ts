@@ -11,6 +11,9 @@ import {
 } from '@codemirror/state';
 import { Decoration, EditorView, type DecorationSet } from '@codemirror/view';
 import type { Tree } from '@lezer/common';
+import { createEmptyBodies, emptyBodies } from '../runtime/empty-body-state.js';
+import { codeDraft } from '../code-blocks/draft-state.js';
+import { pendingMathRanges } from '../math/candidate-ranges.js';
 import type {
 	ParagraphAuthority,
 	ParagraphGap,
@@ -18,8 +21,9 @@ import type {
 	ParagraphRun,
 	TopLevelBlockBoundary,
 } from './model.js';
-import { capabilitiesForTopLevelBlock } from './model.js';
+import { capabilitiesForTopLevelBlock, paragraphGapTags } from './model.js';
 import {
+	confirmedSyntaxEnd,
 	discoverParagraphAuthority,
 	discoverParagraphAuthorityWithin,
 	hypermdBlockRangesAround,
@@ -71,6 +75,7 @@ interface ParagraphProjectionEntry {
 }
 
 interface ParagraphProjectionFieldState extends ParagraphProjectionState {
+	readonly runDecorations: DecorationSet;
 	readonly entries: readonly ParagraphProjectionEntry[];
 	readonly syntax: ProjectionSyntaxAuthority;
 }
@@ -129,12 +134,12 @@ export function createParagraphRangeIndex(
 	}
 	const containingGap = (position: number): ParagraphGap | null => {
 		assertDocumentPosition(position, documentLength);
-		return sortedGaps.find((gap) => gap.from < position && position < gap.to) ?? null;
+		return sortedGaps.find((gap) => (gap.from < position || position === 0 && gap.from === 0 && !sortedAnchors.includes(0)) && position < gap.to) ?? null;
 	};
 	const normalize = (position: number, bias: -1 | 1): number => {
 		assertDocumentPosition(position, documentLength);
 		const gap = containingGap(position);
-		return gap ? (bias < 0 ? gap.from : gap.to) : position;
+		return gap ? (bias < 0 && (gap.from !== 0 || sortedAnchors.includes(0)) ? gap.from : gap.to) : position;
 	};
 	return Object.freeze({
 		gaps: sortedGaps,
@@ -158,7 +163,7 @@ function syntaxAuthority(state: EditorState): ProjectionSyntaxAuthority {
 	return Object.freeze({
 		complete: syntaxTreeAvailable(state, state.doc.length),
 		documentLength: state.doc.length,
-		parsedTo: tree.length,
+		parsedTo: confirmedSyntaxEnd(state),
 		tree,
 	});
 }
@@ -242,10 +247,15 @@ function buildEntry(
 	run: ParagraphRun,
 ): ParagraphProjectionEntry {
 	recordProjectionWork(state, 'build-entry');
+	const tags = paragraphGapTags(authority.blocks, run);
 	return Object.freeze({
 		atomicValue: new ParagraphGapRangeValue(),
-		decorationValues: Object.freeze(run.rows.map((row) =>
-			Decoration.line({ attributes: { class: rowClass(row) } }))),
+		decorationValues: Object.freeze(run.rows.map((row) => {
+			const { before, after } = tags(row.at);
+			return Decoration.line({ attributes: { class: rowClass(row),
+				...(row.kind === 'gap-head'
+					? { 'data-paraflow-before': before, 'data-paraflow-after': after } : {}) } });
+		})),
 		envelope: Object.freeze(runEnvelope(authority, run, state.doc.length)),
 		run,
 	});
@@ -317,16 +327,12 @@ function authorityFor(
 	blocks: readonly TopLevelBlockBoundary[],
 	entries: readonly ParagraphProjectionEntry[],
 ): ParagraphAuthority {
-	const boundaries = complete
-		? blocks
-			.filter(({ kind }) => capabilitiesForTopLevelBlock(kind).gapBoundary)
-			.map(({ from, to }) => Object.freeze({ from, to }))
-		: [];
-	const paragraphs = complete
-		? blocks
-			.filter(({ kind }) => capabilitiesForTopLevelBlock(kind).paragraphEnter)
-			.map(({ from, to }) => Object.freeze({ from, to }))
-		: [];
+	const boundaries = blocks
+		.filter(({ kind }) => capabilitiesForTopLevelBlock(kind).gapBoundary)
+		.map(({ from, to }) => Object.freeze({ from, to }));
+	const paragraphs = blocks
+		.filter(({ kind }) => capabilitiesForTopLevelBlock(kind).paragraphEnter)
+		.map(({ from, to }) => Object.freeze({ from, to }));
 	return Object.freeze({
 		blocks: Object.freeze([...blocks]),
 		boundaries: Object.freeze([...boundaries]),
@@ -337,6 +343,7 @@ function authorityFor(
 }
 
 function stateFromEntries(
+	state: EditorState,
 	complete: boolean,
 	blocks: readonly TopLevelBlockBoundary[],
 	entries: readonly ParagraphProjectionEntry[],
@@ -346,11 +353,19 @@ function stateFromEntries(
 ): ParagraphProjectionFieldState {
 	const validated = validateEntries(entries, syntax.documentLength);
 	const gaps = validated.flatMap((entry) => entry.run.gaps);
-	const editableAnchors = validated.flatMap((entry) => entry.run.editableAnchors);
+	const emptyBodies = blocks.filter(block => block.kind === 'paragraph' &&
+		/^[ \t]*$/u.test(state.sliceDoc(block.from, block.to)));
+	const editableAnchors = [...new Set([
+		...validated.flatMap((entry) => entry.run.editableAnchors),
+		...emptyBodies.map(block => block.to),
+	])];
+	const runDecorations = decorations ?? Decoration.set(validated.flatMap(decorationRanges), true);
 	return Object.freeze({
 		atomicRanges: ownedAtomicRanges ?? RangeSet.of(validated.flatMap(atomicRanges), true),
 		authority: authorityFor(complete, blocks, validated),
-		decorations: decorations ?? Decoration.set(validated.flatMap(decorationRanges), true),
+		decorations: runDecorations.update({ add: emptyBodies.map(block =>
+			Decoration.line({ attributes: { class: 'paraflow-paragraph-empty-row' } }).range(block.from)), sort: true }),
+		runDecorations,
 		entries: validated,
 		rangeIndex: createParagraphRangeIndex(syntax.documentLength, gaps, editableAnchors),
 		syntax,
@@ -361,10 +376,9 @@ function rebuildAll(state: EditorState): ParagraphProjectionFieldState {
 	recordProjectionWork(state, 'analyze-full');
 	const syntax = syntaxAuthority(state);
 	const authority = discoverParagraphAuthority(state);
-	const entries = authority.complete
-		? authority.runs.map((run) => buildEntry(state, authority, run))
-		: [];
+	const entries = authority.runs.map((run) => buildEntry(state, authority, run));
 	return stateFromEntries(
+		state,
 		authority.complete,
 		authority.blocks,
 		entries,
@@ -385,6 +399,7 @@ function mapBlock(
 	transaction: Transaction,
 ): TopLevelBlockBoundary {
 	return Object.freeze({
+		...block,
 		from: transaction.changes.mapPos(block.from, 1),
 		kind: block.kind,
 		to: transaction.changes.mapPos(block.to, -1),
@@ -416,7 +431,7 @@ function mergeBlocks(
 			.filter((block) => !coveredRanges.some((covered) =>
 				rangesOverlap(block, covered)))
 			.filter((block) => !replacements.some((replacement) =>
-				rangesOverlap(block, replacement))),
+				rangesOverlap(block, replacement) || sameRange(block, replacement))),
 		...replacements,
 	].sort((left, right) => left.from - right.from || left.to - right.to);
 	for (let index = 1; index < blocks.length; index += 1) {
@@ -441,7 +456,7 @@ function updateRangeSets(
 			filter: (_from, _to, rangeValue) => !removedAtomicValues.has(rangeValue),
 			sort: true,
 		}),
-		decorations: value.decorations.map(transaction.changes).update({
+		decorations: value.runDecorations.map(transaction.changes).update({
 			add: added.flatMap(decorationRanges),
 			filter: (_from, _to, decoration) => !removedDecorations.has(decoration),
 			sort: true,
@@ -502,6 +517,7 @@ function updateCompleteDocument(
 		spans,
 	);
 	return stateFromEntries(
+		transaction.state,
 		true,
 		blocks,
 		[...unaffected, ...added],
@@ -511,87 +527,28 @@ function updateCompleteDocument(
 	);
 }
 
-function updateIncompleteDocument(
-	value: ParagraphProjectionFieldState,
-	transaction: Transaction,
-	spans: readonly ChangedSpan[],
-	syntax: ProjectionSyntaxAuthority,
-): ParagraphProjectionFieldState {
-	if (!value.authority.complete) {
-		return stateFromEntries(false, [], [], syntax, Decoration.none, RangeSet.empty);
-	}
-	const firstUncertainPosition = Math.min(...spans.map((span) => span.oldRange.from));
-	const safe = value.entries.filter((entry) => entry.envelope.to < firstUncertainPosition);
-	const removed = value.entries.filter((entry) => !safe.includes(entry));
-	const mapped = safe
-		.map((entry) => mapEntry(transaction.state, entry, transaction))
-		.filter((entry) => entry.envelope.to <= syntax.parsedTo);
-	const retainedValues = new Set(mapped.map((entry) => entry.atomicValue));
-	const additionallyRemoved = safe.filter((entry) => !retainedValues.has(entry.atomicValue));
-	const rangeSets = updateRangeSets(
-		value,
-		transaction,
-		[...removed, ...additionallyRemoved],
-		[],
-	);
-	return stateFromEntries(
-		false,
-		[],
-		mapped,
-		syntax,
-		rangeSets.decorations,
-		rangeSets.atomicRanges,
-	);
-}
-
-function updateNonDocumentSyntax(
-	value: ParagraphProjectionFieldState,
-	state: EditorState,
-	syntax: ProjectionSyntaxAuthority,
-): ParagraphProjectionFieldState {
-	if (syntax.complete) return rebuildAll(state);
-	if (value.authority.complete) {
-		return stateFromEntries(false, [], [], syntax, Decoration.none, RangeSet.empty);
-	}
-	const retained = value.entries.filter((entry) => entry.envelope.to <= syntax.parsedTo);
-	if (retained.length === value.entries.length) {
-		return Object.freeze({
-			...value,
-			authority: authorityFor(false, [], retained),
-			syntax,
-		});
-	}
-	const removed = value.entries.filter((entry) => !retained.includes(entry));
-	const removedDecorations = new Set(removed.flatMap((entry) => entry.decorationValues));
-	const removedAtomicValues = new Set(removed.map((entry) => entry.atomicValue));
-	return stateFromEntries(
-		false,
-		[],
-		retained,
-		syntax,
-		value.decorations.update({
-			filter: (_from, _to, decoration) => !removedDecorations.has(decoration),
-		}),
-		value.atomicRanges.update({
-			filter: (_from, _to, rangeValue) => !removedAtomicValues.has(rangeValue),
-		}),
-	);
-}
-
 export const paragraphProjectionField = StateField.define<ParagraphProjectionFieldState>({
 	create: rebuildAll,
 	update(value, transaction) {
 		const syntax = syntaxAuthority(transaction.state);
+		const oldMath = pendingMathRanges(transaction.startState), newMath = pendingMathRanges(transaction.state);
+		if (oldMath !== newMath && (oldMath.length || newMath.length)) return rebuildAll(transaction.state);
+		const oldDraft = transaction.startState.facet(codeDraft), newDraft = transaction.state.facet(codeDraft);
+		if (oldDraft || newDraft) {
+			if (transaction.docChanged || oldDraft?.from !== newDraft?.from || oldDraft?.to !== newDraft?.to || oldDraft?.end !== newDraft?.end) return rebuildAll(transaction.state);
+		}
+		if (emptyBodies(transaction.startState) !== emptyBodies(transaction.state) &&
+			(emptyBodies(transaction.startState).length || emptyBodies(transaction.state).length)) return rebuildAll(transaction.state);
 		if (!transaction.docChanged) {
 			if (value.syntax.tree === syntax.tree &&
 				value.syntax.complete === syntax.complete &&
 				value.syntax.documentLength === syntax.documentLength &&
 				value.syntax.parsedTo === syntax.parsedTo) return value;
-			return updateNonDocumentSyntax(value, transaction.state, syntax);
+			return rebuildAll(transaction.state);
 		}
 		const spans = changedSpans(transaction);
 		if (!syntax.complete) {
-			return updateIncompleteDocument(value, transaction, spans, syntax);
+			return rebuildAll(transaction.state);
 		}
 		if (!value.authority.complete) return rebuildAll(transaction.state);
 		return updateCompleteDocument(value, transaction, spans, syntax);
@@ -615,6 +572,7 @@ export function createParagraphProjection(
 ): Extension {
 	const isActive = options.isActive ?? (() => true);
 	return [
+		createEmptyBodies(),
 		paragraphProjectionField,
 		EditorView.decorations.of((view) =>
 			isActive(view) ? requireParagraphProjectionState(view.state).decorations : Decoration.none),

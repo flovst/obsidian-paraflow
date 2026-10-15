@@ -68,6 +68,7 @@ export interface EditPlan {
 	readonly selection: EditorSelection | null;
 	readonly ownership: EditOwnership;
 	readonly exceptionId: `SLX-${string}` | null;
+	readonly ownsOrderedNumbering?: true;
 }
 
 export interface EditPlanFragment {
@@ -320,8 +321,12 @@ function dispatchValidatedEditPlan(
 	expectedOperation: HandledOperationId,
 	plan: EditPlan,
 ): void {
+	// Obsidian skips automatic numbering when this transaction already owns it.
+	const inputEvent = plan.ownsOrderedNumbering ? 'input.renumber' : 'input';
 	const historyAnnotations = enterOperations.has(expectedOperation)
-		? [Transaction.userEvent.of('input'), isolateHistory.of('before')]
+		? [Transaction.userEvent.of(inputEvent), isolateHistory.of(expectedOperation === 'shift-enter' ? 'full' : 'before')]
+		: expectedOperation === 'tab' || expectedOperation === 'shift-tab'
+			? [Transaction.userEvent.of(inputEvent), isolateHistory.of('full')]
 		: [];
 	view.dispatch({
 		annotations: [

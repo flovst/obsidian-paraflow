@@ -27,15 +27,22 @@ class SelectionDragPolicyPlugin {
 
 	constructor(readonly view: EditorView) {
 		this.ownerDocument = view.dom.ownerDocument;
-		this.ownerDocument.addEventListener('mouseup', this.resetOnDocumentMouseUp);
+		for (const event of ['mouseup', 'pointerup', 'pointercancel']) {
+			this.ownerDocument.addEventListener(event, this.resetOnDocumentMouseUp, true);
+		}
+		this.ownerDocument.defaultView?.addEventListener('blur', this.resetOnDocumentMouseUp);
 	}
 
 	destroy(): void {
-		this.ownerDocument.removeEventListener('mouseup', this.resetOnDocumentMouseUp);
+		for (const event of ['mouseup', 'pointerup', 'pointercancel']) {
+			this.ownerDocument.removeEventListener(event, this.resetOnDocumentMouseUp, true);
+		}
+		this.ownerDocument.defaultView?.removeEventListener('blur', this.resetOnDocumentMouseUp);
 	}
 
 	update(update: ViewUpdate): void {
-		if (update.docChanged || !policyEnabled(this.view)) this.armed = false;
+		if (update.docChanged || !policyEnabled(this.view) ||
+			update.transactions.some(transaction => transaction.reconfigured)) this.armed = false;
 	}
 
 	handleMouseDown(event: MouseEvent): boolean {
@@ -76,6 +83,9 @@ const selectionDragPolicyPlugin = Prec.highest(ViewPlugin.fromClass(
 	SelectionDragPolicyPlugin,
 	{
 		eventHandlers: {
+			compositionstart() {
+				return this.reset();
+			},
 			blur() {
 				return this.reset();
 			},

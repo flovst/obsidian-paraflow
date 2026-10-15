@@ -1,0 +1,485 @@
+/* Optional ParaFlow Classic content appearance. */
+body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview:not(:is(.cm-table-widget *)),
+body[data-paraflow-theme="builtin-classic"] .markdown-reading-view {
+	--paraflow-line-height: 1.6;
+	--paraflow-content-line-height: 1.6;
+	--paraflow-list-line-height: 1.5;
+	--paraflow-list-row-padding: .3em;
+	--paraflow-blank-line-height: 0.65em;
+	--paraflow-block-gap: 0.8em;
+	--paraflow-heading-following-gap: 0.25em;
+	--paraflow-reading-list-indent: 30px;
+	--paraflow-reading-list-line-height: 1.5;
+	--paraflow-live-list-base-indent: 0.5em;
+	--paraflow-live-list-indent: 30px;
+	--paraflow-live-list-content-offset: 0.75em;
+	--paraflow-live-list-hanging-indent: 0.625em;
+	--paraflow-end-spacing: 100px;
+	--paraflow-h1-size: 2.25em;
+	--paraflow-h2-size: 1.75em;
+	--paraflow-h3-size: 1.5em;
+	--paraflow-h4-size: 1.25em;
+	--paraflow-h5-size: 1em;
+	--paraflow-h6-size: 1em;
+	--paraflow-content-width: 800px;
+	--paraflow-source-color: color-mix(in srgb, var(--text-faint) 80%, var(--background-primary));
+	--paraflow-surface-color: color-mix(in srgb, var(--background-secondary) 65%, var(--background-primary));
+	--paraflow-border-color: color-mix(in srgb, var(--background-modifier-border) 75%, var(--background-primary));
+	--paraflow-code-background: var(--paraflow-surface-color);
+	--paraflow-inline-code-border: 1px solid var(--paraflow-border-color);
+	--paraflow-block-code-border: 1px solid var(--paraflow-border-color);
+	--paraflow-block-code-padding: .35em .65em;
+	--table-border-color: var(--paraflow-border-color);
+	--table-header-background: var(--paraflow-surface-color);
+	--table-row-alt-background: var(--paraflow-surface-color);
+	--paraflow-heading-divider-color: var(--background-modifier-border);
+}
+
+body[data-paraflow-theme="builtin-classic"].theme-light .markdown-source-view.mod-cm6.is-live-preview:not(:is(.cm-table-widget *)),
+body[data-paraflow-theme="builtin-classic"].theme-light .markdown-reading-view {
+	--paraflow-heading-divider-color: #eeeeee;
+	--paraflow-source-color: #cacaca;
+	--paraflow-surface-color: #f8f8f8;
+	--paraflow-border-color: #e6e6e6;
+}
+
+body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview:not(:is(.cm-table-widget *)) {
+	--h1-size: var(--paraflow-h1-size);
+	--h2-size: var(--paraflow-h2-size);
+	--h3-size: var(--paraflow-h3-size);
+	--h4-size: var(--paraflow-h4-size);
+	--h5-size: var(--paraflow-h5-size);
+	--h6-size: var(--paraflow-h6-size);
+	--line-height-normal: var(--paraflow-line-height);
+	--list-spacing: 0;
+	--code-background: var(--paraflow-code-background);
+}
+
+body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview:not(:is(.cm-table-widget *))
+	> .cm-editor
+	> .cm-scroller
+	> .cm-sizer
+	> .cm-contentContainer
+	> .cm-content {
+	line-height: var(--paraflow-line-height);
+}
+
+body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer {
+	line-height: var(--paraflow-line-height);
+}
+
+body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	:is(.callout, .markdown-embed) {
+	line-height: var(--line-height-normal);
+}
+
+body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	:is(p, li, blockquote):not(:is(.callout *, .markdown-embed *)) {
+	line-height: var(--paraflow-line-height);
+}
+
+body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview:not(:is(.cm-table-widget *))
+	> .cm-editor
+	> .cm-scroller
+	> .cm-sizer {
+	max-width: var(--paraflow-content-width);
+	margin-inline: auto;
+}
+
+body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer {
+	max-width: var(--paraflow-content-width);
+	margin-inline: auto;
+}
+
+body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview:not(:is(.cm-table-widget *))
+	> .cm-editor
+	> .cm-scroller
+	> .cm-sizer
+	> .cm-contentContainer
+	> .cm-content
+	> .cm-line {
+	margin-block: 0 !important;
+}
+
+body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview:not(:is(.cm-table-widget *))
+	> .cm-editor
+	> .cm-scroller
+	> .cm-sizer
+	> .cm-contentContainer
+	> .cm-content
+	> .cm-line:not(.paraflow-code-line) {
+	margin-inline: 0 !important;
+}
+
+body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview:not(:is(.cm-table-widget *))
+	> .cm-editor
+	> .cm-scroller
+	> .cm-sizer
+	> .cm-contentContainer
+	> .cm-content {
+	padding-bottom: var(--paraflow-end-spacing) !important;
+}
+
+body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview:not(:is(.cm-table-widget *))
+	> .cm-editor
+	> .cm-scroller
+	> .cm-sizer
+	> .cm-contentContainer
+	> .cm-content
+	> .cm-line:not(.HyperMD-codeblock):not(.paraflow-code-line):has(> br:only-child) {
+	min-height: var(--paraflow-blank-line-height);
+	padding-block: 0;
+	line-height: var(--paraflow-blank-line-height);
+}
+
+body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview .HyperMD-header-1,
+body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	h1:not(:is(.callout *, .markdown-embed *)) {
+	font-size: var(--paraflow-h1-size);
+	line-height: 1.2;
+}
+
+body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview .HyperMD-header-2,
+body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	h2:not(:is(.callout *, .markdown-embed *)) {
+	font-size: var(--paraflow-h2-size);
+	line-height: 1.225;
+}
+
+body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview .HyperMD-header-3,
+body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	h3:not(:is(.callout *, .markdown-embed *)) {
+	font-size: var(--paraflow-h3-size);
+	line-height: 1.43;
+}
+
+body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview .HyperMD-header-4,
+body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	h4:not(:is(.callout *, .markdown-embed *)) {
+	font-size: var(--paraflow-h4-size);
+}
+
+body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview .HyperMD-header-5,
+body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	h5:not(:is(.callout *, .markdown-embed *)) {
+	font-size: var(--paraflow-h5-size);
+}
+
+body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview .HyperMD-header-6,
+body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	h6:not(:is(.callout *, .markdown-embed *)) {
+	color: var(--text-muted);
+	font-size: var(--paraflow-h6-size);
+}
+
+body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview .HyperMD-header-1,
+body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview .HyperMD-header-2 {
+	position: relative;
+	box-sizing: border-box;
+	padding-bottom: 0.2em;
+	border-bottom: 0;
+}
+
+body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	:is(h1, h2):not(:is(.callout *, .markdown-embed *)) {
+	position: relative;
+	box-sizing: border-box;
+	padding-bottom: 0.2em;
+	border-bottom: 0;
+}
+
+body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	:is(h1, h2):not(:is(.callout *, .markdown-embed *))::after,
+body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview .HyperMD-header-1::after,
+body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview .HyperMD-header-2::after {
+	content: '';
+	position: absolute;
+	right: 0;
+	bottom: 0.16em;
+	left: 0;
+	height: 1px;
+	background: var(--paraflow-heading-divider-color);
+}
+
+body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	:is(p, blockquote, ul, ol, dl, table):not(
+		:is(.callout *, .markdown-embed *)
+	) {
+	margin-block: var(--paraflow-block-gap);
+}
+
+body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	:is(ul, ol):not(:is(.callout *, .markdown-embed *)) {
+	margin-inline-start: 0 !important;
+	padding-inline-start: var(--paraflow-reading-list-indent) !important;
+}
+
+body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	:is(ul, ol):not(:is(.callout *, .markdown-embed *))
+	> li {
+	margin-inline-start: 0 !important;
+}
+
+body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	:is(li > ul, li > ol):not(:is(.callout *, .markdown-embed *)) {
+	margin-block: 0;
+}
+
+body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	li.task-list-item:is([data-task='x'], [data-task='X'])
+	> :is(ul, ol):not(:is(.callout *, .markdown-embed *)) {
+	display: inline-block;
+	inline-size: 100%;
+	vertical-align: top;
+	color: var(--text-normal);
+	text-decoration: none;
+}
+
+body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	li:not(:is(.callout *, .markdown-embed *)) {
+	margin-block: 0;
+	padding-block: var(--paraflow-list-row-padding, .3em);
+	line-height: var(--paraflow-reading-list-line-height);
+}
+
+
+
+
+
+
+
+body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	code:not(pre code):not(:is(.callout *, .markdown-embed *)),
+body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview span.cm-inline-code {
+	border: 1px solid var(--paraflow-border-color);
+	border-radius: 3px;
+	background: var(--paraflow-code-background);
+	padding: 0 0.2em;
+	font-size: 0.9em;
+}
+
+body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	pre:not(:is(.callout *, .markdown-embed *)) {
+	border: 1px solid var(--paraflow-border-color);
+	border-radius: 3px;
+	background: var(--paraflow-code-background);
+	padding: var(--paraflow-block-code-padding);
+}
+
+body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview .HyperMD-codeblock {
+	background: var(--paraflow-code-background);
+	font-size: 0.9em;
+	border-inline: var(--paraflow-block-code-border);
+	padding-inline: .65em;
+}
+
+body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview .HyperMD-codeblock-begin {
+	border-block-start: var(--paraflow-block-code-border);
+	border-radius: 3px 3px 0 0;
+}
+
+body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview .HyperMD-codeblock-end {
+	border-block-end: var(--paraflow-block-code-border);
+	border-radius: 0 0 3px 3px;
+}
+
+
+body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	table:not(:is(.callout *, .markdown-embed *)),
+body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview table {
+	width: 100%;
+	table-layout: auto;
+	border-collapse: collapse;
+}
+
+body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview .cm-table-widget {
+	width: 100%;
+	padding: 0;
+	margin-inline: 0 !important;
+}
+
+/* Native add controls are hidden; the editor enhancement owns outside placement. */
+body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview .cm-table-widget :is(.table-col-btn, .table-row-btn) {
+	display: none;
+}
+body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview .cm-table-widget .table-col-drag-handle {
+	left: 0; top: 0; width: 100%; height: .35em; opacity: 0;
+	cursor: col-resize;
+}
+body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview .cm-table-widget .table-row-drag-handle {
+	left: 0; top: 0; width: .35em; height: 100%; opacity: 0;
+	cursor: row-resize;
+}
+
+
+body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview:not(:is(.cm-table-widget *))
+	.cm-table-widget :is(table, .table-wrapper) {
+	width: 100%;
+}
+
+body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	:is(th, td):not(:is(.callout *, .markdown-embed *)),
+body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview :is(th, td) {
+	border: 1px solid var(--paraflow-border-color);
+	padding: 6px 13px;
+}
+
+body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	thead:not(:is(.callout *, .markdown-embed *)),
+body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview thead {
+	background: var(--paraflow-surface-color);
+}
+
+body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	tbody:not(:is(.callout *, .markdown-embed *, .paraflow-display-table *))
+	tr:nth-child(even),
+body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview tbody:not(.paraflow-display-table *) tr:nth-child(even) {
+	background: var(--paraflow-surface-color);
+}
+
+body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview .image-embed img,
+body[data-paraflow-theme="builtin-classic"] .markdown-reading-view .image-embed img {
+	max-width: 100%;
+}
+
+body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview .mermaid,
+body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	.mermaid:not(:is(.callout *, .markdown-embed *)) {
+	display: flex;
+	justify-content: center;
+}
+
+body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview .mermaid svg,
+body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='markdown']
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer
+	.mermaid:not(:is(.callout *, .markdown-embed *)) svg {
+	display: block;
+	max-width: 100%;
+	margin-inline: auto;
+}
+
+body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='markdown']
+	> .view-content
+	.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer,
+body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='markdown']
+	> .view-content.markdown-reading-view
+	> .markdown-preview-view
+	> .markdown-preview-sizer {
+	min-height: 0 !important;
+	padding-bottom: var(--paraflow-end-spacing) !important;
+}
+
+@media (min-width: 1400px)  {
+body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview:not(:is(.cm-table-widget *)),
+body[data-paraflow-theme="builtin-classic"] .markdown-reading-view {
+		--paraflow-content-width: 964px;
+	}
+}
+
+@media (min-width: 1800px)  {
+body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview:not(:is(.cm-table-widget *)),
+body[data-paraflow-theme="builtin-classic"] .markdown-reading-view {
+		--paraflow-content-width: 1140px;
+	}
+}
+
+/* Base MathJax metrics remain overrideable by content themes. */
+body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview,
+body[data-paraflow-theme="builtin-classic"] .markdown-reading-view {
+	--paraflow-math-inline-size: calc(.95ex / .442);
+	--paraflow-math-block-size: calc(1ex / .442);
+	--paraflow-quote-text: var(--text-muted);
+}
+
+/* List content uses the same row rhythm for tight and loose source. */
+body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='markdown'] .markdown-reading-view > .markdown-preview-view > .markdown-preview-sizer li:not(:is(.callout *, .markdown-embed *)) > p {
+ margin-block: 0;
+}
+body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='markdown'] .markdown-reading-view > .markdown-preview-view > .markdown-preview-sizer li:not(:is(.callout *, .markdown-embed *)) > p + p {
+ margin-block-start: var(--paraflow-block-gap);
+}
+body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='markdown'] .markdown-reading-view > .markdown-preview-view > .markdown-preview-sizer li:not(:is(.callout *, .markdown-embed *)) > :is(ul, ol) {
+ margin-block-start: var(--paraflow-list-row-padding, .3em);
+}
+body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='markdown'] .markdown-reading-view > .markdown-preview-view > .markdown-preview-sizer li:not(:is(.callout *, .markdown-embed *)):has(> ul, > ol) {
+ padding-block-end: 0;
+}

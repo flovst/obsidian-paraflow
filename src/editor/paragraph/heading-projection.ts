@@ -1,17 +1,32 @@
 import { syntaxTree, syntaxTreeAvailable } from '@codemirror/language';
+import { invertedEffects } from '@codemirror/commands';
 import {
 	Facet,
+	EditorSelection,
+	Prec,
 	RangeSet,
 	RangeValue,
 	StateField,
+	StateEffect,
 	type EditorState,
 	type Extension,
 	type Transaction,
 } from '@codemirror/state';
-import { Decoration, EditorView, WidgetType, type DecorationSet } from '@codemirror/view';
+import { Decoration, EditorView, keymap, WidgetType, type DecorationSet } from '@codemirror/view';
 import type { Tree } from '@lezer/common';
-import type { AtxHeadingBlock, ParagraphBlock } from './model.js';
-import { discoverAtxHeadings, discoverParagraphAuthority } from './syntax.js';
+import type { AtxHeadingBlock, ParagraphBlock, SetextHeadingBlock } from './model.js';
+import { confirmedSyntaxEnd, discoverAtxHeadings, discoverParagraphAuthority, type HeadingBodyLine } from './syntax.js';
+import { discoverSetextHeadings } from './setext.js';
+
+export const containerHeadingBodyLines = Facet.define<(state: EditorState) => readonly HeadingBodyLine[]>();
+
+function bodyLines(state: EditorState): readonly HeadingBodyLine[] {
+	return state.facet(containerHeadingBodyLines).flatMap(provider => provider(state));
+}
+
+function headingBodyFrom(state: EditorState, lineFrom: number): number {
+	return bodyLines(state).find(line => line.from === lineFrom)?.bodyFrom ?? lineFrom;
+}
 
 export interface HeadingProjectionState {
 	readonly atomicRanges: RangeSet<RangeValue>;
@@ -20,6 +35,8 @@ export interface HeadingProjectionState {
 	readonly editSession: HeadingEditSession | null;
 	readonly focusedHeading: AtxHeadingBlock | null;
 	readonly headings: readonly AtxHeadingBlock[];
+	readonly setextHeadings: readonly SetextHeadingBlock[];
+	readonly setextDecorations: DecorationSet;
 	readonly presentations: readonly HeadingPresentation[];
 }
 
@@ -33,6 +50,15 @@ export interface HeadingEditSession {
 	readonly prefixTo: number;
 }
 
+const restoreHeadingEditSession = StateEffect.define<HeadingEditSession | null>({
+	map: (session, changes) => session === null ? null : {
+		...session,
+		lineFrom: changes.mapPos(session.lineFrom, -1),
+		lineTo: changes.mapPos(session.lineTo, 1),
+		prefixTo: changes.mapPos(session.prefixTo, 1),
+	},
+});
+
 export interface HeadingPresentation {
 	readonly from: number;
 	readonly level: AtxHeadingBlock['level'];
@@ -41,8 +67,10 @@ export interface HeadingPresentation {
 }
 
 interface HeadingFieldState extends HeadingProjectionState {
+	readonly enabled: boolean;
 	readonly editEligibleBlocks: readonly ParagraphBlock[];
 	readonly tree: Tree;
+	readonly confirmedTo: number;
 }
 
 class HeadingPrefixRangeValue extends RangeValue {}
@@ -77,15 +105,19 @@ class HeadingBadgeWidget extends WidgetType {
 		const badge = createSpan();
 		badge.className = 'paraflow-heading-badge';
 		badge.setAttribute('aria-hidden', 'true');
-		badge.textContent = `h${this.level}`;
+		const label = badge.ownerDocument.createElement('span');
+		label.className = 'paraflow-heading-badge-label';
+		label.textContent = `h${this.level}`;
+		badge.append(label);
 		return badge;
 	}
 }
 
 function headingEditEligibleBlocks(state: EditorState): readonly ParagraphBlock[] {
-	return Object.freeze(discoverParagraphAuthority(state).blocks
+	return Object.freeze([...discoverParagraphAuthority(state).blocks
 		.filter(({ kind }) => kind === 'paragraph' || kind === 'heading')
-		.map(({ from, to }) => Object.freeze({ from, to })));
+		.map(({ from, to }) => Object.freeze({ from, to })), ...bodyLines(state).filter(line => syntaxTreeAvailable(state, line.to))]
+		.sort((a, b) => a.from - b.from));
 }
 
 function isHeadingEditLineEligible(
@@ -113,7 +145,8 @@ function editSessionAtSelection(
 	const line = state.doc.lineAt(selection.head);
 	if (state.doc.lineAt(selection.anchor).from !== line.from) return null;
 	if (!isHeadingEditLineEligible(editEligibleBlocks, line.from, line.to)) return null;
-	const match = /^(#{1,6})(?:([ \t]+)(.*))?$/u.exec(line.text);
+	const bodyFrom = headingBodyFrom(state, line.from);
+	const match = /^(#{1,6})(?:([ \t]+)(.*))?$/u.exec(state.sliceDoc(bodyFrom, line.to));
 	if (!match) return null;
 	const level = match[1]!.length as AtxHeadingBlock['level'];
 	const separator = match[2] ?? '';
@@ -125,7 +158,7 @@ function editSessionAtSelection(
 		phase: separator.length === 0
 			? 'prefix-only'
 			: body?.length === 0 ? 'empty-body' : 'active-body',
-		prefixTo: line.from + match[1]!.length + separator.length,
+		prefixTo: bodyFrom + match[1]!.length + separator.length,
 	});
 }
 
@@ -225,6 +258,9 @@ function editSessionAfterTransaction(
 			: null;
 	}
 	if (!transaction.state.selection.main.empty) return null;
+	const previousPosition = transaction.changes.invertedDesc.mapPos(candidate.lineFrom, -1);
+	const previousLine = transaction.startState.doc.lineAt(previousPosition);
+	if (transaction.startState.sliceDoc(headingBodyFrom(transaction.startState, previousLine.from), previousLine.to).trim()) return null;
 	if (value.headings.some((heading) =>
 		transaction.changes.mapPos(heading.from, 1) === candidate.lineFrom)) return null;
 	return transaction.docChanged && changeTouchesEditLine(value, transaction, candidate, headings)
@@ -263,22 +299,20 @@ function projectHeadings(
 	editEligibleBlocks: readonly ParagraphBlock[],
 	editSession: HeadingEditSession | null,
 ): HeadingFieldState {
+	const setextHeadings = discoverSetextHeadings(state);
 	const stable = editSession
 		? headings.filter((heading) => heading.from !== editSession.lineFrom)
 		: headings;
-	const headingLines = new Set(headings.map((heading) => heading.from));
 	const focusedHeading = focusedCommittedHeading(state, stable, editSession);
 	const decorations = [
+		...stable.map((heading) => Decoration.line({ attributes: {
+			class: `paraflow-heading-line paraflow-heading-line--h${heading.level}`,
+		} }).range(heading.from)),
+		...stable.filter(heading => heading.contentFrom < heading.to).map((heading) => Decoration.mark({ class: 'paraflow-heading-body' })
+			.range(heading.contentFrom, heading.to)),
 		...stable.map((heading) =>
 			Decoration.replace({ widget: new HeadingMarkerWidget(heading.level) })
 				.range(heading.prefixFrom, heading.prefixTo)),
-		...stable.flatMap((heading) => {
-			if (heading.to >= state.doc.length) return [];
-			const nextLineFrom = state.doc.lineAt(heading.to + 1).from;
-			if (headingLines.has(nextLineFrom)) return [];
-			return [Decoration.line({ attributes: { class: 'paraflow-heading-following-line' } })
-				.range(nextLineFrom)];
-		}),
 		...(focusedHeading
 			? [Decoration.line({ attributes: { class: 'paraflow-heading-focused-line' } })
 				.range(focusedHeading.from)]
@@ -298,7 +332,7 @@ function projectHeadings(
 					},
 				}).range(editSession.lineFrom),
 				Decoration.mark({ class: 'paraflow-heading-edit-prefix' })
-					.range(editSession.lineFrom, editSession.prefixTo),
+					.range(headingBodyFrom(state, editSession.lineFrom), editSession.prefixTo),
 				...(editSession.phase === 'active-body'
 					? [Decoration.mark({ class: 'paraflow-heading-edit-body' })
 						.range(editSession.prefixTo, editSession.lineTo)]
@@ -311,6 +345,7 @@ function projectHeadings(
 			: []),
 	];
 	const presentations: HeadingPresentation[] = [
+		...setextHeadings.map(heading => ({ from: heading.from, to: heading.to, level: heading.level, state: 'committed' as const })),
 		...stable.map((heading) => Object.freeze({
 			from: heading.from,
 			level: heading.level,
@@ -325,14 +360,23 @@ function projectHeadings(
 		})] : []),
 	].sort((left, right) => left.from - right.from);
 	return Object.freeze({
-		atomicRanges: RangeSet.of(stable.map((heading) =>
-			new HeadingPrefixRangeValue().range(heading.prefixFrom, heading.prefixTo)), true),
+		atomicRanges: RangeSet.of([...stable.map((heading) =>
+			new HeadingPrefixRangeValue().range(heading.prefixFrom, heading.prefixTo)),
+			...setextHeadings.map(heading => new HeadingPrefixRangeValue().range(heading.contentTo, heading.to))], true),
 		complete,
+		confirmedTo: confirmedSyntaxEnd(state),
 		decorations: Decoration.set(decorations, true),
+		enabled: state.facet(headingProjectionEnabled)(state),
 		editEligibleBlocks,
 		editSession,
 		focusedHeading,
 		headings: Object.freeze(headings),
+		setextHeadings,
+		setextDecorations: Decoration.set(setextHeadings.flatMap(heading => [
+			...heading.lines.map(line => Decoration.line({ class: `paraflow-heading-line paraflow-heading-line--h${heading.level}` }).range(line.from)),
+			...heading.lines.filter(line => line.contentFrom < line.to).map(line => Decoration.mark({ class: 'paraflow-heading-body' }).range(line.contentFrom, line.to)),
+			Decoration.replace({}).range(heading.contentTo, heading.to),
+		]), true),
 		presentations: Object.freeze(presentations),
 		tree,
 	});
@@ -341,15 +385,15 @@ function projectHeadings(
 function build(state: EditorState, editSession: HeadingEditSession | null = null): HeadingFieldState {
 	const tree = syntaxTree(state);
 	const complete = syntaxTreeAvailable(state, state.doc.length);
-	const headings = complete ? discoverAtxHeadings(state) : [];
-	const editEligibleBlocks = complete ? headingEditEligibleBlocks(state) : [];
+	const headings = discoverAtxHeadings(state, bodyLines(state));
+	const editEligibleBlocks = headingEditEligibleBlocks(state);
 	return projectHeadings(
 		state,
 		tree,
 		complete,
 		headings,
 		editEligibleBlocks,
-		complete ? editSession : null,
+		editSession,
 	);
 }
 
@@ -365,14 +409,15 @@ export const headingProjectionField = StateField.define<HeadingFieldState>({
 	update(value, transaction) {
 		const tree = syntaxTree(transaction.state);
 		const complete = syntaxTreeAvailable(transaction.state, transaction.state.doc.length);
+		const confirmedTo = confirmedSyntaxEnd(transaction.state);
 		const enabled = transaction.state.facet(headingProjectionEnabled)(transaction.state);
-		if (!enabled && value.editSession === null && !transaction.docChanged &&
+		if (!enabled && value.enabled === enabled && value.editSession === null && !transaction.docChanged &&
 			!transaction.reconfigured &&
-			value.tree === tree && value.complete === complete) return value;
+			value.tree === tree && value.confirmedTo === confirmedTo) return value;
 		if (!transaction.docChanged && !transaction.reconfigured &&
-			value.tree === tree && value.complete === complete) {
-			if (!transaction.selection && enabled) return value;
-			const editSession = enabled && complete
+			value.tree === tree && value.confirmedTo === confirmedTo) {
+			if (!transaction.selection && enabled && value.enabled === enabled) return value;
+			const editSession = enabled
 				? editSessionAfterTransaction(
 					value,
 					transaction,
@@ -380,10 +425,10 @@ export const headingProjectionField = StateField.define<HeadingFieldState>({
 					value.editEligibleBlocks,
 				)
 				: null;
-			const focusedHeading = enabled && complete
+			const focusedHeading = enabled
 				? focusedCommittedHeading(transaction.state, value.headings, editSession)
 				: null;
-			if (editSession === value.editSession &&
+			if (value.enabled === enabled && editSession === value.editSession &&
 				sameFocusedHeading(focusedHeading, value.focusedHeading)) return value;
 			return projectHeadings(
 				transaction.state,
@@ -394,19 +439,26 @@ export const headingProjectionField = StateField.define<HeadingFieldState>({
 				editSession,
 			);
 		}
-		const headings = complete ? discoverAtxHeadings(transaction.state) : [];
-		const editEligibleBlocks = complete ? headingEditEligibleBlocks(transaction.state) : [];
+		const headings = discoverAtxHeadings(transaction.state, bodyLines(transaction.state));
+		const editEligibleBlocks = headingEditEligibleBlocks(transaction.state);
+		// Joined history stores inverse effects newest-to-oldest. The final
+		// snapshot describes the state before the entire undo group.
+		const restored = transaction.effects.filter(effect => effect.is(restoreHeadingEditSession)).at(-1);
 		return projectHeadings(
 			transaction.state,
 			tree,
 			complete,
 			headings,
 			editEligibleBlocks,
-			enabled && complete
-				? editSessionAfterTransaction(value, transaction, headings, editEligibleBlocks)
+			enabled
+				? restored && (!restored.value || isHeadingEditLineEligible(editEligibleBlocks, restored.value.lineFrom, restored.value.lineTo))
+					? restored.value : editSessionAfterTransaction(value, transaction, headings, editEligibleBlocks)
 				: null,
 		);
 	},
+	provide: field => invertedEffects.of(transaction => transaction.docChanged&&
+		(transaction.startState.field(field).editSession||transaction.state.field(field).editSession)
+		? [restoreHeadingEditSession.of(transaction.startState.field(field).editSession)] : []),
 });
 
 export function getHeadingProjectionState(state: EditorState): HeadingProjectionState | null {
@@ -424,7 +476,6 @@ export function headingAtCaret(
 	position: number,
 ): AtxHeadingBlock | null {
 	const projection = requireHeadingProjectionState(state);
-	if (!projection.complete) return null;
 	return projection.headings.find((heading) =>
 		heading.contentFrom <= position && position <= heading.to) ?? null;
 }
@@ -432,14 +483,19 @@ export function headingAtCaret(
 export function normalizeHeadingSelectionEndpoint(
 	state: EditorState,
 	position: number,
-	_bias: -1 | 1,
+	bias: -1 | 1,
+	leavePrefix = false,
 ): number {
 	const projection = getHeadingProjectionState(state);
-	if (!projection?.complete) return position;
+	if (!projection) return position;
+	if (!state.facet(headingProjectionEnabled)(state)) return position;
+	const setext = projection.setextHeadings.find(heading => heading.contentTo < position && position <= heading.to);
+	if (setext) return bias > 0 && setext.to < state.doc.length ? setext.to + 1 : setext.contentTo;
 	const heading = projection.headings.find((candidate) =>
 		candidate.from !== projection.editSession?.lineFrom &&
 		candidate.prefixFrom <= position && position < candidate.contentFrom);
 	if (!heading) return position;
+	if(leavePrefix&&bias<0&&heading.prefixFrom>0)return heading.prefixFrom-1;
 	return heading.contentFrom;
 }
 
@@ -447,9 +503,32 @@ export function createHeadingProjection(
 	isActive: (view: EditorView) => boolean,
 	isStateActive: (state: EditorState) => boolean = () => true,
 ): Extension {
+	const setextEnd = (view: EditorView, extend: boolean): boolean => {
+		if (!isActive(view) || view.composing || view.state.selection.ranges.length !== 1) return false;
+		const range = view.state.selection.main;
+		const heading = requireHeadingProjectionState(view.state).setextHeadings.find(candidate =>
+			candidate.contentFrom <= range.head && range.head <= candidate.contentTo);
+		if (!heading) return false;
+		// CM's visual line includes the hidden suffix; End owns only its visible title.
+		const end = Math.min(view.moveToLineBoundary(range, true, true).head, heading.contentTo);
+		view.dispatch({ selection: extend ? EditorSelection.range(range.anchor, end) : EditorSelection.cursor(end, -1), scrollIntoView: true, userEvent: 'select' });
+		return true;
+	};
 	return [
+		Prec.highest(keymap.of([{ key: 'End', run: view => setextEnd(view, false), shift: view => setextEnd(view, true) }])),
+		EditorView.baseTheme(Object.fromEntries(Array.from({ length: 6 }, (_value, index) => {
+			const level = index + 1;
+			return [`.paraflow-heading-line--h${level}`, {
+				fontFamily: `var(--h${level}-font)`, fontSize: `var(--h${level}-size)`,
+				fontWeight: `var(--h${level}-weight)`, fontStyle: `var(--h${level}-style)`,
+				color: `var(--h${level}-color)`, lineHeight: `var(--h${level}-line-height)`,
+			}];
+		}))),
 		headingProjectionEnabled.of(isStateActive),
 		headingProjectionField,
+		// Line-spanning replacements must be state-direct so CM can build its viewport.
+		EditorView.decorations.compute([headingProjectionField], state => isStateActive(state)
+			? requireHeadingProjectionState(state).setextDecorations : Decoration.none),
 		EditorView.decorations.of((view) =>
 			isActive(view) ? requireHeadingProjectionState(view.state).decorations : Decoration.none),
 		EditorView.atomicRanges.of((view) =>

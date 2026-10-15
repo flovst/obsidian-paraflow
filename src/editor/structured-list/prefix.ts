@@ -13,7 +13,7 @@ function range(from: number, to: number): SourceRange {
 }
 
 function parseMarker(lineText: string): MarkerMatch | null {
-	const match = /^([ \t]*)([-+*]|\d+[.)])([ \t]+)/u.exec(lineText);
+	const match = /^([ \t]*)([-+*]|\d+[.)])([ \t])/u.exec(lineText);
 	if (!match) return null;
 	const [matched, indentText, markerText, separatorText] = match;
 	if (indentText === undefined || markerText === undefined || separatorText === undefined) return null;
@@ -30,10 +30,10 @@ function parsePrefix(lineText: string, lineFrom: number): ListPrefix | null {
 	if (!marker) return null;
 
 	const outerMarkerEnd = lineFrom + marker.markerEnd;
-	const taskMatch = /^\[[ xX]\]([ \t]+)/u.exec(lineText.slice(marker.markerEnd));
+	const taskMatch = /^\[[ xX]\]([ \t])/u.exec(lineText.slice(marker.markerEnd));
 	if (!taskMatch) {
 		return {
-			full: range(lineFrom, outerMarkerEnd),
+			full: range(lineFrom, outerMarkerEnd + (lineText[marker.markerEnd] === '\u200b' ? 1 : 0)),
 			indentText: marker.indentText,
 			kind: marker.orderedValue === null ? 'unordered' : 'ordered',
 			markerText: marker.markerText,
@@ -46,7 +46,7 @@ function parsePrefix(lineText: string, lineFrom: number): ListPrefix | null {
 
 	const taskTokenEnd = outerMarkerEnd + taskMatch[0].length;
 	return {
-		full: range(lineFrom, taskTokenEnd),
+		full: range(lineFrom, taskTokenEnd + (lineText[taskTokenEnd - lineFrom] === '\u200b' ? 1 : 0)),
 		indentText: marker.indentText,
 		kind: 'task',
 		markerText: marker.markerText,
@@ -79,9 +79,15 @@ function renderSameLevel(
 	return `${prefix.markerText}${prefix.separatorText}`;
 }
 
-function contentIndent(prefix: ListPrefix): string {
-	const prefixWidth = prefix.full.to - prefix.full.from - prefix.indentText.length;
-	return `${prefix.indentText}${' '.repeat(prefixWidth)}`;
+/** Markdown source tabs advance to four-column stops, independently of body Tab display. */
+export function markdownColumns(text: string): number {
+	let column = 0;
+	for (const character of text) column += character === '\t' ? 4 - column % 4 : 1;
+	return column;
+}
+
+function contentIndent(sourcePrefix: string): string {
+	return ' '.repeat(markdownColumns(sourcePrefix));
 }
 
 export const prefixPolicy: PrefixPolicy = {

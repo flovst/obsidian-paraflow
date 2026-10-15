@@ -1,5 +1,6 @@
 import { Prec, type EditorState, type Extension } from '@codemirror/state';
 import { keymap, type EditorView, type KeyBinding } from '@codemirror/view';
+import { deleteAdjacentCode } from '../code-blocks/operations.js';
 import {
 	classifyCurrentSelectionMode,
 	requireCompositionState,
@@ -50,6 +51,7 @@ export function dispatchParagraphOperation(
 	const composing = requireCompositionState(view.state);
 	if (view.composing || composing) return false;
 	if (classifyCurrentSelectionMode(view.state) !== 'caret') return false;
+	if ((operation === 'backspace' || operation === 'delete') && deleteAdjacentCode(view, operation === 'delete')) return true;
 	if (operation === 'left' || operation === 'right' || operation === 'home' || operation === 'end') {
 		const goalX = requireGoalXStore(view);
 		const visual = options.visual?.(view) ?? createVisualNavigationAdapter(view);

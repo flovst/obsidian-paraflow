@@ -19,9 +19,13 @@ import {
 import type { SyntaxNode, Tree } from '@lezer/common';
 import { buildProjectionContexts } from './context.js';
 import { structuralEditAnnotation } from './edit-plan.js';
+import { listBlankRuns, type ListBlankRun } from './blank-runs.js';
+import { createListEmptyBodyState } from './empty-body-state.js';
 import {
 	markerForProjection,
 	StructuredListMarkerWidget,
+	StructuredListSeparatorWidget,
+	StructuredListEmptyBodyWidget,
 	TaskPrefixWidget,
 	type StructuredListMarker,
 } from './marker-widget.js';
@@ -55,10 +59,14 @@ export interface StructuredListTaskToken extends SourceRange {
 
 export type StructuredListProjectionWork = 'authority' | 'contexts' | 'enumerate';
 
-interface ProjectionEntry extends ProjectionAuthorityItem {
+export interface ProjectionEntry extends ProjectionAuthorityItem {
 	readonly collapsedSeparator: SourceRange | null;
 	readonly widget: StructuredListMarkerWidget;
 }
+
+/** Containers contribute source-mapped entries; all list consumers share this index. */
+export const containerListProjections = Facet.define<(state: EditorState) => readonly ProjectionEntry[]>();
+const combinedProjections = new WeakMap<EditorState, ProjectionFieldState>();
 
 interface ProjectionFieldState extends StructuredListProjectionState {
 	readonly active: boolean;
@@ -362,17 +370,13 @@ function entryForContext(
 	const marker = markerForProjection(context, prefixPolicy);
 	const outerMarker = context.block.prefix.outerMarker;
 	const markerEnd = outerMarker.to - context.block.prefix.separatorText.length;
-	const collapsedSeparator = context.block.prefix.taskToken === null &&
-		context.block.content.from === context.block.content.to &&
-		context.block.prefix.separatorText.length > 1
-		? { from: markerEnd + 1, to: outerMarker.to }
-		: null;
 	return {
-		collapsedSeparator,
+		collapsedSeparator: null,
 		item: { ...context.block.item },
 		marker,
 		ownedLines: context.ownedLines.map((line) => ({
 			...line,
+			prefix: { ...line.prefix },
 			range: { ...line.range },
 		})),
 		prefix: { from: context.block.lineFrom, to: context.block.prefix.full.to },
@@ -431,11 +435,17 @@ function syntaxAuthorityCompletesDocument(
 	return authority.complete && authority.parsedTo === documentLength;
 }
 
-function projectionEntries(
+export function projectionEntries(
 	state: EditorState,
 	within?: readonly SourceRange[],
+	ownsLine: (lineFrom: number) => boolean = () => true,
 ): readonly ProjectionEntry[] {
-	const items = enumerateProjectionItems(state, within);
+	const mapped = state.facet(containerListProjections).flatMap(provider => provider(state));
+	const mappedLines = new Set(mapped.map(entry => entry.prefix.from));
+	const items = enumerateProjectionItems(state, within).filter(item => {
+		const lineFrom = state.doc.lineAt(item.itemNode.from).from;
+		return !mappedLines.has(lineFrom) && ownsLine(lineFrom);
+	});
 	return validatedEntries(state, projectionContexts(state, items).map(entryForContext));
 }
 
@@ -459,6 +469,7 @@ function mapAuthority(
 			marker: item.marker,
 			ownedLines: item.ownedLines.map((line) => ({
 				...line,
+				prefix: mapRange(transaction, line.prefix),
 				range: mapRange(transaction, line.range),
 			})),
 			prefix: mapRange(transaction, item.prefix),
@@ -509,6 +520,7 @@ function sameAuthorityItem(
 			leftLine.kind === rightLine.kind &&
 			leftLine.ownerKind === rightLine.ownerKind &&
 			leftLine.rendering === rightLine.rendering &&
+			sameRange(leftLine.prefix, rightLine.prefix) &&
 			sameRange(leftLine.range, rightLine.range));
 }
 
@@ -783,8 +795,8 @@ function validatedEntries(
 	return Object.freeze(sorted);
 }
 
-function ownedLineClass(line: ProjectionOwnedLine): string {
-	const kind = line.kind === 'blank'
+function ownedLineClass(line: ProjectionOwnedLine, emptyBody: boolean, orderedTask: boolean): string {
+	const kind = emptyBody ? 'paraflow-list-continuation-line' : line.kind === 'blank'
 		? 'paraflow-list-owned-blank-line'
 		: `paraflow-list-${line.kind}-line`;
 	const rendering = line.rendering === 'projected'
@@ -794,18 +806,38 @@ function ownedLineClass(line: ProjectionOwnedLine): string {
 		'paraflow-list-owned-line',
 		kind,
 		`paraflow-list-owned-line--${line.ownerKind}`,
+		...(orderedTask ? ['paraflow-list-owned-line--ordered-task'] : []),
 		rendering,
 	].join(' ');
 }
 
-function decorationsFor(entries: readonly ProjectionEntry[]): DecorationSet {
+function emptyBodyLine(_entry: ProjectionEntry, line: ProjectionOwnedLine): boolean {
+	return line.rendering === 'projected' && line.kind !== 'blank' &&
+		line.prefix.to === line.range.to && line.prefix.from < line.prefix.to;
+}
+
+function sentinelDecorations(entry: ProjectionEntry) {
+	const from = entry.taskToken?.to ?? entry.replacement.to + 1;
+	return from < entry.prefix.to ? [Decoration.replace({}).range(from, entry.prefix.to)] : [];
+}
+
+export function decorationsFor(entries: readonly ProjectionEntry[]): DecorationSet {
+	const blankRows = new Map(listBlankRuns(entries).flatMap(run => run.rows.map(row => [row.at, row.kind] as const)));
 	const ranges = entries.flatMap((entry) => [
+		...(entry.marker.depth < 6 ? [Decoration.line({ attributes: {
+			class: 'paraflow-list-marker-line', style: `--paraflow-list-depth:${entry.marker.depth}`,
+		} }).range(entry.prefix.from)] : []),
 		...(entry.taskToken
 			? []
 			: [Decoration.replace({ widget: entry.widget }).range(
 				entry.replacement.from,
 				entry.replacement.to,
 			)]),
+		...(!entry.taskToken && entry.replacement.to < entry.prefix.to
+			? [Decoration.replace({ widget: new StructuredListSeparatorWidget() }).range(
+				entry.replacement.to, entry.replacement.to + 1,
+			)] : []),
+		...sentinelDecorations(entry),
 		...(entry.collapsedSeparator
 			? [Decoration.replace({}).range(
 				entry.collapsedSeparator.from,
@@ -813,7 +845,14 @@ function decorationsFor(entries: readonly ProjectionEntry[]): DecorationSet {
 			)]
 			: []),
 		...entry.ownedLines.map((line) =>
-			Decoration.line({ attributes: { class: ownedLineClass(line) } }).range(line.range.from)),
+			Decoration.line({ attributes: { class: ownedLineClass(line, emptyBodyLine(entry, line), entry.marker.kind === 'task' && entry.marker.label !== null) +
+				(emptyBodyLine(entry, line) ? ' paraflow-list-empty-body-line' : '') +
+				(blankRows.has(line.range.from) ? ` paraflow-list-blank-${blankRows.get(line.range.from)!}` : '') } }).range(line.range.from)),
+		...entry.ownedLines.filter(line => emptyBodyLine(entry, line)).map(line =>
+			Decoration.replace({ widget: new StructuredListEmptyBodyWidget() }).range(line.prefix.from, line.prefix.to)),
+		...entry.ownedLines.flatMap((line) => line.rendering === 'projected' && !emptyBodyLine(entry, line) && line.prefix.from < line.prefix.to
+			? [Decoration.replace({}).range(line.prefix.from, line.prefix.to)]
+			: []),
 	]);
 	return Decoration.set(ranges, true);
 }
@@ -822,17 +861,21 @@ function taskPrefixDecorations(view: EditorView, active: boolean): DecorationSet
 	if (!active) return Decoration.none;
 	const projection = view.state.field(structuredListProjectionField, false);
 	if (!projection?.active) return Decoration.none;
-	return Decoration.set(projection.entries.flatMap((entry) => {
+	return taskDecorationsFor(view.state, projection.entries);
+}
+
+export function taskDecorationsFor(state: EditorState, entries: readonly ProjectionEntry[]): DecorationSet {
+	return Decoration.set(entries.flatMap((entry) => {
 		const token = entry.taskToken;
 		if (!token) return [];
-		const tokenSource = view.state.doc.sliceString(token.from, token.to);
+		const tokenSource = state.doc.sliceString(token.from, token.to);
 		const tokenMatch = /^\[([ xX])\]([ \t]+)$/u.exec(tokenSource);
 		if (!tokenMatch) throw new Error('Projected task token must include its content separator');
 		return [
 			Decoration.replace({
 				widget: new TaskPrefixWidget(
 					entry.marker,
-					view.state.doc.sliceString(entry.replacement.to, token.from),
+					state.doc.sliceString(entry.replacement.to, token.from),
 					tokenMatch[1]!.toLowerCase() === 'x',
 					tokenMatch[2]!,
 					token.from,
@@ -924,7 +967,11 @@ function createTaskContentCaret(isActive: (view: EditorView) => boolean): Extens
 }
 
 function rangeIndexFor(entries: readonly ProjectionEntry[]): StructuredListRangeIndex {
-	const protectedRanges = Object.freeze(entries.map((entry) => Object.freeze({ ...entry.prefix })));
+	const protectedRanges = Object.freeze(entries.flatMap((entry) => [
+		entry.prefix,
+		...entry.ownedLines.filter((line) => line.prefix.from < line.prefix.to)
+			.map((line) => line.prefix),
+	]).sort((left, right) => left.from - right.from).map((range) => Object.freeze({ ...range })));
 	const containing = (position: number): SourceRange | null =>
 		protectedRanges.find((range) => range.from < position && position < range.to) ?? null;
 	return Object.freeze({
@@ -944,15 +991,16 @@ function stateFromProjection(
 	active: boolean,
 ): ProjectionFieldState {
 	const decorations = decorationsFor(entries);
-	const atomicRanges = RangeSet.of(entries.map((entry) =>
-		prefixRangeValue.range(entry.prefix.from, entry.prefix.to)));
+	const rangeIndex = rangeIndexFor(entries);
+	const atomicRanges = RangeSet.of(rangeIndex.protectedRanges.map((range) =>
+		prefixRangeValue.range(range.from, range.to)));
 	return Object.freeze({
 		active,
 		atomicRanges,
 		authority,
 		decorations,
 		entries,
-		rangeIndex: rangeIndexFor(entries),
+		rangeIndex,
 	});
 }
 
@@ -978,6 +1026,7 @@ function mapEntry(transaction: Transaction, entry: ProjectionEntry): ProjectionE
 		marker: entry.marker,
 		ownedLines: entry.ownedLines.map((line) => ({
 			...line,
+			prefix: mapRange(transaction, line.prefix),
 			range: mapRange(transaction, line.range),
 		})),
 		prefix: mapRange(transaction, entry.prefix),
@@ -1090,16 +1139,38 @@ export const structuredListProjectionField = StateField.define<ProjectionFieldSt
 	update: updateProjectionState,
 });
 
-export function getStructuredListProjectionState(
-	state: EditorState,
-): StructuredListProjectionState | null {
-	return state.field(structuredListProjectionField, false) ?? null;
+function combinedProjection(state: EditorState): ProjectionFieldState | null {
+	const ordinary = state.field(structuredListProjectionField, false);
+	const providers = state.facet(containerListProjections);
+	if (!providers.length) return ordinary ?? null;
+	const cached = combinedProjections.get(state);
+	if (cached) return cached;
+	const entries = validatedEntries(state, [...(ordinary?.entries ?? []), ...providers.flatMap(provider => provider(state))]);
+	const result = stateFromProjection(entries, null, true);
+	combinedProjections.set(state, result);
+	return result;
+}
+
+export function getStructuredListProjectionState(state: EditorState): StructuredListProjectionState | null {
+	return combinedProjection(state);
+}
+
+/** Source offset of a proven marker inside an active quote projection. */
+export function projectedQuoteMarkerOffset(state: EditorState, position: number): number | null {
+	const projection = combinedProjection(state);
+	if (!projection?.active) return null;
+	const line = state.doc.lineAt(position);
+	const entry = projection.entries.find(entry => entry.prefix.from === line.from &&
+		entry.prefix.to <= position && position <= entry.item.to);
+	if (!entry) return null;
+	const container = state.sliceDoc(line.from, entry.replacement.from);
+	return /^ {0,3}(?:> ?)+/u.exec(container)?.[0].length ?? null;
 }
 
 export function getStructuredListTaskTokens(
 	state: EditorState,
 ): readonly StructuredListTaskToken[] {
-	const projection = state.field(structuredListProjectionField, false);
+	const projection = combinedProjection(state);
 	if (!projection?.active) return [];
 	return projection.entries.flatMap(({ taskToken }) => {
 		if (!taskToken) return [];
@@ -1113,40 +1184,14 @@ export function getStructuredListTaskTokens(
 export function getStructuredListSelectionTransparentRanges(
 	state: EditorState,
 ): readonly SourceRange[] {
-	const projection = state.field(structuredListProjectionField, false);
+	const projection = combinedProjection(state);
 	if (!projection?.active) return [];
-	return projection.entries.flatMap((entry) => {
-		const blankLines = entry.ownedLines
-			.filter(({ kind }) => kind === 'blank')
-			.map(({ range }) => state.doc.lineAt(range.from))
-			.sort((left, right) => left.number - right.number);
-		const groups = blankLines.reduce<Array<typeof blankLines>>((result, line) => {
-			const group = result.at(-1);
-			if (!group || group.at(-1)!.number + 1 !== line.number) result.push([line]);
-			else group.push(line);
-			return result;
-		}, []);
-		return groups.flatMap((group) => {
-			const first = group[0]!;
-			const last = group.at(-1)!;
-			const followingContent = entry.ownedLines.some(({ kind, range }) =>
-				kind !== 'blank' && range.from > last.to) ||
-				projection.entries.some((candidate) =>
-					candidate.item.from > last.to && candidate.item.from < entry.item.to);
-			if (!followingContent || first.number === 1 || last.number === state.doc.lines) return [];
-			const editable = group.filter((_, index) =>
-				index % 2 === 1 && !(group.length % 2 === 0 && index === group.length - 1));
-			const ranges: SourceRange[] = [];
-			let from = state.doc.line(first.number - 1).to;
-			for (const line of editable) {
-				if (from < line.from) ranges.push(Object.freeze({ from, to: line.from }));
-				from = line.to;
-			}
-			const to = state.doc.line(last.number + 1).from;
-			if (from < to) ranges.push(Object.freeze({ from, to }));
-			return ranges;
-		});
-	});
+	return listBlankRuns(projection.entries).flatMap(run => run.transparentRanges);
+}
+
+export function getStructuredListBlankRuns(state: EditorState): readonly ListBlankRun[] {
+	const projection = combinedProjection(state);
+	return listBlankRuns(projection?.active ? projection.entries : projectionEntries(state));
 }
 
 export function createStructuredListProjection(
@@ -1155,6 +1200,7 @@ export function createStructuredListProjection(
 	const isActive = options.isActive ?? (() => true);
 	return [
 		livePreviewPredicates.of(options.isLivePreview),
+		createListEmptyBodyState(),
 		structuredListProjectionField,
 		EditorView.decorations.of((view) => isActive(view)
 			? view.state.field(structuredListProjectionField).decorations

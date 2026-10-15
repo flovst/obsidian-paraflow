@@ -10,11 +10,13 @@ import type {
 	ContextRuntime,
 	FollowingBoundary,
 	ListBlockRef,
+	ListContext,
 	ListTopology,
 	SelectionSegment,
 	SourceRange,
 } from './model.js';
 import type { HandledOperationId } from './operations.js';
+import { markdownColumns } from './prefix.js';
 
 function region(
 	kind: EditRegionKind,
@@ -53,7 +55,7 @@ function ownedRegions(topology: ListTopology): readonly ContextEditRegion[] {
 		'owned-block',
 		index,
 		block.range,
-		block.kind === 'descendant' ? 'protected-prefix' : 'ordinary',
+		'protected-prefix',
 	));
 }
 
@@ -113,9 +115,7 @@ function markerLineLayout(
 	current: ListBlockRef,
 	topology: ListTopology,
 	includeParentOrdered = false,
-	includeFollowingInsertion = false,
 ): readonly ContextEditRegion[] {
-	const following = followingInsertionRegion(topology, includeFollowingInsertion);
 	return [
 		...orderedRegions(current, topology),
 		...(includeParentOrdered ? sequenceRegions(
@@ -131,20 +131,7 @@ function markerLineLayout(
 			'protected-prefix',
 		),
 		...ownedRegions(topology),
-		...following,
 	];
-}
-
-function followingInsertionRegion(
-	topology: ListTopology,
-	include: boolean,
-): readonly ContextEditRegion[] {
-	const policy = topology.shiftTabTrailingBlankPolicy;
-	if (!include || policy.kind !== 'around-next-sibling') return [];
-	return [region('following-block', 0, sourceRange(
-		policy.nextSibling.item.to,
-		policy.nextSibling.item.to,
-	))];
 }
 
 function previousRelationshipRegions(topology: ListTopology): readonly ContextEditRegion[] {
@@ -241,6 +228,13 @@ function backspaceLayout(
 	return boundaryBackspaceLayout(current, topology);
 }
 
+function tabMovesMarker(current: ListBlockRef, topology: ListTopology): boolean {
+	const previous = topology.previousSibling;
+	if (!previous) return false;
+	const target = markdownColumns(previous.prefix.indentText + previous.prefix.markerText + previous.prefix.separatorText);
+	return target !== markdownColumns(current.prefix.indentText);
+}
+
 function structuralLayout(
 	operation: HandledOperationId,
 	current: ListBlockRef,
@@ -249,11 +243,11 @@ function structuralLayout(
 	if (nonEmptyEnterOperations.has(operation)) return granularLayout(current, topology, true);
 	if (emptyEnterOperations.has(operation)) return emptyItemLayout(current, topology);
 	if (operation === 'tab') {
-		return topology.previousSibling
+		return tabMovesMarker(current, topology)
 			? markerLineLayout(current, topology)
 			: granularLayout(current, topology, false);
 	}
-	if (operation === 'shift-tab') return markerLineLayout(current, topology, true, true);
+	if (operation === 'shift-tab') return markerLineLayout(current, topology, true);
 	if (boundaryBackspaceOperations.has(operation)) return backspaceLayout(current, topology);
 	if (operation === 'backspace-delete-inside-content') return contentDeleteLayout(current, topology);
 	return [];
@@ -271,12 +265,30 @@ export function terminalInsertionLine(
 	return sourceRange(analysis.source.length, analysis.source.length);
 }
 
+function structuralLayoutAtCaret(
+	operation: HandledOperationId,
+	current: ListBlockRef,
+	topology: ListTopology,
+	caretContent: ListContext['caretContent'],
+): readonly ContextEditRegion[] {
+	if (caretContent.kind !== 'marker-line') {
+		if (boundaryBackspaceOperations.has(operation)) return [];
+		if (operation === 'tab' || nonEmptyEnterOperations.has(operation) || emptyEnterOperations.has(operation)) {
+			return [region('current-content', null, caretContent.range)];
+		}
+		if (operation === 'shift-tab') return caretContent.subtreeBlockIndexes.map(index =>
+			region('owned-block', index, topology.ownedBlocks[index]!.range, 'protected-prefix'));
+	}
+	return structuralLayout(operation, current, topology);
+}
+
 export function buildListScope(
 	analysis: SourceAnalysis,
 	current: ListBlockRef,
 	topology: ListTopology,
 	position: number,
 	runtime: ContextRuntime,
+	caretContent: ListContext['caretContent'],
 ): EditScope {
 	const line = containingLine(analysis.lines, position);
 	const emptyMarkerLine = line.from === current.lineFrom && current.content.from === current.content.to;
@@ -289,7 +301,8 @@ export function buildListScope(
 	if (runtime.editIntent === 'none' || runtime.editIntent === 'conditional-terminal') {
 		return createEditScope(runtime.operation, 'selection-only', [], analysis.source.length);
 	}
-	const regions = sortRegions(structuralLayout(runtime.operation, current, topology));
+	const layout = structuralLayoutAtCaret(runtime.operation, current, topology, caretContent);
+	const regions = sortRegions(layout);
 	return createEditScope(runtime.operation, 'editable', regions, analysis.source.length);
 }
 
@@ -348,4 +361,13 @@ export function buildSelectionScope(
 	return runtime.editIntent === 'cut'
 		? createEditScope(runtime.operation, 'editable', selectionRegions(segments), sourceLength)
 		: createEditScope(runtime.operation, 'selection-only', [], sourceLength);
+}
+
+export function buildSelectionIndentScope(
+	operation: 'tab' | 'shift-tab',
+	ranges: readonly SourceRange[],
+	sourceLength: number,
+): EditScope {
+	return createEditScope(operation, 'editable', ranges.map((range, index) =>
+		region('owned-block', index, range, 'protected-prefix')), sourceLength);
 }

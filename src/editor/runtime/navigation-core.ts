@@ -1,9 +1,9 @@
-import { EditorSelection, type EditorState, type Extension } from '@codemirror/state';
-import { EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view';
+import { EditorSelection, Facet, Prec, type EditorState, type Extension } from '@codemirror/state';
+import { EditorView, ViewPlugin, keymap, type ViewUpdate } from '@codemirror/view';
 import { createInputStateExtension } from './input-state.js';
 import { createSelectionPresentationSessionExtension } from './selection-session.js';
 import { createGapSelectionPresentation } from '../paragraph/selection-presentation.js';
-import { createSelectionDragPolicy } from './selection-drag-policy.js';
+import { createVirtualTailExtension } from './virtual-tail.js';
 
 export type VisualAssociation = -1 | 0 | 1;
 
@@ -11,6 +11,10 @@ export interface VisualPosition {
 	readonly position: number;
 	readonly assoc: VisualAssociation;
 }
+
+/** Rendered source hints expose character hits through the same navigation path as ordinary text. */
+export const renderedSourceHit = Facet.define<
+	(view: EditorView, coordinates: { x: number; y: number }) => VisualPosition | null>();
 
 export interface VisualNavigationAdapter {
 	alignGoalOnVisualLine?(
@@ -79,7 +83,42 @@ export function requireGoalXStore(view: EditorView): GoalXStore {
 	return store;
 }
 
+export function moveToRenderedSource(view: EditorView, forward: boolean): boolean {
+	const current = view.state.selection.main;
+	if (!current.empty || view.state.selection.ranges.length !== 1 || view.composing) return false;
+	const visual = createVisualNavigationAdapter(view);
+	const start = { position: current.head, assoc: current.assoc };
+	const store = requireGoalXStore(view);
+	const goalX = store.read() ?? current.goalColumn ?? visual.coordsAtPos(start)?.left;
+	if (goalX === undefined) return false;
+	const native = view.moveVertically(EditorSelection.cursor(current.head, current.assoc, undefined, goalX), forward);
+	const coordinates = view.coordsAtPos(native.head, native.assoc < 0 ? -1 : 1);
+	if (!coordinates) return false;
+	const hit = resolveRenderedHit(view, { x: view.contentDOM.getBoundingClientRect().left + goalX,
+		y: (coordinates.top + coordinates.bottom) / 2 });
+	if (!hit || hit.position === current.head) return false;
+	view.dispatch({ selection: EditorSelection.cursor(hit.position, hit.assoc, undefined, goalX), userEvent: 'select', scrollIntoView: true });
+	store.write(goalX);
+	return true;
+}
+
+export function createRenderedSourceNavigation(): Extension {
+	return [createGoalXStoreExtension(), Prec.highest(keymap.of([
+		{ key: 'ArrowUp', run: view => moveToRenderedSource(view, false) },
+		{ key: 'ArrowDown', run: view => moveToRenderedSource(view, true) },
+	]))];
+}
+
+function resolveRenderedHit(view: EditorView, coordinates: { x: number; y: number }): VisualPosition | null {
+	for (const resolve of view.state.facet(renderedSourceHit)) {
+		const hit = resolve(view, coordinates);
+		if (hit) return hit;
+	}
+	return null;
+}
+
 export function createVisualNavigationAdapter(view: EditorView): VisualNavigationAdapter {
+	const renderedHit = (coordinates: { x: number; y: number }): VisualPosition | null => resolveRenderedHit(view, coordinates);
 	const cursor = (point: VisualPosition, goalX?: number) =>
 		EditorSelection.cursor(point.position, point.assoc, undefined, goalX);
 	const point = (range: ReturnType<typeof EditorSelection.cursor>): VisualPosition => ({
@@ -94,13 +133,22 @@ export function createVisualNavigationAdapter(view: EditorView): VisualNavigatio
 			);
 			if (!coordinates) return position;
 			const contentLeft = view.contentDOM.getBoundingClientRect().left;
+			const targetY = (coordinates.top + coordinates.bottom) / 2;
+			const sourceHit = renderedHit({ x: contentLeft + goalX, y: targetY });
+			if (sourceHit) return sourceHit;
 			const aligned = view.posAtCoords({
 				x: contentLeft + goalX,
-				y: (coordinates.top + coordinates.bottom) / 2,
+				y: targetY,
 			});
-			return aligned === null
-				? position
-				: { assoc: position.assoc, position: aligned };
+			if (aligned === null || aligned === position.position) return position;
+			const before = view.coordsAtPos(aligned, -1);
+			const after = view.coordsAtPos(aligned, 1);
+			const beforeOnRow = before !== null && before.top <= targetY && targetY <= before.bottom;
+			const afterOnRow = after !== null && after.top <= targetY && targetY <= after.bottom;
+			return {
+				assoc: beforeOnRow === afterOnRow ? position.assoc : beforeOnRow ? -1 : 1,
+				position: aligned,
+			};
 		},
 		coordsAtPos(position) {
 			const coordinates = view.coordsAtPos(position.position, position.assoc < 0 ? -1 : 1);
@@ -113,9 +161,14 @@ export function createVisualNavigationAdapter(view: EditorView): VisualNavigatio
 			return point(view.moveByChar(cursor(position), forward));
 		},
 		moveVertically(position, forward, goalX) {
-			return point(view.moveVertically(cursor(position, goalX), forward));
+			const candidate = point(view.moveVertically(cursor(position, goalX), forward));
+			const coordinates = view.coordsAtPos(candidate.position, candidate.assoc < 0 ? -1 : 1);
+			return coordinates ? renderedHit({ x: view.contentDOM.getBoundingClientRect().left + goalX,
+				y: (coordinates.top + coordinates.bottom) / 2 }) ?? candidate : candidate;
 		},
 		posAtCoords(coordinates) {
+			const sourceHit = renderedHit(coordinates);
+			if (sourceHit) return sourceHit;
 			const position = view.posAtCoords(coordinates);
 			return position === null ? null : { assoc: 0, position };
 		},
@@ -129,7 +182,6 @@ export function createVisualNavigationAdapter(view: EditorView): VisualNavigatio
 }
 
 export interface EditorRuntimeExtensionOptions {
-	readonly disableSelectedTextDrag?: () => boolean;
 	readonly isSelectionPresentationActive?: (view: EditorView) => boolean;
 	readonly isSelectionPresentationStateActive?: (state: EditorState) => boolean;
 }
@@ -140,13 +192,10 @@ export function createEditorRuntimeExtension(
 	return [
 		createInputStateExtension(),
 		createGoalXStoreExtension(),
+		createVirtualTailExtension({isActive:options.isSelectionPresentationActive??(()=>true)}),
 		createSelectionPresentationSessionExtension({
 			isActiveState: options.isSelectionPresentationStateActive,
 			isActiveView: options.isSelectionPresentationActive,
-		}),
-		createSelectionDragPolicy({
-			disableSelectedTextDrag: options.disableSelectedTextDrag ?? (() => true),
-			isActive: options.isSelectionPresentationActive ?? (() => true),
 		}),
 		createGapSelectionPresentation({
 			isActive: options.isSelectionPresentationActive ?? (() => true),

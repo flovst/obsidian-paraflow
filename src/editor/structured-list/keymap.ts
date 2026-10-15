@@ -1,9 +1,12 @@
-import { Prec, type Extension } from '@codemirror/state';
+import { EditorSelection, Prec, type Extension } from '@codemirror/state';
 import { keymap, type EditorView, type KeyBinding } from '@codemirror/view';
-import { classifyCurrentSelectionMode } from '../runtime/input-state.js';
-import { buildListContext, buildNavigationContext } from './context.js';
+import { classifyCurrentSelectionMode, requireCompositionState } from '../runtime/input-state.js';
+import { dispatchParagraphSelection, paragraphNavigationAnnotation, type ParagraphNavigationOperationId } from '../paragraph/edit-plan.js';
+import { buildListContext, buildNavigationContext, buildSelectionContext } from './context.js';
 import { applyOperationResult } from './edit-plan.js';
 import { createNavigationDestinationResolver } from './navigation-adapter.js';
+import { planSelectionIndent } from './selection-indent.js';
+import { projectedQuoteMarkerOffset } from './projection.js';
 import type { ContextRuntime } from './model.js';
 import {
 	executeRegisteredOperation,
@@ -64,6 +67,14 @@ function dispatchNavigation<K extends NavigationOperationId>(
 	if (!context) return false;
 	const executionServices = navigationServices(view, runtime, services);
 	const result = executeRegisteredOperation({ context, intent, services: executionServices });
+	if (result.kind === 'selection') {
+		const operation: ParagraphNavigationOperationId = intent.operation === 'left-content-start'
+			? 'left' : intent.operation === 'up-down'
+				? intent.direction === 'up' ? 'up' : 'down'
+				: intent.operation;
+		dispatchParagraphSelection(view, operation, result.selection);
+		return true;
+	}
 	return applyOperationResult(
 		view,
 		intent.operation,
@@ -79,6 +90,10 @@ function dispatchStructural<K extends StructuralOperationId>(
 	runtime: ContextRuntime,
 	services: StructuredListRuntimeServices,
 ): boolean {
+	if (intent.operation === 'tab' || intent.operation === 'shift-tab') {
+		const selection = planSelectionIndent(view.state, intent.operation, runtime, services.structural.prefixPolicy);
+		if (selection) return applyOperationResult(view, intent.operation, selection.scope, selection.result, services.result);
+	}
 	const context = buildListContext(view.state, view.state.selection.main.head, runtime);
 	if (!context) return false;
 	const result = executeRegisteredOperation({ context, intent, services: services.structural });
@@ -128,13 +143,75 @@ function navigationBinding<K extends NavigationOperationId>(
 ): KeyBinding {
 	return {
 		key,
-		run: (view) => dispatchOperation(view, {
+		run: (view) => operation === 'home' || operation === 'end'
+			? dispatchBoundaryNavigation(view, options, operation) : dispatchOperation(view, {
 			direction,
 			extend: false,
 			family: 'navigation',
 			operation,
 		}, options),
+		shift: operation === 'up-down' ? (view) => dispatchOperation(view, {
+			direction,
+			extend: true,
+			family: 'navigation',
+			operation,
+		}, options) : operation === 'end' || operation === 'home'
+			? (view) => dispatchNativeShiftBoundary(view, options, operation, true) : undefined,
 	};
+}
+
+function boundaryHead(view: EditorView, range: EditorSelection['main'], forward: boolean) {
+	const line = view.lineBlockAt(range.head);
+	let head = view.moveToLineBoundary(range, forward);
+	if (head.head === range.head && head.head !== (forward ? line.to : line.from)) head = view.moveToLineBoundary(range, forward, false);
+	if (forward || head.head !== line.from) return head;
+	const spaces = /^\s*/u.exec(view.state.sliceDoc(line.from, Math.min(line.from + 100, line.to)))![0].length;
+	return spaces && range.head !== line.from + spaces ? EditorSelection.cursor(line.from + spaces) : head;
+}
+
+function dispatchBoundaryNavigation(view: EditorView, options: StructuredListExtensionOptions, operation: 'home' | 'end'): boolean {
+	if (classifyCurrentSelectionMode(view.state) === 'continuous') return dispatchNativeShiftBoundary(view, options, operation, false);
+	return dispatchOperation(view, { family: 'navigation', operation, direction: null, extend: false }, options) ||
+		dispatchNativeShiftBoundary(view, options, operation, false);
+}
+
+function boundarySelection(view: EditorView, forward: boolean, extend: boolean): EditorSelection {
+	return EditorSelection.create(view.state.selection.ranges.map(range => {
+		const head = boundaryHead(view, range, forward);
+		return extend ? EditorSelection.range(range.anchor, head.head, head.goalColumn, head.bidiLevel || undefined) : head;
+	}), view.state.selection.mainIndex);
+}
+
+function boundaryContext(view: EditorView, options: StructuredListExtensionOptions, operation: 'home' | 'end', mode: ContextRuntime['selectionMode']) {
+	const services = options.services.forView(view);
+	const runtime = contextRuntime(view, { family: 'navigation', operation, direction: null, extend: true }, services);
+	const context = mode === 'caret'
+		? buildListContext(view.state, view.state.selection.main.head, runtime)
+		: buildSelectionContext(view.state, view.state.selection, { ...runtime, operation: 'normal-selection' });
+	if (context) return context;
+	const range = view.state.selection.main;
+	if (view.state.doc.lineAt(range.anchor).number !== view.state.doc.lineAt(range.head).number ||
+		projectedQuoteMarkerOffset(view.state, range.anchor) === null) return null;
+	return projectedQuoteMarkerOffset(view.state, range.head);
+}
+
+function dispatchNativeShiftBoundary(view: EditorView, options: StructuredListExtensionOptions, operation: 'home' | 'end', extend: boolean): boolean {
+	if (!options.isLivePreview(view.state) || options.isSurface?.(view) === false) return false;
+	const mode = classifyCurrentSelectionMode(view.state);
+	if (!normalKeyboardSelection(view, mode)) return false;
+	const context = boundaryContext(view, options, operation, mode);
+	// Match CodeMirror's boundary extension while carrying intent before selection filters run.
+	if (context === null) return false;
+	const selection = boundarySelection(view, operation === 'end', extend);
+	if (selection.eq(view.state.selection)) return true;
+	if (extend) view.dispatch({ selection, scrollIntoView: true, userEvent: 'select', annotations: paragraphNavigationAnnotation.of(operation) });
+	else dispatchParagraphSelection(view, operation, selection);
+	return true;
+}
+
+function normalKeyboardSelection(view: EditorView, mode: ContextRuntime['selectionMode']): boolean {
+	return (mode === 'caret' || mode === 'continuous') &&
+		!view.composing && !requireCompositionState(view.state);
 }
 
 function structuralBindings(options: StructuredListExtensionOptions): readonly KeyBinding[] {

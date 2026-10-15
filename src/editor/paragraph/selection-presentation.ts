@@ -5,6 +5,7 @@ import {
 	type SelectionRange,
 } from '@codemirror/state';
 import {
+	Direction,
 	EditorView,
 	layer,
 	RectangleMarker,
@@ -18,8 +19,11 @@ import {
 } from '../structured-list/projection.js';
 import type { SourceRange } from '../structured-list/model.js';
 import { getParagraphProjectionState } from './projection.js';
+import { classifyCurrentSelectionMode } from '../runtime/input-state.js';
+import { mathPreviewReplacementOwner } from '../math/extension.js';
 
 const ACTIVE_CLASS = 'paraflow-gap-selection-presentation-active';
+const LIST_RANGE_HEAD_CLASS = 'paraflow-list-range-head-hidden';
 
 export interface GapSelectionPresentationOptions {
 	readonly isActive: (view: EditorView) => boolean;
@@ -290,27 +294,146 @@ function projectionChanged(update: ViewUpdate): boolean {
 		getStructuredListProjectionState(update.state);
 }
 
+function overlapsSourceRange(ranges: readonly SourceRange[], from: number, to: number): boolean {
+	let low = 0, high = ranges.length;
+	while (low < high) {
+		const middle = low + Math.floor((high - low) / 2);
+		if (ranges[middle]!.to <= from) low = middle + 1; else high = middle;
+	}
+	return low < ranges.length && ranges[low]!.from < to;
+}
+
+function mathWidgetMarkers(view: EditorView, exclusions: readonly SourceRange[]): RectangleMarker[] {
+	const selected = selectionFragmentsFromExclusions(intersectRanges(view.state.selection.ranges, [view.viewport]), exclusions);
+	if (!selected.length) return [];
+	const scroll = view.scrollDOM.getBoundingClientRect();
+	// Match RectangleMarker's coordinate base, including RTL scrolling and CSS scaling.
+	const left = (view.textDirection === Direction.LTR ? scroll.left : scroll.right - view.scrollDOM.clientWidth * view.scaleX)
+		- view.scrollDOM.scrollLeft * view.scaleX;
+	const top = scroll.top - view.scrollDOM.scrollTop * view.scaleY;
+	const markers: RectangleMarker[] = [];
+	for (const widget of view.contentDOM.querySelectorAll<HTMLElement>('.paraflow-math-rendered:is(.math-inline, .paraflow-math-block-preview)')) {
+		const block = widget.classList.contains('paraflow-math-block-preview');
+		const owner = mathPreviewReplacementOwner(widget);
+		if (block && !owner) continue;
+		// Widget-internal offsets may all map to its start; parent boundaries span the replacement.
+		const parent = widget.parentNode!, index = Array.prototype.indexOf.call(parent.childNodes, widget);
+		const from = owner?.from ?? view.posAtDOM(parent, index), to = owner?.to ?? view.posAtDOM(parent, index + 1);
+		if (to <= view.viewport.from || from >= view.viewport.to ||
+			!overlapsSourceRange(selected, from, to) ||
+			(!block && (overlapsSourceRange(exclusions, from, to) ||
+			view.visibleRanges.some(range => range.from <= from && to <= range.to)))) continue;
+		// Line-local CM ranges cannot paint block replacements; long inline ones are clipped.
+		// Display containers span the editor width; only the owned SVG is formula content.
+		const content = block ? widget.querySelector(':scope > mjx-container.paraflow-svg-math > svg') : widget;
+		if (!content) continue; // Async loading/error previews have no rendered formula yet.
+		for (const rect of content.getClientRects()) if (rect.width > 0 && rect.height > 0) {
+			markers.push(new RectangleMarker('cm-selectionBackground', rect.left - left, rect.top - top, rect.width, rect.height));
+		}
+	}
+	return markers;
+}
+
+function textSelectionMarkers(view: EditorView, fragment: SelectionRange): readonly RectangleMarker[] {
+	const markers = RectangleMarker.forRange(view, 'cm-selectionBackground', fragment);
+	if (markers.length < 2 || markers.every(marker =>
+		marker.top === markers[0]!.top && marker.height === markers[0]!.height)) return markers;
+	const start = view.domAtPos(fragment.from), end = view.domAtPos(fragment.to);
+	const element = start.node.nodeType === Node.ELEMENT_NODE ? start.node as Element : start.node.parentElement;
+	const line = element?.closest('.cm-line');
+	if (!line || !(line.classList.contains('paraflow-list-owned-line') ||
+		line.querySelector('.paraflow-list-marker, .paraflow-task-prefix'))) return markers;
+
+	// CM fills wrapped rows using the first editor line's box. List bodies have
+	// their own hanging indent; measure the already prefix-excluded text instead.
+	const range = view.dom.ownerDocument.createRange();
+	range.setStart(start.node, start.offset);
+	range.setEnd(end.node, end.offset);
+	const scroll = view.scrollDOM.getBoundingClientRect();
+	const left = (view.textDirection === Direction.LTR ? scroll.left : scroll.right - view.scrollDOM.clientWidth * view.scaleX)
+		- view.scrollDOM.scrollLeft * view.scaleX;
+	const top = scroll.top - view.scrollDOM.scrollTop * view.scaleY;
+	return Array.from(range.getClientRects()).filter(rect => rect.width > 0 && rect.height > 0)
+		.map(rect => new RectangleMarker('cm-selectionBackground', rect.left - left, rect.top - top, rect.width, rect.height));
+}
+
+/** Union the approved vertical expansion so each pixel receives selection alpha only once. */
+function expandedSelectionMarkers(markers: readonly RectangleMarker[]): RectangleMarker[] {
+	const edges = markers.flatMap((marker, index) => marker.width! > 0 && marker.height > 0
+		? [{ y: marker.top - 2, index, start: true }, { y: marker.top + marker.height + 2, index, start: false }] : [])
+		.sort((left, right) => left.y - right.y);
+	const active = new Set<number>();
+	const result: RectangleMarker[] = [];
+	let previous = new Map<string, number>();
+	for (let index = 0; index < edges.length;) {
+		const top = edges[index]!.y;
+		while (index < edges.length && edges[index]!.y === top) {
+			const edge = edges[index++]!;
+			if (edge.start) active.add(edge.index); else active.delete(edge.index);
+		}
+		if (index === edges.length) break;
+		const bottom = edges[index]!.y;
+		const spans = [...active].map(item => markers[item]!).sort((left, right) => left.left - right.left);
+		const merged: { left: number; right: number }[] = [];
+		for (const span of spans) {
+			const last = merged.at(-1), right = span.left + span.width!;
+			if (last && span.left <= last.right) last.right = Math.max(last.right, right);
+			else merged.push({ left: span.left, right });
+		}
+		const current = new Map<string, number>();
+		for (const span of merged) {
+			const key = `${span.left}:${span.right}`, prior = previous.get(key);
+			const row = prior === undefined ? result.length : prior;
+			const start = prior === undefined ? top : result[prior]!.top;
+			result[row] = new RectangleMarker('cm-selectionBackground', span.left, start, span.right - span.left, bottom - start);
+			current.set(key, row);
+		}
+		previous = current;
+	}
+	return result;
+}
+
 export function createGapSelectionPresentation(
 	options: GapSelectionPresentationOptions,
 ): Extension {
+	const mountedViews = new WeakSet<EditorView>();
 	return [
 		selectionExclusionSnapshotPlugin,
-		EditorView.editorAttributes.of((view) => ({
-			class: presentsSelection(view, options) ? ACTIVE_CLASS : '',
-		})),
+		EditorView.editorAttributes.of(view => {
+			if (!presentsSelection(view, options)) return { class: '' };
+			const { state } = view;
+			const range = state.selection.main;
+			const hidden = state.selection.ranges.length === 1 && !range.empty &&
+				classifyCurrentSelectionMode(state) === 'continuous' &&
+				getStructuredListProjectionState(state)?.rangeIndex.protectedRanges.some(prefix =>
+					prefix.from <= range.head && range.head < prefix.to);
+			return { class: ACTIVE_CLASS + (hidden ? ` ${LIST_RANGE_HEAD_CLASS}` : '') };
+		}),
+		EditorView.baseTheme({
+			'.paraflow-gap-selection-layer, .paraflow-gap-selection-layer .cm-selectionBackground': { pointerEvents: 'none' },
+			[`&.${LIST_RANGE_HEAD_CLASS} .cm-cursor-primary`]: { visibility: 'hidden !important' },
+			[`&.${LIST_RANGE_HEAD_CLASS} .cm-content`]: { caretColor: 'transparent !important' },
+		}),
 		layer({
-			above: false,
+			above: true,
 			class: 'paraflow-gap-selection-layer',
+			mount(_element, view) { mountedViews.add(view); },
+			destroy(_element, view) { mountedViews.delete(view); },
 			markers(view): readonly LayerMarker[] {
+				// CodeMirror may run an already queued layer measure after unmount.
+				if (!mountedViews.has(view)) return [];
 				if (!presentsSelection(view, options)) return [];
+				const exclusions = selectionPresentationExclusionsForView(view);
 				const paintRanges = selectionPaintRangesInVisibleRanges(
 					view.state,
 					view.state.selection.ranges,
 					view.visibleRanges,
-					selectionPresentationExclusionsForView(view),
+					exclusions,
 				);
-				return paintRanges.flatMap((fragment) =>
-					RectangleMarker.forRange(view, 'cm-selectionBackground', fragment));
+				return expandedSelectionMarkers([
+					...paintRanges.flatMap(fragment => textSelectionMarkers(view, fragment)),
+					...mathWidgetMarkers(view, exclusions),
+				]);
 			},
 			update(update): boolean {
 				return update.docChanged || update.selectionSet || update.viewportChanged ||

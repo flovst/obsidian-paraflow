@@ -1,0 +1,90 @@
+import { EditorSelection, EditorState, RangeSet, RangeValue, type Extension } from '@codemirror/state';
+import { EditorView, ViewPlugin } from '@codemirror/view';
+import { getParagraphProjectionState } from '../paragraph/projection.js';
+import { compositionStateField, excludedSelectionModeForTransaction, recognizedNormalSelectionTransaction } from '../runtime/input-state.js';
+import { quoteContainers } from './presentation-model.js';
+import { projectQuoteContent, quotePrefix } from './projection.js';
+import { calloutListEntries } from './list-presentation.js';
+import { paragraphGapTags } from '../paragraph/model.js';
+import {emptyBodies} from '../runtime/empty-body-state.js';
+
+interface Gap { readonly from: number; readonly to: number; readonly before?: string; readonly after?: string; readonly edge?: 'leading' | 'trailing' }
+const cache = new WeakMap<EditorState, readonly Gap[]>();
+class GapRange extends RangeValue {}
+const atomic = new GapRange();
+
+/** Reuse paragraph ownership in the stripped body, then map both endpoints through quote prefixes. */
+export function calloutGaps(state: EditorState): readonly Gap[] {
+	const previous = cache.get(state);
+	if (previous) return previous;
+	const gaps = new Map<number, Gap>();
+	for (const card of quoteContainers(state)) {
+		const listEntries = calloutListEntries(state, [card]);
+		const contentBoundary = (position: number): number => listEntries.find(entry =>
+			entry.prefix.from <= position && position < entry.prefix.to)?.prefix.to ?? position;
+		const first = state.doc.lineAt(card.from).number + (card.kind === 'callout' ? 1 : 0);
+		const last = state.doc.lineAt(card.to).number;
+		if (first > last) continue;
+		const line = state.doc.line(first);
+		const prefix = quotePrefix(line.text, card.depth);
+		if (prefix === null) continue;
+		const projection = projectQuoteContent(state, line.from, state.doc.line(last).to, card.depth);
+		if (!projection || projection.depth !== card.depth) continue;
+		const paragraph = getParagraphProjectionState(projection.state)!;
+		const drafts = emptyBodies(projection.state);
+		for (const gap of paragraph.rangeIndex.gaps) {
+			const leading = gap.from === 0 && !drafts.includes(0);
+			const trailing = gap.to === projection.state.doc.length && !drafts.includes(gap.to);
+			const from = leading ? card.kind === 'callout' ? card.headerTo : line.from : projection.toSource(gap.from);
+			const end = projection.toSource(gap.to);
+			const run = paragraph.authority.runs.find(run => run.gaps.some(candidate => candidate.from === gap.from && candidate.to === gap.to))!;
+			const { before, after } = paragraphGapTags(paragraph.authority.blocks, run)(gap.from);
+			gaps.set(from, { from, to: contentBoundary(end), before, after,
+				...(leading ? {edge:'leading' as const} : trailing ? {edge:'trailing' as const} : {}) });
+		}
+		// A container's terminal source separator has no editable EOF outside its body.
+		const tail = paragraph.authority.runs.find(run => run.kind === 'trailing' && !run.gaps.length);
+		if (tail && !drafts.includes(tail.to)) {
+			const from = projection.toSource(tail.from);
+			gaps.set(from, {from,to:projection.toSource(tail.to),edge:'trailing'});
+		}
+	}
+	const result = [...gaps.values()].sort((a, b) => a.from - b.from);
+	cache.set(state, result);
+	return result;
+}
+
+export function createCalloutGapProtection(isActive: (view: EditorView) => boolean): Extension {
+	const views = new Set<EditorView>();
+	return [ViewPlugin.fromClass(class {
+		constructor(readonly view: EditorView) { views.add(view); }
+		destroy(): void { views.delete(this.view); }
+	}), EditorView.atomicRanges.of(view => isActive(view)
+		? RangeSet.of(calloutGaps(view.state).map(gap => atomic.range(gap.from, gap.to)), true) : RangeSet.empty),
+	EditorState.transactionFilter.of(transaction => {
+		const owners = [...views].filter(view => view.state === transaction.startState);
+		if (!owners.length || owners.some(view => !isActive(view) || view.composing) ||
+			transaction.startState.field(compositionStateField, false) || transaction.state.field(compositionStateField, false) ||
+			transaction.newSelection.ranges.length !== 1 || excludedSelectionModeForTransaction(transaction) !== null ||
+			!(recognizedNormalSelectionTransaction(transaction) || transaction.isUserEvent('move.character') || transaction.isUserEvent('move.line'))) return transaction;
+		const selection = transaction.newSelection.main;
+		if (selection.from === 0 && selection.to === transaction.newDoc.length) return transaction;
+		const gaps = calloutGaps(transaction.state);
+		const normalize = (position: number, bias: -1 | 1): number => {
+			const edge = gaps.find(gap => gap.edge === 'leading' ? gap.from <= position && position < gap.to :
+				gap.edge === 'trailing' && gap.from < position && position <= gap.to);
+			if (edge) return edge.edge === 'leading' ? edge.to : edge.from;
+			const gap = gaps.find(gap => gap.from < position && position < gap.to);
+			if (!gap) return position;
+			if (selection.empty && transaction.isUserEvent('select.pointer')) return position - gap.from < gap.to - position ? gap.from : gap.to;
+			return bias < 0 ? gap.from : gap.to;
+		};
+		const direction = selection.empty ? (selection.head < transaction.startState.selection.main.head ? -1 : 1) : selection.anchor < selection.head ? 1 : -1;
+		const anchor = normalize(selection.anchor, direction);
+		const head = selection.empty ? anchor : normalize(selection.head, direction === 1 ? -1 : 1);
+		if (anchor === selection.anchor && head === selection.head) return transaction;
+		return [transaction, { selection: EditorSelection.create([selection.empty
+			? EditorSelection.cursor(head, direction, selection.bidiLevel ?? undefined, selection.goalColumn)
+			: EditorSelection.range(anchor, head, selection.goalColumn, selection.bidiLevel ?? undefined)]), sequential: true }];
+	})];
+}

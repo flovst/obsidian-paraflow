@@ -2,10 +2,11 @@ import type { EditPlan, EditPlanFragment, EditRegionId } from '../edit-plan.js';
 import type { ExceptionId } from '../exception-registry.js';
 import type { ListContext } from '../model.js';
 import type { ExecutionFor, OperationResult } from '../operations.js';
+import { literalBodyTab } from '../../literal-tab.js';
+import { markdownColumns } from '../prefix.js';
 import {
 	composeEditPlan,
 	convertItemToParagraph,
-	insertAfterListBlock,
 	insertContentText,
 	remapIndentation,
 	renumberOrderedItems,
@@ -43,21 +44,33 @@ function tabMovementIds(context: ListContext): readonly EditRegionId[] {
 function tabDelta(execution: ExecutionFor<'tab'>): number {
 	const previous = execution.context.topology.previousSibling;
 	if (!previous) return 0;
-	const previousIndent = blockPhysicalIndent(previous);
 	const currentIndent = physicalIndent(execution.context);
-	const structuralWidth = previous.prefix.outerMarker.to - previous.prefix.outerMarker.from;
-	return previousIndent + structuralWidth - currentIndent;
+	const contentColumn = markdownColumns(execution.context.source.slice({
+		from: previous.lineFrom, to: previous.prefix.outerMarker.to,
+	}));
+	return contentColumn - currentIndent;
 }
 
-function blockPhysicalIndent(block: ListContext['current']): number {
-	return block.prefix.outerMarker.from - block.lineFrom;
+function blockPhysicalIndent(context: ListContext, block: ListContext['current']): number {
+	const markerFrom = block.prefix.outerMarker.to - block.prefix.separatorText.length - block.prefix.markerText.length;
+	return markdownColumns(context.source.slice({ from: block.lineFrom, to: markerFrom }));
 }
 
 function physicalIndent(context: ListContext): number {
-	return blockPhysicalIndent(context.current);
+	return blockPhysicalIndent(context, context.current);
+}
+
+function markerContainerWidth(context: ListContext): number {
+	return markdownColumns(context.source.slice({
+		from: context.current.lineFrom, to: context.current.prefix.outerMarker.to,
+	})) - physicalIndent(context);
 }
 
 function fallbackText(context: ListContext): string {
+	if (context.caretContent.kind !== 'marker-line') {
+		const before = context.source.text.slice(context.caretContent.range.from, context.caret);
+		return literalBodyTab(before);
+	}
 	return context.caretZone === 'middle' ? '\t' : '\u200b\t';
 }
 
@@ -75,27 +88,6 @@ function fallbackPlan(execution: ExecutionFor<'tab'>): EditPlan {
 	);
 }
 
-function tabWhitespaceFragments(execution: ExecutionFor<'tab'>): readonly EditPlanFragment[] {
-	const { context } = execution;
-	if (
-		context.topology.ownedBlocks[0]?.kind !== 'continuation' ||
-		context.topology.ownedBlocks[1]?.kind !== 'additional-paragraph'
-	) return [];
-	return context.topology.whitespaceBoundaries.flatMap((boundary, index) => {
-		const beforeTarget = boundary.fromAnchor === 'previous-block' &&
-			boundary.toAnchor === 'current-marker-line';
-		const beforeParagraph = boundary.fromAnchor === 'owned-block:0' &&
-			boundary.toAnchor === 'owned-block:1';
-		if (!beforeTarget && !beforeParagraph) return [];
-		return [rewriteWhitespaceBoundary(
-			context.editScope,
-			boundary,
-			{ index, kind: 'whitespace-boundary' },
-			context.source.slice(boundary.range) + '\n',
-		)];
-	});
-}
-
 function tabStructuralPlan(
 	execution: ExecutionFor<'tab'>,
 	delta: number,
@@ -107,14 +99,11 @@ function tabStructuralPlan(
 		[id],
 		delta,
 	));
-	const whitespace = tabWhitespaceFragments(execution);
-	const fragments = whitespace.length === 0
-		? movement
-		: [whitespace[0] as EditPlanFragment, ...movement, ...whitespace.slice(1)];
+
 	return composeEditPlan(
 		execution.intent.operation,
 		execution.context.editScope,
-		fragments,
+		movement,
 		exceptionId,
 	);
 }
@@ -135,10 +124,13 @@ function renderedPrefix(
 	indent: number,
 	orderedValue: number,
 ): string {
+	const taskToken = block.prefix.taskToken
+		? execution.context.source.slice(block.prefix.taskToken)
+		: '';
 	return ' '.repeat(indent) + execution.services.prefixPolicy.renderSameLevel(
-		block.prefix,
+		{ ...block.prefix, kind: block.prefix.orderedValue === null ? 'unordered' : 'ordered' },
 		{ orderedValue },
-	);
+	) + taskToken;
 }
 
 function orderedContinuationFragments(
@@ -158,6 +150,7 @@ function orderedChildFragments(
 	execution: ExecutionFor<'tab'>,
 	child: ListContext['current'] | null,
 	indent: number,
+	orderedValue: number,
 ): readonly EditPlanFragment[] {
 	if (!child) return [];
 	return [replaceListBlockPrefix(
@@ -165,7 +158,7 @@ function orderedChildFragments(
 		execution.context.editScope,
 		{ index: 0, kind: 'owned-block' },
 		child,
-		renderedPrefix(execution, child, indent, 2),
+		renderedPrefix(execution, child, indent, orderedValue),
 	)];
 }
 
@@ -179,16 +172,17 @@ function orderedTabPlan(execution: ExecutionFor<'tab'>, delta: number): EditPlan
 		: null;
 	if (!sequence) return tabStructuralPlan(execution, delta, 'SLX-002');
 	const indent = physicalIndent(context) + delta;
+	const firstValue = context.topology.orderedIndentStart;
 	const fragments: EditPlanFragment[] = [
 		replaceListBlockPrefix(
 			context.source,
 			context.editScope,
 			currentItemId,
 			context.current,
-			renderedPrefix(execution, context.current, indent, 1),
+			renderedPrefix(execution, context.current, indent, firstValue),
 		),
 		...orderedContinuationFragments(execution, delta),
-		...orderedChildFragments(execution, child, indent),
+		...orderedChildFragments(execution, child, indent, firstValue + 1),
 	];
 	const followingIds = orderedIdsAfter(context, sequence);
 	if (followingIds.length > 0) fragments.push(renumberOrderedItems(
@@ -198,15 +192,7 @@ function orderedTabPlan(execution: ExecutionFor<'tab'>, delta: number): EditPlan
 		sequence,
 		-1,
 	));
-	return composeEditPlan('tab', context.editScope, fragments, 'SLX-002');
-}
-
-function boundaryIndex(
-	context: ListContext,
-	predicate: (from: string, to: string) => boolean,
-): number {
-	return context.topology.whitespaceBoundaries.findIndex((boundary) =>
-		predicate(boundary.fromAnchor, boundary.toAnchor));
+	return { ...composeEditPlan('tab', context.editScope, fragments, 'SLX-002'), ownsOrderedNumbering: true };
 }
 
 function rewriteBoundary(
@@ -224,124 +210,17 @@ function rewriteBoundary(
 	);
 }
 
-interface NestedShiftPolicy {
-	readonly after: number;
-	readonly before: number;
-	readonly deep: boolean;
-	readonly delta: number;
-	readonly parentIndent: number;
-	readonly profile: boolean;
-}
-
-function nestedShiftPolicy(context: ListContext): NestedShiftPolicy {
-	const parent = context.topology.parent;
-	const parentIndent = parent ? blockPhysicalIndent(parent) : 0;
-	const owned = context.topology.ownedBlocks;
-	return {
-		after: boundaryIndex(context, (from, to) =>
-			from === `owned-block:${owned.length - 1}` && to === 'following-block'),
-		before: boundaryIndex(context, (_from, to) => to === 'current-marker-line'),
-		deep: context.topology.depth > 1,
-		delta: parentIndent - physicalIndent(context),
-		parentIndent,
-		profile: owned[0]?.kind === 'continuation' &&
-			owned.some((block) => block.kind === 'additional-paragraph'),
-	};
-}
-
-function nestedBeforeFragments(
-	execution: ExecutionFor<'shift-tab'>,
-	policy: NestedShiftPolicy,
-): readonly EditPlanFragment[] {
-	if (!policy.deep || policy.before < 0) return [];
-	const boundary = execution.context.topology.whitespaceBoundaries[policy.before]!;
-	return [rewriteBoundary(execution, policy.before,
-		execution.context.source.slice(boundary.range) +
-		' '.repeat(policy.parentIndent) + '\n')];
-}
-
-function nestedTargetFragment(
-	execution: ExecutionFor<'shift-tab'>,
-	policy: NestedShiftPolicy,
-): EditPlanFragment {
-	const { context } = execution;
-	return policy.profile ? replaceListBlockPrefix(
-		context.source,
-		context.editScope,
-		currentItemId,
-		context.current,
-		'\n' + context.source.slice(context.current.prefix.full),
-	) : remapIndentation(
-		context.source,
-		context.editScope,
-		[currentItemId],
-		policy.delta,
-	);
-}
-
-function nestedOwnedFragments(
-	execution: ExecutionFor<'shift-tab'>,
-	delta: number,
-): readonly EditPlanFragment[] {
-	return ownedIds(execution.context).map((id) => remapIndentation(
-		execution.context.source,
-		execution.context.editScope,
-		[id],
-		delta,
-	));
-}
-
-function nestedAfterBoundaryIndex(context: ListContext, policy: NestedShiftPolicy): number {
-	const trailing = context.topology.shiftTabTrailingBlankPolicy;
-	return trailing.kind === 'around-next-sibling'
-		? trailing.beforeBoundaryIndex
-		: policy.after;
-}
-
-function shouldRewriteNestedAfter(context: ListContext, policy: NestedShiftPolicy): boolean {
-	return policy.deep || policy.profile ||
-		context.topology.shiftTabTrailingBlankPolicy.kind === 'around-next-sibling';
-}
-
-function nestedAfterFragments(
-	execution: ExecutionFor<'shift-tab'>,
-	policy: NestedShiftPolicy,
-): readonly EditPlanFragment[] {
-	const index = nestedAfterBoundaryIndex(execution.context, policy);
-	if (index < 0 || !shouldRewriteNestedAfter(execution.context, policy)) return [];
-	const boundary = execution.context.topology.whitespaceBoundaries[index]!;
-	const suffix = policy.deep ? ' '.repeat(policy.parentIndent) + '\n' : '\n';
-	return [rewriteBoundary(execution, index,
-		execution.context.source.slice(boundary.range) + suffix)];
-}
-
-function nestedTrailingFragments(
-	execution: ExecutionFor<'shift-tab'>,
-): readonly EditPlanFragment[] {
-	const { context } = execution;
-	const trailing = context.topology.shiftTabTrailingBlankPolicy;
-	if (trailing.kind !== 'around-next-sibling') return [];
-	return [insertAfterListBlock(
-		context.editScope,
-		{ index: 0, kind: 'following-block' },
-		trailing.nextSibling,
-		'\n',
-	)];
-}
-
 function nestedShiftTabPlan(execution: ExecutionFor<'shift-tab'>): EditPlan {
-	const policy = nestedShiftPolicy(execution.context);
-	const fragments = [
-		...nestedBeforeFragments(execution, policy),
-		nestedTargetFragment(execution, policy),
-		...nestedOwnedFragments(execution, policy.delta),
-		...nestedAfterFragments(execution, policy),
-		...nestedTrailingFragments(execution),
-	];
-	const exceptionId = execution.context.topology.ownedBlocks.length > 0 ? 'SLX-002' : null;
-	return composeEditPlan('shift-tab', execution.context.editScope, fragments, exceptionId);
+	const { context } = execution;
+	const parent = context.topology.parent;
+	if (!parent) throw new Error('Nested Shift Tab requires a normalized parent');
+	const delta = blockPhysicalIndent(context, parent) - physicalIndent(context);
+	const fragments = [currentItemId, ...ownedIds(context)].map(id => remapIndentation(
+		context.source, context.editScope, [id], delta,
+	));
+	return composeEditPlan('shift-tab', context.editScope, fragments,
+		context.topology.ownedBlocks.length > 0 ? 'SLX-002' : null);
 }
-
 function nestedOrderedShiftTabPlan(execution: ExecutionFor<'shift-tab'>): EditPlan | null {
 	const { context } = execution;
 	const sequence = context.topology.parentOrderedSequence;
@@ -353,13 +232,13 @@ function nestedOrderedShiftTabPlan(execution: ExecutionFor<'shift-tab'>): EditPl
 		context.editScope,
 		currentItemId,
 		context.current,
-		renderedPrefix(execution, context.current, blockPhysicalIndent(parent), targetValue),
+		renderedPrefix(execution, context.current, blockPhysicalIndent(context, parent), targetValue),
 	);
 	const owned = ownedIds(context).map((id) => remapIndentation(
 		context.source,
 		context.editScope,
 		[id],
-		blockPhysicalIndent(parent) - physicalIndent(context),
+		blockPhysicalIndent(context, parent) - physicalIndent(context),
 	));
 	const followingIds = orderedIdsAfter(context, sequence, 'parent-ordered-sequence-item');
 	const renumber = followingIds.length === 0 ? [] : [renumberOrderedItems(
@@ -369,8 +248,35 @@ function nestedOrderedShiftTabPlan(execution: ExecutionFor<'shift-tab'>): EditPl
 		sequence,
 		1,
 	)];
-	return composeEditPlan('shift-tab', context.editScope, [target, ...owned, ...renumber],
-		'SLX-002');
+	const originalSequence = context.topology.orderedSequence;
+	const originalFollowingIds = originalSequence ? orderedIdsAfter(context, originalSequence) : [];
+	if (originalSequence) {
+		if (originalFollowingIds.length > 0) renumber.unshift(renumberOrderedItems(
+			context.source, context.editScope, originalFollowingIds, originalSequence, -originalSequence.renderedValue,
+		));
+	}
+	const boundaries = orderedOwnedBoundaryFragments(execution, originalFollowingIds.length > 0);
+	return { ...composeEditPlan('shift-tab', context.editScope, [
+		...boundaries.before, target, ...owned, ...boundaries.after, ...renumber,
+	],
+		'SLX-002'), ownsOrderedNumbering: true };
+}
+
+function orderedOwnedBoundaryFragments(execution: ExecutionFor<'shift-tab'>, following: boolean): {
+	readonly before: readonly EditPlanFragment[];
+	readonly after: readonly EditPlanFragment[];
+} {
+	const { context } = execution;
+	const first = context.topology.followingBoundary;
+	if (context.topology.ownedBlocks[0]?.kind !== 'descendant' || first.kind !== 'list-item' ||
+		first.block.prefix.orderedValue === null) return { before: [], after: [] };
+	const indexes = topLevelBoundaryIndexes(context);
+	const separated = (index: number): readonly EditPlanFragment[] => {
+		const count = context.topology.whitespaceBoundaries[index]!.newlineCount;
+		return count >= 2 ? [] : [addedBoundaryNewline(execution, index, 2 - count)];
+	};
+	return { before: indexes.before === null ? [] : separated(indexes.before),
+		after: following ? separated(indexes.after) : [] };
 }
 
 function addedBoundaryNewline(
@@ -412,7 +318,7 @@ function topLevelMovementFragments(
 		[currentItemId],
 	);
 	if (ids.length === 0) return [conversion];
-	const step = context.current.prefix.outerMarker.to - context.current.prefix.outerMarker.from;
+	const step = markerContainerWidth(context);
 	return [conversion, remapIndentation(
 			context.source,
 			context.editScope,
@@ -472,19 +378,30 @@ function topLevelShiftTabPlan(execution: ExecutionFor<'shift-tab'>): EditPlan {
 
 export function tab(execution: ExecutionFor<'tab'>): OperationResult {
 	if (!validOperation(execution, 'tab')) return { kind: 'pass-through' };
+	if (execution.context.caretContent.kind !== 'marker-line') return editResult(fallbackPlan(execution));
 	const delta = tabDelta(execution);
 	if (delta === 0) return editResult(fallbackPlan(execution));
 	const exceptionId = execution.context.topology.ownedBlocks.length > 0
 		? 'SLX-002'
 		: null;
-	return editResult(execution.context.current.prefix.kind === 'ordered'
+	return editResult(execution.context.current.prefix.orderedValue !== null
 		? orderedTabPlan(execution, delta)
 		: tabStructuralPlan(execution, delta, exceptionId));
 }
 
 export function shiftTab(execution: ExecutionFor<'shift-tab'>): OperationResult {
 	if (!validOperation(execution, 'shift-tab')) return { kind: 'pass-through' };
-	const ordered = execution.context.current.prefix.kind === 'ordered' &&
+	const { context } = execution;
+	if (context.caretContent.kind !== 'marker-line') {
+		const indexes = context.caretContent.subtreeBlockIndexes;
+		if (context.topology.ownedBlocks[indexes[0]!]!.indentText.length === 0) return { kind: 'pass-through' };
+		const ids = indexes.map(index => ({ index, kind: 'owned-block' as const }));
+		const step = markerContainerWidth(context);
+		return editResult(composeEditPlan('shift-tab', context.editScope, [
+			remapIndentation(context.source, context.editScope, ids, -step),
+		]));
+	}
+	const ordered = execution.context.current.prefix.orderedValue !== null &&
 		execution.context.topology.depth > 0
 		? nestedOrderedShiftTabPlan(execution)
 		: null;

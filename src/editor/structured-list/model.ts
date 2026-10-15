@@ -20,8 +20,8 @@ export interface SelectionSnapshot {
 }
 
 export type SiblingPosition = 'first' | 'middle' | 'final' | 'only';
-export type OwnedBlockKind = 'continuation' | 'additional-paragraph' | 'descendant';
-export type ProjectionOwnedLineKind = Exclude<OwnedBlockKind, 'descendant'> | 'blank';
+export type OwnedBlockKind = 'continuation' | 'additional-paragraph' | 'descendant' | 'code-leaf';
+export type ProjectionOwnedLineKind = Exclude<OwnedBlockKind, 'descendant' | 'code-leaf'> | 'blank';
 
 export interface ListPrefix {
 	readonly kind: 'unordered' | 'ordered' | 'task';
@@ -107,18 +107,11 @@ export interface OrderedSequenceContext {
 	readonly renderedValue: number;
 }
 
-export type ShiftTabTrailingBlankPolicy =
-	| { readonly kind: 'none' }
-	| {
-			readonly kind: 'around-next-sibling';
-			readonly beforeBoundaryIndex: number;
-			readonly nextSibling: ListBlockRef;
-	  };
-
 export interface ProjectionOwnedLine {
 	readonly depth: number;
 	readonly kind: ProjectionOwnedLineKind;
 	readonly ownerKind: ListPrefix['kind'];
+	readonly prefix: SourceRange;
 	readonly range: SourceRange;
 	readonly rendering: 'projected' | 'native-depth';
 }
@@ -144,13 +137,19 @@ export interface ListTopology {
 	readonly followingStructuralBoundary: NormalizedStructuralBoundary | null;
 	readonly orderedSequence: OrderedSequenceContext | null;
 	readonly parentOrderedSequence: OrderedSequenceContext | null;
-	readonly shiftTabTrailingBlankPolicy: ShiftTabTrailingBlankPolicy;
+	readonly orderedIndentStart: number;
 	readonly atDocumentStart: boolean;
 	readonly atDocumentEnd: boolean;
 }
 
 export interface ListContext {
 	readonly current: ListBlockRef;
+	readonly caretContent: {
+		readonly kind: 'marker-line' | 'continuation' | 'additional-paragraph';
+		readonly range: SourceRange;
+		readonly ownedBlockIndex: number | null;
+		readonly subtreeBlockIndexes: readonly number[];
+	};
 	readonly source: SourceSnapshot;
 	readonly caret: number;
 	readonly selection: SelectionSnapshot;
@@ -165,7 +164,7 @@ export interface PrefixPolicy {
 		prefix: ListPrefix,
 		options: { readonly orderedValue?: number; readonly taskState?: ' ' | 'x' },
 	): string;
-	contentIndent(prefix: ListPrefix): string;
+	contentIndent(sourcePrefix: string): string;
 }
 
 export interface ListItemSyntax {

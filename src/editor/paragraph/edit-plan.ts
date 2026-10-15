@@ -1,11 +1,15 @@
 import {
 	Annotation,
-	type EditorSelection,
+	EditorSelection,
+	type EditorState,
 	type TransactionSpec,
 	Transaction,
 } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
+import { isolateHistory } from '@codemirror/commands';
 import { selectionModeAnnotation } from '../runtime/input-state.js';
+import { codeMarkersActive } from '../code-blocks/editable-boundaries.js';
+import { discoverCodeBlocks } from '../code-blocks/model.js';
 
 export type ParagraphOperationId =
 	| 'enter'
@@ -15,6 +19,7 @@ export type ParagraphOperationId =
 	| 'backspace-heading-prefix';
 
 export interface ParagraphEditPlan {
+	readonly isolateHistory?: boolean;
 	readonly operation: ParagraphOperationId;
 	readonly change: { readonly from: number; readonly to: number; readonly insert: string };
 	readonly selection: EditorSelection;
@@ -67,6 +72,8 @@ function transactionFor(plan: ParagraphEditPlan): TransactionSpec {
 		: plan.operation === 'delete-gap' ? 'delete.forward' : 'input';
 	return {
 		annotations: [
+			...(plan.isolateHistory || plan.operation === 'enter' || plan.operation === 'shift-enter'
+				? [isolateHistory.of('full')] : []),
 			selectionModeAnnotation.of('normal'),
 			paragraphEditAnnotation.of(plan.operation),
 			Transaction.userEvent.of(userEvent),
@@ -100,6 +107,18 @@ export function dispatchParagraphEditPlan(
 	plan: ParagraphEditPlan,
 	expectedOperation: ParagraphOperationId,
 ): void {
+	plan = adaptParagraphBlockGap(view.state, plan, view.state.facet(codeMarkersActive));
 	validateParagraphEditPlan(view.state.doc.length, plan, expectedOperation);
 	view.dispatch(transactionFor(plan));
+}
+
+/** Container projections use the same block boundary rule before mapping to source. */
+export function adaptParagraphBlockGap(state: EditorState, plan: ParagraphEditPlan, codeActive: boolean): ParagraphEditPlan {
+	if(plan.operation==='backspace-gap'){
+		const block=discoverCodeBlocks(state).find(block=>block.closed&&!block.indented&&block.lines.length&&block.to===plan.change.from);
+		if(block){
+			plan={...plan,change:{...plan.change,insert:'\n'},selection:EditorSelection.create([EditorSelection.cursor(codeActive?block.lines.at(-1)!.to:block.to)])};
+		}
+	}
+	return plan;
 }

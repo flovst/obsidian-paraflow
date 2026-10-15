@@ -19,6 +19,10 @@ function caret(context: NavigationContext): number {
 	return context.kind === 'list' ? context.list.caret : context.caret;
 }
 
+function selectionAnchor(context: NavigationContext): number {
+	return context.kind === 'list' ? context.list.selection.anchor : context.selection.anchor;
+}
+
 function currentPoint(context: NavigationContext): VisualPosition {
 	return { assoc: context.assoc, position: caret(context) };
 }
@@ -60,32 +64,15 @@ function finishHorizontal(
 	return selection(destination);
 }
 
-function continuationHomeDestination(
-	execution: ExecutionFor<'home'>,
-	destination: NavigationDestination,
-): NavigationDestination | null {
-	if (execution.context.kind !== 'list') return destination;
-	const current = currentPoint(execution.context);
-	const continuation = execution.context.list.topology.ownedBlocks.find((block) =>
-		block.kind === 'continuation' &&
-		block.range.from <= current.position &&
-		current.position <= block.range.to);
-	if (!continuation) return destination;
-	const contentStart = continuation.range.from + continuation.indentText.length;
-	if (destination.position < continuation.range.from || destination.position >= contentStart) {
-		return destination;
-	}
-	return resolved(execution.services, { assoc: 1, position: contentStart }, 1);
-}
-
 export const home: OperationHandler<'home'> = (execution) => {
 	if (execution.intent.extend) return passThrough();
 	const raw = execution.services.visual.visualLineStart(currentPoint(execution.context));
-	const rawDestination = resolved(execution.services, raw, 1);
-	if (!rawDestination) return passThrough();
-	const destination = continuationHomeDestination(execution, rawDestination);
+	const destination = resolved(execution.services, raw, 1);
 	if (!destination) return passThrough();
-	return finishHorizontal(execution, destination, destination.position !== caret(execution.context));
+	const ownsPrefix = execution.context.kind === 'list' &&
+		execution.services.rangeIndex.protectedRanges.some(range =>
+			range.from < range.to && range.to === destination.position);
+	return finishHorizontal(execution, destination, ownsPrefix || destination.position !== caret(execution.context));
 };
 
 export const end: OperationHandler<'end'> = (execution) => {
@@ -103,15 +90,17 @@ function previousVisualLine(
 ): NavigationDestination | null {
 	let previousRaw = execution.services.visual.moveByChar(startRaw, false);
 	const crossedPrefix = execution.services.rangeIndex.protectedRanges.find((range) =>
-		range.from === previousRaw.position && range.to === startRaw.position);
+		range.from === previousRaw.position &&
+		range.from <= startRaw.position && startRaw.position <= range.to);
 	if (crossedPrefix) {
 		previousRaw = execution.services.visual.moveByChar({
 			assoc: -1,
 			position: crossedPrefix.from,
 		}, false);
+		if (previousRaw.position >= crossedPrefix.from) return null;
 	}
 	const previous = resolved(execution.services, previousRaw, -1);
-	if (!previous || samePoint(previousRaw, startRaw)) return null;
+	if (!previous || previousRaw.position >= startRaw.position) return null;
 	const endRaw = execution.services.visual.visualLineEnd(previous);
 	return resolved(execution.services, endRaw, -1);
 }
@@ -223,7 +212,7 @@ function finishVertical(
 function terminalDownResult(
 	execution: ExecutionFor<'up-down'>,
 ): OperationResult | null {
-	if (execution.intent.direction !== 'down') return null;
+	if (execution.intent.extend || execution.intent.direction !== 'down') return null;
 	const end = sourceLength(execution.context);
 	const id = terminalRegion(execution.context.editScope, end);
 	if (!id) return null;
@@ -233,8 +222,19 @@ function terminalDownResult(
 		: null;
 }
 
+function verticalDestination(
+	execution: ExecutionFor<'up-down'>,
+	raw: VisualPosition,
+	bias: -1 | 1,
+	goalX: number,
+): NavigationDestination | null {
+	const destination = resolved(execution.services, raw, bias);
+	if (!destination || destination.position === raw.position) return destination;
+	const aligned = execution.services.visual.alignGoalOnVisualLine?.(destination, goalX);
+	return aligned ? resolved(execution.services, aligned, bias) : destination;
+}
+
 export const upDown: OperationHandler<'up-down'> = (execution) => {
-	if (execution.intent.extend) return passThrough();
 	const terminal = terminalDownResult(execution);
 	if (terminal) return terminal;
 	const forward = verticalDirection(execution.intent.direction);
@@ -243,9 +243,14 @@ export const upDown: OperationHandler<'up-down'> = (execution) => {
 	if (goalX === null) return passThrough();
 	const current = currentPoint(execution.context);
 	const raw = execution.services.visual.moveVertically(current, forward, goalX);
-	const destination = resolved(execution.services, raw, 1);
+	const destination = verticalDestination(execution, raw, forward ? 1 : -1, goalX);
 	if (!destination) return passThrough();
 	execution.services.goalX.write(goalX);
+	if (execution.intent.extend) {
+		return { kind: 'selection', selection: EditorSelection.create([
+			EditorSelection.range(selectionAnchor(execution.context), destination.position, goalX),
+		]) };
+	}
 	return finishVertical(current, raw, destination);
 };
 
