@@ -8,7 +8,7 @@ export const semanticBlockGapHeight = 'max(0px,calc(max(var(--paraflow-gap-befor
 
 /** Gap rows use the body font; component interiors never contribute a second outer gap. */
 export function semanticBlockRhythmCss(scope: string): string {
-	const gapClass = ':is(.paraflow-paragraph-gap-head,.paraflow-block-boundary-gap,.paraflow-container-boundary-gap[data-paraflow-before="code-block"],.paraflow-container-boundary-gap[data-paraflow-after="code-block"],.paraflow-callout-gap[data-paraflow-before="code-block"],.paraflow-callout-gap[data-paraflow-after="code-block"],.paraflow-container-boundary-gap[data-paraflow-after="table"],.paraflow-callout-gap[data-paraflow-after="table"])';
+	const gapClass = ':is(.paraflow-paragraph-gap-head,.paraflow-block-boundary-gap,.paraflow-container-boundary-gap[data-paraflow-before="code-block"],.paraflow-container-boundary-gap[data-paraflow-after="code-block"],.paraflow-callout-gap[data-paraflow-before="code-block"],.paraflow-callout-gap[data-paraflow-after="code-block"],.paraflow-container-boundary-gap[data-paraflow-before="table"],.paraflow-callout-gap[data-paraflow-before="table"],.paraflow-container-boundary-gap[data-paraflow-after="table"],.paraflow-callout-gap[data-paraflow-after="table"])';
 	const gap = `${scope} ${gapClass}`;
 	const height = semanticBlockGapHeight;
 	return `
@@ -22,6 +22,7 @@ ${gap}[data-paraflow-after="${tag}"]{--paraflow-gap-after:var(--paraflow-${tag}-
 ${gap}[data-paraflow-before="p"]{--paraflow-gap-before:var(--paraflow-body-paragraph-gap,var(--paraflow-p-margin-bottom,var(--paraflow-block-gap,.8em)))}
 ${gap}[data-paraflow-after="p"]{--paraflow-gap-after:var(--paraflow-body-paragraph-gap,var(--paraflow-p-margin-top,var(--paraflow-block-gap,.8em)))}
 ${gap}[data-paraflow-after="table"]{--paraflow-gap-after:var(--paraflow-table-margin-top,1.1em)}
+${gap}[data-paraflow-before="table"]{--paraflow-gap-before:var(--paraflow-table-margin-bottom,1.2em)}
 ${gap}[data-paraflow-before="code-block"]{--paraflow-gap-before:var(--paraflow-code-block-margin-bottom,.9375em)}
 ${gap}[data-paraflow-after="code-block"]{--paraflow-gap-after:var(--paraflow-code-block-margin-top,.9375em)}
 ${[1, 2, 3, 4, 5, 6].map(level => `${scope} .paraflow-heading-following-line[data-paraflow-heading-before="h${level}"]{
@@ -44,13 +45,16 @@ export function readingBlockRhythmCss(scope: string): string {
 	const listSection = ':is(.el-ul,.el-ol)';
 	const edge = (tag: string, side: 'top'|'bottom') => tag === 'p'
 		? `var(--paraflow-body-paragraph-gap,var(--paraflow-p-margin-${side},var(--paraflow-block-gap,.8em)))`
-		: `var(--paraflow-${tag}-margin-${side},${tag === 'code-block' ? '.9375em' : tag === 'table' && side === 'top' ? '1.1em' : 'var(--paraflow-block-gap,.8em)'})`;
+		: `var(--paraflow-${tag}-margin-${side},${tag === 'code-block' ? '.9375em' : tag === 'table' ? side === 'top' ? '1.1em' : '1.2em' : 'var(--paraflow-block-gap,.8em)'})`;
 	return `
 ${root}>${section}{margin-block:0!important;--paraflow-occupied-gap:0px;padding-block-start:0}
 ${root}>${section}>:is(p,h1,h2,h3,h4,h5,h6,ul,ol,blockquote,pre,table,hr,.callout,.math-block){margin-block:0!important}
 ${root}>${section}+${section}{padding-block-start:${semanticBlockGapHeight}}
 ${root}>${listSection}:has(+${listSection})>:is(ul,ol) li:last-child:not(:is(li:not(:last-child) *)){padding-block-end:0}
 ${root}>${listSection}+${listSection}>:is(ul,ol)>li:first-child{--paraflow-list-row-top-padding:0px;padding-block-start:var(--paraflow-list-row-top-padding)}
+${[['p','p'],...[1,2,3,4,5,6].map(level => [`h${level}`,`h${level}`]),['code-block',':is(pre,.paraflow-code-display-frame)']].map(([tag,selector]) => `${scope} :is(blockquote.paraflow-display-quote,.callout-content)>table:has(+${selector}){margin-block-end:max(${edge('table','bottom')},${edge(tag!,'top')})!important}
+${scope} :is(blockquote.paraflow-display-quote,.callout-content)>table+${selector}{margin-block-start:0!important}`).join('\n')}
+${scope} :is(blockquote.paraflow-display-quote,.callout-content)>table+.paraflow-code-display-frame>pre{margin-block-start:0!important}
 ${kinds.map(([tag,selector]) => `${root}>${selector}{--paraflow-gap-after:${edge(tag,'top')}}
 ${root}>${selector}+${section}{--paraflow-gap-before:${edge(tag,'bottom')}}`).join('\n')}
 `;

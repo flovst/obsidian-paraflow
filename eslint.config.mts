@@ -5,6 +5,7 @@ import { globalIgnores, defineConfig } from 'eslint/config';
 export default defineConfig(
 	globalIgnores([
 		'node_modules',
+		'.local/**',
 		'dist',
 		'esbuild.config.mjs',
 		'version-bump.mjs',
@@ -21,7 +22,7 @@ export default defineConfig(
 			},
 			parserOptions: {
 				projectService: {
-					maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING: 17,
+					maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING: 64,
 					allowDefaultProject: [
 						'eslint.config.mts',
 						'manifest.json',

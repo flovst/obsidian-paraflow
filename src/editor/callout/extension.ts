@@ -1,3 +1,4 @@
+import { createCreationHistory } from '../runtime/creation-history.js';
 import { Prec, type Extension } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
 import { classifyCurrentSelectionMode, compositionStateField, selectionModeAnnotation } from '../runtime/input-state.js';
@@ -54,7 +55,8 @@ export function createCalloutExtension(isActive: (view: EditorView) => boolean, 
 		return true;
 	}
 	const keys: readonly CalloutKey[] = ['Enter', 'Shift-Enter', 'Tab', 'Shift-Tab', 'Backspace', 'Delete'];
-	return [Prec.highest(keymap.of(keys.map((key) => ({ key, run: (view) => run(view, key) })))),
+	return [createCreationHistory('container', (_state, view) => isActive(view) && (options.paragraphEditing?.(view) ?? true)),
+		Prec.highest(keymap.of(keys.map((key) => ({ key, run: (view) => run(view, key) })))),
 		EditorView.inputHandler.of((view, from, to, text) => {
 			if (!eligible(view)) return false;
 			const plan = planCalloutInput(view.state, from, to, text);

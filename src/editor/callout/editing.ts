@@ -1,3 +1,4 @@
+import { creationHistory } from '../runtime/creation-history.js';
 import { isolateHistory } from '@codemirror/commands';
 import { syntaxTree } from '@codemirror/language';
 import { ChangeSet, EditorSelection, EditorState, findClusterBreak, Transaction, type TransactionSpec } from '@codemirror/state';
@@ -143,11 +144,37 @@ function emptyParagraph(projection: CalloutProjection): TransactionSpec | null {
 	const original = projection.lines[line.number - 1]!;
 	const outer = original.prefix.slice(0, original.prefix.lastIndexOf('>'));
 	const anchor = original.from + outer.length;
-	const trailing = requireParagraphProjectionState(virtual).authority.runs.find(run =>
-		run.kind === 'trailing' && run.from < line.from && line.to <= run.to);
+	const run = requireParagraphProjectionState(virtual).authority.runs.find(run =>
+		run.from < line.from && line.to <= run.to);
+	if (run?.kind === 'middle') {
+		const before = run.gaps.find(gap => gap.to === line.to);
+		const after = run.gaps.find(gap => gap.from === line.to);
+		if (before && after) {
+			// Both separators belong to this body; the next body's prefix remains quoted.
+			const from = projection.toSource(before.from);
+			const to = projection.lines[virtual.doc.lineAt(after.to).number - 1]!.from;
+			const insert = `\n${outer}\n${outer}\n${outer}\n`;
+			const caret = from + 2 + outer.length * 2;
+			return { ...transaction({ from, to, insert }, EditorSelection.single(caret)),
+				effects: [registerEmptyBody.of(caret), creationHistory.of({ owner: 'container', from,
+					draftOffset: projection.toSource(virtual.selection.main.head) - from, bodyOffset: caret - from, created: true })] };
+		}
+	}
+	const trailing = run?.kind === 'trailing' ? run : undefined;
 	// Tail separators belong to the exiting body, unless a later explicit body owns them.
 	const end = trailing && !emptyBodies(virtual).some(body => line.to < body && body <= trailing.to)
 		? projection.lines.length : line.number;
+	const preceding = trailing?.gaps.find(gap => gap.to === line.to);
+	if (end === projection.lines.length && trailing) {
+		// Transfer this body's owned separators to an ordinary paragraph at the outer level.
+		const from = projection.toSource(preceding?.from ?? trailing.from);
+		const separator = `\n${outer}\n${outer}`;
+		const remaining = trailing.to - line.to;
+		const insert = separator + (remaining >= 2 ? `\n${outer}`.repeat(remaining) : '');
+		const caret = from + separator.length;
+		return { ...transaction({ from, to: projection.end, insert },
+			EditorSelection.single(caret)), effects: registerEmptyBody.of(caret) };
+	}
 	const changes = projection.lines.slice(line.number - 1, end).map(row => ({
 		from: row.from + row.prefix.lastIndexOf('>'),
 		to: row.from + row.prefix.length + row.text.length,

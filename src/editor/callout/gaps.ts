@@ -33,16 +33,15 @@ export function calloutGaps(state: EditorState): readonly Gap[] {
 		const paragraph = getParagraphProjectionState(projection.state)!;
 		const drafts = emptyBodies(projection.state);
 		for (const gap of paragraph.rangeIndex.gaps) {
-			const leading = gap.from === 0 && !drafts.includes(0);
-			const trailing = gap.to === projection.state.doc.length && !drafts.includes(gap.to);
+			const leading = gap.from === 0 && !paragraph.authority.runs.some(run => run.editableAnchors.includes(0));
 			const from = leading ? card.kind === 'callout' ? card.headerTo : line.from : projection.toSource(gap.from);
 			const end = projection.toSource(gap.to);
 			const run = paragraph.authority.runs.find(run => run.gaps.some(candidate => candidate.from === gap.from && candidate.to === gap.to))!;
 			const { before, after } = paragraphGapTags(paragraph.authority.blocks, run)(gap.from);
 			gaps.set(from, { from, to: contentBoundary(end), before, after,
-				...(leading ? {edge:'leading' as const} : trailing ? {edge:'trailing' as const} : {}) });
+				...(leading ? {edge:'leading' as const} : {}) });
 		}
-		// A container's terminal source separator has no editable EOF outside its body.
+		// A single terminal separator folds; longer runs retain ordinary empty bodies.
 		const tail = paragraph.authority.runs.find(run => run.kind === 'trailing' && !run.gaps.length);
 		if (tail && !drafts.includes(tail.to)) {
 			const from = projection.toSource(tail.from);
