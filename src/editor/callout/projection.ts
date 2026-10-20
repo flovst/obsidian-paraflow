@@ -16,6 +16,7 @@ import { codeDraftMask, codeDraftParser, maskCodeSource } from '../code-blocks/p
 import {quotePrefix} from './prefix.js';
 import {quotedTabStarts} from './body-tab-source.js';
 import {bodyTabParser} from './body-tab-parser.js';
+import { containerBodyContext, sameContainerBody } from './source-context.js';
 export {quotePrefix} from './prefix.js';
 
 const languageData = defineLanguageFacet();
@@ -43,12 +44,27 @@ export interface CalloutProjection {
 }
 
 const projections = new WeakMap<EditorState, Map<string, CalloutProjection | null>>();
+const sourceProjections = new WeakMap<Text, { context: ReturnType<typeof containerBodyContext>; ranges: Map<string, CalloutProjection | null> }>();
+
+/** Closed source-row containment, including prefix positions and the final row endpoint. */
+function projectedLineAt(lines: readonly ProjectedLine[], position: number): ProjectedLine | undefined {
+	let low = 0, high = lines.length;
+	while (low < high) {
+		const middle = (low + high) >>> 1;
+		if (lines[middle]!.from <= position) low = middle + 1;
+		else high = middle;
+	}
+	const line = lines[low - 1];
+	return line && position <= line.from + line.prefix.length + line.text.length ? line : undefined;
+}
 
 /** A selection-independent content view used by the shared list presentation. */
 export function projectQuoteContent(state: EditorState, from: number, to: number, depth: number): CalloutProjection | null {
 	let ranges = projections.get(state);
 	if (!ranges) {
-		ranges = new Map();
+		const context = containerBodyContext(state), shared = sourceProjections.get(state.doc);
+		ranges = shared && sameContainerBody(shared.context, context) ? shared.ranges : new Map();
+		sourceProjections.set(state.doc, { context, ranges });
 		projections.set(state, ranges);
 	}
 	const key = `${from}:${to}:${depth}`;
@@ -81,11 +97,11 @@ function buildQuoteContent(state: EditorState, from: number, to: number, depth: 
 		virtualFrom += text.length + 1;
 	}
 	const drafts=emptyBodies(state).flatMap(anchor=>{
-		const line=lines.find(line=>line.from<=anchor&&anchor<=line.from+line.prefix.length+line.text.length);
+		const line=projectedLineAt(lines,anchor);
 		return line?[line.virtualFrom+anchor-line.from-line.prefix.length]:[];
 	});
 	const toVirtual = (position: number): number => {
-		const line = lines.find(line => line.from <= position && position <= line.from + line.prefix.length + line.text.length)!;
+		const line = projectedLineAt(lines,position)!;
 		return line.virtualFrom + Math.max(0, position - line.from - line.prefix.length);
 	};
 	const pending = pendingMathRanges(state).filter(range => range.from <= to && range.to >= from)
@@ -96,7 +112,7 @@ function buildQuoteContent(state: EditorState, from: number, to: number, depth: 
 		...sourceDraft, from: toVirtual(sourceDraft.from), to: toVirtual(Math.min(to, sourceDraft.to)), end: source.length,
 	} : null;
 	const quotes = state.facet(quoteDraftMasks).filter(range => from <= range.from && range.to <= to).flatMap(range => {
-		const line = lines.find(line => line.from <= range.from && range.from <= line.from + line.prefix.length + line.text.length)!;
+		const line = projectedLineAt(lines,range.from)!;
 		return range.from < line.from + line.prefix.length ? [] : [{ from: toVirtual(range.from), to: toVirtual(range.to) }];
 	});
 	let tabs=paragraphTabs.get(state.doc);
@@ -105,11 +121,12 @@ function buildQuoteContent(state: EditorState, from: number, to: number, depth: 
 	const masks = [...codeDraftMask(source, draft), ...quotes,...tabMasks].sort((a, b) => a.from - b.from);
 	const normalized = maskCodeSource(source, masks);
 	const projectedLanguage = new Language(languageData, bodyTabParser(codeDraftParser(grammar.configure(nativeInlineGrammarFor(scanMathRanges(normalized).expressions, pending)), masks),tabMasks.map(mask=>mask.from)), [], 'paraflow-callout-content');
+	const byStart = new Map(lines.map(line => [line.from, line]));
 	const virtual = EditorState.create({ doc: source, extensions: [projectedLanguage,projectedContent.of(true),pendingMath.of(pending),codeDraft.of(draft),quoteDraftMasks.of(quotes),
 		emptyBodyState.init(()=>drafts),createdBodyOwnershipState.init(()=>createdBodyOwnership(state).flatMap(body => {
-            const line=lines.find(line=>line.from===body.lineFrom);
+            const line=byStart.get(body.lineFrom);
             if(!line)return [];
-            const owner=body.ownerFrom===null?null:lines.find(line=>line.from===body.ownerFrom);
+            const owner=body.ownerFrom===null?null:byStart.get(body.ownerFrom);
             return [{...body,lineFrom:line.virtualFrom,bodyFrom:toVirtual(body.bodyFrom),prefix:body.prefix.slice(line.prefix.length),
                 ...(body.maintenanceFrom===undefined?{}:{maintenanceFrom:toVirtual(body.maintenanceFrom)}),
                 ownerFrom:owner?.virtualFrom??null,ownerPrefix:owner?body.ownerPrefix.slice(owner.prefix.length):''}];
@@ -178,9 +195,8 @@ export function projectCallout(state: EditorState, selection = state.selection.m
 	const projection = projectQuoteContent(state, state.doc.line(first).from, state.doc.line(last).to, depth);
 	if (!projection) return null;
 	function toVirtual(position: number): number | null {
-		const line = projection!.lines.find((line) => line.from + line.prefix.length <= position &&
-			position <= line.from + line.prefix.length + line.text.length);
-		return line ? line.virtualFrom + position - line.from - line.prefix.length : null;
+		const line = projectedLineAt(projection!.lines,position);
+		return line && line.from + line.prefix.length <= position ? line.virtualFrom + position - line.from - line.prefix.length : null;
 	}
 	const anchor = toVirtual(selection.anchor);
 	const head = toVirtual(selection.head);

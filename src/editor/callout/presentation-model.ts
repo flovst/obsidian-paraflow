@@ -1,4 +1,4 @@
-import { EditorState } from '@codemirror/state';
+import { EditorState, type Text } from '@codemirror/state';
 import type { SyntaxNode } from '@lezer/common';
 import { GFM, parser } from '@lezer/markdown';
 import { quotePrefix } from './projection.js';
@@ -7,6 +7,7 @@ import { mathRangeIndex } from '../math/syntax.js';
 import {quoteDraftMasks,maskQuoteDraftSource} from './quote-draft.js';
 import {codeDraft} from '../code-blocks/draft-state.js';
 import {codeDraftMask,maskCodeSource} from '../code-blocks/parser-source.js';
+import { containerSourceContext, sameContainerSource } from './source-context.js';
 
 export interface CalloutTextBlock {
 	readonly tag: string;
@@ -31,6 +32,10 @@ export interface CalloutCard {
 }
 const grammar = parser.configure([GFM, metadataGrammar]);
 const cache = new WeakMap<EditorState, readonly CalloutCard[]>();
+// Only the latest semantic variant is retained per Text; exact-state results remain independent.
+const sourceCache = new WeakMap<Text, { context: ReturnType<typeof containerSourceContext>; cards: readonly CalloutCard[] }>();
+const noQuoteDocuments = new WeakSet<Text>();
+const noCards: readonly CalloutCard[] = [];
 
 function visibleBlock(state: EditorState, node: SyntaxNode, card: Pick<CalloutCard, 'headerTo' | 'depth'>): CalloutTextBlock | null {
 	const from = Math.max(node.from, card.headerTo + 1);
@@ -105,9 +110,20 @@ export function decodeCalloutBlock(block: CalloutTextBlock, decode: (entity: str
 export function quoteContainers(state: EditorState): readonly CalloutCard[] {
 	const previous = cache.get(state);
 	if (previous) return previous;
-	const source=state.doc.toString();
+	if (noQuoteDocuments.has(state.doc)) { cache.set(state, noCards); return noCards; }
+	const shared = sourceCache.get(state.doc);
+	let source: string | undefined;
+	if (!shared) {
+		source = state.doc.toString();
+		if (!source.includes('>')) { noQuoteDocuments.add(state.doc); cache.set(state, noCards); return noCards; }
+	}
+	const context = containerSourceContext(state);
+	if (shared && sameContainerSource(shared.context, context)) {
+		cache.set(state, shared.cards);
+		return shared.cards;
+	}
+	source ??= state.doc.toString();
 	const cards: CalloutCard[] = [];
-	if (!source.includes('>')) { cache.set(state, cards); return cards; }
 	const tree = grammar.configure(nativeInlineGrammarFor(mathRangeIndex(state).expressions)).parse(maskQuoteDraftSource(maskCodeSource(source,codeDraftMask(source,state.facet(codeDraft))),state.facet(quoteDraftMasks)));
 	tree.iterate({ enter(ref) {
 		if (ref.name !== 'Blockquote') return;
@@ -143,6 +159,7 @@ export function quoteContainers(state: EditorState): readonly CalloutCard[] {
 		cards.push({ ...card, blocks });
 	} });
 	cache.set(state, cards);
+	sourceCache.set(state.doc, { context, cards });
 	return cards;
 }
 

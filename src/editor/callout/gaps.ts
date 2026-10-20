@@ -6,7 +6,7 @@ import { createVisualNavigationAdapter, requireGoalXStore } from '../runtime/nav
 import { quoteContainers } from './presentation-model.js';
 import { projectQuoteContent, quotePrefix } from './projection.js';
 import { calloutListEntries } from './list-presentation.js';
-import { paragraphGapTags } from '../paragraph/model.js';
+import { createParagraphEndpointIndex, paragraphGapTags } from '../paragraph/model.js';
 import {emptyBodies} from '../runtime/empty-body-state.js';
 
 interface Gap { readonly from: number; readonly to: number; readonly before?: string; readonly after?: string; readonly edge?: 'leading' | 'trailing' }
@@ -33,14 +33,18 @@ export function calloutGaps(state: EditorState): readonly Gap[] {
 		if (!projection || projection.depth !== card.depth) continue;
 		const paragraph = getParagraphProjectionState(projection.state)!;
 		const drafts = emptyBodies(projection.state);
-		for (const gap of paragraph.rangeIndex.gaps) {
-			const leading = gap.from === 0 && !paragraph.authority.runs.some(run => run.editableAnchors.includes(0));
-			const from = leading ? card.kind === 'callout' ? card.headerTo : line.from : projection.toSource(gap.from);
-			const end = projection.toSource(gap.to);
-			const run = paragraph.authority.runs.find(run => run.gaps.some(candidate => candidate.from === gap.from && candidate.to === gap.to))!;
-			const { before, after } = paragraphGapTags(paragraph.authority.blocks, run)(gap.from);
-			gaps.set(from, { from, to: contentBoundary(end), before, after,
-				...(leading ? {edge:'leading' as const} : {}) });
+		const endpoints = createParagraphEndpointIndex(paragraph.authority.blocks);
+		const editableStart = paragraph.authority.runs.some(run => run.editableAnchors.includes(0));
+		for (const run of paragraph.authority.runs) {
+			const tags = paragraphGapTags(paragraph.authority.blocks, run, endpoints);
+			for (const gap of run.gaps) {
+				const leading = gap.from === 0 && !editableStart;
+				const from = leading ? card.kind === 'callout' ? card.headerTo : line.from : projection.toSource(gap.from);
+				const end = projection.toSource(gap.to);
+				const { before, after } = tags(gap.from);
+				gaps.set(from, { from, to: contentBoundary(end), before, after,
+					...(leading ? {edge:'leading' as const} : {}) });
+			}
 		}
 		// A single terminal separator folds; longer runs retain ordinary empty bodies.
 		const tail = paragraph.authority.runs.find(run => run.kind === 'trailing' && !run.gaps.length);
