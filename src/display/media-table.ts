@@ -171,45 +171,64 @@ function constrainedHeight(image: HTMLImageElement, block: HTMLElement, widthLen
 }
 
 export class MediaTableDisplayController {
-	private owned: Array<[HTMLElement, string]> = [];
+	private owned = new Map<HTMLElement, Set<string>>();
+	private requested: Map<HTMLElement, Set<string>> | null = null;
 	private addedClassAttributes = new Set<HTMLElement>();
-	private tableViewports: HTMLElement[] = [];
+	private tableViewports = new Set<HTMLElement>();
+	private requestedViewports = new Set<HTMLElement>();
 	private cleanupImages: (() => void) | null = null;
 
 	constructor(readonly root: HTMLElement, private readonly reading = false) {}
 
 	update(options: MediaTableDisplayOptions): void {
-		this.destroy();
+		this.cleanupImages?.();
+		this.cleanupImages = null;
+		this.requested = new Map();
+		this.requestedViewports.clear();
 		if (options.images) this.images(options.imageCenter);
 		if (options.tableDisplay) this.tables();
 		if (options.tableDisplay || options.tableEditing) this.tableWrapping(options.tableAutoWrap !== false);
+		for (const [element, names] of this.owned) for (const name of names) {
+			if (!this.requested.get(element)?.has(name)) this.remove(element, name);
+		}
+		this.requested = null;
+		for (const viewport of this.tableViewports) if (!this.requestedViewports.has(viewport)) {
+			viewport.replaceWith(...viewport.childNodes);
+			this.tableViewports.delete(viewport);
+		}
 	}
 
 	destroy(): void {
 		this.cleanupImages?.();
 		this.cleanupImages = null;
-		for (const [element, name] of this.owned) element.classList.remove(name);
-		for (const element of this.addedClassAttributes) {
-			if (!element.classList.length) element.removeAttribute('class');
-		}
-		this.owned = [];
-		this.addedClassAttributes.clear();
+		for (const [element, names] of this.owned) for (const name of names) this.remove(element, name);
 		for (const viewport of this.tableViewports) viewport.replaceWith(...viewport.childNodes);
-		this.tableViewports = [];
+		this.tableViewports.clear();
+		this.requestedViewports.clear();
 	}
 
 	private add(element: HTMLElement, name: string): void {
+		if (this.requested) {
+			let names = this.requested.get(element);
+			if (!names) this.requested.set(element, names = new Set());
+			names.add(name);
+		}
 		if (element.classList.contains(name)) return;
 		if (!element.hasAttribute('class')) this.addedClassAttributes.add(element);
 		element.classList.add(name);
-		this.owned.push([element, name]);
+		let names = this.owned.get(element);
+		if (!names) this.owned.set(element, names = new Set());
+		names.add(name);
 	}
 
 	private remove(element: HTMLElement, name: string): void {
-		const index = this.owned.findIndex(([node, ownedName]) => node === element && ownedName === name);
-		if (index < 0) return;
+		const names = this.owned.get(element);
+		if (!names?.delete(name)) return;
 		element.classList.remove(name);
-		this.owned.splice(index, 1);
+		if (!names.size) {
+			this.owned.delete(element);
+			if (this.addedClassAttributes.delete(element) && !element.classList.length) element.removeAttribute('class');
+		}
 	}
 
 	private images(center: boolean): void {
@@ -294,13 +313,18 @@ export class MediaTableDisplayController {
 			const wrapper = table.parentElement;
 			// Keep the native scroll owner so table selection and controls share its coordinates.
 			if (!table.closest('.cm-table-widget')) {
-				if (table !== this.root && wrapper && (wrapper.matches('.table-wrapper, .paraflow-html-table-editor, .markdown-source-view.is-live-preview .cm-html-embed') || reading && wrapper.matches('.el-table,.el-div'))) this.add(wrapper, 'paraflow-display-table-viewport');
+				if (wrapper && reading && this.tableViewports.has(wrapper)) {
+					this.requestedViewports.add(wrapper);
+					this.add(wrapper, 'paraflow-display-table-viewport');
+				}
+				else if (table !== this.root && wrapper && (wrapper.matches('.table-wrapper, .paraflow-html-table-editor, .markdown-source-view.is-live-preview .cm-html-embed') || reading && wrapper.matches('.el-table,.el-div'))) this.add(wrapper, 'paraflow-display-table-viewport');
 				else if (table !== this.root && reading) {
 					// Mixed Reading containers keep prose outside each table's scroll viewport.
 					const viewport = table.ownerDocument.createElement('div');
 					this.add(viewport, 'paraflow-display-table-viewport');
 					table.before(viewport); viewport.append(table);
-					this.tableViewports.push(viewport);
+					this.tableViewports.add(viewport);
+					this.requestedViewports.add(viewport);
 				}
 				else this.add(table, 'paraflow-display-table-self-scroll');
 			}
