@@ -5,7 +5,8 @@ import { discoverMath } from './math/syntax.js';
 import type { PasteMode } from '../enhancement-settings.js';
 
 const commandModes = new WeakMap<Event, PasteMode>();
-const pasteTargets = new WeakMap<EditorView, { active: () => boolean; nested: boolean }>();
+type PasteTarget = { active: () => boolean; nested: boolean; revision: number };
+const pasteTargets = new WeakMap<EditorView, PasteTarget>();
 type ClipboardWindow = Window & { DataTransfer: typeof DataTransfer; File: typeof File; ClipboardEvent: typeof ClipboardEvent };
 
 /** Complete a newly pasted fence without changing the clipboard or existing source. */
@@ -61,11 +62,11 @@ export function createClipboardPasteExtension(options: {
 }): Extension {
 	return Prec.highest(ViewPlugin.fromClass(class {
 		rawPaste = false;
-		readonly target: { active: () => boolean; nested: boolean };
+		readonly target: PasteTarget;
 		constructor(readonly view: EditorView) {
 			const focused = view.dom.ownerDocument.activeElement;
 			const nested = view.dom.contains(focused) ? !ownsPasteTarget(view, focused) : pasteTargets.get(view)?.nested ?? false;
-			this.target = { active: () => options.isActive(view), nested };
+			this.target = { active: () => options.isActive(view), nested, revision: 0 };
 			pasteTargets.set(view, this.target);
 			view.contentDOM.addEventListener('paste', this.paste, true);
 			view.dom.addEventListener('focusin', this.focus, true);
@@ -112,6 +113,8 @@ export function createClipboardPasteExtension(options: {
 			view.dispatch(view.state.replaceSelection(adjusted), { userEvent: 'input.paste', scrollIntoView: true });
 		};
 		update(update: ViewUpdate) {
+			// Track intervening edits, including changes that return to the original selection.
+			if (update.transactions.some(tr => tr.docChanged || !tr.startState.selection.eq(tr.state.selection, true))) this.target.revision++;
 			if (update.docChanged || update.selectionSet) this.rawPaste = false;
 		}
 	}, { eventHandlers: {
@@ -127,7 +130,9 @@ export function createClipboardPasteExtension(options: {
 }
 
 function ownsPasteTarget(view: EditorView, target: EventTarget | null): boolean {
-	return target instanceof Element && target.closest('.cm-content, input, textarea, select, button, [contenteditable]') === view.contentDOM;
+	// Adopted popout nodes keep their creation-window prototypes.
+	const element = target as Element | null;
+	return element?.nodeType === 1 && element.closest('.cm-content, input, textarea, select, button, [contenteditable]') === view.contentDOM;
 }
 
 /** Read the browser's multi-MIME clipboard without rewriting the system clipboard. */
@@ -164,13 +169,13 @@ export async function pasteFromClipboard(view: EditorView, mode: PasteMode, opti
 		return;
 	}
 	view.focus();
-	const state = view.state;
+	const revision = target.revision;
 	let lostFocus = false;
 	const onBlur = () => { lostFocus = true; };
 	view.contentDOM.addEventListener('blur', onBlur);
 	try {
 		const data = await (options.read ?? readClipboardData)(view);
-		if (lostFocus || !view.dom.isConnected || !view.hasFocus || view.state !== state || !target.active() || options.getView() !== view || view.composing || pasteTargets.get(view) !== target) {
+		if (lostFocus || !view.dom.isConnected || !view.hasFocus || target.revision !== revision || !target.active() || options.getView() !== view || view.state.readOnly || view.composing || pasteTargets.get(view) !== target) {
 			options.notify('粘贴已取消：读取剪贴板期间编辑目标或选区发生了变化。请重新粘贴。');
 			return;
 		}

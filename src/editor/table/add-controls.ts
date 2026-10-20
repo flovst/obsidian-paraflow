@@ -5,9 +5,10 @@ export function refreshTableAddControlOwnership():void {for(const controls of ac
 export class TableAddControls {
 	private readonly dom:HTMLElement;
 	private readonly resize:ResizeObserver|null;
+	private readonly document:Document;
 	constructor(private readonly host:HTMLElement,private readonly table:()=>HTMLTableElement,insert:(axis:'row'|'column')=>void,private readonly isActive:()=>boolean=()=>true){
 		activeControls.add(this);
-		const doc=host.ownerDocument;this.dom=doc.createElement('div');this.dom.className='paraflow-table-add-controls';this.dom.hidden=true;
+		const doc=this.document=host.ownerDocument;this.dom=doc.createElement('div');this.dom.className='paraflow-table-add-controls';this.dom.hidden=true;
 		for(const axis of ['row','column'] as const){const button=doc.createElement('button');button.type='button';button.dataset.pfAdd=axis;button.textContent='+';button.setAttribute('aria-label',axis==='row'?'新增行':'新增列');button.onmousedown=event=>event.preventDefault();button.onclick=()=>{insert(axis);this.position();};this.dom.append(button);}
 		doc.body.append(this.dom);host.addEventListener('pointerenter',this.show);host.addEventListener('pointerleave',this.leave);this.dom.addEventListener('pointerleave',this.leave);
 		doc.addEventListener('scroll',this.position,true);doc.defaultView!.addEventListener('resize',this.position);
@@ -23,5 +24,5 @@ export class TableAddControls {
 		row.style.left=`${Math.max(box.left,clip.left)}px`;row.style.top=`${box.bottom}px`;row.style.width=`${Math.max(0,Math.min(box.right,clip.right)-Math.max(box.left,clip.left))}px`;
 		column.style.left=`${Math.min(box.right,clip.right)}px`;column.style.top=`${box.top}px`;column.style.height=`${box.height}px`;
 	};
-	destroy():void {activeControls.delete(this);this.resize?.disconnect();this.host.removeEventListener('pointerenter',this.show);this.host.removeEventListener('pointerleave',this.leave);const doc=this.host.ownerDocument;doc.removeEventListener('scroll',this.position,true);doc.defaultView!.removeEventListener('resize',this.position);this.dom.remove();}
+	destroy():void {activeControls.delete(this);this.resize?.disconnect();this.host.removeEventListener('pointerenter',this.show);this.host.removeEventListener('pointerleave',this.leave);const doc=this.document;doc.removeEventListener('scroll',this.position,true);doc.defaultView!.removeEventListener('resize',this.position);this.dom.remove();}
 }

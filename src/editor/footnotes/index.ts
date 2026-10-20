@@ -168,6 +168,7 @@ const footnoteParser = parser.configure([GFM, footnoteGrammar]);
 
 /** The Lezer grammar identifies inline text; code, HTML and destinations never enter the scanner. */
 export function buildFootnoteIndex(source: string): FootnoteIndex {
+	if (!source.includes('[^') && !source.includes('^[')) return { references: [], definitions: [], inlineCount: 0, inlineNotes: [] };
 	const references: Array<FootnoteRange & { id: string; number: number; occurrence: number }> = [];
 	const definitions: Array<FootnoteRange & { id: string }> = [];
 	const numbers = new Map<string, number>();

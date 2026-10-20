@@ -106,8 +106,9 @@ export function quoteContainers(state: EditorState): readonly CalloutCard[] {
 	const previous = cache.get(state);
 	if (previous) return previous;
 	const source=state.doc.toString();
-	const tree = grammar.configure(nativeInlineGrammarFor(mathRangeIndex(state).expressions)).parse(maskQuoteDraftSource(maskCodeSource(source,codeDraftMask(source,state.facet(codeDraft))),state.facet(quoteDraftMasks)));
 	const cards: CalloutCard[] = [];
+	if (!source.includes('>')) { cache.set(state, cards); return cards; }
+	const tree = grammar.configure(nativeInlineGrammarFor(mathRangeIndex(state).expressions)).parse(maskQuoteDraftSource(maskCodeSource(source,codeDraftMask(source,state.facet(codeDraft))),state.facet(quoteDraftMasks)));
 	tree.iterate({ enter(ref) {
 		if (ref.name !== 'Blockquote') return;
 		let depth = 0, listDepth = 0, listTask = false, listOrderedTask = false;

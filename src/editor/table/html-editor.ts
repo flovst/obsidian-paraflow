@@ -48,6 +48,7 @@ export class HtmlTableController implements TableActionTarget {
 	private menu:{close:()=>void}|undefined;
 	private destroyed=false;
 	private composing=false;
+	private compositionSnapshot:{cell:HTMLElement;content:string;breaks:Set<Element>}|null=null;
 	private deletionBreaks:Set<Element>|null=null;
 	private restoringFocus=false;
 	private frozenText:TextBookmark|null=null;
@@ -80,8 +81,8 @@ export class HtmlTableController implements TableActionTarget {
 		this.dom.addEventListener('beforeinput',this.beforeInput);this.dom.addEventListener('input',this.input);this.dom.addEventListener('keydown',this.keyDown);
 		this.dom.addEventListener('contextmenu',this.contextMenu);this.dom.addEventListener('paste',this.paste);
 		this.dom.addEventListener('click',this.linkClick,true);
-		this.dom.addEventListener('compositionstart',()=>{this.composing=true;});
-		this.dom.addEventListener('compositionend',event=>{this.composing=false;this.input(event);});
+		this.dom.addEventListener('compositionstart',this.compositionStart);
+		this.dom.addEventListener('compositionend',this.compositionEnd);
 		this.dom.addEventListener('focusin',event=>{if(this.restoringFocus)return;const cell=this.getEventCell(event);if(cell){this.claimSelection();this.current=this.position(cell);if(!this.selecting)this.select(this.current,this.current,false);}});
 	}
 	get positions():CellPosition[]{return this.session.table.cells.filter(cell=>intersects(cell,this.rectangle)).map(({row,column})=>({row,column}));}
@@ -310,22 +311,38 @@ export class HtmlTableController implements TableActionTarget {
 			else this.commit(next,true,drag.axis==='row'?{kind:'move',first:drag.first,last:drag.last,direction:destination-drag.first}:undefined);
 		}catch(error){this.options.notify(error instanceof Error?error.message:String(error));}
 	};
+	private cellHtml(cell:HTMLElement):string {
+		const content=this.linkPresentation.cloneCell(cell);
+		for(const placeholder of content.querySelectorAll('[data-paraflow-cell-placeholder]'))placeholder.remove();
+		return content.innerHTML;
+	}
+	private compositionStart=(event:CompositionEvent):void=>{
+		this.composing=true;const cell=this.getEventCell(event);
+		this.compositionSnapshot=cell?{cell,content:this.cellHtml(cell),breaks:new Set(cell.querySelectorAll('br'))}:null;
+	};
+	private compositionEnd=(event:CompositionEvent):void=>{
+		this.composing=false;const snapshot=this.compositionSnapshot;this.compositionSnapshot=null;
+		if(!event.data&&snapshot&&snapshot.cell===this.getEventCell(event)){
+			this.deletionBreaks=snapshot.breaks;this.input(event,snapshot.content);return;
+		}
+		this.input(event);
+	};
 	private beforeInput=(event:InputEvent):void=>{
 		const cell=this.getEventCell(event);
 		this.deletionBreaks=cell&&event.inputType.startsWith('delete')?new Set(cell.querySelectorAll('br')):null;
 	};
-	private input=(event:Event):void=>{
+	private input=(event:Event,unchangedContent?:string):void=>{
 		if(this.composing)return;const element=this.getEventCell(event);if(!element)return;
 		const previousBreaks=this.deletionBreaks;this.deletionBreaks=null;
-		// Chromium creates a BR caret carrier when deleting the final visible content.
+		// Chromium recreates BR caret carriers after deletion or canceled composition.
 		const tail=element.lastElementChild;
 		if(previousBreaks&&tail?.tagName==='BR'&&!element.textContent?.trim()&&!previousBreaks.has(tail))tail.setAttribute('data-paraflow-cell-placeholder','true');
 		this.clearPreview();const position=this.position(element);
 		// Browsers may insert div for Enter. Standard paragraphs are the stored form.
 		for(const div of Array.from(element.querySelectorAll('div'))){const p=element.ownerDocument.createElement('p');p.append(...Array.from(div.childNodes));div.replaceWith(p);}
-		const content=this.linkPresentation.cloneCell(element);
-		for(const placeholder of content.querySelectorAll('[data-paraflow-cell-placeholder]'))placeholder.remove();
-		const table={...this.session.table,cells:this.session.table.cells.map(cell=>cell.row===position.row&&cell.column===position.column?{...cell,html:content.innerHTML}:cell)};
+		const html=this.cellHtml(element);
+		if(html===unchangedContent||this.session.table.cells.some(cell=>cell.row===position.row&&cell.column===position.column&&cell.html===html))return;
+		const table={...this.session.table,cells:this.session.table.cells.map(cell=>cell.row===position.row&&cell.column===position.column?{...cell,html}:cell)};
 		try{this.writeSource(this.session.serializeContent(table),false);}catch(error){this.options.notify(error instanceof Error?error.message:String(error));this.render();this.focusCell(position);}
 	};
 	commit(table:TableModel|null,structural=true,change?:RowStructureChange):void {this.writeSource(table?this.session.serializeAction(table,structural,change):null,structural,change);}

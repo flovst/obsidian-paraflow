@@ -15,7 +15,9 @@ export function createNativeTableTailOwner(options:Pick<TableEditingOptions,'isA
 				if(typeof value==='function')continue;
 				for(let cursor=value.iter();cursor.value;cursor.next()){
 					const widget=(cursor.value.spec as {widget?:unknown}).widget;
-					if(!widget||typeof widget!=='object'||!('receiveSelection' in widget)||typeof widget.receiveSelection!=='function'||!('containerEl' in widget)||!(widget.containerEl instanceof view.dom.ownerDocument.defaultView!.HTMLElement)||!widget.containerEl.classList.contains('cm-table-widget')||!('end' in widget)||typeof widget.end!=='number')continue;
+					if(!widget||typeof widget!=='object'||!('receiveSelection' in widget)||typeof widget.receiveSelection!=='function'||!('containerEl' in widget))continue;
+					const element=widget.containerEl as HTMLElement|null;
+					if(!element||element.nodeType!==1||element.namespaceURI!=='http://www.w3.org/1999/xhtml'||!element.classList.contains('cm-table-widget')||!('end' in widget)||typeof widget.end!=='number')continue;
 					const table=widget as NativeTableSelectionOwner;current.add(table);if(originals.has(table))continue;
 					const method=table.receiveSelection;
 					const wrapper=function(this:NativeTableSelectionOwner,transaction:Transaction){

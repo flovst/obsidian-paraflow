@@ -62,6 +62,7 @@ function sourceMask(source: string, includeStrike: boolean): Uint8Array {
 
 /** A nonempty two-marker pair wins over a one-marker pair; consumed markers are never reused. */
 export function discoverTildeRuns(source: string): readonly TildeRun[] {
+	if (!source.includes('~')) return [];
 	const blocked = sourceMask(source, false);
 	const runs: TildeRun[] = [];
 	for (let from = 0; from < source.length; from++) {
@@ -93,6 +94,7 @@ export function discoverTildeRuns(source: string): readonly TildeRun[] {
 }
 
 export function discoverShorthand(source: string): readonly ShorthandRange[] {
+	if (!source.includes('~') && !source.includes('^')) return [];
 	const blocked = sourceMask(source, true);
 	for (const run of discoverTildeRuns(source)) blocked.fill(1, run.from, run.to);
 	const ranges: ShorthandRange[] = [];

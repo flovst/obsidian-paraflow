@@ -25,10 +25,8 @@ export type PointerOwnership =
 function eventElement(event: MouseEvent): Element | null {
 	const target = event.target;
 	if (!target || typeof target !== 'object') return null;
-	const document = (target as Node).ownerDocument;
-	const elementConstructor = document?.defaultView?.Element;
-	return elementConstructor && target instanceof elementConstructor
-		? target
+	return (target as Node).nodeType === 1
+		? target as Element
 		: null;
 }
 

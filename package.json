@@ -42,7 +42,7 @@
   },
   "dependencies": {
     "css-tree": "3.1.0",
-    "fflate": "0.8.2",
+    "fflate": "0.8.3",
     "mathjax-full": "3.2.2"
   }
 }

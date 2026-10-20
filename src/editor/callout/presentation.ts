@@ -357,14 +357,15 @@ export function createCalloutPresentation(options: CalloutPresentationOptions): 
 			});
 		}
 		pointer = (event: MouseEvent): void => {
-			if (!options.isActive(this.view) || this.view.composing || event.button !== 0 || event.ctrlKey || event.metaKey || event.altKey || event.detail > 1 || !(event.target instanceof this.view.dom.ownerDocument.defaultView!.Element)) return;
-			const native = event.target.closest('.cm-embed-block.cm-callout');
-			if (!native || !this.view.contentDOM.contains(native) || event.target.closest('input, .callout-fold, .internal-embed, .image-embed') || event.target.closest('.cm-editor') !== this.view.dom) return;
+			const target = event.target as Element | null;
+			if (!options.isActive(this.view) || this.view.composing || event.button !== 0 || event.ctrlKey || event.metaKey || event.altKey || event.detail > 1 || target?.nodeType !== 1) return;
+			const native = target.closest('.cm-embed-block.cm-callout');
+			if (!native || !this.view.contentDOM.contains(native) || target.closest('input, .callout-fold, .internal-embed, .image-embed') || target.closest('.cm-editor') !== this.view.dom) return;
 			const origin = this.view.posAtDOM(native);
 			const allCards = calloutCards(this.view.state);
 			const outer = allCards.find(card => card.from === origin);
 			if (!outer) return;
-			const rendered = event.target.closest('.callout');
+			const rendered = target.closest('.callout');
 			const renderedCards = Array.from(native.querySelectorAll('.callout'));
 			const candidates = allCards.filter(card => card.from >= outer.from && card.to <= outer.to);
 			const card = candidates[rendered ? renderedCards.indexOf(rendered) : 0];
@@ -375,14 +376,14 @@ export function createCalloutPresentation(options: CalloutPresentationOptions): 
 				const source = candidates[index]!;
 				return [(element.classList.contains('is-collapsed') ? foldEffect : unfoldEffect).of({ from: source.headerTo, to: source.to })];
 			}) : [];
-			const metadata = event.target.closest('.edit-block-button');
+			const metadata = target.closest('.edit-block-button');
 			if (metadata) {
 				event.preventDefault(); event.stopImmediatePropagation();
 				this.view.dispatch({ effects: [...folds, editMetadata.of(card.from)], selection: { anchor: card.from + quotePrefix(this.view.state.doc.lineAt(card.from).text, card.depth)!.length } });
 				this.view.focus(); return;
 			}
 			if (!rendered) return;
-			const title = event.target.closest<HTMLElement>('.callout-title-inner');
+			const title = target.closest<HTMLElement>('.callout-title-inner');
 			if (title) {
 				const source = calloutTitleBlock(this.view.state, card);
 				const doc = this.view.dom.ownerDocument;
@@ -396,8 +397,8 @@ export function createCalloutPresentation(options: CalloutPresentationOptions): 
 				handoffRenderedSourceGesture(this.view, event, position, () => options.isActive(this.view), folds);
 				return;
 			}
-			if (event.target.closest('.callout-title')) return;
-			const block = event.target.closest('p, li, h1, h2, h3, h4, h5, h6');
+			if (target.closest('.callout-title')) return;
+			const block = target.closest('p, li, h1, h2, h3, h4, h5, h6');
 			if (!block) return;
 			const elements = Array.from(rendered.querySelectorAll('p, li, h1, h2, h3, h4, h5, h6')).filter(element =>
 				element.closest('.callout') === rendered && !element.closest('.callout-title') &&

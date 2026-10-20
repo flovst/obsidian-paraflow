@@ -98,8 +98,10 @@ export function projectQuoteContent(state: EditorState, from: number, to: number
                 ownerFrom:owner?.virtualFrom??null,ownerPrefix:owner?body.ownerPrefix.slice(owner.prefix.length):''}];
         })),paragraphProjectionField] });
 	ensureSyntaxTree(virtual, virtual.doc.length, Infinity);
+	// Publish the completed parse context before consumers read syntaxTree(state).
+	const parsed = virtual.update({}).state;
 	return {
-		depth, end: to, lines, state: virtual,
+		depth, end: to, lines, state: parsed,
 		toSource(position) {
 			const line = virtual.doc.lineAt(position);
 			const projected = lines[line.number - 1]!;

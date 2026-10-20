@@ -8,7 +8,7 @@ export class TableOuterDragCursor {
 	}
 	private move=(event:PointerEvent):void=>{
 		this.clear();if(event.buttons)return;
-		const axis=this.resolve(event),element=event.target;if(!axis||!(element instanceof this.doc.defaultView!.HTMLElement))return;
+		const axis=this.resolve(event),element=event.target as HTMLElement|null;if(!axis||!element||element.nodeType!==1||element.namespaceURI!=='http://www.w3.org/1999/xhtml')return;
 		activeCursors.get(this.doc)?.clear();activeCursors.set(this.doc,this);
 		const previous=element.style.getPropertyValue('cursor'),priority=element.style.getPropertyPriority('cursor');
 		element.style.setProperty('cursor',axis==='row'?'row-resize':'col-resize');

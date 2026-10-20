@@ -7,8 +7,9 @@ const nativeHandleDisplay='flex';
 /** Native nodes retain their host listeners; a shared outer layer delegates additions. */
 export class NativeTableControls {
  private readonly widgets=new Map<HTMLElement,TableAddControls|null>();
- private readonly cursor:TableOuterDragCursor;
- constructor(private readonly root:HTMLElement,private readonly hidden:()=>boolean,private readonly isActive:()=>boolean=()=>true){this.cursor=new TableOuterDragCursor(root.ownerDocument,event=>this.outerHandle(event)?.axis??null);root.ownerDocument.addEventListener('pointerdown',this.outerPointerDown,true);}
+ private cursor:TableOuterDragCursor;
+ private document:Document;
+ constructor(private readonly root:HTMLElement,private readonly hidden:()=>boolean,private readonly isActive:()=>boolean=()=>true){this.document=root.ownerDocument;this.cursor=new TableOuterDragCursor(this.document,event=>this.outerHandle(event)?.axis??null);this.document.addEventListener('pointerdown',this.outerPointerDown,true);}
  private outerHandle(event:MouseEvent):{handle:HTMLElement;axis:'row'|'column'}|null {
   if(!this.isActive()||event.defaultPrevented)return null;
   const target=event.target as Element;if(target.closest?.('.paraflow-table-toolbar,.paraflow-table-menu,.paraflow-table-size-popup,.menu,.modal,.modal-container,input,textarea,button,select,.table-row-drag-handle,.table-col-drag-handle'))return null;
@@ -35,6 +36,12 @@ export class NativeTableControls {
   finally{if(display)handle.style.setProperty('display',display,priority);else handle.style.removeProperty('display');if(!hadStyle&&!handle.style.length)handle.removeAttribute('style');}
  };
  update(enabled=true):void {
+  if(this.document!==this.root.ownerDocument){
+   this.document.removeEventListener('pointerdown',this.outerPointerDown,true);this.cursor.destroy();
+   for(const [widget,controls] of this.widgets){controls?.destroy();widget.classList.remove('paraflow-table-controls');}this.widgets.clear();
+   this.document=this.root.ownerDocument;this.cursor=new TableOuterDragCursor(this.document,event=>this.outerHandle(event)?.axis??null);
+   this.document.addEventListener('pointerdown',this.outerPointerDown,true);
+  }
   this.cursor.clear();
   const current=new Set(enabled?this.root.querySelectorAll<HTMLElement>('.cm-table-widget'):[]);
   for(const [widget,controls] of this.widgets)if(!current.has(widget)){controls?.destroy();widget.classList.remove('paraflow-table-controls');this.widgets.delete(widget);}
@@ -45,5 +52,5 @@ export class NativeTableControls {
    this.widgets.set(widget,controls);
   }
  }
- destroy():void {this.cursor.destroy();this.root.ownerDocument.removeEventListener('pointerdown',this.outerPointerDown,true);this.update(false);}
+ destroy():void {this.update(false);this.cursor.destroy();this.document.removeEventListener('pointerdown',this.outerPointerDown,true);}
 }
