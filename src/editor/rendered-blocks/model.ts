@@ -20,9 +20,11 @@ export function discoverRenderedBlocks(state: EditorState): RenderedBlock[] {
 	const source = state.doc.toString();
 	const blocks: RenderedBlock[] = [];
 	const tables = findTableSources(source);
+	let consumedTo = 0, tableIndex = 0;
 	grammar.configure(nativeInlineGrammarFor(mathRangeIndex(state).expressions)).parse(source).iterate({ enter(node) {
-		if (blocks.some(block => node.from >= block.from && node.from < block.to)) return false;
-		if (tables.some(table => node.from >= table.from && node.from < table.to)) return false;
+		if (node.from < consumedTo) return false;
+		while (tableIndex < tables.length && tables[tableIndex]!.to <= node.from) tableIndex++;
+		if (tableIndex < tables.length && tables[tableIndex]!.from <= node.from) return false;
 		if (node.name !== 'HTMLBlock' && node.name !== 'FencedCode') return;
 		const mermaid = node.name === 'FencedCode';
 		const info = node.node.getChild('CodeInfo');
@@ -55,6 +57,7 @@ export function discoverRenderedBlocks(state: EditorState): RenderedBlock[] {
 		const markdown = source.slice(opening.from, to).split('\n').map(line => line.slice(prefixLength(line))).join('\n');
 		blocks.push({ kind: mermaid ? 'mermaid' : 'html', from: opening.from, to, bodyFrom, bodyTo, lines, source: markdown,
 			fence: closing ? { openingTo: opening.to, closingFrom: state.doc.lineAt(closing.from).from, continuation: prefix } : null });
+		consumedTo = to;
 		return false;
 	} });
 	cache.set(state.doc, blocks);

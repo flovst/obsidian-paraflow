@@ -136,6 +136,10 @@ class PreviewWidget extends WidgetType {
 }
 interface Projection {
 	previewRevision: number; enabled: boolean; focused: boolean; active: RenderedBlock | null; pressed: boolean; frozen: RenderedBlock | null; decorations: DecorationSet;
+	outputs: readonly BlockOutput[];
+}
+interface BlockOutput {
+	block: RenderedBlock; active: boolean; frameKey: string | undefined; revision: number; ranges: readonly Range<Decoration>[];
 }
 function same(blocks: readonly RenderedBlock[], block: RenderedBlock | null): RenderedBlock | null {
 	return block ? blocks.find(candidate => candidate.from === block.from && candidate.kind === block.kind) ?? null : null;
@@ -149,16 +153,22 @@ function project(state: EditorState, options: RenderedBlockEditingOptions, previ
 	enabled: boolean, focused: boolean, previewRevision = 0): Projection {
 	const pressed = selectionPointerPressed(state);
 	const frozen = pressed ? previous?.pressed ? previous.frozen : previous?.active ?? null : null;
-	if (!enabled || !options.isStateActive(state)) return { previewRevision, enabled, focused, active: null, pressed, frozen: null, decorations: Decoration.none };
+	if (!enabled || !options.isStateActive(state)) return { previewRevision, enabled, focused, active: null, pressed, frozen: null, decorations: Decoration.none, outputs: [] };
 	const blocks = enabledBlocks(state, options), selection = state.selection.main;
 	const caret = selection.empty ? blocks.find(block => block.from <= selection.head && selection.head <= block.to) ?? null : null;
 	const old = same(blocks, previous?.active ?? null);
 	const selected = old && state.selection.ranges.some(range => !range.empty && range.from < old.to && range.to > old.from) ? old : null;
 	const active = !focused ? null : pressed ? same(blocks, frozen) : selected ?? caret;
-	const ranges: Range<Decoration>[] = [];
-	for (const block of blocks) {
+	const outputs: BlockOutput[] = [];
+	for (const [index, block] of blocks.entries()) {
+		const frame = containerBlockFrame(state, block.from, block.to), was = previous?.outputs[index];
+		if (was?.block === block && was.active === (block === active) && was.frameKey === frame?.key && was.revision === previewRevision) {
+			outputs.push(was); continue;
+		}
+		const ranges: Range<Decoration>[] = [];
+		outputs.push({ block, active: block === active, frameKey: frame?.key, revision: previewRevision, ranges });
 		if (block !== active) {
-			ranges.push(Decoration.replace({ widget: new PreviewWidget(block, false, options, containerBlockFrame(state, block.from, block.to), previewRevision), block: true, inclusiveEnd: true }).range(block.from, block.to));
+			ranges.push(Decoration.replace({ widget: new PreviewWidget(block, false, options, frame, previewRevision), block: true, inclusiveEnd: true }).range(block.from, block.to));
 			continue;
 		}
 		for (const line of block.lines) {
@@ -175,9 +185,22 @@ function project(state: EditorState, options: RenderedBlockEditingOptions, previ
 		if (block.kind === 'html') for (const token of htmlSourceTokens(state.sliceDoc(block.from, block.to))) {
 			ranges.push(Decoration.mark({ class: `paraflow-html-${token.kind}` }).range(block.from + token.from, block.from + token.to));
 		}
-		if (block.kind === 'mermaid') ranges.push(Decoration.widget({ widget: new PreviewWidget(block, true, options, containerBlockFrame(state, block.from, block.to), previewRevision), block: true, side: 1 }).range(block.to));
+		if (block.kind === 'mermaid') ranges.push(Decoration.widget({ widget: new PreviewWidget(block, true, options, frame, previewRevision), block: true, side: 1 }).range(block.to));
 	}
-	return { previewRevision, enabled, focused, active, pressed, frozen, decorations: Decoration.set(ranges, true) };
+	const decorations = previous && outputs.length === previous.outputs.length && outputs.every((output, index) => output === previous.outputs[index])
+		? previous.decorations : Decoration.set(outputs.flatMap(output => output.ranges), true);
+	return { previewRevision, enabled, focused, active, pressed, frozen, decorations, outputs };
+}
+
+/** Source-ordered, disjoint owners; the predecessor can also own a zero-width shared edge. */
+function ownershipCandidates(blocks: readonly RenderedBlock[], from: number): readonly RenderedBlock[] {
+	let low = 0, high = blocks.length;
+	while (low < high) {
+		const middle = (low + high) >>> 1;
+		if (blocks[middle]!.from <= from) low = middle + 1;
+		else high = middle;
+	}
+	return blocks.slice(Math.max(0, low - 2), low);
 }
 
 export function createRenderedBlockEditing(options: RenderedBlockEditingOptions): Extension {
@@ -288,12 +311,14 @@ export function createRenderedBlockEditing(options: RenderedBlockEditingOptions)
 			return (from, to, decoration) => {
 				const spec = decoration.spec as { widget?: WidgetType & { html?: unknown; start?: unknown; end?: unknown }; block?: boolean };
 				const widget = spec.widget;
-				return blocks.some(block => {
-					if (from >= block.from && to <= block.to && (isNativeReplacement(decoration) ||
+				const replacement = isNativeReplacement(decoration);
+				if (!replacement && !(from === to && spec.block === true && widget)) return false;
+				return ownershipCandidates(blocks, from).some(block => {
+					if (from >= block.from && to <= block.to && (replacement ||
 						from === block.to && to === block.to && spec.block === true && Boolean(widget))) return true;
 					// The host balances HTML through blank lines. Its preview may extend
 					// beyond our grammar fragment, but still represents that same opener.
-					return block.kind === 'html' && isNativeReplacement(decoration) && spec.block === true &&
+					return block.kind === 'html' && replacement && spec.block === true &&
 						(from === block.from || from === block.bodyFrom) && to >= block.to && widget?.start === from && widget.end === to &&
 						typeof widget.html === 'string' && widget.html.startsWith(block.source);
 				});
