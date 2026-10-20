@@ -1,4 +1,4 @@
-import { language, syntaxTree as nativeSyntaxTree, syntaxTreeAvailable } from '@codemirror/language';
+import { DocInput, language, syntaxTree as nativeSyntaxTree, syntaxTreeAvailable } from '@codemirror/language';
 import { mathSyntaxTree as syntaxTree } from '../math/semantic-tree.js';
 import type { EditorState, Text } from '@codemirror/state';
 import type { SyntaxNode, Tree } from '@lezer/common';
@@ -563,7 +563,13 @@ function hypermdComplexBoundaries(
 			if (kind === 'code-block' && (tokens.includes('HyperMD-codeblock-begin') ||
 				tokens.includes('HyperMD-codeblock') && node.to > state.doc.line(fromLine).to)) {
 				const end=tokens.includes('HyperMD-codeblock-begin')?confirmedSyntaxEnd(state):node.to;
-				const fence = markdownParser.parse(state.sliceDoc(node.from, end)).topNode.firstChild;
+				// Keep the opener's fresh grammar context, but finish after its first
+				// block. DocInput avoids copying or reading the unrelated suffix.
+				const parsing = markdownParser.startParse(new DocInput(state.doc), [], [{ from: node.from, to: end }]);
+				parsing.stopAt(node.from);
+				let parsed: Tree | null;
+				while (!(parsed = parsing.advance())) { /* The grammar finishes the current block before stopping. */ }
+				const fence = parsed.topNode.firstChild;
 				if (fence?.name === 'FencedCode') {
 					const closed = fence.getChildren('CodeMark').length === 2;
 					const last = state.doc.lineAt(closed ? node.from + fence.to : end).number;
