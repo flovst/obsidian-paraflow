@@ -8,6 +8,7 @@ import { quoteDraftMasks, maskQuoteDraftSource } from '../callout/quote-draft.js
 import { pendingMathRanges, type PendingMathRange } from './candidate-ranges.js';
 import { acceptedMath, discoverMath, mathRangeIndex } from './syntax.js';
 import type { MathExpression } from './range-scanner.js';
+import { createRangeQuery } from './range-query.js';
 
 export function isLiteralDollarLine(text: string): boolean { return /^[ \t]*(?:>[ \t]*)*\${3,}$/u.test(text); }
 export const baseMathLanguage = Facet.define<Language, Language | null>({ combine: values => values[0] ?? null });
@@ -28,14 +29,15 @@ const body = NodeType.define({ name: 'math', id: 2, props: [styleTags({ math: ta
 const end = NodeType.define({ name: 'formatting_formatting-math-end_math', id: 3, props: [styleTags({ 'formatting_formatting-math-end_math': tags.keyword })] });
 
 export function acceptedParserMath(state: EditorState, ranges: readonly PendingMathRange[]): readonly MathExpression[] {
-	return discoverMath(state).filter(math => !math.display || !ranges.some(range => range.from <= math.from && math.to <= range.to));
+	const pending = createRangeQuery(ranges);
+	return discoverMath(state).filter(math => !math.display || !pending.contains(math.from, math.to));
 }
 /** Neutralize Markdown dollars and accepted bodies, preserving opaque code/HTML input. */
-export function mathParserMasks(state: EditorState, ranges: readonly PendingMathRange[]): readonly PendingMathRange[] {
-	const masks: PendingMathRange[] = [...acceptedParserMath(state, ranges)];
-	const opaque = mathRangeIndex(state).opaque;
+export function mathParserMasks(state: EditorState, ranges: readonly PendingMathRange[], accepted = acceptedParserMath(state, ranges)): readonly PendingMathRange[] {
+	const masks: PendingMathRange[] = [...accepted];
+	const opaque = createRangeQuery(mathRangeIndex(state).opaque);
 	for (const match of state.sliceDoc().matchAll(/\$+/gu)) {
-		if (!opaque.some(range => range.from <= match.index && match.index < range.to)) masks.push({ from: match.index, to: match.index + match[0].length });
+		if (!opaque.containsPoint(match.index)) masks.push({ from: match.index, to: match.index + match[0].length });
 	}
 	masks.sort((a, b) => a.from - b.from || b.to - a.to);
 	const merged: PendingMathRange[] = [];
@@ -121,12 +123,12 @@ export function mathSyntaxTree(state: EditorState): Tree {
 	if (!native) return syntaxTree(state);
 	const ranges = pendingMathRanges(state), accepted = state.facet(acceptedMath), cached = trees.get(state.doc);
 	if (cached?.parser === native.parser && cached.ranges === ranges && cached.accepted === accepted && cached.code === code && cached.quotes === quotes) return cached.tree;
-	const masks = mathParserMasks(state, ranges);
+	const expressions = acceptedParserMath(state, ranges), masks = mathParserMasks(state, ranges, expressions);
 	if (!masks.length && !code.masks.length && !quotes.length) return syntaxTree(state);
 	const shadow = EditorState.create({ doc: maskQuoteDraftSource(maskCodeSource(maskedMathSource(state, masks), code.masks), quotes), extensions: [native] });
 	const parsed = ensureSyntaxTree(shadow, shadow.doc.length, Infinity);
 	if (!parsed) throw new Error('Math semantic source did not complete parsing');
-	const tree = projectMathTree(parsed, acceptedParserMath(state, ranges), code.opaque);
+	const tree = projectMathTree(parsed, expressions, code.opaque);
 	trees.set(state.doc, { parser: native.parser, ranges, accepted, code, quotes, tree });
 	return tree;
 }

@@ -3,6 +3,7 @@ import { invertedEffects, isolateHistory } from '@codemirror/commands';
 import { acceptedMath, discoverParsedMath, mathRangeIndex, type MathExpression } from './syntax.js';
 import { mathCandidatesActive, pendingMath, type PendingMathRange } from './candidate-ranges.js';
 import { createSharedMathParser } from './shared-parser.js';
+import { createRangeQuery } from './range-query.js';
 export { pendingMathRanges } from './candidate-ranges.js';
 
 interface MathCandidates { readonly active: boolean; readonly dirty: boolean; readonly ranges: readonly PendingMathRange[]; readonly accepted: readonly MathExpression[] }
@@ -36,7 +37,15 @@ function dollarTokenIdentity(state: EditorState, from: number, to: number): stri
     return `${from - start}:${end - start}`;
 }
 
-function mappedAccepted(value: MathCandidates, tr: Transaction): readonly MathExpression[] {
+function exactMath(expressions: readonly MathExpression[]): ReadonlyMap<string, MathExpression> {
+    const result = new Map<string, MathExpression>();
+    for (const math of expressions) {
+        const key = `${math.from}:${math.to}`;
+        if (!result.has(key)) result.set(key, math);
+    }
+    return result;
+}
+function mappedAccepted(value: MathCandidates, tr: Transaction, closed: ReadonlyMap<string, MathExpression>): readonly MathExpression[] {
     return value.accepted.flatMap(math => {
         let touched = false;
         tr.changes.iterChangedRanges((from, to) => {
@@ -46,7 +55,7 @@ function mappedAccepted(value: MathCandidates, tr: Transaction): readonly MathEx
         if (touched) return [];
         const next = { ...math, from: tr.changes.mapPos(math.from, 1), to: tr.changes.mapPos(math.to, -1),
             contentFrom: tr.changes.mapPos(math.contentFrom, -1), contentTo: tr.changes.mapPos(math.contentTo, 1) };
-        const parsed = discoverParsedMath(tr.state).find(item => item.from === next.from && item.to === next.to);
+        const parsed = closed.get(`${next.from}:${next.to}`);
         if (parsed) next.display = parsed.display;
         if (next.from >= next.to || tr.state.sliceDoc(next.from, next.contentFrom) !== '$$' || tr.state.sliceDoc(next.contentTo, next.to) !== '$$') return [];
         // A preserved two-byte slice must still occupy the same complete dollar run.
@@ -87,20 +96,27 @@ export function mathConversionChanges(state: EditorState, expressions: readonly 
 export function createMathCandidateExtension(isActive: (state: EditorState) => boolean): Extension {
     // Typora parses LP paragraph nodes locally; only Enter or a dirty Source return commits independent $$ paragraphs.
     const field = StateField.define<MathCandidates>({
-        create(state) { const ranges = candidates(state), closed = discoverParsedMath(state); return { active: isActive(state), dirty: false, accepted: closed.filter(math => math.display), ranges: ranges.filter(range => !closed.some(math => math.from === range.from && math.to === range.to)) }; },
+        create(state) {
+            const ranges = candidates(state), closed = discoverParsedMath(state), paired = exactMath(closed);
+            return { active: isActive(state), dirty: false, accepted: closed.filter(math => math.display), ranges: ranges.filter(range => !paired.has(`${range.from}:${range.to}`)) };
+        },
         update(value, tr) {
             const active = isActive(tr.state), dirty = !active && (value.dirty || tr.docChanged);
             if (!tr.docChanged && active === value.active && !tr.effects.some(effect => effect.is(confirmMath) || effect.is(restorePending)))
                 return value;
-            const found = candidates(tr.state), closed = discoverParsedMath(tr.state);
+            const found = candidates(tr.state), closed = discoverParsedMath(tr.state), paired = exactMath(closed);
             const restored = tr.effects.find(effect => effect.is(restorePending));
             const mapped = (restored?.value.ranges ?? value.ranges.map(range => ({ from: tr.changes.mapPos(range.from, 1), to: tr.changes.mapPos(range.to, -1) })));
             const confirmed = tr.effects.find(effect => effect.is(confirmMath));
             const confirmAll = confirmed?.value === null || active && !value.active && value.dirty;
-            const preserved = restored?.value.accepted ?? mappedAccepted(value, tr);
-            const accepted = [...preserved];
-            const ranges = found.filter(range => {
-                const formula = closed.find(math => math.from === range.from && math.to === range.to);
+            const preserved = restored?.value.accepted ?? mappedAccepted(value, tr, paired);
+            const preservedPairs = exactMath(preserved), preservedOwners = createRangeQuery(preserved);
+            const mappedStarts = new Set(mapped.map(range => range.from));
+            const previousDisplayStarts = new Set(discoverParsedMath(tr.startState).filter(math => math.display).map(math => math.from));
+            const pairedPendingStarts = new Set(value.ranges.filter(range => previousDisplayStarts.has(range.from)).map(range => tr.changes.mapPos(range.from, 1)));
+            const appended: MathExpression[] = [], confirmedRanges: PendingMathRange[] = [];
+            const pendingRanges = found.filter(range => {
+                const formula = paired.get(`${range.from}:${range.to}`);
                 if (!formula)
                     return true;
                 let created = false;
@@ -108,26 +124,32 @@ export function createMathCandidateExtension(isActive: (state: EditorState) => b
                     if (range.from <= from && to <= range.to) created = true;
                 });
                 if (confirmAll || confirmed?.value === range.from || created) {
-                    accepted.splice(0, accepted.length, ...accepted.filter(old => old.to <= range.from || old.from >= range.to), formula);
+                    confirmedRanges.push(range);
+                    appended.push(formula);
                     return false;
                 }
                 if (restored)
-                    return mapped.some(old => old.from === range.from);
+                    return mappedStarts.has(range.from);
                 if (!active)
-                    return mapped.some(old => old.from === range.from);
-                const wasPairedPending = value.ranges.some(old => tr.changes.mapPos(old.from, 1) === range.from &&
-                    discoverParsedMath(tr.startState).some(math => math.display && math.from === old.from));
-                if (mapped.some(old => old.from === range.from) && (independentParagraphs(tr.state, range) || wasPairedPending))
+                    return mappedStarts.has(range.from);
+                const wasPairedPending = pairedPendingStarts.has(range.from);
+                if (mappedStarts.has(range.from) && (independentParagraphs(tr.state, range) || wasPairedPending))
                     return true;
-                const wasConfirmed = preserved.some(math => math.from === range.from && math.to === range.to);
-                const overlapsAccepted = preserved.some(math => math.from < range.to && range.from < math.to);
+                const wasConfirmed = preservedPairs.has(`${range.from}:${range.to}`);
+                const overlapsAccepted = preservedOwners.overlaps(range.from, range.to);
                 const pending = !wasConfirmed && (overlapsAccepted || editedDelimiter(tr, range) &&
                     (independentParagraphs(tr.state, range) || !tr.isUserEvent('input.type') || tr.isUserEvent('input.type.compose')));
-                if (!pending && !wasConfirmed) accepted.push(formula);
+                if (!pending && !wasConfirmed) appended.push(formula);
                 return pending;
-            }).flatMap(range => {
-                if (accepted.some(math => math.from <= range.from && range.from < math.to)) return [];
-                const next = accepted.filter(math => range.from < math.from && math.from < range.to).sort((a, b) => a.from - b.from)[0];
+            });
+            // Closed scanner formulas are disjoint: only preserved owners can be removed
+            // by later confirmations. Stage those removals before indexing the final order.
+            const confirmedOwners = createRangeQuery(confirmedRanges);
+            const accepted = [...preserved.filter(math => !confirmedOwners.overlaps(math.from, math.to)), ...appended];
+            const acceptedOwners = createRangeQuery(accepted);
+            const ranges = pendingRanges.flatMap(range => {
+                if (acceptedOwners.containsPoint(range.from)) return [];
+                const next = acceptedOwners.firstStartingBetween(range.from, range.to);
                 return [{ from: range.from, to: next ? Math.max(range.from + 2, tr.state.doc.lineAt(next.from).from - 1) : range.to }];
             });
             const finalAccepted = confirmAll ? closed.filter(math => math.display) : accepted;

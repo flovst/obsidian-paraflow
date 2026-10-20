@@ -17,7 +17,15 @@ export function createMathKeyboardEntry(isActive: (state: EditorState) => boolea
 			const current = view.state.selection.main;
 			if (view.state.selection.ranges.length !== 1 || !current.empty) return;
 			if (isVirtualTailActive(view.state)) return;
-			const last = discoverMath(view.state).find(math => math.display && /^[ \t\n]*$/u.test(view.state.sliceDoc(math.to)) && math.from <= current.head);
+			let trailingFrom = view.state.doc.length;
+			trailing: for (const part of view.state.doc.iterRange(view.state.doc.length, 0)) {
+				for (let index = part.length - 1; index >= 0; index--) {
+					if (part[index] !== ' ' && part[index] !== '\t' && part[index] !== '\n') break trailing;
+					trailingFrom--;
+				}
+			}
+			const expressions = discoverMath(view.state);
+			const last = expressions.find(math => math.display && math.to >= trailingFrom && math.from <= current.head);
 			if (last && !view.state.readOnly && event.key !== 'ArrowUp') {
 				const body = projectMathSource(view.state, last), row = body.bodyLines.at(-1);
 				const caret = event.key === 'ArrowDown' ? view.coordsAtPos(current.head) : null;
@@ -30,7 +38,7 @@ export function createMathKeyboardEntry(isActive: (state: EditorState) => boolea
 			}
 			if (event.key === 'ArrowRight') return;
 			const forward = event.key === 'ArrowDown', line = view.state.doc.lineAt(current.head);
-			const math = discoverMath(view.state).filter(item => item.display && (forward ? item.from > line.to : item.to < line.from))
+			const math = expressions.filter(item => item.display && (forward ? item.from > line.to : item.to < line.from))
 				.sort((a, b) => forward ? a.from - b.from : b.to - a.to)[0];
 			if (!math) return;
 			const opening = view.state.doc.lineAt(math.from);

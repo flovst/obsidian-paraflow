@@ -49,7 +49,7 @@ function sharedParser(): Extension {
 				Prec.highest(language.computeN(['doc', pendingMath, acceptedMath, mathCandidatesActive, codeParserSource, quoteDraftMasks], state => {
 					// Only draft acceptance differs between editor modes; dollar grammar is shared.
 					const pending = state.facet(mathCandidatesActive) ? state.facet(pendingMath) : [];
-					const masks = mathParserMasks(state, pending), expressions = acceptedParserMath(state, pending), code = state.facet(codeParserSource), quotes = state.facet(quoteDraftMasks);
+					const expressions = acceptedParserMath(state, pending), masks = mathParserMasks(state, pending, expressions), code = state.facet(codeParserSource), quotes = state.facet(quoteDraftMasks);
 					if (previous && sameMasks(previous.quotes, quotes) && sameMasks(previous.code.masks, code.masks) && sameMasks(previous.code.opaque, code.opaque) && sameMasks(previous.masks, masks) && sameMasks(previous.expressions, expressions) &&
 						previous.expressions.every((math, index) => math.display === expressions[index]!.display)) return [previous.language];
 					const parser = new class extends Parser {

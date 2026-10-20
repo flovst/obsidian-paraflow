@@ -1,4 +1,5 @@
 import { parser, GFM } from '@lezer/markdown';
+import { createRangeQuery } from './range-query.js';
 
 export interface MathExpression {
 	readonly from: number;
@@ -29,22 +30,27 @@ function runEnd(source: string, from: number): number {
 /** Dollar grammar is owned here, independently of any host math parser. */
 export function scanMathRanges(source: string): MathRangeIndex {
 	const opaque: MathRange[] = [], containers: MathRange[] = [];
+	let opaqueQuery = createRangeQuery(opaque), containerQuery = createRangeQuery(containers);
 	function contexts(input: string): void {
 		opaque.length = containers.length = 0;
 		grammar.parse(input).iterate({ enter(node) {
 			if (/^(?:InlineCode|FencedCode|CodeBlock|HTMLBlock|HTMLTag|CommentBlock|Comment)$/u.test(node.name)) opaque.push({ from: node.from, to: node.to });
 			if (node.name === 'ListItem') containers.push({ from: node.from, to: node.to });
 		} });
+		const nativeOpaque = createRangeQuery(opaque);
 		const metadata = /^(?:\uFEFF)?---[ \t]*\r?\n[\s\S]*?(?:\r?\n(?:---|\.\.\.)[ \t]*(?=\r?\n|$)|$)/u.exec(input);
 		if (metadata) opaque.push({ from: 0, to: metadata[0].length });
 		for (let from = input.indexOf('%%'); from >= 0;) {
-			const hidden = opaque.find(range => range.from <= from && from < range.to);
+			// Native ranges precede the appended metadata range in the original first-match order.
+			const hidden = nativeOpaque.firstContainingPoint(from) ?? (metadata && from < metadata[0].length ? { to: metadata[0].length } : undefined);
 			if (hidden) { from = input.indexOf('%%', hidden.to); continue; }
 			const closing = input.indexOf('%%', from + 2), to = closing < 0 ? input.length : closing + 2;
 			opaque.push({ from, to });
 			from = input.indexOf('%%', to);
 		}
 		opaque.sort((a, b) => a.from - b.from);
+		opaqueQuery = createRangeQuery(opaque);
+		containerQuery = createRangeQuery(containers);
 	}
 	contexts(source);
 	let contextSource = source;
@@ -54,6 +60,13 @@ export function scanMathRanges(source: string): MathRangeIndex {
 		const prefix = /^[ \t]*(?:>[ \t]*)*/u.exec(text)![0];
 		rows.push({ from: offset, to: offset + text.length, body: offset + prefix.length, depth: (prefix.match(/>/gu) ?? []).length });
 		offset += text.length + 1;
+	}
+	const shallowerLimit = Array<number>(rows.length).fill(source.length), following: number[] = [];
+	for (let index = rows.length - 1; index >= 0; index--) {
+		while (following.length && rows[following.at(-1)!]!.depth >= rows[index]!.depth) following.pop();
+		const next = following.at(-1);
+		if (next !== undefined) shallowerLimit[index] = rows[next - 1]!.to;
+		following.push(index);
 	}
 	function rowAt(position: number): typeof rows[number] {
 		let first = 0, last = rows.length;
@@ -69,12 +82,12 @@ export function scanMathRanges(source: string): MathRangeIndex {
 	for (let at = 0; at < source.length;) {
 		while (rows[rowIndex]!.to < at) rowIndex++;
 		if (source[at] !== '$' || escaped(source, at)) { at++; continue; }
-		const hidden = opaque.find(range => range.from <= at && at < range.to);
+		const hidden = opaqueQuery.firstContainingPoint(at);
 		if (hidden) { at = hidden.to; continue; }
 		const end = runEnd(source, at), width = end - at;
 		if (width > 2) { at = end; continue; }
 		const row = rows[rowIndex]!, double = width === 2;
-		const owner = containers.filter(range => range.from <= at && at < range.to).at(-1);
+		const owner = containerQuery.lastContainingPoint(at);
 		const listPrefix = owner && owner.from >= row.from && /^(?:[-+*]|\d+[.)])[ \t]+(?:\[[ xX]\][ \t]+)?$/u.test(source.slice(row.body, at));
 		const standalone = double && at === row.body && !source.slice(end, row.to).trim();
 		const blockStart = at === row.body || !!listPrefix;
@@ -82,9 +95,7 @@ export function scanMathRanges(source: string): MathRangeIndex {
 		// Only a structural opening fence owns following rows; prose dollars stay on their row.
 		let limit = multiline ? source.length : row.to;
 		if (owner) limit = Math.min(limit, owner.to);
-		if (double) for (let next = rowIndex + 1; next < rows.length; next++) {
-			if (rows[next]!.depth < row.depth) { limit = Math.min(limit, rows[next - 1]!.to); break; }
-		}
+		if (double) limit = Math.min(limit, shallowerLimit[rowIndex]!);
 		if (!double && (!source[end] || /\s/u.test(source[end]))) { at = end; continue; }
 		let close = -1;
 		for (let search = end; search < limit;) {
@@ -107,7 +118,7 @@ export function scanMathRanges(source: string): MathRangeIndex {
 			expressions.push(math);
 			if (standalone) candidates.push(math);
 			// A fence/comment begun inside TeX must not claim the following Markdown.
-			if (opaque.some(range => math.from < range.from && range.from < math.to)) {
+			if (opaqueQuery.firstStartingBetween(math.from, math.to)) {
 				contextSource = contextSource.slice(0, math.from) + contextSource.slice(math.from, math.to).replace(/[^\r\n]/g, 'x') + contextSource.slice(math.to);
 				contexts(contextSource);
 			}

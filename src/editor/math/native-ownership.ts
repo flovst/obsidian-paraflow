@@ -7,6 +7,7 @@ import { discoverCodeBlocks } from '../code-blocks/model.js';
 import { isNativeReplacement } from '../runtime/native-decoration-ownership.js';
 import { pendingMathRanges } from './candidate-ranges.js';
 import { acceptedMath, discoverMath, isLiteralDollarRun, type MathExpression } from './syntax.js';
+import { createRangeQuery } from './range-query.js';
 
 type Range = { from: number; to: number };
 type NativeFilter = (from: number, to: number, decoration: Decoration) => boolean;
@@ -34,13 +35,13 @@ function mathDraftContext(state: EditorState, from: number, to: number): boolean
 
 function discoverDrafts(state: EditorState, expressions: readonly MathExpression[]): readonly Range[] {
 	const drafts: Range[] = [];
-	const code = discoverCodeBlocks(state);
+	const owned = createRangeQuery(expressions);
+	let code: ReturnType<typeof createRangeQuery> | undefined;
 	for (let number = 1; number <= state.doc.lines; number += 1) {
 		const line = state.doc.line(number), prefix = /^[ \t]*(?:>[ \t]*)*/u.exec(line.text)![0];
 		const from = line.from + prefix.length;
-		if (!isLiteralDollarRun(line.text.slice(prefix.length)) || !mathDraftContext(state, from, line.to) ||
-			code.some(block => block.from <= line.to && line.from <= block.to) ||
-			expressions.some(math => math.from <= line.to && line.from <= math.to)) continue;
+		if (!isLiteralDollarRun(line.text.slice(prefix.length)) || owned.overlapsClosed(line.from, line.to) || !mathDraftContext(state, from, line.to) ||
+			(code ??= createRangeQuery(discoverCodeBlocks(state))).overlapsClosed(line.from, line.to)) continue;
 		drafts.push({ from, to: line.to });
 	}
 	return drafts;
@@ -52,13 +53,13 @@ function analysisFor(state: EditorState): Analysis {
 		cached.accepted === current.accepted && cached.codeDraft === current.codeDraft) return cached.analysis;
 	const expressions = discoverMath(state), drafts = discoverDrafts(state, expressions);
 	const owners = [...expressions.filter(math => math.display || math.contentFrom - math.from === 2), ...drafts, ...current.pending];
+	const owned = createRangeQuery(owners);
 	const filter: NativeFilter = (from, to, decoration) => {
 		const spec = decoration.spec as { block?: boolean; widget?: { math?: unknown; block?: boolean } };
 		const displayWidget = spec.widget?.block === true && typeof spec.widget.math === 'string';
 		if (!spec.block && !displayWidget) return false;
-		return owners.some(owner =>
-			isNativeReplacement(decoration) && from < to && owner.from <= from && from < owner.to ||
-			!!spec.widget && from === to && owner.from < from && from <= owner.to);
+		return isNativeReplacement(decoration) && from < to && owned.containsPoint(from) ||
+			!!spec.widget && from === to && owned.containsEndPoint(from);
 	};
 	const analysis = { drafts, filter };
 	analyses.set(state.doc, { ...current, analysis });
