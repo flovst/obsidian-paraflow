@@ -7,6 +7,7 @@ import { applyOperationResult } from './edit-plan.js';
 import { createNavigationDestinationResolver } from './navigation-adapter.js';
 import { planSelectionIndent } from './selection-indent.js';
 import { projectedQuoteMarkerOffset } from './projection.js';
+import { headingBodyLineAt } from '../paragraph/heading-projection.js';
 import type { ContextRuntime } from './model.js';
 import {
 	executeRegisteredOperation,
@@ -170,6 +171,7 @@ function boundaryHead(view: EditorView, range: EditorSelection['main'], forward:
 }
 
 function dispatchBoundaryNavigation(view: EditorView, options: StructuredListExtensionOptions, operation: 'home' | 'end'): boolean {
+	if (headingBodyLineAt(view.state, view.state.selection.main.head)) return false;
 	if (classifyCurrentSelectionMode(view.state) === 'continuous') return dispatchNativeShiftBoundary(view, options, operation, false);
 	return dispatchOperation(view, { family: 'navigation', operation, direction: null, extend: false }, options) ||
 		dispatchNativeShiftBoundary(view, options, operation, false);
@@ -183,6 +185,7 @@ function boundarySelection(view: EditorView, forward: boolean, extend: boolean):
 }
 
 function boundaryContext(view: EditorView, options: StructuredListExtensionOptions, operation: 'home' | 'end', mode: ContextRuntime['selectionMode']) {
+	if (headingBodyLineAt(view.state, view.state.selection.main.head)) return null;
 	const services = options.services.forView(view);
 	const runtime = contextRuntime(view, { family: 'navigation', operation, direction: null, extend: true }, services);
 	const context = mode === 'caret'

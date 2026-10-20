@@ -2,10 +2,11 @@ import * as css from 'css-tree';
 import { validateRelativePath, validateThemeId } from './store.js';
 import { themeRoots } from './appearance.js';
 import type { ThemeOverrides } from './appearance.js';
+import type { ThemeManifest } from './model.js';
 import { semanticBlockRhythmCss, readingBlockRhythmCss } from '../editor/paragraph/rhythm-css.js';
 import { projectHeadingThemeSelectors } from './heading-selectors.js';
 import { projectSourceThemeTokens } from './width-selectors.js';
-import { projectContentThemeSelectors } from './content-selectors.js';
+import { isolateDiagramParagraphs, projectContentThemeSelectors, projectLinkAccentOverride } from './content-selectors.js';
 import { projectQuoteThemeTokens } from './quote-selectors.js';
 
 export function resolveThemeUrls(source: string, resourcePath: (path: string) => string): string {
@@ -14,6 +15,8 @@ export function resolveThemeUrls(source: string, resourcePath: (path: string) =>
 	projectContentThemeSelectors(ast);
 	projectQuoteThemeTokens(ast);
 	projectSourceThemeTokens(ast);
+	isolateDiagramParagraphs(ast);
+	projectLinkAccentOverride(ast);
 	css.walk(ast, (node) => {
 		if (node.type === 'Atrule' && node.name.toLowerCase() === 'import') throw new Error('Theme CSS must contain no runtime imports');
 		if (node.type !== 'Url' || node.value.startsWith('data:')) return;
@@ -25,12 +28,12 @@ export function resolveThemeUrls(source: string, resourcePath: (path: string) =>
 	return css.generate(ast);
 }
 
-export function contentTokenBridge(id: string, overrides: ThemeOverrides = {}): string {
+export function contentTokenBridge(id: string, overrides: ThemeOverrides = {}, origin?: ThemeManifest['origin']): string {
  const {body,live,source,reading,roots,widthRoots} = themeRoots(id);
  const exclude = ':not(:is(.callout,.callout *,.markdown-embed,.markdown-embed *))';
  return `
 ${body}{
- --paraflow-host-font:var(--font-text); --paraflow-host-size:var(--font-text-size);
+ --paraflow-host-font:var(--font-text); --paraflow-host-size:var(--font-text-size); --paraflow-host-weight:var(--font-weight);
  --paraflow-host-width:var(--file-line-width); --paraflow-host-line-height:var(--line-height-normal);
  --paraflow-host-accent:var(--interactive-accent);
 }
@@ -40,6 +43,7 @@ ${widthRoots}{
 }
 ${source}{--paraflow-width-font-size:var(--paraflow-host-size)}
 ${roots},${source}{
+ ${origin === 'imported' ? '--paraflow-default-strong-weight:700;--paraflow-default-footnote-size:calc(.9 * var(--paraflow-root-font-size,var(--font-text-size)));' : ''}
  --paraflow-line-height:var(--paraflow-paragraph-line-height,var(--paraflow-content-line-height,var(--paraflow-host-line-height)));
 }
 ${roots},${source}{
@@ -47,6 +51,12 @@ ${roots},${source}{
  --font-text-size:var(--paraflow-paragraph-size,var(--paraflow-content-font-size,var(--paraflow-host-size)));
  --link-color:var(--paraflow-link-color,var(--paraflow-host-accent));
  --link-external-color:var(--link-color);
+ --tag-color:var(--link-color);--tag-color-hover:var(--link-color);
+ --tag-background:color-mix(in oklch,var(--link-color) 10%,transparent);
+ --tag-background-hover:color-mix(in oklch,var(--link-color) 20%,transparent);
+ --tag-border-color:color-mix(in oklch,var(--link-color) 15%,transparent);
+ --tag-border-color-hover:color-mix(in oklch,var(--link-color) 30%,transparent);
+ --table-header-color:var(--paraflow-content-color,var(--text-normal));
  font-family:var(--font-text); font-size:var(--font-text-size);
  color:var(--paraflow-content-color,var(--text-normal));
  background-color:var(--paraflow-content-background,var(--background-primary));
@@ -76,6 +86,7 @@ ${source}>.cm-editor>.cm-scroller>.cm-sizer>.cm-contentContainer>.cm-content{
  color:var(--paraflow-content-color,var(--text-normal));
 }
 ${reading}>.markdown-preview-view>.markdown-preview-sizer{
+ font-weight:var(--paraflow-paragraph-weight,var(--paraflow-content-weight,400));
  max-width:var(--paraflow-text-width);margin-inline:auto;
 }
 /* The outside input row participates in the page's single terminal-clearance budget. */
@@ -104,14 +115,30 @@ ${reading} p${exclude}{
 }
 ${reading} blockquote.paraflow-display-quote > *:not(.markdown-embed){margin-block:0}
 ${reading} blockquote.paraflow-display-quote > * + *:not(.markdown-embed){margin-block-start:var(--paraflow-callout-gap,calc(.8 * var(--font-text-size,1rem)))}
+${reading} :is(ul,ol)>li:has(+li):not(.markdown-embed *)>p:last-child{
+ margin-block-end:var(--paraflow-list-sibling-gap,var(--paraflow-p-margin-bottom,var(--paraflow-block-gap,.8em)));
+}
 ${reading} .paraflow-code-display-frame > pre.paraflow-code-display{margin-inline:0}
+${live} :where(a),${reading} :where(a){font-weight:inherit}
 ${live} :where(table),${reading} :where(table){font-weight:var(--paraflow-content-weight,400)}
+${origin ? `/* Host cell-size variables resolve at body, before a content theme's table size. */
+${live} :where(table) :where(td,th),${reading} :where(table) :where(td,th){font-size:inherit}
+${live} .paraflow-rendered-block-html .paraflow-rendered-block-content p{
+ margin-block-start:var(--paraflow-p-margin-top,var(--paraflow-block-gap,1em));
+ margin-block-end:var(--paraflow-p-margin-bottom,var(--paraflow-block-gap,1em));
+}` : ''}
 ${reading} li${exclude},${reading} :is(ul,ol):has(>li)${exclude},${live} .HyperMD-list-line:not(.paraflow-code-line)${exclude}{
  font-family:var(--paraflow-list-font,var(--font-text));font-size:var(--paraflow-list-size,var(--font-text-size));
  font-weight:var(--paraflow-list-weight,var(--paraflow-paragraph-weight,var(--paraflow-content-weight,400)));
  line-height:var(--paraflow-list-line-height,var(--paraflow-line-height));
 }
 ${live} .cm-link .cm-underline${exclude},${live} .cm-url${exclude},${reading} a${exclude}{color:var(--link-color)}
+${live} a.tag${exclude},${reading} a.tag${exclude}{color:var(--tag-color)}
+${live} .cm-hashtag${exclude}{line-height:1}
+${live} .paraflow-quote-line.HyperMD-task-line:is([data-task="x"],[data-task="X"])${exclude}{color:var(--checklist-done-color)}
+${live} .paraflow-display-table a.tag${exclude},${reading} .paraflow-display-table a.tag${exclude}{color:var(--tag-color)}
+${reading} :is(strong,b)${exclude},${live} :is(strong,b,.cm-strong)${exclude}{font-weight:var(--paraflow-strong-weight,var(--paraflow-default-strong-weight,var(--bold-weight,700)))}
+${reading} .callout.paraflow-display-callout :is(strong,b):not(.markdown-embed *),${live} .callout.paraflow-display-callout :is(strong,b,.cm-strong):not(.markdown-embed *){font-weight:var(--paraflow-strong-weight,var(--paraflow-default-strong-weight,var(--bold-weight,700)))}
 ${live} .cm-cursor{border-left-color:var(--paraflow-content-color,var(--text-normal))}
 ${live} .metadata-container,${reading} .metadata-container{
  --metadata-label-font:var(--paraflow-metadata-font,var(--font-monospace));

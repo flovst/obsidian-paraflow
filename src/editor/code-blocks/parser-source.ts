@@ -3,7 +3,7 @@ import { parser } from '@lezer/markdown';
 import { Parser, type Input, type TreeFragment } from '@lezer/common';
 import { codeDraft, codeDraftState, type CodeDraft } from './draft-state.js';
 
-export interface CodeParserRange { from: number; to: number }
+export interface CodeParserRange { from: number; to: number; fill?: ' ' }
 export interface CodeParserSource { masks: readonly CodeParserRange[]; opaque: readonly CodeParserRange[] }
 const empty: CodeParserSource = { masks: [], opaque: [] };
 export const codeParserSource = Facet.define<CodeParserSource, CodeParserSource>({ combine: values => values[0] ?? empty });
@@ -12,7 +12,7 @@ export const codeParserSource = Facet.define<CodeParserSource, CodeParserSource>
 export function maskCodeSource(source: string, ranges: readonly CodeParserRange[]): string {
 	let result = '', position = 0;
 	for (const range of ranges) {
-		result += source.slice(position, range.from) + source.slice(range.from, range.to).replace(/[^\r\n]/gu, char => 'x'.repeat(char.length));
+		result += source.slice(position, range.from) + source.slice(range.from, range.to).replace(/[^\r\n]/gu, char => (range.fill ?? 'x').repeat(char.length));
 		position = range.to;
 	}
 	return result + source.slice(position);

@@ -1,17 +1,22 @@
 import { pendingMath, pendingMathAt, pendingMathRanges, type PendingMathRange } from '../math/candidate-ranges.js';
-import { defineLanguageFacet, ensureSyntaxTree, Language, languageDataProp } from '@codemirror/language';
-import { EditorSelection, EditorState, type Text } from '@codemirror/state';
+import { defineLanguageFacet, ensureSyntaxTree, Language, languageDataProp, syntaxTree } from '@codemirror/language';
+import { EditorSelection, EditorState, Facet, type Text } from '@codemirror/state';
 import type { SyntaxNode, Tree } from '@lezer/common';
 import { GFM, parser } from '@lezer/markdown';
 import { paragraphProjectionField } from '../paragraph/projection.js';
-import {emptyBodies,emptyBodyState} from '../runtime/empty-body-state.js';
-import { containerListGrammar, hasNativeOwnership, metadataGrammar, nativeInlineGrammarFor } from './syntax.js';
+import {emptyBodies,emptyBodyState,createdBodyOwnership,createdBodyOwnershipState} from '../runtime/empty-body-state.js';
+import { containerListGrammar, metadataGrammar, nativeInlineGrammarFor } from '../markdown-grammar.js';
+import { hasNativeOwnership } from './syntax.js';
 import { mathSyntaxTree } from '../math/semantic-tree.js';
 import { mathRangeIndex } from '../math/syntax.js';
 import { quoteDraftMasks, maskQuoteDraftSource } from './quote-draft.js';
 import { scanMathRanges } from '../math/range-scanner.js';
 import { codeDraft, type CodeDraft } from '../code-blocks/draft-state.js';
 import { codeDraftMask, codeDraftParser, maskCodeSource } from '../code-blocks/parser-source.js';
+import {quotePrefix} from './prefix.js';
+import {quotedTabStarts} from './body-tab-source.js';
+import {bodyTabParser} from './body-tab-parser.js';
+export {quotePrefix} from './prefix.js';
 
 const languageData = defineLanguageFacet();
 const grammar = parser.configure([GFM, containerListGrammar, {
@@ -19,6 +24,8 @@ const grammar = parser.configure([GFM, containerListGrammar, {
 }]);
 const documentGrammar = grammar.configure(metadataGrammar);
 const trees = new WeakMap<Text, { ranges: readonly PendingMathRange[]; draft: CodeDraft | null; quotes: readonly PendingMathRange[]; tree: Tree }>();
+const paragraphTabs = new WeakMap<Text, readonly number[]>();
+const projectedContent=Facet.define<boolean,boolean>({combine:values=>values.some(Boolean)});
 
 interface ProjectedLine {
 	readonly from: number;
@@ -75,11 +82,21 @@ export function projectQuoteContent(state: EditorState, from: number, to: number
 		const line = lines.find(line => line.from <= range.from && range.from <= line.from + line.prefix.length + line.text.length)!;
 		return range.from < line.from + line.prefix.length ? [] : [{ from: toVirtual(range.from), to: toVirtual(range.to) }];
 	});
-	const masks = [...codeDraftMask(source, draft), ...quotes].sort((a, b) => a.from - b.from);
+	let tabs=paragraphTabs.get(state.doc);
+	if(!tabs){const found=quotedTabStarts(state.sliceDoc());tabs=[...found.paragraphs,...found.blocks].sort((a,b)=>a-b);paragraphTabs.set(state.doc,tabs);}
+	const tabMasks=tabs.filter(at=>from<=at&&at<=to).map(at=>({from:toVirtual(at),to:toVirtual(at)+1,fill:' ' as const}));
+	const masks = [...codeDraftMask(source, draft), ...quotes,...tabMasks].sort((a, b) => a.from - b.from);
 	const normalized = maskCodeSource(source, masks);
-	const projectedLanguage = new Language(languageData, codeDraftParser(grammar.configure(nativeInlineGrammarFor(scanMathRanges(normalized).expressions, pending)), masks), [], 'paraflow-callout-content');
-	const virtual = EditorState.create({ doc: source, extensions: [projectedLanguage,pendingMath.of(pending),codeDraft.of(draft),quoteDraftMasks.of(quotes),
-		emptyBodyState.init(()=>drafts),paragraphProjectionField] });
+	const projectedLanguage = new Language(languageData, bodyTabParser(codeDraftParser(grammar.configure(nativeInlineGrammarFor(scanMathRanges(normalized).expressions, pending)), masks),tabMasks.map(mask=>mask.from)), [], 'paraflow-callout-content');
+	const virtual = EditorState.create({ doc: source, extensions: [projectedLanguage,projectedContent.of(true),pendingMath.of(pending),codeDraft.of(draft),quoteDraftMasks.of(quotes),
+		emptyBodyState.init(()=>drafts),createdBodyOwnershipState.init(()=>createdBodyOwnership(state).flatMap(body => {
+            const line=lines.find(line=>line.from===body.lineFrom);
+            if(!line)return [];
+            const owner=body.ownerFrom===null?null:lines.find(line=>line.from===body.ownerFrom);
+            return [{...body,lineFrom:line.virtualFrom,bodyFrom:toVirtual(body.bodyFrom),prefix:body.prefix.slice(line.prefix.length),
+                ...(body.maintenanceFrom===undefined?{}:{maintenanceFrom:toVirtual(body.maintenanceFrom)}),
+                ownerFrom:owner?.virtualFrom??null,ownerPrefix:owner?body.ownerPrefix.slice(owner.prefix.length):''}];
+        })),paragraphProjectionField] });
 	ensureSyntaxTree(virtual, virtual.doc.length, Infinity);
 	return {
 		depth, end: to, lines, state: virtual,
@@ -89,17 +106,6 @@ export function projectQuoteContent(state: EditorState, from: number, to: number
 			return projected.from + projected.prefix.length + position - line.from;
 		},
 	};
-}
-
-export function quotePrefix(text: string, depth: number): string | null {
-	let length = 0;
-	for (let index = 0; index < depth; index += 1) {
-		// Callers have established quote ownership; leading whitespace may belong to a list.
-		const match = (index === 0 ? /^[ \t]*>[ \t]?/u : /^ {0,3}>[ \t]?/u).exec(text.slice(length));
-		if (!match) return null;
-		length += match[0].length;
-	}
-	return text.slice(0, length);
 }
 
 function quoteDepth(node: SyntaxNode): number {
@@ -118,6 +124,7 @@ function isCallout(node: SyntaxNode, state: EditorState): boolean {
 }
 
 export function contentSyntaxTree(state: EditorState): Tree {
+	if(state.facet(projectedContent))return syntaxTree(state);
 	const pending = pendingMathRanges(state), draft = state.facet(codeDraft), quotes = state.facet(quoteDraftMasks), cached = trees.get(state.doc);
 	if (cached?.ranges === pending && cached.draft === draft && cached.quotes === quotes) return cached.tree;
 	const source = state.doc.toString();
@@ -143,7 +150,6 @@ function containerAt(state: EditorState, position: number): SyntaxNode | null {
 
 /** Only the proven quote container is projected; native syntax and geometry stay intact. */
 export function projectCallout(state: EditorState, selection = state.selection.main): CalloutProjection | null {
-	if (!pendingMathAt(state, selection.from, selection.to) && hasNativeOwnership(mathSyntaxTree(state), selection.from, selection.to)) return null;
 	const container = containerAt(state, selection.head);
 	if (!container) return null;
 	const depth = quoteDepth(container);
@@ -160,6 +166,7 @@ export function projectCallout(state: EditorState, selection = state.selection.m
 	const anchor = toVirtual(selection.anchor);
 	const head = toVirtual(selection.head);
 	if (anchor === null || head === null) return null;
+	if (!pendingMathAt(state, selection.from, selection.to) && hasNativeOwnership(mathSyntaxTree(projection.state),Math.min(anchor,head),Math.max(anchor,head))) return null;
 	const mappedSelection = selection.empty
 		? EditorSelection.cursor(head, selection.assoc, selection.bidiLevel ?? undefined, selection.goalColumn)
 		: EditorSelection.range(anchor, head, selection.goalColumn, selection.bidiLevel ?? undefined);

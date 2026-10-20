@@ -4,13 +4,15 @@ import {getParagraphProjectionState} from '../paragraph/projection.js';
 import {normalizeParagraphSelectionEndpoint} from '../paragraph/selection-protection.js';
 import {createRenderedSourceClickExtension,handoffRenderedSourceGesture} from './rendered-source-click.js';
 import {compositionStateField} from './input-state.js';
-import {isVirtualTailActive,setVirtualTail,enterVirtualTail} from './virtual-tail.js';
+import {isVirtualEdgeActive,setVirtualTail,enterVirtualTail,virtualTailState,setEdgePointer} from './virtual-tail.js';
 import {clearTableFocus,requestTableFocus,tableActivationDestination} from '../table/focus-handoff.js';
 
 /** Immutable spacing and outside EOF share the ordinary source-pointer gesture. */
 export function createBlankPointerExtension(isActive:(view:EditorView)=>boolean):Extension {
 	return [createRenderedSourceClickExtension(),ViewPlugin.define(view=>{
 		let forwarding=false;
+		let pressed=false;
+		let pointerSide:'before'|'after'|null=null;
 		const active=()=>isActive(view)&&!view.state.readOnly;
 		const down=(event:MouseEvent)=>{
 			if(forwarding||event.defaultPrevented||!active()||event.button!==0||event.ctrlKey||event.metaKey||event.altKey||event.detail>1||view.composing||view.state.field(compositionStateField,false))return;
@@ -18,6 +20,7 @@ export function createBlankPointerExtension(isActive:(view:EditorView)=>boolean)
 			if(target.closest('.cm-editor')!==view.dom||target.closest('button,input,select,textarea,a,table,[role="button"]'))return;
 			const editable=target.closest('[contenteditable="true"]');
 			if(editable&&editable!==view.contentDOM)return;
+			pressed=true;
 			const tail=view.contentDOM.querySelector<HTMLElement>('.paraflow-virtual-tail');
 			const first=view.contentDOM.querySelector<HTMLElement>('.paraflow-virtual-head');
 			const firstBox=first?.getBoundingClientRect();
@@ -44,8 +47,8 @@ export function createBlankPointerExtension(isActive:(view:EditorView)=>boolean)
 					if(position!==null)position=normalizeParagraphSelectionEndpoint(view.state,position,bias,event.shiftKey?'range':'cursor');
 				}
 			}
-			if(position===null){if(isVirtualTailActive(view.state))view.dispatch({effects:setVirtualTail.of(null)});return;}
-			const edge=(outside||before)&&!event.shiftKey?enterVirtualTail(view.state,{side:before?'before':'after'}):null;
+			if(position===null){if(isVirtualEdgeActive(view.state))view.dispatch({effects:setVirtualTail.of(null)});return;}
+			const edge=(outside||before)?enterVirtualTail(view.state,{side:before?'before':'after',anchor:event.shiftKey?view.state.selection.main.anchor:undefined}):null;
 			if(edge?.selection)position='anchor' in edge.selection?edge.selection.anchor:edge.selection.main.head;
 			const effects=edge?.effects??[setVirtualTail.of(null)];
 			const table=!event.shiftKey&&!edge?tableActivationDestination(view,position):null;
@@ -59,7 +62,30 @@ export function createBlankPointerExtension(isActive:(view:EditorView)=>boolean)
 				}
 			}finally{forwarding=false;}
 		};
+		// Native CM drag has the same source offset at the final character and at
+		// an outside row when there is no terminal LF. Preserve the actual hit.
+		const move=(event:MouseEvent)=>{
+			if(!pressed||event.buttons!==1||!active()||view.state.selection.ranges.length!==1)return;
+			const tail=view.contentDOM.querySelector<HTMLElement>('.paraflow-virtual-tail')?.getBoundingClientRect();
+			const first=view.contentDOM.querySelector<HTMLElement>('.paraflow-virtual-head')?.getBoundingClientRect();
+			const side=tail&&event.clientY>=tail.top?'after':first&&event.clientY<=first.bottom?'before':null;
+			if(side===pointerSide)return;
+			pointerSide=side;
+			const current=view.state.field(virtualTailState);
+			if(side){const entry=enterVirtualTail(view.state,{side,anchor:view.state.selection.main.anchor});view.dispatch(entry,{effects:setEdgePointer.of(side)});}
+			else view.dispatch({effects:[setEdgePointer.of(null),...(current&&!view.state.selection.main.empty?[setVirtualTail.of(null)]:[])]});
+		};
+		const release=()=>{
+			if(!pressed)return;
+			pressed=false;
+			if(pointerSide===null)return;
+			pointerSide=null;
+			view.dispatch({effects:setEdgePointer.of(null)});
+		};
 		view.dom.addEventListener('mousedown',down,true);
-		return {destroy(){view.dom.removeEventListener('mousedown',down,true);}};
+		view.dom.ownerDocument.addEventListener('mousemove',move,true);
+		view.dom.ownerDocument.addEventListener('mouseup',release);
+		view.dom.ownerDocument.defaultView!.addEventListener('blur',release);
+		return {destroy(){view.dom.removeEventListener('mousedown',down,true);view.dom.ownerDocument.removeEventListener('mousemove',move,true);view.dom.ownerDocument.removeEventListener('mouseup',release);view.dom.ownerDocument.defaultView!.removeEventListener('blur',release);}};
 	})];
 }

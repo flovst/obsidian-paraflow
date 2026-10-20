@@ -29,6 +29,10 @@ import {requestTableFocus,tableActivationDestination} from '../table/focus-hando
 const PARAGRAPH_ACTIVE_CLASS = 'paraflow-paragraph-editing-active';
 
 export interface ParagraphExtensionOptions extends ParagraphKeymapOptions {
+	/** Host ownership before a view's activation identity has been installed. */
+	readonly isSurfaceState?: (state: EditorState) => boolean;
+	readonly includeInline?: boolean;
+	readonly mathEnabled?: () => boolean;
 	readonly editLinksOnPlainClick?: () => boolean;
 	readonly openReferenceLink?: LinkInteractionOptions['openReferenceLink'];
 	readonly renderInlineHtml?: InlineHtmlRenderer;
@@ -78,7 +82,7 @@ function createActivationExtension(
 	};
 	return [
 		EditorView.editorAttributes.of((view) => ({
-			class: isActive(view, options) ? PARAGRAPH_ACTIVE_CLASS : '',
+			class: isActive(view, options) ? [PARAGRAPH_ACTIVE_CLASS, options.includeHeadings === false ? '' : 'paraflow-headings-active', options.includeInline === false ? '' : 'paraflow-inline-active'].filter(Boolean).join(' ') : '',
 		})),
 		Prec.highest(ViewPlugin.fromClass(class {
 			private active: boolean;
@@ -130,7 +134,7 @@ function createActivationExtension(
 					const initialize = eligible && initializing && this.activationCaretUnchanged && mode === 'unknown' &&
 						ordinaryParagraphAtCaret(state, range.head, getParagraphProjectionState(state)?.authority.paragraphs) !== null;
 					const normalize = eligible && !isVirtualTailActive(state);
-					const normalizedPosition = normalize ? normalizeParagraphSelectionEndpoint(state, range.head, -1) : range.head;
+					const normalizedPosition = normalize ? normalizeParagraphSelectionEndpoint(state, range.head, -1, 'cursor', false) : range.head;
 					const tableDestination = normalize ? tableActivationDestination(this.view,normalizedPosition) : null;
 					const position = tableDestination?.position ?? normalizedPosition;
 					const transaction = state.update({
@@ -160,6 +164,8 @@ export function createParagraphExtension(options: ParagraphExtensionOptions): Ex
 		},
 	});
 	const tokenViews = new Map<object, TokenViewCounts>();
+	const isStateActive = (state: EditorState): boolean => options.isLivePreview(state) &&
+		(state.field(surfaceIdentityField, false)?.active ?? options.isSurfaceState?.(state) ?? true);
 	return [
 		surfaceIdentityField,
 		createActivationExtension(
@@ -169,34 +175,23 @@ export function createParagraphExtension(options: ParagraphExtensionOptions): Ex
 			tokenViews,
 		),
 		createParagraphProjection({ isActive: (view) => isActive(view, options) }),
-		createBlockBoundarySpacing(state => {
-			const identity = state.field(surfaceIdentityField, false);
-			return options.isLivePreview(state) && (identity?.active ?? true);
-		}),
+		createBlockBoundarySpacing(isStateActive),
 		createThematicBreakProjection(view => isActive(view, options)),
-		createHeadingProjection(
+		options.includeHeadings === false ? [] : createHeadingProjection(
 			(view) => isActive(view, options),
-			(state) => {
-				const identity = state.field(surfaceIdentityField, false);
-				return options.isLivePreview(state) && (identity?.active ?? true);
-			},
+			isStateActive,
 		),
-		createInlineSelectionProjection(
-			(state) => {
-				const identity = state.field(surfaceIdentityField, false);
-				return options.isLivePreview(state) && (identity?.active ?? true);
-			},
+		options.includeInline === false ? [] : createInlineSelectionProjection(
+			isStateActive,
 			(view) => isActive(view, options),
 			options.renderInlineHtml,
 		),
 		options.mathRendering ? createMathEditingExtension({
 			...options.mathRendering,
-			isStateActive: state => {
-				const identity = state.field(surfaceIdentityField, false);
-				return options.isLivePreview(state) && (identity?.active ?? true);
-			},
+			isEnabled: options.mathEnabled,
+			isStateActive: state => (options.mathEnabled?.() ?? true) && isStateActive(state),
 		}) : [],
-		createLinkInteraction({
+		options.includeInline === false ? [] : createLinkInteraction({
 			editLinksOnPlainClick: options.editLinksOnPlainClick ?? (() => true),
 			openReferenceLink: options.openReferenceLink,
 			isActive: (view) => isActive(view, options),

@@ -3,11 +3,11 @@ const item = ':is(.HyperMD-list-line,.paraflow-list-owned-line):not(.paraflow-li
 
 /** Source body and containers consume the same list row geometry. */
 export const LIST_RHYTHM_CSS = `
-${listOwner}{--paraflow-live-list-content-offset:.75em;--paraflow-list-row-padding:.3em}
-${listOwner} .paraflow-list-continuation-line{padding-block:0}
-${listOwner} .cm-line.paraflow-list-owned-line.paraflow-list-continuation-line{padding-block-start:0}
-${listOwner} ${item}:has(+ .paraflow-list-continuation-line){padding-block-end:0}
-${listOwner} .paraflow-list-continuation-line:not(:has(+ .paraflow-list-continuation-line)){
+${listOwner}{--paraflow-live-list-content-offset:.75em}
+${listOwner} .paraflow-list-continuation-line:not(.paraflow-list-empty-body-line){padding-block:0}
+${listOwner} .cm-line.paraflow-list-owned-line.paraflow-list-continuation-line:not(.paraflow-list-empty-body-line){padding-block-start:0}
+${listOwner} ${item}:has(+ .paraflow-list-continuation-line:not(.paraflow-list-empty-body-line)){padding-block-end:0}
+${listOwner} .paraflow-list-continuation-line:not(:has(+ .paraflow-list-continuation-line:not(.paraflow-list-empty-body-line))){
  padding-block-end:var(--paraflow-list-row-padding,.25em);
 }
 ${listOwner} ${item} + .paraflow-list-owned-blank-line:has(+ ${item}){

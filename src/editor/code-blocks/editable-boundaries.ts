@@ -1,15 +1,22 @@
-import { EditorSelection, Facet, type EditorState, type SelectionRange, type Transaction } from '@codemirror/state';
+import { countColumn, EditorSelection, Facet, type EditorState, type SelectionRange, type Transaction } from '@codemirror/state';
 import type { CodeBlock } from './model.js';
 import { containerBlockFrame } from '../callout/container-surface.js';
 import { projectQuoteContent } from '../callout/projection.js';
 import { getParagraphProjectionState } from '../paragraph/projection.js';
 import { discoverCodeBlocks } from './model.js';
-import {isVirtualTailActive} from '../runtime/virtual-tail.js';
+import {documentContentStart,isVirtualEdgeActive} from '../runtime/virtual-tail.js';
 import {calloutGaps} from '../callout/gaps.js';
 
 export const codeMarkersActive = Facet.define<boolean,boolean>({combine:values=>values.some(Boolean)});
 import {codeDraftStart} from './draft-state.js';
 export {codeDraftStart} from './draft-state.js';
+
+/** Match the same container prefix used when the virtual code body materializes. */
+export function codeContinuationPrefix(state: EditorState, block: CodeBlock): string {
+	const text = state.doc.lineAt(block.closed ? block.barAt : block.from).text;
+	return text.slice(0, text.search(/`{3,}|~{3,}/u)).replace(/(?:[-+*]|\d+[.)])[ \t]+$/u,
+		marker => ' '.repeat(countColumn(marker, 4)));
+}
 
 /** Metadata navigation enters content after structural container prefixes. */
 export function codeBodyStart(state: EditorState, block: CodeBlock): number {
@@ -22,7 +29,8 @@ export function codeBodyStart(state: EditorState, block: CodeBlock): number {
 
 /** Fences include their adjacent newline positions, but actual body blank rows remain editable. */
 export function editableEndpoint(state: EditorState, blocks: readonly CodeBlock[], position: number, direction: number, range: SelectionRange): number {
-	if(isVirtualTailActive(state)&&range.empty&&position===state.doc.length)return position;
+	if(isVirtualEdgeActive(state)&&position===range.head)return position;
+	if(!range.empty&&position===0&&documentContentStart(state)>0)return position;
 	for (const block of blocks) {
 		if (block.indented || state.facet(codeDraftStart) === block.from) continue;
 		// A range spanning the entire construct must retain its complete Markdown source.

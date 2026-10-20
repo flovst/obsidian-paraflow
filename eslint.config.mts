@@ -22,11 +22,9 @@ export default defineConfig(
 			},
 			parserOptions: {
 				projectService: {
-					maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING: 64,
 					allowDefaultProject: [
 						'eslint.config.mts',
 						'manifest.json',
-						'scripts/*.mjs',
 					],
 				},
 				tsconfigRootDir: import.meta.dirname,

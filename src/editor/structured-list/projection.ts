@@ -19,7 +19,7 @@ import {
 import type { SyntaxNode, Tree } from '@lezer/common';
 import { buildProjectionContexts } from './context.js';
 import { structuralEditAnnotation } from './edit-plan.js';
-import { listBlankRuns, type ListBlankRun } from './blank-runs.js';
+import { listBlankRuns, mapListBlankRuns, type ListBlankRun } from './blank-runs.js';
 import { createListEmptyBodyState } from './empty-body-state.js';
 import {
 	markerForProjection,
@@ -88,6 +88,7 @@ interface ListEnvelope extends SourceRange {
 }
 
 interface ProjectionAuthorityItem {
+	readonly blankRuns?: readonly ListBlankRun[];
 	readonly item: SourceRange;
 	readonly marker: StructuredListMarker;
 	readonly ownedLines: readonly ProjectionOwnedLine[];
@@ -372,6 +373,7 @@ function entryForContext(
 	const markerEnd = outerMarker.to - context.block.prefix.separatorText.length;
 	return {
 		collapsedSeparator: null,
+		blankRuns: context.blankRuns,
 		item: { ...context.block.item },
 		marker,
 		ownedLines: context.ownedLines.map((line) => ({
@@ -398,7 +400,8 @@ function projectionAuthority(
 	recordProjectionWork(state, 'authority');
 	return {
 		envelopes: completeListEnvelopes(state),
-		items: entries.map(({ item, marker, ownedLines, prefix, replacement, taskToken }) => ({
+		items: entries.map(({ item, marker, ownedLines, prefix, replacement, taskToken, blankRuns }) => ({
+			blankRuns,
 			item,
 			marker,
 			ownedLines,
@@ -465,6 +468,7 @@ function mapAuthority(
 			name: envelope.name,
 		})),
 		items: authority.items.map((item) => ({
+			blankRuns: item.blankRuns && mapListBlankRuns(item.blankRuns,at=>transaction.changes.mapPos(at)),
 			item: mapRange(transaction, item.item),
 			marker: item.marker,
 			ownedLines: item.ownedLines.map((line) => ({
@@ -505,10 +509,18 @@ function sameMarker(left: StructuredListMarker, right: StructuredListMarker): bo
 	return leftFacts.every((value, index) => value === rightFacts[index]);
 }
 
+function sameBlankRuns(left: readonly ListBlankRun[] = [], right: readonly ListBlankRun[] = []): boolean {
+	return pairwiseEqual(left,right,(a,b)=>sameRange(a.range,b.range) &&
+		pairwiseEqual(a.rows,b.rows,(x,y)=>x.at===y.at && x.kind===y.kind) &&
+		pairwiseEqual(a.editableBodies,b.editableBodies,sameRange) &&
+		pairwiseEqual(a.transparentRanges,b.transparentRanges,sameRange));
+}
+
 function sameAuthorityItem(
 	left: ProjectionAuthorityItem,
 	right: ProjectionAuthorityItem,
 ): boolean {
+	if (!sameBlankRuns(left.blankRuns,right.blankRuns)) return false;
 	const leftRanges = [left.item, left.prefix, left.replacement];
 	const rightRanges = [right.item, right.prefix, right.replacement];
 	return pairwiseEqual(leftRanges, rightRanges, sameRange) && sameMarker(left.marker, right.marker) &&
@@ -823,6 +835,11 @@ function sentinelDecorations(entry: ProjectionEntry) {
 
 export function decorationsFor(entries: readonly ProjectionEntry[]): DecorationSet {
 	const blankRows = new Map(listBlankRuns(entries).flatMap(run => run.rows.map(row => [row.at, row.kind] as const)));
+	const ownedLines = entries.flatMap(entry => entry.ownedLines);
+	const bodySeparators = new Set(ownedLines.filter(line => line.createdBody).flatMap(body =>
+		ownedLines.filter(line => line.range.to + 1 === body.range.from && line.prefix.to === line.range.to && !line.createdBody)
+			.map(line => line.range.from)));
+	const ownedStarts = new Set(entries.flatMap(entry=>entry.ownedLines.map(line=>line.range.from)));
 	const ranges = entries.flatMap((entry) => [
 		...(entry.marker.depth < 6 ? [Decoration.line({ attributes: {
 			class: 'paraflow-list-marker-line', style: `--paraflow-list-depth:${entry.marker.depth}`,
@@ -845,15 +862,18 @@ export function decorationsFor(entries: readonly ProjectionEntry[]): DecorationS
 			)]
 			: []),
 		...entry.ownedLines.map((line) =>
-			Decoration.line({ attributes: { class: ownedLineClass(line, emptyBodyLine(entry, line), entry.marker.kind === 'task' && entry.marker.label !== null) +
+			Decoration.line({ attributes: { class: bodySeparators.has(line.range.from) ? 'paraflow-list-body-separator' : ownedLineClass(line, emptyBodyLine(entry, line), entry.marker.kind === 'task' && entry.marker.label !== null) +
 				(emptyBodyLine(entry, line) ? ' paraflow-list-empty-body-line' : '') +
-				(blankRows.has(line.range.from) ? ` paraflow-list-blank-${blankRows.get(line.range.from)!}` : '') } }).range(line.range.from)),
-		...entry.ownedLines.filter(line => emptyBodyLine(entry, line)).map(line =>
+				((line.kind === 'blank' || !line.createdBody) && blankRows.has(line.range.from) ? `${line.kind === 'blank' ? '' : ' paraflow-list-owned-blank-line'} paraflow-list-blank-${blankRows.get(line.range.from)!}` : '') } }).range(line.range.from)),
+		...entry.ownedLines.filter(line => emptyBodyLine(entry, line) && !bodySeparators.has(line.range.from)).map(line =>
 			Decoration.replace({ widget: new StructuredListEmptyBodyWidget() }).range(line.prefix.from, line.prefix.to)),
 		...entry.ownedLines.flatMap((line) => line.rendering === 'projected' && !emptyBodyLine(entry, line) && line.prefix.from < line.prefix.to
 			? [Decoration.replace({}).range(line.prefix.from, line.prefix.to)]
 			: []),
 	]);
+	for (const [at,kind] of blankRows) if (!ownedStarts.has(at)) {
+		ranges.push(Decoration.line({attributes:{class:`paraflow-list-owned-blank-line paraflow-list-blank-${kind}`}}).range(at));
+	}
 	return Decoration.set(ranges, true);
 }
 
@@ -1019,6 +1039,7 @@ function livePreviewEnabled(state: EditorState): boolean {
 
 function mapEntry(transaction: Transaction, entry: ProjectionEntry): ProjectionEntry {
 	return {
+		blankRuns: entry.blankRuns && mapListBlankRuns(entry.blankRuns,at=>transaction.changes.mapPos(at)),
 		collapsedSeparator: entry.collapsedSeparator
 			? mapRange(transaction, entry.collapsedSeparator)
 			: null,

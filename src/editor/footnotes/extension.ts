@@ -2,7 +2,7 @@ import { foldedRanges, syntaxTree, unfoldEffect } from '@codemirror/language';
 import { EditorSelection, Prec, StateEffect, StateField, Transaction, type Extension, type Range } from '@codemirror/state';
 import { Decoration, EditorView, ViewPlugin, WidgetType, hoverTooltip, type DecorationSet, type ViewUpdate } from '@codemirror/view';
 import { buildFootnoteIndex, footnoteDefinitionContent, type FootnoteDefinition, type FootnoteIndex, type FootnoteRange, type FootnoteReference } from './index.js';
-import { classifyCurrentSelectionMode, createInputStateExtension } from '../runtime/input-state.js';
+import { classifyCurrentSelectionMode, createInputStateExtension, requireCompositionState } from '../runtime/input-state.js';
 import { createSelectionPresentationSessionExtension, selectionPointerPressed, selectionProjectionCoverage } from '../runtime/selection-session.js';
 import { bindRenderedSourceClick, createRenderedSourceClickExtension, renderedSourcePointerPosition } from '../runtime/rendered-source-click.js';
 import { createNativeDecorationOwnership, nativeInlineOwnership, isNativeReplacement } from '../runtime/native-decoration-ownership.js';
@@ -130,9 +130,9 @@ class BacklinksWidget extends WidgetType {
 	ignoreEvent(): boolean { return false; }
 }
 
-function project(view: EditorView, options: FootnoteOptions, composing: boolean,
+function project(view: EditorView, options: FootnoteOptions,
 	onKeydown: (event: KeyboardEvent) => void, activeSource: FootnoteRange | null, isOwnerActive: () => boolean): DecorationSet {
-	if (composing || view.composing || !options.isActive(view)) return Decoration.none;
+	if (!options.isActive(view)) return Decoration.none;
 	const index = view.state.field(footnoteIndexField);
 	const ranges: Range<Decoration>[] = [];
 	const hiddenSource = Decoration.mark({ class: 'paraflow-footnote-source', attributes: { 'aria-hidden': 'true' } });
@@ -187,7 +187,6 @@ function project(view: EditorView, options: FootnoteOptions, composing: boolean,
 export function createFootnoteExtension(options: FootnoteOptions): Extension {
 	const projection = ViewPlugin.fromClass(class {
 		decorations: DecorationSet;
-		composing = false;
 		destroyed = false;
 		timer: number | undefined;
 		activeSource: FootnoteRange | null = null;
@@ -207,6 +206,13 @@ export function createFootnoteExtension(options: FootnoteOptions): Extension {
 			});
 		}
 		update(update: ViewUpdate): void {
+			if (options.isActive(this.view) && (this.view.compositionStarted || this.view.composing || requireCompositionState(update.state))) {
+				this.decorations = this.decorations.map(update.changes);
+				const map = (range: FootnoteRange | null): FootnoteRange | null => range && ({ ...range,
+					from: update.changes.mapPos(range.from, 1), to: update.changes.mapPos(range.to, -1) });
+				this.activeSource = map(this.activeSource); this.frozenSource = map(this.frozenSource);
+				return;
+			}
 			const pointerPressed = selectionPointerPressed(update.state);
 			if (update.docChanged || update.transactions.some(transaction => transaction.reconfigured)) {
 				this.activeSource = null;
@@ -218,7 +224,7 @@ export function createFootnoteExtension(options: FootnoteOptions): Extension {
 		build(): DecorationSet {
 			const state = this.view.state;
 			const coverage = selectionProjectionCoverage(state) ?? state.selection;
-			if (this.composing || this.view.composing || !options.isActive(this.view) ||
+			if (!options.isActive(this.view) ||
 				coverage.ranges.some(range => !range.empty)) this.activeSource = null;
 			else {
 				const index = state.field(footnoteIndexField);
@@ -233,14 +239,14 @@ export function createFootnoteExtension(options: FootnoteOptions): Extension {
 				else if (mode !== 'unknown' || state.selection.ranges.length !== 1 || !caret.empty ||
 					!this.activeSource || caret.head < this.activeSource.from || caret.head > this.activeSource.to) this.activeSource = null;
 			}
-			return project(this.view, options, this.composing, this.handleKeydown, this.activeSource, this.isOwnerActive);
+			return project(this.view, options, this.handleKeydown, this.activeSource, this.isOwnerActive);
 		}
 		destroy(): void { this.destroyed = true; this.view.dom.ownerDocument.defaultView!.clearTimeout(this.timer); }
 		navigationTarget(event: MouseEvent | KeyboardEvent): NavigationTarget | null {
 			const focusedActivation = 'key' in event && (event.key === 'Enter' || event.key === ' ') &&
 				!event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey &&
 				event.target === this.view.dom.ownerDocument.activeElement;
-			if ((!isFootnoteNavigationEvent(event) && !focusedActivation) || this.destroyed || this.composing ||
+			if ((!isFootnoteNavigationEvent(event) && !focusedActivation) || this.destroyed || this.view.compositionStarted || requireCompositionState(this.view.state) ||
 				this.view.composing || !options.isActive(this.view)) return null;
 			const ownerWindow = this.view.dom.ownerDocument.defaultView!;
 			if (!(event.target instanceof ownerWindow.Element) || !this.view.contentDOM.contains(event.target)) return null;
@@ -320,8 +326,6 @@ export function createFootnoteExtension(options: FootnoteOptions): Extension {
 			event.preventDefault();
 			return true;
 		},
-		compositionstart: (_event, view) => { view.plugin(projection)!.composing = true; view.dispatch({}); return false; },
-		compositionend: (_event, view) => { view.plugin(projection)!.composing = false; view.dispatch({}); return false; },
 	}))];
 }
 
@@ -346,7 +350,8 @@ export const FOOTNOTE_CSS = `
 .paraflow-footnote-tooltip .paraflow-footnote-tooltip-hint { margin-top: .5em; font-size: .85em; opacity: .7; }
 .paraflow-footnote-source,
 .paraflow-footnote-source * { font-size: 0 !important; }
-.paraflow-footnote-reference {
+.paraflow-footnote-reference,
+.markdown-reading-view sup.paraflow-reading-footnote-reference {
   font-size: .72em;
   line-height: 0;
   vertical-align: baseline;
@@ -354,6 +359,10 @@ export const FOOTNOTE_CSS = `
   top: -.45em;
   color: var(--link-color);
   cursor: pointer;
+}
+.markdown-reading-view sup.paraflow-reading-footnote-reference > a {
+  font-size: inherit;
+  line-height: inherit;
 }
 .paraflow-footnote-definition {
   display: inline-block;
@@ -390,6 +399,15 @@ export const FOOTNOTE_CSS = `
   top: auto !important;
 }
 .cm-line.paraflow-footnote-row { color: var(--text-muted); }
+.cm-line.HyperMD-footnote.paraflow-footnote-row,
+.markdown-reading-view .markdown-preview-view .footnotes:has(> ol > li.paraflow-reading-footnote) {
+  font-size: var(--paraflow-footnote-size, var(--paraflow-default-footnote-size, var(--footnote-size, .875em)));
+  line-height: var(--paraflow-footnote-line-height, var(--paraflow-line-height, var(--line-height-normal, 1.6)));
+}
+.markdown-reading-view .markdown-preview-view .footnotes:has(> ol > li.paraflow-reading-footnote) :is(ol,ul,li,p) {
+  font-size: inherit;
+  line-height: inherit !important;
+}
 .paraflow-footnote-marker, .paraflow-footnote-marker * { color: var(--paraflow-source-color, var(--text-faint)) !important; }
 .paraflow-footnote-marker-hidden { visibility: hidden; }
 .paraflow-footnote-reference[data-footnote-status="missing"],

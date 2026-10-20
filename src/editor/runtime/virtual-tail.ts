@@ -17,6 +17,11 @@ export interface VirtualTail {
 	readonly goalColumn?: number;
 }
 export const setVirtualTail = StateEffect.define<VirtualTail|null>({map:(value,changes)=>value&&({...value,returnTo:changes.mapPos(value.returnTo,-1)})});
+export const setEdgePointer = StateEffect.define<'before'|'after'|null>();
+const edgePointer = StateField.define<'before'|'after'|null>({create:()=>null,update(value,tr){
+	const effect=tr.effects.find(effect=>effect.is(setEdgePointer));
+	return effect?effect.value:tr.docChanged?null:value;
+}});
 const restoreVirtualTail=StateEffect.define<{tail:VirtualTail|null;anchor:number}>({map:(value,changes)=>{
 	// Removing a cancelled provisional row also removes its empty history event.
 	if(changes.touchesRange(value.anchor,value.anchor+1))return undefined;
@@ -29,11 +34,15 @@ export const virtualTailState = StateField.define<VirtualTail|null>({
 		if(effect)return tr.state.readOnly?null:effect.value;
 		const replay=tr.effects.find(effect=>effect.is(restoreVirtualTail));
 		if(replay)return tr.state.readOnly?null:replay.value.tail;
+		if(value&&!tr.docChanged&&tr.isUserEvent('select.pointer')&&!tr.newSelection.main.empty&&
+			tr.newSelection.main.head===edgePosition(tr.state,value))return value;
 		if(tr.docChanged||tr.selection&&!tr.newSelection.eq(tr.startState.selection))return null;
 		return value;
 	},
 });
-export function isVirtualTailActive(state:EditorState):boolean {return !!state.field(virtualTailState,false);}
+/** An edge range paints its head here, but retains ordinary source replacement semantics. */
+export function isVirtualEdgeActive(state:EditorState):boolean {return !!state.field(virtualTailState,false);}
+export function isVirtualTailActive(state:EditorState):boolean {return state.selection.main.empty&&isVirtualEdgeActive(state);}
 
 /** Only root separator rows belong to the tail; block-internal blanks remain source. */
 export function documentContentEnd(state:EditorState):number {
@@ -52,11 +61,13 @@ function materializeTail(state:EditorState,text:string):TransactionSpec {
 }
 
 /** The selection remains a legal source position; the effect owns its distinct visual meaning. */
-export function enterVirtualTail(state:EditorState,options:Partial<VirtualTail>={}):TransactionSpec {
+export function enterVirtualTail(state:EditorState,options:Partial<VirtualTail>&{anchor?:number}={}):TransactionSpec {
 	const side=options.side??'after',projection=getParagraphProjectionState(state);
 	const real=projection?.rangeIndex.editableAnchors.filter(at=>side==='before'?at<documentContentStart(state):at>documentContentEnd(state)&&at<state.doc.length);
-	if(real?.length)return {selection:EditorSelection.create([EditorSelection.cursor(side==='before'?real[0]!:real.at(-1)!)]),effects:setVirtualTail.of(null),annotations:selectionModeAnnotation.of('normal'),userEvent:'move.line',scrollIntoView:true};
-	return {selection:EditorSelection.create([EditorSelection.cursor(side==='before'?0:state.doc.length,side==='before'?-1:1,undefined,options.goalColumn)]),
+	const position=real?.length?(side==='before'?real[0]!:real.at(-1)!):side==='before'?0:state.doc.length;
+	const selection=options.anchor===undefined?EditorSelection.create([EditorSelection.cursor(position,side==='before'?-1:1,undefined,options.goalColumn)]):EditorSelection.single(options.anchor,position);
+	if(real?.length)return {selection,effects:setVirtualTail.of(null),annotations:selectionModeAnnotation.of('normal'),userEvent:'move.line',scrollIntoView:true};
+	return {selection,
 		effects:setVirtualTail.of({side,returnTo:options.returnTo??state.selection.main.head,goalColumn:options.goalColumn}),
 		annotations:selectionModeAnnotation.of('normal'),userEvent:'move.line',scrollIntoView:true};
 }
@@ -91,7 +102,10 @@ const endpointSelection=EditorState.transactionExtender.of(tr=>{
 	const activated=tr.effects.find(effect=>effect.is(activateTail))?.value;
 	if(!(activated??tr.startState.field(tailEnabled))||!tr.selection&&!activated)return null;
 	const selection=tr.newSelection;
-	if(selection.ranges.length!==1||!selection.main.empty||selection.main.head!==tr.newDoc.length)return null;
+	if(selection.ranges.length!==1)return null;
+	if(!selection.main.empty&&selection.main.head===0&&documentContentStart(tr.state)>0)
+		return {effects:setVirtualTail.of({side:'before',returnTo:tr.startState.selection.main.head})};
+	if(selection.main.head!==tr.newDoc.length)return null;
 	const end=documentContentEnd(tr.state);
 	if(end===tr.newDoc.length)return null;
 	// Source history carries a source caret, so LP must reclaim its replaced EOF destination.
@@ -117,12 +131,18 @@ const tailDecoration=StateField.define({
 
 const tailInput=Prec.highest(EditorState.transactionFilter.of(tr=>{
 	const tail=tr.startState.field(virtualTailState,false);
-	if(!tail||tr.startState.readOnly||!tr.docChanged||!tr.isUserEvent('input')||tr.isUserEvent('input.virtual-tail')||tr.effects.some(effect=>effect.is(setVirtualTail)))return tr;
+	if(!tail||!tr.startState.selection.main.empty||tr.startState.readOnly||!tr.docChanged||!tr.isUserEvent('input')||tr.isUserEvent('input.virtual-tail')||tr.effects.some(effect=>effect.is(setVirtualTail)))return tr;
 	let inserted:string|null=null,count=0;
 	tr.changes.iterChanges((from,to,_fromB,_toB,text)=>{count++;if(from===edgePosition(tr.startState,tail)&&to===from)inserted=text.toString();});
 	if(count!==1||!inserted)return tr;
 	// Replace the original insertion, including only separators owned by this root destination.
 	return {...materializeTail(tr.startState,inserted),userEvent:tr.annotation(Transaction.userEvent),annotations:isolateHistory.of('before')};
+}));
+const edgePointerSelection=Prec.highest(EditorState.transactionFilter.of(tr=>{
+	const side=tr.startState.field(edgePointer);
+	if(!side||tr.docChanged||!tr.selection||!tr.isUserEvent('select.pointer')||tr.newSelection.ranges.length!==1)return tr;
+	const head=side==='before'?0:tr.newDoc.length;
+	return [tr,{selection:EditorSelection.single(tr.newSelection.main.anchor,head),effects:setVirtualTail.of({side,returnTo:tr.startState.field(virtualTailState)?.returnTo??tr.startState.selection.main.head}),sequential:true}];
 }));
 const prepareTailComposition=StateEffect.define<boolean>();
 const tailCompositionPrepared=StateField.define({create:()=>false,update:(value,tr)=>tr.effects.find(effect=>effect.is(prepareTailComposition))?.value??(tr.docChanged?false:value)});
@@ -135,7 +155,7 @@ const nativeTailInput=Prec.highest(EditorView.inputHandler.of((view,_from,_to,te
 		return true;
 	}
 	const tail=view.state.field(virtualTailState);
-	if(!tail||!enabled(view))return false;
+	if(!tail||!view.state.selection.main.empty||!enabled(view))return false;
 	if(!text)return true;
 	const native=insert();
 	view.dispatch({...materializeTail(view.state,text),
@@ -157,7 +177,7 @@ function commitCompositionHead(view:EditorView):void {
 }
 function prepareCompositionTail(view:EditorView):void {
 	const tail=view.state.field(virtualTailState);
-	if(!tail||!enabled(view))return;
+	if(!tail||!view.state.selection.main.empty||!enabled(view))return;
 	const before=tail.side==='before';
 	const from=before?0:documentContentEnd(view.state),suffix=before?view.state.sliceDoc(0,documentContentStart(view.state)):view.state.sliceDoc(from),appendOnly=!before&&/^\n*$/u.test(suffix)&&suffix.length<=(from?4:2);
 	compositionTails.set(view,{doc:view.state.doc,tail,appendOnly});
@@ -202,17 +222,18 @@ const tailView=ViewPlugin.define(view=>{
 	let pending=false;
 	const refresh=()=>{if(pending||view.state.field(tailEnabled)===enabled(view))return;pending=true;queueMicrotask(()=>{pending=false;if(!destroyed)view.dispatch({effects:activateTail.of(enabled(view)),annotations:Transaction.addToHistory.of(false)});});};
 	refresh();
-	const leave=()=>{const tail=view.state.field(virtualTailState)!;view.dispatch({selection:{anchor:tail.returnTo},effects:setVirtualTail.of(null),userEvent:'move.line',scrollIntoView:true});};
+	const leave=(extend:boolean)=>{const tail=view.state.field(virtualTailState)!;view.dispatch({selection:extend?{anchor:view.state.selection.main.anchor,head:tail.returnTo}:{anchor:tail.returnTo},effects:setVirtualTail.of(null),userEvent:'move.line',scrollIntoView:true});};
 	const capture=(event:KeyboardEvent)=>{
-		if(event.defaultPrevented||event.shiftKey||event.ctrlKey||event.altKey||event.metaKey||event.isComposing||view.composing||view.state.field(compositionStateField,false)||!enabled(view)||
+		if(event.defaultPrevented||event.ctrlKey||event.altKey||event.metaKey||event.isComposing||view.composing||view.state.field(compositionStateField,false)||!enabled(view)||
 			(event.target as Element).closest('.cm-content,[contenteditable="true"]')!==view.contentDOM)return;
 		const selection=view.state.selection;
-		if(selection.ranges.length!==1||!selection.main.empty)return;
-		if(isVirtualTailActive(view.state)) {
+		if(selection.ranges.length!==1||!selection.main.empty&&!event.shiftKey)return;
+		if(event.shiftKey&&!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'].includes(event.key))return;
+		if(isVirtualEdgeActive(view.state)) {
 			// Windows acquires its DOM range before compositionstart; Process precedes it.
 			if(event.key==='Process'){prepareCompositionTail(view);return;}
 			const before=view.state.field(virtualTailState)!.side==='before';
-			if((before?['ArrowRight','ArrowDown','Delete','End']:['ArrowLeft','ArrowUp','Backspace','Home']).includes(event.key))leave();
+			if((before?['ArrowRight','ArrowDown','Delete','End']:['ArrowLeft','ArrowUp','Backspace','Home']).includes(event.key))leave(event.shiftKey);
 			else if(event.key==='Enter') {
 				view.dispatch({...materializeTail(view.state,''),userEvent:'input.virtual-tail',annotations:isolateHistory.of('full')});
 			} else if(!(before?['ArrowLeft','ArrowUp','Backspace','Home']:['ArrowDown','ArrowRight','Delete','End']).includes(event.key))return;
@@ -222,7 +243,10 @@ const tailView=ViewPlugin.define(view=>{
 			const boundary=before?documentContentStart(view.state):documentContentEnd(view.state);
 			const setext=discoverSetextHeadings(view.state).find(heading=>heading.to===boundary);
 			const quote=before?quoteContainers(view.state).find(card=>card.from===boundary&&card.depth===1):undefined;
-			const quoteStart=quote?(quote.kind==='callout'?calloutTitleBlock(view.state,quote)?.positions[0]:undefined)??quote.blocks[0]?.positions[0]:undefined;
+			const firstText=quote?.blocks[0]?.positions[0];
+			// A later paragraph must not stand in for an initial table, code or math block.
+			const quoteStart=quote?.kind==='callout'?calloutTitleBlock(view.state,quote)?.positions[0]:
+				firstText!==undefined&&view.state.doc.lineAt(firstText).from===quote?.from?firstText:undefined;
 			const endpoint=quoteStart??normalizeParagraphSelectionEndpoint(view.state,before?boundary:(setext?.contentTo??boundary),before?1:-1);
 			if(event.key==='ArrowRight'&&head<endpoint||event.key==='ArrowLeft'&&head>endpoint)return;
 			if(event.key==='ArrowDown'||event.key==='ArrowUp') {
@@ -230,14 +254,14 @@ const tailView=ViewPlugin.define(view=>{
 				const caret=view.coordsAtPos(head),edge=view.coordsAtPos(endpoint,before?1:-1);
 				if(!caret||!edge||(before?caret.top>edge.top+1:caret.top<edge.top-1))return;
 			}
-			view.dispatch(enterVirtualTail(view.state,{side:before?'before':'after'}));
+			view.dispatch(enterVirtualTail(view.state,{side:before?'before':'after',anchor:event.shiftKey?selection.main.anchor:undefined}));
 		}
 		event.preventDefault();event.stopPropagation();
 	};
 	view.dom.addEventListener('keydown',capture,true);
 	return {update(update){
 		refresh();
-		if(update.docChanged||update.selectionSet||update.viewportChanged||update.geometryChanged||update.startState.field(virtualTailState)!==view.state.field(virtualTailState)||update.startState.field(tailEnabled)!==view.state.field(tailEnabled))view.requestMeasure({key:'paraflow-edge-carriers',read:()=>{
+		if(update.docChanged||update.selectionSet||update.viewportChanged||update.geometryChanged||update.transactions.some(tr=>tr.effects.length)||update.startState.field(virtualTailState)!==view.state.field(virtualTailState)||update.startState.field(tailEnabled)!==view.state.field(tailEnabled))view.requestMeasure({key:'paraflow-edge-carriers',read:()=>{
 			if(destroyed)return [];
 			const tail=view.state.field(virtualTailState),start=documentContentStart(view.state),end=documentContentEnd(view.state);
 			const head=view.state.selection.main.head,length=view.state.doc.length;
@@ -258,21 +282,24 @@ const tailView=ViewPlugin.define(view=>{
 			row.classList.toggle('paraflow-edge-carrier',collapse);
 			row.classList.toggle('paraflow-edge-first-block',first);
 		}}});
-		if(isVirtualTailActive(view.state))view.requestMeasure({key:tailView,read:()=>{
+		// Follow an explicit caret movement, not viewport updates from manual scrolling.
+		if(isVirtualEdgeActive(view.state)&&(update.transactions.some(tr=>tr.scrollIntoView)||update.startState.field(virtualTailState)!==view.state.field(virtualTailState)))view.requestMeasure({key:tailView,read:()=>{
 			if(destroyed)return 0;
 			const row=view.contentDOM.querySelector<HTMLElement>(view.state.field(virtualTailState)?.side==='before'?'.paraflow-virtual-head':'.paraflow-virtual-tail')?.getBoundingClientRect(),scroll=view.scrollDOM.getBoundingClientRect();
-			return row?Math.max(0,row.bottom-scroll.bottom):0;
+			return row?row.top<scroll.top?row.top-scroll.top:Math.max(0,row.bottom-scroll.bottom):0;
 		},write:delta=>{if(!destroyed)view.scrollDOM.scrollTop+=delta;}});
-		if(isVirtualTailActive(view.state)&&!enabled(view))queueMicrotask(()=>{if(!destroyed&&isVirtualTailActive(view.state))view.dispatch({effects:setVirtualTail.of(null),annotations:Transaction.addToHistory.of(false)});});
+		if(isVirtualEdgeActive(view.state)&&!enabled(view))queueMicrotask(()=>{if(!destroyed&&isVirtualEdgeActive(view.state))view.dispatch({effects:setVirtualTail.of(null),annotations:Transaction.addToHistory.of(false)});});
 	},destroy(){destroyed=true;
 		for(const row of view.contentDOM.querySelectorAll<HTMLElement>('.paraflow-edge-carrier,.paraflow-edge-first-block'))row.classList.remove('paraflow-edge-carrier','paraflow-edge-first-block');
 		view.dom.removeEventListener('keydown',capture,true);}};
 });
 
+const blankPointerExtension = createBlankPointerExtension(enabled);
+
 /** One input owner and one row per editor; no nested contenteditable or out-of-document positions. */
 export function createVirtualTailExtension(options:{isActive:(view:EditorView)=>boolean}):Extension {
-	return [activeOwners.of(options.isActive),virtualTailState,tailEnabled,tailCompositionPrepared,tailDecoration,endpointSelection,tailInput,nativeTailInput,compositionTailInput,tailHistory,tailView,createBlankPointerExtension(enabled),
-		EditorView.editorAttributes.of(view=>({class:isVirtualTailActive(view.state)?'paraflow-virtual-tail-active'+(view.state.field(virtualTailState)?.side==='before'?' paraflow-virtual-head-active':''):''})),EditorView.baseTheme({
+	return [activeOwners.of(options.isActive),virtualTailState,tailEnabled,tailCompositionPrepared,edgePointer,tailDecoration,endpointSelection,tailInput,edgePointerSelection,nativeTailInput,compositionTailInput,tailHistory,tailView,blankPointerExtension,
+		EditorView.editorAttributes.of(view=>({class:isVirtualEdgeActive(view.state)?'paraflow-virtual-tail-active'+(view.state.field(virtualTailState)?.side==='before'?' paraflow-virtual-head-active':''):''})),EditorView.baseTheme({
 		'.cm-content > .paraflow-virtual-tail,.cm-content > .paraflow-virtual-head':{height:'auto',minHeight:'1lh',position:'relative',cursor:'text'},
 		'.cm-content > .paraflow-virtual-head.paraflow-virtual-edge-inactive':{height:'0',minHeight:'0',overflow:'hidden'},
 		'.paraflow-virtual-edge-body':{height:'1lh',minHeight:'1em'},

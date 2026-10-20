@@ -13,9 +13,8 @@ interface SourceHit {
 const hits = new WeakMap<MouseEvent, SourceHit>();
 const pointerHits = new WeakMap<EditorView, SourceHit>();
 const pendingNativeClicks = new WeakSet<EditorView>();
-
 /** Resolve a browser text hit before a host-owned widget changes its DOM. */
-export function renderedSourceClickPosition(event: MouseEvent, element: HTMLElement,
+export function renderedSourceClickPosition(event: Pick<MouseEvent, 'clientX' | 'clientY'>, element: HTMLElement,
 	resolve: (node: Node, offset: number) => number | null): number | null {
 	const doc = element.ownerDocument;
 	let caret: { offsetNode: Node; offset: number } | null | undefined = doc.caretPositionFromPoint?.(event.clientX, event.clientY);
@@ -41,7 +40,9 @@ export function bindRenderedSourceClick(view: EditorView, element: HTMLElement,
 		if (position !== null) hits.set(event, { position, isOwnerActive });
 	};
 	element.addEventListener('mousedown', down, true);
-	return () => element.removeEventListener('mousedown', down, true);
+	return () => {
+		element.removeEventListener('mousedown', down, true);
+	};
 }
 
 /** Native widgets may ignore CM events. Re-enter its public mouse-selection path at the source root. */

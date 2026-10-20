@@ -7,6 +7,10 @@ export function normalizeReadingFootnoteLabels(root: HTMLElement, source: string
 	const anchors = [...(root.matches(NAMED_REFERENCE) ? [root] : []), ...root.querySelectorAll<HTMLElement>(NAMED_REFERENCE)];
 	for (const anchor of anchors) {
 		if (anchor.closest('.markdown-source-view, pre, code')) continue;
+		const reference = anchor.parentElement!;
+		const hadReferenceClass = reference.classList.contains('paraflow-reading-footnote-reference');
+		reference.classList.add('paraflow-reading-footnote-reference');
+		restore.push(() => { if (!hadReferenceClass) reference.classList.remove('paraflow-reading-footnote-reference'); });
 		ids.set(anchor.getAttribute('href')!.slice(1), anchor.dataset.footref!);
 		const node = anchor.firstChild;
 		if (anchor.childNodes.length !== 1 || node?.nodeType !== 3) continue;

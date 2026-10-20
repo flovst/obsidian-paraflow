@@ -8,9 +8,9 @@ import { createEditScope, validateEditPlan, type EditPlan } from '../structured-
 import type { ContextRuntime } from '../structured-list/model.js';
 import { executeRegisteredOperation, type StructuralOperationId } from '../structured-list/operations.js';
 import { prefixPolicy } from '../structured-list/prefix.js';
-import { composeEditPlan, createSelectionCutPlan, remapIndentation, renumberOrderedItems } from '../structured-list/primitives.js';
+import { composeEditPlan, createSelectionCutPlan, remapIndentation } from '../structured-list/primitives.js';
 import { enumerateListItems } from '../structured-list/syntax.js';
-import { planGapDeletion, planParagraphEnter } from '../paragraph/operations.js';
+import { planGapDeletion, planOwnedWhitespaceDeletion, planParagraphEnter } from '../paragraph/operations.js';
 import { adaptParagraphBlockGap, validateParagraphEditPlan } from '../paragraph/edit-plan.js';
 import { codeMarkersActive } from '../code-blocks/editable-boundaries.js';
 import { requireParagraphProjectionState } from '../paragraph/projection.js';
@@ -18,9 +18,32 @@ import { ordinaryParagraphAtCaret } from '../paragraph/syntax.js';
 import { projectCallout, quotePrefix, type CalloutProjection } from './projection.js';
 import { hasNativeOwnership } from './syntax.js';
 import {quoteContainers} from './presentation-model.js';
-import {emptyBodies,registerEmptyBody} from '../runtime/empty-body-state.js';
+import {createdBodyOwnership,emptyBodies,registerEmptyBody} from '../runtime/empty-body-state.js';
 
 export type CalloutKey = 'Enter' | 'Shift-Enter' | 'Tab' | 'Shift-Tab' | 'Backspace' | 'Delete';
+
+function emptyBody(state:EditorState,from:number,to:number):boolean {
+	const body=state.sliceDoc(from,to);
+	return body==='' || body==='\u200b'&&createdBodyOwnership(state).some(owner=>owner.maintenanceFrom===from);
+}
+
+/** The icon/prefix boundary is outside body projection but remains a visible editing endpoint. */
+export function planContainerStartEnter(state: EditorState): TransactionSpec | null {
+	if (state.readOnly || state.selection.ranges.length !== 1 || !state.selection.main.empty) return null;
+	const head = state.selection.main.head;
+	const card = quoteContainers(state).find(candidate => {
+		const line = state.doc.lineAt(candidate.from), prefix = quotePrefix(line.text, candidate.depth)!;
+		return head === line.from + prefix.lastIndexOf('>');
+	});
+	if (!card) return null;
+	const line = state.doc.lineAt(card.from), prefix = quotePrefix(line.text, card.depth)!;
+	const outer = prefix.slice(0, prefix.lastIndexOf('>'));
+	const from = card.kind === 'callout' ? head : line.from + prefix.length;
+	const continuation = card.kind === 'callout' ? outer : prefix;
+	const insert = `\n${continuation}\n${continuation}`;
+	return { ...transaction({from, insert}, EditorSelection.single(from + insert.length)),
+		effects: registerEmptyBody.of(from) };
+}
 
 /** Empty container deletion owns both the visible body and its hidden source prefix. */
 export function planEmptyCalloutBackspace(state: EditorState): TransactionSpec | null {
@@ -33,7 +56,7 @@ export function planEmptyCalloutBackspace(state: EditorState): TransactionSpec |
 	if (card.kind === 'callout' && !/^\[![^\]]+\][+-]?[ \t]*$/u.test(card.header)) return null;
 	for (let number = first.number + (card.kind === 'callout' ? 1 : 0); number <= last.number; number++) {
 		const line = state.doc.line(number), prefix = quotePrefix(line.text, card.depth);
-		if (prefix === null || line.text.slice(prefix.length).trim() !== '') return null;
+		if (prefix === null || !emptyBody(state,line.from+prefix.length,line.to)) return null;
 	}
 	const prefix = quotePrefix(first.text, card.depth)!;
 	const outer = prefix.slice(0, prefix.lastIndexOf('>'));
@@ -130,26 +153,41 @@ export function mapCalloutPlan(source: EditorState, projection: CalloutProjectio
 		if (prefixLength < 0) throw new Error('Callout operation lost its body mapping');
 		return sourceLine.from + prefixLength + position - virtualLine.from;
 	}
-	const selected = virtual.selection.main;
+	const selected = (plan.selection ?? virtual.selection).main;
 	const mappedSelection = selected.empty
 		? EditorSelection.cursor(map(selected.head), selected.assoc, selected.bidiLevel ?? undefined, selected.goalColumn)
 		: EditorSelection.range(map(selected.anchor), map(selected.head), selected.goalColumn, selected.bidiLevel ?? undefined);
-	return transaction(changes, EditorSelection.create([mappedSelection]));
+	const result = transaction(changes, EditorSelection.create([mappedSelection]));
+	// Deleting the last body character leaves an editable paragraph, not a source gap.
+	const originalLine = projection.state.doc.lineAt(projection.state.selection.main.head);
+	const createdBody = emptyBodies(projection.state).some(anchor => originalLine.from <= anchor && anchor <= originalLine.to);
+	return selected.empty && (originalLine.text.trim() !== '' || createdBody) &&
+		/^[ \t]*$/u.test(virtual.doc.lineAt(selected.head).text)
+		? { ...result, effects: registerEmptyBody.of(mappedSelection.head) } : result;
 }
 
-function emptyParagraph(projection: CalloutProjection): TransactionSpec | null {
+function emptyParagraph(source:EditorState,projection: CalloutProjection): TransactionSpec | null {
 	const virtual = projection.state;
 	const line = virtual.doc.lineAt(virtual.selection.main.head);
-	if (line.text.trim() !== '') return null;
+	const bodyFrom=projection.toSource(line.from),bodyTo=projection.toSource(line.to);
+	if (!emptyBody(source,bodyFrom,bodyTo)) return null;
+	if(line.length){
+		// Remove only this session's save-inserted boundary before reusing gap ownership.
+		const first=source.update({changes:{from:bodyFrom,to:bodyTo},selection:EditorSelection.cursor(bodyFrom),effects:registerEmptyBody.of(bodyFrom)});
+		const plan=planCalloutKey(first.state,'Enter')!;
+		const second=first.state.update(plan);
+		return {...transaction(first.changes.compose(second.changes),second.newSelection),effects:second.effects};
+	}
 	const original = projection.lines[line.number - 1]!;
 	const outer = original.prefix.slice(0, original.prefix.lastIndexOf('>'));
 	const anchor = original.from + outer.length;
 	const run = requireParagraphProjectionState(virtual).authority.runs.find(run =>
 		run.from < line.from && line.to <= run.to);
-	if (run?.kind === 'middle') {
+	if (run) {
 		const before = run.gaps.find(gap => gap.to === line.to);
 		const after = run.gaps.find(gap => gap.from === line.to);
-		if (before && after) {
+		// A lone terminal newline is a separator unless a session body explicitly owns it.
+		if (before && after && (run.kind !== 'trailing' || after.to - after.from >= 2 || emptyBodies(virtual).includes(after.to))) {
 			// Both separators belong to this body; the next body's prefix remains quoted.
 			const from = projection.toSource(before.from);
 			const to = projection.lines[virtual.doc.lineAt(after.to).number - 1]!.from;
@@ -161,8 +199,8 @@ function emptyParagraph(projection: CalloutProjection): TransactionSpec | null {
 		}
 	}
 	const trailing = run?.kind === 'trailing' ? run : undefined;
-	// Tail separators belong to the exiting body, unless a later explicit body owns them.
-	const end = trailing && !emptyBodies(virtual).some(body => line.to < body && body <= trailing.to)
+	// Tail separators belong to the exiting body; later complete bodies keep their prefixes.
+	const end = trailing && !trailing.editableAnchors.some(body => line.to < body && (body - line.to >= 2 || emptyBodies(virtual).includes(body)))
 		? projection.lines.length : line.number;
 	const preceding = trailing?.gaps.find(gap => gap.to === line.to);
 	if (end === projection.lines.length && trailing) {
@@ -205,8 +243,10 @@ function planListStructural(virtual: EditorState, key: CalloutKey): EditPlan | n
 	for (const operation of operations[key]) {
 		const context = buildListContext(virtual, virtual.selection.main.head, runtime(operation));
 		if (!context) return null;
+		const line = virtual.doc.lineAt(virtual.selection.main.head);
+		if (context.current.lineFrom !== line.from && prefixPolicy.parse(line.text, line.from)) return null;
 		if (context.current.lineFrom !== virtual.doc.lineAt(virtual.selection.main.head).from &&
-			!((key === 'Tab' || key === 'Shift-Tab') && context.caretContent.kind !== 'marker-line')) return continuationPlan(virtual, key, context);
+			!((key === 'Enter' || key === 'Shift-Enter' || key === 'Tab' || key === 'Shift-Tab' || key === 'Delete') && context.caretContent.kind !== 'marker-line')) return continuationPlan(virtual, key, context);
 		let hasNestedQuote = false;
 		syntaxTree(virtual).iterate({ from: context.current.item.from, to: context.current.item.to,
 			enter(node) { if (node.name === 'Blockquote') hasNestedQuote = true; } });
@@ -216,7 +256,10 @@ function planListStructural(virtual: EditorState, key: CalloutKey): EditPlan | n
 			intent: { family: 'structural', operation,
 				direction: key === 'Backspace' ? 'backward' : key === 'Delete' ? 'forward' : null },
 			services: { prefixPolicy } });
-		if (result.kind !== 'edit') continue;
+		if (result.kind !== 'edit') {
+			if (key === 'Delete' && context.caretContent.kind !== 'marker-line') return continuationPlan(virtual, key, context);
+			continue;
+		}
 		validateEditPlan(virtual.doc.toString(), result.plan, {
 			expectedOperation: operation, expectedScope: context.editScope,
 			authoritativeProtectedRanges: enumerateListItems(virtual).map((item) => item.prefix.full),
@@ -236,38 +279,14 @@ function continuationPlan(state: EditorState, key: CalloutKey,
 	}
 	if (!paragraph) return null;
 	if (key === 'Backspace' || key === 'Delete') return continuationDelete(state, key, context);
-	if (key !== 'Enter' && key !== 'Shift-Enter') return null;
-	const line = state.doc.lineAt(caret);
-	const indent = /^[ \t]*/u.exec(line.text)![0];
-	const owner = context.current;
-	const prefix = key === 'Shift-Enter' ? indent : state.sliceDoc(owner.lineFrom, owner.prefix.full.from) +
-		prefixPolicy.renderSameLevel(owner.prefix, { taskState: ' ', ...(owner.prefix.orderedValue === null ? {} : {
-			orderedValue: (context.topology.orderedSequence?.renderedValue ?? owner.prefix.orderedValue) + 1,
-		}) });
-	const insert = `\n${prefix}`;
-	const id = { kind: 'owned-block' as const, index: 0 };
-	const operation = key === 'Shift-Enter' ? 'shift-enter' : 'enter-non-empty';
-	const sequence = key === 'Enter' ? context.topology.orderedSequence : null;
-	const following = sequence?.items.flatMap((item, index) => index > sequence.currentIndex ? [{
-		id: { kind: 'ordered-sequence-item' as const, index }, range: item.prefix.full, protection: 'protected-prefix' as const,
-	}] : []) ?? [];
-	const scope = createEditScope(operation, 'editable', [{ id, range: { from: line.from + indent.length, to: line.to },
-		protection: 'ordinary' }, ...following], state.doc.length);
-	const numbered = sequence && following.length ? renumberOrderedItems(context.source, scope,
-		following.map((region) => region.id), sequence, 1).changes : [];
-	const changes = ChangeSet.of([{ from: caret, insert }, ...numbered], state.doc.length);
-	const plan: EditPlan = { changes: [changes], selection: EditorSelection.single(caret + insert.length),
-		ownership: { regionIds: scope.regionIds }, exceptionId: null };
-	validateEditPlan(state.doc.toString(), plan, { expectedOperation: operation, expectedScope: scope,
-		authoritativeProtectedRanges: enumerateListItems(state).map((item) => item.prefix.full) });
-	return plan;
+	return null;
 }
 
 function continuationDelete(state: EditorState, key: 'Backspace' | 'Delete',
 	context: NonNullable<ReturnType<typeof buildListContext>>): EditPlan | null {
 	const caret = state.selection.main.head;
 	const line = state.doc.lineAt(caret);
-	const start = line.from + /^[ \t]*/u.exec(line.text)![0].length;
+	const start = context.caretContent.range.from;
 	let from: number;
 	let to: number;
 	let kind: 'current-content' | 'structural-boundary' = 'current-content';
@@ -336,10 +355,14 @@ function withCreatedBodies(source: EditorState, projection: CalloutProjection, p
 		...(start === line.from ? [registerEmptyBody.of(source.selection.main.from)] : [])]};
 }
 
-export function planCalloutKey(state: EditorState, key: CalloutKey): TransactionSpec | null {
+export function planCalloutKey(state: EditorState, key: CalloutKey, includeHeadings = true): TransactionSpec | null {
 	if (state.selection.ranges.length !== 1) return null;
 	const projection = projectCallout(state);
 	if (!projection) return null;
+	if (key === 'Backspace' || key === 'Delete') {
+		const whitespace = planOwnedWhitespaceDeletion(state, key === 'Backspace' ? 'backspace' : 'delete');
+		if (whitespace) return transaction(whitespace.change, whitespace.selection);
+	}
 	if (hasNativeOwnership(syntaxTree(projection.state), projection.state.selection.main.from, projection.state.selection.main.to)) return null;
 	if (!state.selection.main.empty) {
 		let nested = false;
@@ -347,14 +370,17 @@ export function planCalloutKey(state: EditorState, key: CalloutKey): Transaction
 			enter(node) { if (node.name === 'Blockquote') nested = true; } });
 		return nested ? null : selectionKey(state, projection, key);
 	}
+	const plan = planListStructural(projection.state, key);
+	if (plan) {
+		const mapped = mapCalloutPlan(state, projection, plan);
+		return key === 'Enter' || key === 'Shift-Enter' ? withCreatedBodies(state, projection, mapped) : mapped;
+	}
 	if (key === 'Enter') {
-		const special = emptyParagraph(projection);
+		const special = emptyParagraph(state,projection);
 		if (special) return special;
 	}
-	const plan = planListStructural(projection.state, key);
-	if (plan) return mapCalloutPlan(state, projection, plan);
 	let paragraph = key === 'Enter' || key === 'Shift-Enter'
-		? planParagraphEnter(projection.state, key === 'Enter' ? 'enter' : 'shift-enter')
+		? planParagraphEnter(projection.state, key === 'Enter' ? 'enter' : 'shift-enter', includeHeadings)
 		: key === 'Backspace' || key === 'Delete' ? planGapDeletion(projection.state, key === 'Backspace' ? 'backspace' : 'delete') : null;
 	if (!paragraph) {
 		if (key === 'Backspace') {

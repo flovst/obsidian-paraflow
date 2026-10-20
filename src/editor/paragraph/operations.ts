@@ -12,10 +12,14 @@ import {
 } from './heading-projection.js';
 import { verticalEntryRange } from './syntax.js';
 import { normalizeStructuredListSelectionEndpoint } from '../structured-list/selection-protection.js';
-import { getStructuredListBlankRuns } from '../structured-list/projection.js';
+import { getStructuredListBlankRuns, getStructuredListProjectionState } from '../structured-list/projection.js';
 import { capabilitiesForTopLevelBlock } from './model.js';
 import type { ParagraphAuthority, TopLevelBlockBoundary } from './model.js';
 import { discoverSetextHeadings } from './setext.js';
+import { emptyBodies } from '../runtime/empty-body-state.js';
+import { prefixPolicy } from '../structured-list/prefix.js';
+import { discoverLineBreakEntries, getLineBreakProjectionState } from './line-break-projection.js';
+import { containerBodyLine, normalizeContainerBodyEndpoint } from '../runtime/container-body-boundaries.js';
 
 export type ParagraphEnterOperation = 'enter' | 'shift-enter';
 export type ParagraphDeletionOperation = 'backspace' | 'delete';
@@ -27,7 +31,7 @@ function normalizeBlockEndpoint(
 ): number {
 	return normalizeStructuredListSelectionEndpoint(
 		state,
-		normalizeHeadingSelectionEndpoint(state, position, bias),
+		normalizeHeadingSelectionEndpoint(state, normalizeContainerBodyEndpoint(state, position, bias), bias),
 		bias,
 	);
 }
@@ -60,12 +64,8 @@ function blockAcrossGap(
 		: block.to === gap.from) ?? null;
 }
 
-export function planParagraphEnter(
-	state: EditorState,
-	operation: ParagraphEnterOperation,
-): ParagraphEditPlan | null {
+export function planHeadingEnter(state: EditorState, operation: ParagraphEnterOperation): ParagraphEditPlan | null {
 	if (state.selection.ranges.length !== 1 || !state.selection.main.empty) return null;
-	const projection = requireParagraphProjectionState(state);
 	const position = state.selection.main.head;
 	const setext = discoverSetextHeadings(state).find(heading => heading.contentFrom <= position && position <= heading.contentTo);
 	// Typora's Setext Shift-Enter follows the same structural split as Enter.
@@ -79,20 +79,49 @@ export function planParagraphEnter(
 			change: Object.freeze({ from, to: from, insert }), ownedRange: setext,
 			selection: EditorSelection.create([EditorSelection.cursor((atStart ? position : from) + insert.length)]) });
 	}
-	if (operation === 'enter') {
-		const headingProjection = getHeadingProjectionState(state);
-		const heading = headingProjection?.headings.find(candidate => candidate.contentFrom <= position && position <= candidate.to &&
-			candidate.from !== headingProjection.editSession?.lineFrom);
-		if (heading) {
-			const atStart = position === heading.contentFrom;
-			const from = atStart ? heading.from : position;
-			const insert = position !== heading.to && !atStart
-				? '\n\n' + state.sliceDoc(heading.from, heading.contentFrom) : '\n\n';
-			return Object.freeze({ operation, isolateHistory: true,
-				change: Object.freeze({ from, to: from, insert }), ownedRange: heading,
-				selection: EditorSelection.create([EditorSelection.cursor(position + insert.length)]) });
-		}
+	const headingProjection = getHeadingProjectionState(state);
+	const heading = headingProjection?.headings.find(candidate => candidate.contentFrom <= position && position <= candidate.to &&
+		candidate.from !== headingProjection.editSession?.lineFrom);
+	if (heading) {
+		const atStart = position === heading.contentFrom;
+		const from = atStart ? heading.from : position;
+		const containerPrefix = state.sliceDoc(heading.from, heading.prefixFrom);
+		const insert = atStart ? `${containerPrefix}\n${containerPrefix}\n`
+			: position === heading.to ? `\n${containerPrefix}\n${containerPrefix}`
+				: `\n${containerPrefix}\n${state.sliceDoc(heading.from, heading.contentFrom)}`;
+		return Object.freeze({ operation, isolateHistory: true,
+			change: Object.freeze({ from, to: from, insert }), ownedRange: heading,
+			selection: EditorSelection.create([EditorSelection.cursor(position + insert.length)]) });
 	}
+	return null;
+}
+
+export function planParagraphEnter(
+	state: EditorState,
+	operation: ParagraphEnterOperation,
+	includeHeadings = true,
+): ParagraphEditPlan | null {
+	if (state.selection.ranges.length !== 1 || !state.selection.main.empty) return null;
+	const projection = requireParagraphProjectionState(state);
+	const position = state.selection.main.head;
+	const breakParagraph = projection.authority.paragraphs.find(paragraph =>
+		paragraph.from <= position && position <= paragraph.to);
+	if (breakParagraph &&
+		/<br[ \t]*\/?[ \t]*>$/iu.test(state.sliceDoc(state.doc.lineAt(position).from, position)) &&
+		(getLineBreakProjectionState(state)?.entries ?? discoverLineBreakEntries(state)).some(entry =>
+			entry.kind === 'html' && entry.to === position)) {
+		// An existing physical LF already belongs to the HTML break. Both keys
+		// add its paragraph separator and move past both LFs to the next body.
+		const existingBreak = position < breakParagraph.to && state.sliceDoc(position, position + 1) === '\n';
+		const insert = existingBreak ? '\n' : bodyEnterText(operation);
+		return Object.freeze({ operation,
+			change: Object.freeze({ from: position, to: position, insert }),
+			ownedRange: breakParagraph,
+			selection: EditorSelection.create([EditorSelection.cursor(position + insert.length + Number(existingBreak), 1)]),
+		});
+	}
+	const headingPlan = includeHeadings ? planHeadingEnter(state, operation) : null;
+	if (headingPlan) return headingPlan;
 	const paragraph = ordinaryParagraphAtCaret(
 		state,
 		position,
@@ -100,11 +129,10 @@ export function planParagraphEnter(
 	) ?? literalParagraphAtEdge(state, position, projection.authority.paragraphs);
 	const editableAnchor = projection.rangeIndex.editableAnchors.includes(position);
 	if (!paragraph && !editableAnchor) return null;
-	const atEditableAnchor = !paragraph && editableAnchor;
 	const insert = bodyEnterText(operation);
 	const selectionPosition = operation === 'enter'
 		? position + 2
-		: atEditableAnchor ? position : position + 1;
+		: position + 1;
 	return Object.freeze({
 		change: Object.freeze({ from: position, insert, to: position }),
 		operation,
@@ -121,16 +149,60 @@ function literalParagraphAtEdge(state: EditorState, position: number, paragraphs
 		item.kind === 'escape' && (item.editFrom === position || item.editTo === position)) ? paragraph : null;
 }
 
+/** Delete editable whitespace before considering a structural gap or host indent deletion. */
+function whitespaceParagraphBody(state: EditorState, position: number) {
+	const authority = requireParagraphProjectionState(state).authority;
+	const paragraph = authority.paragraphs.find(candidate => candidate.from <= position && position <= candidate.to);
+	if (!paragraph || !/^[ \t]+$/u.test(state.sliceDoc(paragraph.from, paragraph.to))) return null;
+	const index = authority.blocks.findIndex(block => block.from === paragraph.from && block.to === paragraph.to);
+	const previous = authority.blocks[index - 1], next = authority.blocks[index + 1];
+	if (previous?.kind !== 'list-item' || next?.kind === 'list-item') return paragraph;
+	const owner = state.doc.lineAt(previous.from), prefix = prefixPolicy.parse(owner.text, owner.from);
+	if (!prefix) return paragraph;
+	// An exited list paragraph retains its marker's source indentation until the body is removed.
+	const indent = prefixPolicy.contentIndent(state.sliceDoc(owner.from, prefix.outerMarker.to));
+	return state.sliceDoc(paragraph.from, paragraph.to).startsWith(indent)
+		? { from: paragraph.from + indent.length, to: paragraph.to } : paragraph;
+}
+
+export function planOwnedWhitespaceDeletion(
+	state: EditorState,
+	operation: ParagraphDeletionOperation,
+): ParagraphEditPlan | null {
+	if (state.selection.ranges.length !== 1 || !state.selection.main.empty) return null;
+	const position = state.selection.main.head;
+	const line = state.doc.lineAt(position);
+	const prefix = getStructuredListProjectionState(state)?.rangeIndex.protectedRanges.find(candidate =>
+		candidate.from === line.from && candidate.to <= position &&
+		/^[ \t]*(?:>[ \t]*)*$/u.test(state.sliceDoc(candidate.from, candidate.to)));
+	const body = prefix ? { from: prefix.to, to: line.to } : whitespaceParagraphBody(state, position);
+	if (!body || !/^[ \t]+$/u.test(state.sliceDoc(body.from, body.to))) return null;
+	if (operation === 'backspace' ? position <= body.from : position >= body.to) return null;
+	const from = operation === 'backspace' ? position - 1 : position;
+	const to = operation === 'backspace' ? position : position + 1;
+	return { change: { from, to, insert: '' }, ownedRange: body, isolateHistory: true,
+		operation: operation === 'backspace' ? 'backspace-gap' : 'delete-gap',
+		selection: EditorSelection.single(from) };
+}
+
 export function planGapDeletion(
 	state: EditorState,
 	operation: ParagraphDeletionOperation,
 ): ParagraphEditPlan | null {
 	if (state.selection.ranges.length !== 1 || !state.selection.main.empty) return null;
+	const whitespace = planOwnedWhitespaceDeletion(state, operation);
+	if (whitespace) return whitespace;
 	const projection = requireParagraphProjectionState(state);
 	const position = state.selection.main.head;
 	if (operation === 'backspace' && /^[ \t]*$/u.test(state.doc.lineAt(position).text)) {
+		const line = state.doc.lineAt(position);
+		if (emptyBodies(state).includes(position) && line.number > 1 && state.doc.line(line.number-1).text.trim().length > 0) {
+			const ownedRange = {from:line.from-1,to:position};
+			return Object.freeze({change:Object.freeze({...ownedRange,insert:''}),isolateHistory:true,
+				operation:'backspace-gap',ownedRange,selection:EditorSelection.create([EditorSelection.cursor(ownedRange.from,1)])});
+		}
 		for (const run of getStructuredListBlankRuns(state)) {
-			const body = run.editableBodies.find(candidate => candidate.to === position);
+			const body = run.editableBodies.find(candidate => candidate.from === candidate.to && candidate.to === position);
 			const preceding = body && run.transparentRanges.find(gap => gap.to === body.from);
 			if (!body || !preceding) continue;
 			const lastBody = run.editableBodies.length === 1;
@@ -166,6 +238,7 @@ export function planGapDeletion(
 }
 
 export function planHeadingBackspace(state: EditorState): ParagraphEditPlan | null {
+	if (!getHeadingProjectionState(state)) return null;
 	if (state.selection.ranges.length !== 1 || !state.selection.main.empty) return null;
 	const heading = headingAtCaret(state, state.selection.main.head);
 	if (!heading || state.selection.main.head !== heading.contentFrom) return null;
@@ -241,7 +314,7 @@ export function resolveVerticalStart(state: EditorState): {
 		? null
 		: blockAtPosition(projection.authority, current.head);
 	if (!indexedCurrent && (!block ||
-		capabilitiesForTopLevelBlock(block.kind).verticalNavigation === 'host')) return null;
+		capabilitiesForTopLevelBlock(block.kind).verticalEntry === 'host')) return null;
 	return {
 		assoc: verticalAssociation(state, current.head, current.assoc),
 		position: current.head,
@@ -312,19 +385,15 @@ export function resolveVerticalSelection(
 		const capabilities = capabilitiesForTopLevelBlock(destinationBlock.kind);
 		if (capabilities.verticalEntry === 'host') return null;
 		if (capabilities.verticalNavigation === 'host') {
-			const entryRange = verticalEntryRange(state, destinationBlock, forward);
-			if (!entryRange) return null;
+			const sourceEntryRange = verticalEntryRange(state, destinationBlock, forward);
+			if (!sourceEntryRange) return null;
+			const entryRange = { ...sourceEntryRange, from: Math.max(sourceEntryRange.from,
+				containerBodyLine(state, sourceEntryRange.from)?.bodyFrom ?? sourceEntryRange.from) };
 			const entry = forward ? entryRange.from : entryRange.to;
 			const alignmentAnchor = forward
 				? Math.min(entryRange.to, entry + 1)
 				: Math.max(entryRange.from, entry - 1);
-			const entryContentCoordinates = visual.coordsAtPos({
-				assoc: 1,
-				position: entryRange.from,
-			});
-			const aligned = entryContentCoordinates && goalX <= entryContentCoordinates.left
-				? { assoc: bias, position: entryRange.from }
-				: visual.alignGoalOnVisualLine?.({
+			const aligned = visual.alignGoalOnVisualLine?.({
 					assoc: bias,
 					position: alignmentAnchor,
 				}, goalX) ?? {
@@ -336,7 +405,7 @@ export function resolveVerticalSelection(
 				Math.min(entryRange.to, aligned.position),
 			);
 			candidate = {
-				assoc: bias,
+				assoc: alignedOnEntryLine === aligned.position ? aligned.assoc : bias,
 				position: forward
 					? Math.max(entry, alignedOnEntryLine)
 					: Math.min(entry, alignedOnEntryLine),

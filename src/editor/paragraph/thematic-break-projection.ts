@@ -9,7 +9,7 @@ class ThematicBreakWidget extends WidgetType {
 	eq(other: WidgetType): boolean { return other instanceof ThematicBreakWidget; }
 	ignoreEvent(): boolean { return false; }
 	toDOM(view: EditorView): HTMLElement {
-		const rule = view.dom.ownerDocument.createElement('span');
+		const rule = view.dom.ownerDocument.createElement('hr');
 		rule.className = 'paraflow-thematic-break-rule';
 		rule.setAttribute('role', 'separator');
 		return rule;
@@ -73,9 +73,15 @@ export function createThematicBreakProjection(isActive: (view: EditorView) => bo
 			},
 		})),
 		EditorView.baseTheme({
+			'.cm-line.paraflow-thematic-break-line': {
+				minHeight: '0 !important', lineHeight: '0 !important', fontSize: '0 !important',
+			},
 			'.paraflow-thematic-break-rule': {
-				display: 'inline-block', width: '100%', height: '1px', verticalAlign: 'middle',
-				backgroundColor: 'var(--hr-color, currentColor)',
+				display: 'block', width: '100%',
+			},
+			'&.cm-editor .cm-scroller .cm-content .cm-line.paraflow-thematic-break-line > .paraflow-thematic-break-rule': {
+				// Semantic gap rows own spacing, including imported !important HR margins.
+				margin: '0 !important',
 			},
 		}),
 	];

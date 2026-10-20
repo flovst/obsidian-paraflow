@@ -18,8 +18,12 @@ import { createCreationHistory, creationHistory } from '../runtime/creation-hist
 import { clampMathBody, projectMathSource, type MathSource } from './source.js';
 import { deleteAdjacentMath, deleteEmptyMath, editMathBody, mathBlockEdit } from './operations.js';
 import { mathDraftRanges, mathNativeOwnership } from './native-ownership.js';
+import { createBlockBodySelection } from '../runtime/block-selection.js';
+import { blockContinuationPrefix } from '../runtime/block-body.js';
+import { mathEditingActivation } from './activation.js';
 
 export interface MathEditingOptions {
+	readonly isEnabled?: () => boolean;
 	/** Display ownership for an enabled Live Preview editor, independent of focus. */
 	readonly isStateActive: (state: EditorState) => boolean;
 	readonly isFocused?: (state: EditorState) => boolean;
@@ -368,7 +372,12 @@ export function createMathEditingExtension(options: MathEditingOptions): Extensi
 				contentFrom: transaction.changes.mapPos(math.contentFrom, 1), contentTo: transaction.changes.mapPos(math.contentTo, -1),
 			})) : captured;
 			const revision = value.previewRevision + Number(transaction.effects.some(effect => effect.is(refreshMathPreview)));
-			return buildProjection(transaction.state, options, value, frozen, inlineFrozen, revision);
+			// Host edits may omit input intent. Retain only the mapped, already active owner.
+			const active = value.active && transaction.docChanged ? { ...value.active,
+				from: transaction.changes.mapPos(value.active.from, 1), to: transaction.changes.mapPos(value.active.to, -1),
+				contentFrom: transaction.changes.mapPos(value.active.contentFrom, -1), contentTo: transaction.changes.mapPos(value.active.contentTo, 1),
+			} : value.active;
+			return buildProjection(transaction.state, options, { ...value, active }, frozen, inlineFrozen, revision);
 		},
 		provide: field => [Prec.highest(EditorView.decorations.from(field, value => value.decorations)),
 			showTooltip.from(field, value => value.tooltip)],
@@ -468,10 +477,20 @@ export function createMathEditingExtension(options: MathEditingOptions): Extensi
 		const next = navigationHead(transaction, body, head);
 		return next === head ? transaction : [transaction, { selection: EditorSelection.create([EditorSelection.cursor(next, selection.main.assoc, selection.main.bidiLevel ?? undefined, selection.main.goalColumn)]) }];
 	}));
-	return [createMathCandidateExtension(options.isStateActive), createInlineRevealPointerExtension(), projection, previewUpdates, pointerEntry, protectBoundaries, createMathKeyboardEntry(options.isStateActive), createCreationHistory('math', options.isStateActive),
-		Prec.highest(keymap.of([{ key: 'Enter', run: view => editMathBody(view, 'Enter', options.isStateActive) || createMath(view) },
-			{ key: 'Backspace', run: view => editMathBody(view, 'Backspace', options.isStateActive) || deleteEmptyMath(view, options.isStateActive) || deleteAdjacentMath(view, false, options.isStateActive) },
-			{ key: 'Delete', run: view => editMathBody(view, 'Delete', options.isStateActive) || deleteAdjacentMath(view, true, options.isStateActive) }])),
+	return [mathEditingActivation.of(options.isEnabled ?? (() => true)), createMathCandidateExtension(options.isStateActive), createInlineRevealPointerExtension(), projection, previewUpdates, pointerEntry, protectBoundaries, createMathKeyboardEntry(options.isStateActive), createCreationHistory('math', options.isStateActive),
+		createBlockBodySelection(view => {
+			if (!options.isStateActive(view.state) || view.composing || isVirtualTailActive(view.state)) return null;
+			const active = view.state.field(projection).active;
+			if (!active?.display) return null;
+			const body = projectMathSource(view.state, active);
+			const prefix = blockContinuationPrefix(view.state, active.from);
+			return { ...body, lines: body.bodyLines, prefix,
+				materializeAfter: body.bodyLines.length ? undefined : '\n' + prefix };
+		}),
+		Prec.highest(keymap.of([{ key: 'Enter', run: view => editMathBody(view, 'Enter', options.isStateActive, view.state.field(projection).active) || createMath(view) },
+			{ key: 'Shift-Enter', run: view => editMathBody(view, 'Shift-Enter', options.isStateActive, view.state.field(projection).active) },
+			{ key: 'Backspace', run: view => editMathBody(view, 'Backspace', options.isStateActive, view.state.field(projection).active) || deleteEmptyMath(view, options.isStateActive, view.state.field(projection).active) || deleteAdjacentMath(view, false, options.isStateActive) },
+			{ key: 'Delete', run: view => editMathBody(view, 'Delete', options.isStateActive, view.state.field(projection).active) || deleteAdjacentMath(view, true, options.isStateActive) }])),
 		createNativeDecorationOwnership(), nativeBlockOwnership.of(state => {
 			if (!options.isStateActive(state)) return null;
 			return mathNativeOwnership(state);

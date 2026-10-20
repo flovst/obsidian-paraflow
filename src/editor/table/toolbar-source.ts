@@ -27,6 +27,10 @@ function cells(source:string,row:SyntaxNode):string[] {
 	}return result;
 }
 export function markdownDimensions(source:string):{rows:number;columns:number} {const table=readMarkdown(source);return {rows:table.rows.length,columns:table.columns};}
+/** Preserve lexical cell content so native empty-cell carriers stay distinct from authored HTML. */
+export function markdownCellContents(source:string):readonly (readonly string[])[] {
+	return readMarkdown(source).rows.map(row=>cells(source,row));
+}
 /** Source selection must name the same native cell as the semantic focus bookmark. */
 export function markdownCellSourceEnd(source:string,rowIndex:number,column:number):number {
 	const row=readMarkdown(source).rows[rowIndex]!,delimiters:number[]=[];

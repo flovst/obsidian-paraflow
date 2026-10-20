@@ -368,6 +368,10 @@ export function convertTyporaTheme(input: ThemeInput, options: { id: string; nam
 					const paragraphToken = ({ 'font-family': 'font', 'font-size': 'size', 'font-weight': 'weight', 'line-height': 'line-height' } as Record<string, string>)[property];
 					if (paragraphToken) tokens.push(`--paraflow-${mapping.tag === 'li' ? 'list' : 'paragraph'}-${paragraphToken}:${value}${important}`);
 				}
+				if (!mapping.complex && mapping.tag === 'footnotes') {
+					const token = ({ 'font-size': 'size', 'line-height': 'line-height' } as Record<string,string>)[property];
+					if (token) tokens.push(`--paraflow-footnote-${token}:${value}${important}`);
+				}
 				if (!mapping.complex && ['code', 'pre'].includes(mapping.tag)) {
 					const codeToken = ({ color: 'color', background: 'background', 'background-color': 'background', 'font-family': 'font', 'font-size': 'size', 'line-height': 'line-height', border: 'border', padding: 'padding', 'padding-top': 'padding-top', 'padding-bottom': 'padding-bottom', 'padding-left': 'padding-left', 'padding-right': 'padding-right', 'border-radius': 'radius' } as Record<string, string>)[property];
 					if (codeToken) tokens.push(`--paraflow-${mapping.tag === 'code' ? 'inline' : 'block'}-code-${codeToken}:${value}${important}`);

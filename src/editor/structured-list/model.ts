@@ -1,6 +1,7 @@
 import type { VisualAssociation, VisualPosition } from '../runtime/navigation-core.js';
 import type { EditScope } from './edit-plan.js';
 import type { HandledOperationId } from './operations.js';
+import type { ListBlankRun } from './blank-runs.js';
 
 export interface SourceRange {
 	readonly from: number;
@@ -108,6 +109,7 @@ export interface OrderedSequenceContext {
 }
 
 export interface ProjectionOwnedLine {
+	readonly createdBody?: boolean;
 	readonly depth: number;
 	readonly kind: ProjectionOwnedLineKind;
 	readonly ownerKind: ListPrefix['kind'];
@@ -120,6 +122,7 @@ export interface ProjectionListContext {
 	readonly block: ListBlockRef;
 	readonly depth: number;
 	readonly ownedLines: readonly ProjectionOwnedLine[];
+	readonly blankRuns: readonly ListBlankRun[];
 	readonly orderedSequence: OrderedSequenceContext | null;
 }
 
@@ -129,6 +132,8 @@ export interface ListTopology {
 	readonly parent: ListBlockRef | null;
 	readonly precedingContainer: ListBlockRef | null;
 	readonly previousSibling: ListBlockRef | null;
+	/** Tab parent eligibility is independent of marker-family numbering runs. */
+	readonly indentParent: ListBlockRef | null;
 	readonly nextSibling: ListBlockRef | null;
 	readonly ownedBlocks: readonly OwnedBlock[];
 	readonly whitespaceBoundaries: readonly WhitespaceBoundaryFact[];

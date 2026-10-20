@@ -83,7 +83,7 @@ export function discoverCodeBlocks(state: EditorState): CodeBlock[] {
 			blocks.push({...block,from:originalLine(block.from).from,to:originalPosition(block.to),
 				barAt:block.closed ? originalLine(block.barAt).from : originalPosition(block.barAt),
 				lines:block.lines.map(line=>({from:originalLine(line.from).from,to:originalLine(line.to).to,number:line.number,
-					...(line.contentFrom === undefined ? {} : {contentFrom: originalPosition(line.contentFrom)})})),
+					contentFrom: originalPosition(line.contentFrom ?? line.from)})),
 			});
 		}
 	}

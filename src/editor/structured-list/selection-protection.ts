@@ -153,15 +153,20 @@ function preservedRangeSelection(
 	)]);
 }
 
+function pointerCaretEndpoint(transaction: Transaction, index: StructuredListRangeIndex, transparent: readonly SourceRange[]) {
+	if (!transaction.isUserEvent('select.pointer')) return null;
+	const head = transaction.newSelection.main.head;
+	const prefix = index.protectedRanges.find(range => range.from <= head && head < range.to);
+	return pointerEndpoint(prefix?.to ?? head,transparent) ?? (prefix ? {position:prefix.to,assoc:1 as const} : null);
+}
+
 function mappedCursorSelection(
 	transaction: Transaction,
 	range: SelectionRange,
 	rangeIndex: StructuredListRangeIndex,
 	transparentRanges: readonly SourceRange[],
 ): EditorSelection {
-	const pointer = transaction.isUserEvent('select.pointer')
-		? pointerEndpoint(range.head, transparentRanges)
-		: null;
+	const pointer = pointerCaretEndpoint(transaction,rangeIndex,transparentRanges);
 	const bias = pointer?.assoc ?? caretBias(transaction, range);
 	const requested = pointer?.position ?? range.head;
 	const position = mappedCaretEndpoint(rangeIndex, transparentRanges, requested, bias);

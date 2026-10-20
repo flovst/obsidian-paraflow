@@ -2,7 +2,7 @@ import { EditorState } from '@codemirror/state';
 import type { SyntaxNode } from '@lezer/common';
 import { GFM, parser } from '@lezer/markdown';
 import { quotePrefix } from './projection.js';
-import { metadataGrammar, nativeInlineGrammarFor } from './syntax.js';
+import { metadataGrammar, nativeInlineGrammarFor } from '../markdown-grammar.js';
 import { mathRangeIndex } from '../math/syntax.js';
 import {quoteDraftMasks,maskQuoteDraftSource} from './quote-draft.js';
 import {codeDraft} from '../code-blocks/draft-state.js';

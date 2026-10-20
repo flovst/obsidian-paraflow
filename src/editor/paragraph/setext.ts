@@ -1,6 +1,6 @@
 import type { EditorState, Text } from '@codemirror/state';
 import { GFM, parser } from '@lezer/markdown';
-import { metadataGrammar, nativeInlineGrammarFor } from '../callout/syntax.js';
+import { metadataGrammar, nativeInlineGrammarFor } from '../markdown-grammar.js';
 import { mathRangeIndex } from '../math/syntax.js';
 import type { SetextHeadingBlock } from './model.js';
 

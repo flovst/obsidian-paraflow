@@ -4,6 +4,7 @@ import type { Tree } from '@lezer/common';
 import { GFM, parser } from '@lezer/markdown';
 import { classifyWhitespaceLine } from './context-analysis.js';
 import { listGroupBoundary } from './group-boundary.js';
+import { emptyBodies, createdBodyOwnership } from '../runtime/empty-body-state.js';
 import type { ListItemSyntax, SourceRange } from './model.js';
 import { isSeparatorlessListMarkerLine, markdownColumns, prefixPolicy } from './prefix.js';
 
@@ -22,6 +23,15 @@ interface ObsidianSyntaxLine {
 }
 
 const sourceGrammar = parser.configure(GFM);
+const sourceTrees = new WeakMap<Text, Tree>();
+export function sourceListTree(state: EditorState): Tree {
+	let tree = sourceTrees.get(state.doc);
+	if (!tree) {
+		tree = sourceGrammar.parse(state.doc.toString());
+		sourceTrees.set(state.doc, tree);
+	}
+	return tree;
+}
 export interface ListParagraphContinuation {
 	readonly lineNumber: number;
 	readonly ownerLineNumber: number;
@@ -34,7 +44,7 @@ export function listParagraphContinuations(state: EditorState): readonly ListPar
 	if (cached && (cached.tree === null || cached.tree === hostTree)) return cached.facts;
 	const facts: ListParagraphContinuation[] = [];
 	const tree = collectSyntaxFacts(hostTree).some(fact => fact.name === 'ListItem')
-		? hostTree : sourceGrammar.parse(state.doc.toString());
+		? hostTree : sourceListTree(state);
 	tree.iterate({ enter(node) {
 		if (node.name !== 'Paragraph' || node.node.parent?.name !== 'ListItem') return;
 		const first = state.doc.lineAt(node.from).number;
@@ -268,6 +278,54 @@ function normalizedObsidianItems(
 	});
 }
 
+function persistedBodyWidth(text: string): number | null {
+	const match = /^([ \t]*)\u200b[ \t]*$/u.exec(text);
+	return match ? markdownColumns(match[1]!) : null;
+}
+
+function whitespaceBodyEligible(parentBody: boolean, created: readonly number[], to: number): boolean {
+	return parentBody || created.includes(to);
+}
+
+function persistedOwnedEnd(persisted: number, contentColumn: number, lineTo: number): number | null {
+	return persisted >= contentColumn ? lineTo : null;
+}
+
+function trailingOwnedWhitespaceEnd(state: EditorState, item: ListItemSyntax, parentBody: boolean): number {
+	let to = item.itemNode.to;
+	const created = emptyBodies(state);
+	const contentColumn = markdownColumns(state.sliceDoc(state.doc.lineAt(item.markerLine.from).from, item.prefix.outerMarker.to));
+	let bare = 0;
+	for (let number = state.doc.lineAt(to).number + 1; number <= state.doc.lines; number++) {
+		const line = state.doc.line(number);
+        const persisted = persistedBodyWidth(line.text);
+        if (persisted !== null) {
+            const end = persistedOwnedEnd(persisted, contentColumn, line.to);
+            if (end === null) break;
+            to = end;
+            continue;
+        }
+        if (line.text.trim() !== '') break;
+		bare += Number(line.text.length === 0);
+		if (bare >= 2) break;
+		if (markdownColumns(line.text) >= contentColumn) {
+			if (whitespaceBodyEligible(parentBody, created, line.to)) to = line.to;
+			bare = 0;
+		}
+	}
+	return to;
+}
+
+function runtimeOwnedEnd(state: EditorState, item: ListItemSyntax, originalTo: number): number {
+	let to = originalTo;
+	for (const body of createdBodyOwnership(state)) {
+		if (body.ownerFrom === null) continue;
+		if (body.ownerFrom === item.markerLine.from) to = Math.max(to, state.doc.lineAt(body.lineFrom).to);
+		else if (item.markerLine.from > body.ownerFrom && item.markerLine.from < body.lineFrom && to >= body.lineFrom) to = state.doc.lineAt(body.lineFrom - 1).to;
+	}
+	return to;
+}
+
 function allListItems(state: EditorState): readonly ListItemSyntax[] {
 	const facts = collectSyntaxFacts(syntaxTree(state));
 	const standard = standardItems(state, facts);
@@ -275,7 +333,10 @@ function allListItems(state: EditorState): readonly ListItemSyntax[] {
 		? standard
 		: normalizedObsidianItems(state, obsidianListLines(state, facts));
 	return items.map(item => {
-		let to = item.itemNode.to;
+		// Preserve the parent body left after its final nested marker is removed.
+		const endsWithDescendant = items.some(child => child.itemNode.from > item.itemNode.from && child.itemNode.to === item.itemNode.to);
+		let to = trailingOwnedWhitespaceEnd(state, item, endsWithDescendant);
+		to = runtimeOwnedEnd(state, item, to);
 		for (const next of items) {
 			if (next.markerLine.from <= item.markerLine.from || next.markerLine.from > to) continue;
 			const boundary = listGroupBoundary(state.doc, item.markerLine.to, next.markerLine.from);

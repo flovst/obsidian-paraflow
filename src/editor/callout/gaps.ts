@@ -1,7 +1,8 @@
 import { EditorSelection, EditorState, RangeSet, RangeValue, type Extension } from '@codemirror/state';
 import { EditorView, ViewPlugin } from '@codemirror/view';
 import { getParagraphProjectionState } from '../paragraph/projection.js';
-import { compositionStateField, excludedSelectionModeForTransaction, recognizedNormalSelectionTransaction } from '../runtime/input-state.js';
+import { classifyCurrentSelectionMode, compositionStateField, excludedSelectionModeForTransaction, recognizedNormalSelectionTransaction } from '../runtime/input-state.js';
+import { createVisualNavigationAdapter, requireGoalXStore } from '../runtime/navigation-core.js';
 import { quoteContainers } from './presentation-model.js';
 import { projectQuoteContent, quotePrefix } from './projection.js';
 import { calloutListEntries } from './list-presentation.js';
@@ -51,6 +52,34 @@ export function calloutGaps(state: EditorState): readonly Gap[] {
 	const result = [...gaps.values()].sort((a, b) => a.from - b.from);
 	cache.set(state, result);
 	return result;
+}
+
+export function moveAcrossCalloutGap(view: EditorView, forward: boolean): boolean {
+	if (view.composing || view.state.field(compositionStateField, false) ||
+		classifyCurrentSelectionMode(view.state) !== 'caret') return false;
+	const current = view.state.selection.main;
+	if (!quoteContainers(view.state).some(card => card.from <= current.head && current.head <= card.to)) return false;
+	const gaps = calloutGaps(view.state);
+	if (!gaps.length) return false;
+	const visual = createVisualNavigationAdapter(view);
+	const store = requireGoalXStore(view);
+	const start = { position: current.head, assoc: current.assoc };
+	const goalX = store.read() ?? current.goalColumn ?? visual.coordsAtPos(start)?.left;
+	if (goalX === undefined) return false;
+	const candidate = visual.moveVertically(start, forward, goalX);
+	const from = Math.min(current.head, candidate.position), to = Math.max(current.head, candidate.position);
+	const gap = gaps.find(gap => !gap.edge && from <= gap.from && gap.to <= to);
+	const destination = forward ? gap?.after : gap?.before;
+	const origin = forward ? gap?.before : gap?.after;
+	// Code, math and other rich blocks retain their own entry and editing sessions.
+	if ((destination !== 'p' && destination !== 'list-item') ||
+		(origin !== 'p' && origin !== 'list-item')) return false;
+	// Atomic gaps snap to a body edge; recover the original visual column on that row.
+	const aligned = visual.alignGoalOnVisualLine!({ position: candidate.position, assoc: forward ? 1 : -1 }, goalX);
+	view.dispatch({ selection: EditorSelection.cursor(aligned.position, aligned.assoc, undefined, goalX),
+		userEvent: 'move.line', scrollIntoView: true });
+	store.write(goalX);
+	return true;
 }
 
 export function createCalloutGapProtection(isActive: (view: EditorView) => boolean): Extension {

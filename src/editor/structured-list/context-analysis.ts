@@ -1,6 +1,8 @@
+import { createdBodyOwnership } from '../runtime/empty-body-state.js';
 import type { EditorState } from '@codemirror/state';
 import { syntaxTree } from '@codemirror/language';
 import { discoverCodeBlocks } from '../code-blocks/model.js';
+import { discoverMath } from '../math/syntax.js';
 import { blockExitAnchors } from '../block-exit.js';
 import type {
 	ListBlockRef,
@@ -11,6 +13,7 @@ import type {
 } from './model.js';
 import { markdownColumns, prefixPolicy } from './prefix.js';
 import { isCreatedListEmptyBody } from './empty-body-state.js';
+import { sourceListBlankRuns } from './blank-runs.js';
 
 export interface SourceLine {
 	readonly from: number;
@@ -19,6 +22,7 @@ export interface SourceLine {
 	readonly text: string;
 	readonly indentText: string;
 	readonly codeLeaf: boolean;
+	readonly mathLeaf: boolean;
 	readonly blockExitAnchor: boolean;
 	readonly createdEmptyBody: boolean;
 	readonly whitespaceKind: WhitespaceLineFact['kind'] | null;
@@ -36,6 +40,7 @@ export interface SourceAnalysis {
 	readonly source: SourceSnapshot;
 	readonly lines: readonly SourceLine[];
 	readonly items: readonly AnalyzedItem[];
+	readonly blankRuns: ReturnType<typeof sourceListBlankRuns>;
 }
 
 function closesNestedList(analysis: SourceAnalysis, line: SourceLine): boolean {
@@ -49,6 +54,9 @@ export function isEditableOwnedWhitespace(analysis: SourceAnalysis, owner: Analy
 	if (line.whitespaceKind === null) return false;
 	if (line.whitespaceKind === 'sentinel-tab' || line.text.includes('\u200b')) return true;
 	if (line.createdEmptyBody) return true;
+	const run = analysis.blankRuns.find(candidate =>
+		candidate.run.range.from < line.from && line.from < candidate.run.range.to)?.run;
+	if (run) return run.editableBodies.some(body => body.to === line.to);
 	if (precedesListItem(analysis, line)) return false;
 	return editableWhitespaceBody(analysis, owner, line);
 }
@@ -66,6 +74,12 @@ function editableWhitespaceBody(analysis: SourceAnalysis, owner: AnalyzedItem, l
 }
 
 export const sourceRange = (from: number, to: number): SourceRange => ({ from, to });
+
+/** The maintained delimiter belongs to formatting, but adds no indentation column. */
+export function ownedBodyStart(line: SourceLine): number {
+	const offset = line.indentText.length;
+	return line.from + offset + (line.text[offset] === '\u200b' ? 1 : 0);
+}
 
 function snapshotFor(state: EditorState): SourceSnapshot {
 	const text = state.doc.toString();
@@ -88,6 +102,7 @@ function analyzeLines(state: EditorState, source: SourceSnapshot): readonly Sour
 	const lines: SourceLine[] = [];
 	const exits = blockExitAnchors(state);
 	const code: SourceRange[] = [...discoverCodeBlocks(state)];
+	const math = discoverMath(state).filter(expression => expression.display);
 	syntaxTree(state).iterate({ enter(node) {
 		if (node.name === 'FencedCode') {
 			code.push({ from: state.doc.lineAt(node.from).from, to: node.to });
@@ -98,12 +113,14 @@ function analyzeLines(state: EditorState, source: SourceSnapshot): readonly Sour
 	for (let number = 1; number <= state.doc.lines; number += 1) {
 		const documentLine = state.doc.line(number);
 		const text = source.text.slice(documentLine.from, documentLine.to);
-		const indentText = /^[ \t]*/u.exec(text)?.[0] ?? '';
+		const knownBody = createdBodyOwnership(state).find(body => body.lineFrom === documentLine.from);
+        const indentText = knownBody?.prefix ?? /^[ \t]*/u.exec(text)?.[0] ?? '';
 		const nextFrom = number < state.doc.lines ? state.doc.line(number + 1).from : documentLine.to;
 		lines.push({
 			blockExitAnchor: exits.has(documentLine.to),
-			createdEmptyBody: isCreatedListEmptyBody(state, documentLine.to),
+		createdEmptyBody: createdBodyLine(state, documentLine.from, documentLine.to),
 			codeLeaf: code.some(block => block.from <= documentLine.from && documentLine.from < block.to),
+			mathLeaf: math.some(block => block.from < documentLine.to && documentLine.from < block.to),
 			from: documentLine.from,
 			indentText,
 			newlineTo: nextFrom,
@@ -113,6 +130,10 @@ function analyzeLines(state: EditorState, source: SourceSnapshot): readonly Sour
 		});
 	}
 	return lines;
+}
+
+function createdBodyLine(state: EditorState, from: number, to: number): boolean {
+	return createdBodyOwnership(state).some(body => body.lineFrom === from) || isCreatedListEmptyBody(state, to);
 }
 
 function containerIndent(line: SourceLine, owner: AnalyzedItem): string {
@@ -201,16 +222,18 @@ export function analyzeSource(
 		};
 	});
 	const analysis = { items, lines, source };
-	return { ...analysis, lines: lines.map(line => {
+	const normalizedLines = lines.map(line => {
 		const owner = itemAtPosition(analysis, line.to);
 		return owner && owner.line.from !== line.from
 			? { ...line, indentText: containerIndent(line, owner) }
 			: line;
-	}) };
+	});
+	const normalized = {...analysis,lines:normalizedLines};
+	return {...normalized,blankRuns:sourceListBlankRuns(normalized)};
 }
 
 export function itemAtPosition(
-	analysis: SourceAnalysis,
+	analysis: Pick<SourceAnalysis, 'items'>,
 	position: number,
 ): AnalyzedItem | null {
 	const candidates = analysis.items

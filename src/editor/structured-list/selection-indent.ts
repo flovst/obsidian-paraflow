@@ -8,6 +8,7 @@ import type { OperationResult } from './operations.js';
 import { markdownColumns } from './prefix.js';
 import { composeEditPlan, remapIndentation, replaceListBlockPrefix } from './primitives.js';
 import { enumerateListItems } from './syntax.js';
+import { indentBoundaryChanges } from './indent-boundaries.js';
 
 type IndentOperation = 'tab' | 'shift-tab';
 
@@ -26,6 +27,7 @@ interface OrderedMovementGroup {
 	readonly sequence: OrderedSequenceContext;
 	readonly parentSequence: OrderedSequenceContext | null;
 	readonly indentStart: number;
+	readonly crossFamily: boolean;
 }
 
 interface NumberedItem {
@@ -71,7 +73,7 @@ function movementFor(analysis: SourceAnalysis, item: AnalyzedItem, operation: In
 	const topology = buildListTopology(analysis, item);
 	const currentIndent = physicalIndent(analysis.source, item);
 	if (operation === 'tab') {
-		const previous = topology.previousSibling;
+		const previous = topology.indentParent;
 		const target = previous ? markdownColumns(analysis.source.slice({ from: previous.lineFrom, to: previous.prefix.outerMarker.to })) : null;
 		return { item, delta: target === null ? null : target - currentIndent };
 	}
@@ -104,7 +106,8 @@ function orderedMovementGroups(analysis: SourceAnalysis, movements: readonly Ite
 		let group = groups.get(key);
 		if (!group) {
 			group = { sequence, parentSequence: topology.parentOrderedSequence,
-				indentStart: topology.orderedIndentStart, movements: [] };
+				indentStart: topology.orderedIndentStart, crossFamily: topology.indentParent !== null && topology.previousSibling === null,
+				movements: [] };
 			groups.set(key, group);
 		}
 		group.movements.push(movement);
@@ -147,7 +150,7 @@ function orderedNumbers(analysis: SourceAnalysis, movements: readonly ItemMoveme
 	const numbers = new Map<number, NumberedItem>();
 	const groups = orderedMovementGroups(analysis, movements);
 	for (const group of groups) {
-		renumberRemaining(numbers, group);
+		if (operation !== 'tab' || !group.crossFamily) renumberRemaining(numbers, group);
 		if (operation === 'shift-tab') renumberParentFollowing(numbers, group);
 	}
 	for (const group of groups) {
@@ -174,7 +177,17 @@ function movementPlan(
 		}
 	}
 	lines.sort((left, right) => left.range.from - right.range.from);
-	const scope = buildSelectionIndentScope(operation, lines.map(line => line.range), analysis.source.length);
+	const joins = operation === 'tab' ? movements.flatMap((movement, index) => {
+		const topology = buildListTopology(analysis, movement.item);
+		if (!topology.indentParent || movements.some(other => other.item.block.item.from === topology.indentParent!.item.from)) return [];
+		let last = movement.item;
+		for (const following of movements.slice(index + 1)) {
+			if (following.item.parentIndex !== movement.item.parentIndex) break;
+			last = following.item;
+		}
+		return indentBoundaryChanges(analysis.source, movement.item.block, topology, last.block);
+	}) : [];
+	const scope = buildSelectionIndentScope(operation, [...lines.map(line => line.range), ...joins], analysis.source.length);
 	const fragments = lines.map((line, index) => {
 		const id = scope.regionIds[index]!;
 		const numbered = numbers.get(line.range.from);
@@ -186,8 +199,25 @@ function movementPlan(
 		const prefix = ' '.repeat(indent) + policy.renderSameLevel({ ...block.prefix, kind: 'ordered' }, { orderedValue: numbered.value }) + token;
 		return replaceListBlockPrefix(analysis.source, scope, id, block, prefix);
 	});
-	const plan = composeEditPlan(operation, scope, fragments);
+	const joinFragments: EditPlanFragment[] = joins.map((change, index) => {
+		const id = scope.regionIds[lines.length + index]!;
+		return { operation, regionIds: [id], ownership: { regionIds: [id] }, changes: [change], selection: null };
+	});
+	const orderedFragments = [...fragments, ...joinFragments].sort((left, right) =>
+		scope.region(left.regionIds[0]!)!.range.from - scope.region(right.regionIds[0]!)!.range.from);
+	const plan = composeEditPlan(operation, scope, orderedFragments);
 	return { scope, plan: numbers.size > 0 ? { ...plan, ownsOrderedNumbering: true as const } : plan };
+}
+
+function selectionMovements(analysis: SourceAnalysis, roots: readonly AnalyzedItem[], operation: IndentOperation) {
+	const movements: ItemMovement[] = [];
+	for (const item of roots) {
+		const movement = movementFor(analysis, item, operation);
+		const parent = operation === 'tab' ? buildListTopology(analysis, item).indentParent : null;
+		const selectedParent = parent && movements.find(candidate => candidate.item.line.from === parent.lineFrom);
+		movements.push(selectedParent ? { item, delta: selectedParent.delta } : movement);
+	}
+	return movements;
 }
 
 /** Plan from one source snapshot; a selected ancestor owns each descendant line once. */
@@ -201,7 +231,7 @@ export function planSelectionIndent(
 	const analysis = analyzeSource(state, enumerateListItems(state));
 	const { roots, ordinary } = selectedItems(state, analysis);
 	if (roots.length === 0) return null;
-	const movements = roots.map(item => movementFor(analysis, item, operation));
+	const movements = selectionMovements(analysis, roots, operation);
 	if (ordinary || movements.some(movement => movement.delta === null || movement.delta === 0)) {
 		return operation === 'tab' ? replaceSelection(state, analysis.source) : null;
 	}

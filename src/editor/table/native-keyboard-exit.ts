@@ -1,15 +1,17 @@
 import { EditorSelection, EditorState, type Extension } from '@codemirror/state';
-import { ViewPlugin } from '@codemirror/view';
+import { EditorView, ViewPlugin } from '@codemirror/view';
 import { compositionStateField, excludedSelectionModeForTransaction } from '../runtime/input-state.js';
 import { blockExitPlan } from '../block-exit.js';
 import { findEditableTableSources } from './edit-session.js';
 import type { TableEditingOptions } from './editing-types.js';
 import {enterFollowingTable} from './keyboard-entry';
 import {enterVirtualTail} from '../runtime/virtual-tail';
+import {requireGoalXStore} from '../runtime/navigation-core';
+import {tableExitSelection} from './vertical-exit';
 
 /** Native pipe cells synchronously dispatch an unannotated parent selection on final Down. */
 export function createNativeTableKeyboardExit(options: TableEditingOptions): Extension {
-	interface Exit { active: boolean; event: KeyboardEvent; from: number; to: number }
+	interface Exit { active: boolean; event: KeyboardEvent; from: number; to: number; selection?:EditorSelection }
 	const pending = new WeakMap<EditorState, Exit>();
 	return [EditorState.transactionFilter.of(transaction => {
 		const exit = pending.get(transaction.startState);
@@ -27,13 +29,15 @@ export function createNativeTableKeyboardExit(options: TableEditingOptions): Ext
 			if (!inside) { exit.active = false; return transaction; }
 			exit.from = transaction.changes.mapPos(exit.from, -1);
 			exit.to = transaction.changes.mapPos(exit.to, -1);
+			exit.selection=exit.selection?.map(transaction.changes);
 		}
 		pending.set(transaction.state, exit);
 		const selection = transaction.newSelection;
 		if (!transaction.selection || selection.ranges.length !== 1 || !selection.main.empty ||
 			selection.main.head !== exit.to + 1 || excludedSelectionModeForTransaction(transaction)) return transaction;
 		exit.active = false;
-		return [transaction, {...blockExitPlan(transaction.state,exit.to,'',selection.main.goalColumn),sequential:true}];
+		const plan=blockExitPlan(transaction.state,exit.to,'',selection.main.goalColumn);
+		return [transaction, {...plan,...(exit.selection?{selection:exit.selection}:{}),sequential:true}];
 	}), ViewPlugin.define(view => {
 		let current: Exit | null = null;
 		const capture = (event: KeyboardEvent): void => {
@@ -52,13 +56,19 @@ export function createNativeTableKeyboardExit(options: TableEditingOptions): Ext
 			const endLine = view.state.doc.lineAt(source.from).number + table.rows.length;
 			if (endLine > view.state.doc.lineAt(source.to).number) return;
 			const to = view.state.doc.line(endLine).to;
-			const plan=blockExitPlan(view.state,to);
+			const content=cell.querySelector<HTMLElement>('.cm-content'),nested=content?EditorView.findFromDOM(content):null;
+			const nativeSelection=cell.ownerDocument.getSelection();
+			const caret=nested&&nested!==view?nested.coordsAtPos(nested.state.selection.main.head):
+				nativeSelection?.isCollapsed&&nativeSelection.rangeCount&&cell.contains(nativeSelection.focusNode)?Array.from(nativeSelection.getRangeAt(0).getClientRects()).find(box=>box.height>0):null;
+			const goal=caret?requireGoalXStore(view).read()??caret.left-view.contentDOM.getBoundingClientRect().left:undefined;
+			const plan=blockExitPlan(view.state,to,'',goal);
 			const head=(plan.selection as EditorSelection).main.head;
 			const next=findEditableTableSources(view.state).find(target=>target.from<=head&&head<=target.to&&target.from>to);
-			if(next&&enterFollowingTable(view,next.from)) {event.preventDefault();event.stopPropagation();return;}
+			if(next&&enterFollowingTable(view,next.from,true,goal)) {event.preventDefault();event.stopPropagation();return;}
 			// Trusted key events can checkpoint microtasks between listeners.
 			// The event phase proves its dispatch is still in progress.
-			const exit: Exit = { active: true, event, from: source.from, to };
+			const exit: Exit = { active: true, event, from: source.from, to,
+				selection:goal!==undefined&&head>to?tableExitSelection(view,head,goal,true):undefined };
 			current = exit;
 			pending.set(view.state, exit);
 		};

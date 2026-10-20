@@ -27,9 +27,11 @@ import { normalizeHeadingSelectionEndpoint } from './heading-projection.js';
 import { editableEndpoint, codeMarkersActive } from '../code-blocks/editable-boundaries.js';
 import { discoverCodeBlocks } from '../code-blocks/model.js';
 import { creationHistory } from '../runtime/creation-history.js';
-import {isVirtualTailActive} from '../runtime/virtual-tail.js';
+import {documentContentStart,isVirtualEdgeActive} from '../runtime/virtual-tail.js';
 import {discoverMath} from '../math/syntax.js';
+import { mathEditingActivation } from '../math/activation.js';
 import {clampMathBody, projectMathSource} from '../math/source.js';
+import { normalizeContainerBodyEndpoint } from '../runtime/container-body-boundaries.js';
 
 export interface ParagraphSelectionProtectionOptions {
 	readonly isLivePreview: (state: EditorState) => boolean;
@@ -124,14 +126,16 @@ function normalizeBlockEndpoint(
 	bias: -1 | 1,
 	endpoint: 'cursor' | 'range',
 	leaveHeadingPrefix = false,
+	moveContainerBody = true,
 ): { readonly assoc: -1 | 1; readonly position: number } {
+	if (moveContainerBody) position = normalizeContainerBodyEndpoint(state, position, bias);
 	const codePosition=endpoint==='cursor'&&state.facet(codeMarkersActive)
 		? editableEndpoint(state,discoverCodeBlocks(state),position,bias,EditorSelection.cursor(position)) : position;
 	const headingPosition = normalizeHeadingSelectionEndpoint(state, codePosition, bias,leaveHeadingPrefix);
 	const gapPosition=getParagraphProjectionState(state)?.rangeIndex.normalize(headingPosition,bias)??headingPosition;
 	const bodyPosition=endpoint==='cursor'&&state.facet(codeMarkersActive)
 		? editableEndpoint(state,discoverCodeBlocks(state),gapPosition,bias,EditorSelection.cursor(gapPosition)):gapPosition;
-	const math = endpoint === 'cursor' ? discoverMath(state).find(item =>
+	const math = endpoint === 'cursor' && state.facet(mathEditingActivation).some(active => active(state)) ? discoverMath(state).find(item =>
 		item.display && item.from <= bodyPosition && bodyPosition <= item.to) : null;
 	const mathPosition = math ? clampMathBody(projectMathSource(state, math), bodyPosition) : bodyPosition;
 	const normalizeListEndpoint = endpoint === 'cursor'
@@ -167,12 +171,13 @@ export function normalizeParagraphSelectionEndpoint(
 	position: number,
 	bias: -1 | 1,
 	endpoint: 'cursor' | 'range' = 'cursor',
+	moveContainerBody = true,
 ): number {
 	const projection = getParagraphProjectionState(state);
 	if (!projection) return position;
 	const mapped = normalizedGapEndpoint(position, bias, projection.rangeIndex,
 		getStructuredListSelectionTransparentRanges(state));
-	return normalizeBlockEndpoint(state, mapped, bias, endpoint).position;
+	return normalizeBlockEndpoint(state, mapped, bias, endpoint, false, moveContainerBody).position;
 }
 
 function normalizedSelection(transaction: Transaction): EditorSelection | null {
@@ -182,6 +187,9 @@ function normalizedSelection(transaction: Transaction): EditorSelection | null {
 	const listGaps = getStructuredListSelectionTransparentRanges(transaction.state);
 	const range = transaction.newSelection.main;
 	const pointer = transaction.isUserEvent('select.pointer');
+	// Explicit owner/restored selections may target the structural container edge.
+	const moveContainerBody = !transaction.docChanged && range.empty &&
+		(pointer || range.head !== transaction.startState.selection.main.head);
 	const leaveHeadingPrefix=!pointer&&!transaction.docChanged&&range.head<transaction.startState.selection.main.head&&
 		(transaction.isUserEvent('select')||transaction.isUserEvent('move.character'));
 	if (range.empty) {
@@ -193,6 +201,7 @@ function normalizedSelection(transaction: Transaction): EditorSelection | null {
 			endpointBias(transaction, range),
 			'cursor',
 			leaveHeadingPrefix,
+			moveContainerBody,
 		);
 		const onLeadingGapHead = pointer && range.head === 0 && !index.editableAnchors.includes(0) &&
 			index.gaps.some((candidate) => candidate.from === 0);
@@ -210,6 +219,7 @@ function normalizedSelection(transaction: Transaction): EditorSelection | null {
 			mapped.assoc,
 			'cursor',
 			leaveHeadingPrefix,
+			moveContainerBody,
 		);
 		return cursorSelection(range, block.position, block.assoc);
 	}
@@ -222,12 +232,16 @@ function normalizedSelection(transaction: Transaction): EditorSelection | null {
 		normalizedGapEndpoint(range.anchor, direction, index, listGaps),
 		direction,
 		'range',
+		false,
+		false,
 	);
 	const head = normalizeBlockEndpoint(
 		transaction.state,
 		headPosition,
 		headPosition === range.head ? headBias : gapBias,
 		'range',
+		false,
+		false,
 	);
 	if (anchor.position === range.anchor && head.position === range.head) return null;
 	return rangeSelection(range, anchor.position, head.position);
@@ -237,7 +251,7 @@ function filterSelection(
 	transaction: Transaction,
 	options: ParagraphSelectionProtectionOptions,
 ) {
-	if(isVirtualTailActive(transaction.state))return transaction;
+	if(isVirtualEdgeActive(transaction.state))return transaction;
 	// The code owner already maps both Enter-body and true-departure targets through its insertion.
 	if (transaction.docChanged && !transaction.isUserEvent('undo') && !transaction.isUserEvent('redo') &&
 		transaction.effects.some(effect => effect.is(creationHistory) && effect.value.owner === 'code' && effect.value.created)) return transaction;
@@ -254,6 +268,9 @@ function filterSelection(
 	}
 	if (excludedSelectionModeForTransaction(transaction) !== null) return transaction;
 	if (!recognizedParagraphSelectionTransaction(transaction)) return transaction;
+	// The root edge extender owns a selected leading separator endpoint too.
+	if (!transaction.newSelection.main.empty && transaction.newSelection.main.head === 0 &&
+		documentContentStart(transaction.state) > 0) return transaction;
 	requireParagraphProjectionState(transaction.startState);
 	const selection = normalizedSelection(transaction);
 	return selection ? [transaction, { selection, sequential: true }] : transaction;

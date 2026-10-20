@@ -1,9 +1,9 @@
 import type {Extension,Transaction} from '@codemirror/state';
 import {EditorView,ViewPlugin} from '@codemirror/view';
 import type {TableEditingOptions} from './editing-types';
-import {isVirtualTailActive} from '../runtime/virtual-tail';
+import {isVirtualTailActive,virtualTailState} from '../runtime/virtual-tail';
 
-/** Native table receiveSelection treats EOF as an inclusive cell boundary, including Undo. */
+/** Native table receiveSelection treats document edges as inclusive cell boundaries, including Undo. */
 interface NativeTableSelectionOwner {containerEl:HTMLElement;end:number;receiveSelection:(transaction:Transaction)=>void;}
 export function createNativeTableTailOwner(options:Pick<TableEditingOptions,'isActive'|'isActiveView'>):Extension {
 	return ViewPlugin.define(view=>{
@@ -20,7 +20,10 @@ export function createNativeTableTailOwner(options:Pick<TableEditingOptions,'isA
 					const method=table.receiveSelection;
 					const wrapper=function(this:NativeTableSelectionOwner,transaction:Transaction){
 						const selection=transaction.newSelection;
-						if(options.isActive(view)&&options.isActiveView?.(view)!==false&&isVirtualTailActive(transaction.state)&&selection.main.empty&&selection.main.head===transaction.newDoc.length&&this.end===transaction.newDoc.length)return;
+						if(options.isActive(view)&&options.isActiveView?.(view)!==false&&isVirtualTailActive(transaction.state)){
+							const before=transaction.state.field(virtualTailState)!.side==='before';
+							if(before?selection.main.head===0:selection.main.head===transaction.newDoc.length&&this.end===transaction.newDoc.length)return;
+						}
 						method.call(this,transaction);
 					};
 					originals.set(table,{method,wrapper,own:Object.prototype.hasOwnProperty.call(table,'receiveSelection')});table.receiveSelection=wrapper;

@@ -4,6 +4,8 @@ import type { ListContext } from '../model.js';
 import type { ExecutionFor, OperationResult } from '../operations.js';
 import { literalBodyTab } from '../../literal-tab.js';
 import { markdownColumns } from '../prefix.js';
+import { indentBoundaryChanges } from '../indent-boundaries.js';
+import { ChangeSet } from '@codemirror/state';
 import {
 	composeEditPlan,
 	convertItemToParagraph,
@@ -42,7 +44,7 @@ function tabMovementIds(context: ListContext): readonly EditRegionId[] {
 }
 
 function tabDelta(execution: ExecutionFor<'tab'>): number {
-	const previous = execution.context.topology.previousSibling;
+	const previous = execution.context.topology.indentParent;
 	if (!previous) return 0;
 	const currentIndent = physicalIndent(execution.context);
 	const contentColumn = markdownColumns(execution.context.source.slice({
@@ -68,6 +70,7 @@ function markerContainerWidth(context: ListContext): number {
 
 function fallbackText(context: ListContext): string {
 	if (context.caretContent.kind !== 'marker-line') {
+		if (context.source.text[context.caretContent.range.from - 1] === '\u200b') return '\t';
 		const before = context.source.text.slice(context.caretContent.range.from, context.caret);
 		return literalBodyTab(before);
 	}
@@ -184,7 +187,7 @@ function orderedTabPlan(execution: ExecutionFor<'tab'>, delta: number): EditPlan
 		...orderedContinuationFragments(execution, delta),
 		...orderedChildFragments(execution, child, indent, firstValue + 1),
 	];
-	const followingIds = orderedIdsAfter(context, sequence);
+	const followingIds = context.topology.previousSibling ? orderedIdsAfter(context, sequence) : [];
 	if (followingIds.length > 0) fragments.push(renumberOrderedItems(
 		context.source,
 		context.editScope,
@@ -384,9 +387,22 @@ export function tab(execution: ExecutionFor<'tab'>): OperationResult {
 	const exceptionId = execution.context.topology.ownedBlocks.length > 0
 		? 'SLX-002'
 		: null;
-	return editResult(execution.context.current.prefix.orderedValue !== null
+	const plan = execution.context.current.prefix.orderedValue !== null
 		? orderedTabPlan(execution, delta)
-		: tabStructuralPlan(execution, delta, exceptionId));
+		: tabStructuralPlan(execution, delta, exceptionId);
+	const { context } = execution;
+	const boundaries = indentBoundaryChanges(context.source, context.current, context.topology);
+	if (boundaries.length === 0) return editResult(plan);
+	const changes = [...plan.changes, ...boundaries].sort((left, right) => {
+		let a = 0, b = 0;
+		ChangeSet.of(left, context.source.length).iterChanges(from => { a = from; });
+		ChangeSet.of(right, context.source.length).iterChanges(from => { b = from; });
+		return a - b;
+	});
+	return editResult({ ...plan, changes, ownership: { regionIds: [
+		...plan.ownership.regionIds, ...boundaries.map((_change, index) => ({ kind: 'whitespace-boundary' as const,
+			index: context.topology.whitespaceBoundaries.length + index })),
+	] } });
 }
 
 export function shiftTab(execution: ExecutionFor<'shift-tab'>): OperationResult {

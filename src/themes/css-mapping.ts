@@ -3,7 +3,7 @@ import * as css from 'css-tree';
 export const contentExclusion = ':not(:is(.callout,.callout *,.markdown-embed,.markdown-embed *))';
 const tags = new Set('p h1 h2 h3 h4 h5 h6 a strong b em i del s mark code pre blockquote table thead tbody tfoot caption colgroup col tr th td img hr ul ol li span dl dt dd tt q sup sub abbr'.split(' '));
 export const tableTags = new Set('table thead tbody tfoot caption colgroup col tr th td'.split(' '));
-const classes = new Set(['md-fences', 'md-inline-code']);
+const classes = new Set(['md-fences', 'md-inline-code', 'footnotes']);
 const pseudoClasses = new Set(['hover', 'focus', 'active', 'first-child', 'last-child', 'nth-child', 'nth-of-type']);
 
 export interface SelectorMapping {
@@ -40,7 +40,9 @@ export function mapSelector(selector: css.Selector): SelectorMapping | null {
 			if (!tags.has(node.name)) return null;
 			tag = node.name;
 		} else if (node.type === 'ClassSelector') {
-			if (node.name === 'md-meta-block' && retained.at(-1)?.type === 'TypeSelector' && tag === 'pre') {
+			if (node.name === 'footnotes' && (!retained.length || retained.at(-1)?.type === 'Combinator')) {
+				tag = 'footnotes'; retained.push(node);
+			} else if (node.name === 'md-meta-block' && retained.at(-1)?.type === 'TypeSelector' && tag === 'pre') {
 				tag = 'metadata';
 			} else if (node.name === 'md-fences' && retained.at(-1)?.type === 'TypeSelector' && tag === 'pre') {
 				// pre.md-fences is Typora's usual code block selector.

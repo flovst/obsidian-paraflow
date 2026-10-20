@@ -2,7 +2,7 @@ import { syntaxTree, syntaxTreeAvailable } from '@codemirror/language';
 import type { EditorState, Text } from '@codemirror/state';
 import type { SyntaxNode } from '@lezer/common';
 import { GFM, parser } from '@lezer/markdown';
-import { metadataGrammar, nativeInlineGrammarFor } from '../callout/syntax.js';
+import { metadataGrammar, nativeInlineGrammarFor } from '../markdown-grammar.js';
 import { mathRangeIndex } from '../math/syntax.js';
 
 const normalizedLabel = (label: string): string => label.trim().replace(/\s+/gu, ' ').toUpperCase();

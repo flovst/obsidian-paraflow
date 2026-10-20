@@ -4,6 +4,9 @@ import { createInputStateExtension } from './input-state.js';
 import { createSelectionPresentationSessionExtension } from './selection-session.js';
 import { createGapSelectionPresentation } from '../paragraph/selection-presentation.js';
 import { createVirtualTailExtension } from './virtual-tail.js';
+import { containerBodyLine } from './container-body-boundaries.js';
+import { renderedSourceClickPosition } from './rendered-source-click.js';
+import { getParagraphProjectionState } from '../paragraph/projection.js';
 
 export type VisualAssociation = -1 | 0 | 1;
 
@@ -119,6 +122,29 @@ function resolveRenderedHit(view: EditorView, coordinates: { x: number; y: numbe
 
 export function createVisualNavigationAdapter(view: EditorView): VisualNavigationAdapter {
 	const renderedHit = (coordinates: { x: number; y: number }): VisualPosition | null => resolveRenderedHit(view, coordinates);
+	const emptyBodyAnchor = (position: number): number | null =>
+		containerBodyLine(view.state, position)?.emptyAnchor ??
+		(getParagraphProjectionState(view.state)?.rangeIndex.editableAnchors.includes(position) ? position : null);
+	const mountedEmptyBody = (position: number): number | null => {
+		const anchor = emptyBodyAnchor(position);
+		if (anchor === null) return null;
+		const line = view.state.doc.lineAt(anchor), node = view.domAtPos(anchor).node;
+		const row = (node.nodeType === 1 ? node as Element : node.parentElement)?.closest('.cm-line');
+		return row?.closest('.cm-editor') === view.dom && view.posAtDOM(row) === line.from && row.getBoundingClientRect().height > 0 ? anchor : null;
+	};
+	const visibleGeometry = (position: VisualPosition): { position: VisualPosition; coordinates: ReturnType<EditorView['coordsAtPos']> } => {
+		const side = position.assoc < 0 ? -1 : 1;
+		const coordinates = view.coordsAtPos(position.position, side);
+		if (coordinates && coordinates.top === coordinates.bottom) {
+			// A folded block carrier shares its offset with the visible text before it.
+			const oppositeSide = side === 1 ? -1 : 1;
+			const opposite = view.coordsAtPos(position.position, oppositeSide);
+			if (opposite && opposite.top < opposite.bottom) {
+				return { position: { ...position, assoc: oppositeSide }, coordinates: opposite };
+			}
+		}
+		return { position, coordinates };
+	};
 	const cursor = (point: VisualPosition, goalX?: number) =>
 		EditorSelection.cursor(point.position, point.assoc, undefined, goalX);
 	const point = (range: ReturnType<typeof EditorSelection.cursor>): VisualPosition => ({
@@ -127,6 +153,11 @@ export function createVisualNavigationAdapter(view: EditorView): VisualNavigatio
 	});
 	return {
 		alignGoalOnVisualLine(position, goalX) {
+			if (mountedEmptyBody(position.position) === position.position) return position;
+			const body = containerBodyLine(view.state, position.position);
+			if (body && body.emptyAnchor !== null) {
+				return { ...position, position: body.emptyAnchor };
+			}
 			const coordinates = view.coordsAtPos(
 				position.position,
 				position.assoc < 0 ? -1 : 1,
@@ -136,10 +167,18 @@ export function createVisualNavigationAdapter(view: EditorView): VisualNavigatio
 			const targetY = (coordinates.top + coordinates.bottom) / 2;
 			const sourceHit = renderedHit({ x: contentLeft + goalX, y: targetY });
 			if (sourceHit) return sourceHit;
-			const aligned = view.posAtCoords({
+			// The target row is already known; a block height lookup can select a neighbouring gap.
+			const bodyHit = body ? renderedSourceClickPosition({ clientX: contentLeft + goalX, clientY: targetY }, view.contentDOM, (node, offset) => {
+				const element = node.nodeType === 1 ? node as Element : node.parentElement;
+				if (element?.closest('.cm-editor') !== view.dom || element.closest('[contenteditable="false"]')) return null;
+				const at = view.posAtDOM(node, offset);
+				return body.bodyFrom <= at && at <= body.to ? at : null;
+			}) : null;
+			const hit = bodyHit ?? view.posAtCoords({
 				x: contentLeft + goalX,
 				y: targetY,
 			});
+			const aligned = hit !== null && body && body.from <= hit && hit < body.bodyFrom ? body.bodyFrom : hit;
 			if (aligned === null || aligned === position.position) return position;
 			const before = view.coordsAtPos(aligned, -1);
 			const after = view.coordsAtPos(aligned, 1);
@@ -151,7 +190,7 @@ export function createVisualNavigationAdapter(view: EditorView): VisualNavigatio
 			};
 		},
 		coordsAtPos(position) {
-			const coordinates = view.coordsAtPos(position.position, position.assoc < 0 ? -1 : 1);
+			const { coordinates } = visibleGeometry(position);
 			return coordinates ? {
 				left: coordinates.left - view.contentDOM.getBoundingClientRect().left,
 				top: coordinates.top,
@@ -161,8 +200,50 @@ export function createVisualNavigationAdapter(view: EditorView): VisualNavigatio
 			return point(view.moveByChar(cursor(position), forward));
 		},
 		moveVertically(position, forward, goalX) {
-			const candidate = point(view.moveVertically(cursor(position, goalX), forward));
-			const coordinates = view.coordsAtPos(candidate.position, candidate.assoc < 0 ? -1 : 1);
+			let candidate = point(view.moveVertically(cursor(visibleGeometry(position).position, goalX), forward));
+			const direction = forward ? 1 : -1;
+			const lastLine = view.state.doc.lineAt(candidate.position).number;
+			// Native atomic skipping may cross an empty body's prefix and its preceding gap together.
+			for (let number = view.state.doc.lineAt(position.position).number + direction;
+				forward ? number <= lastLine : number >= lastLine; number += direction) {
+				const anchor = mountedEmptyBody(view.state.doc.line(number).to);
+				if (anchor !== null && (forward ? anchor < candidate.position : anchor > candidate.position)) return { position: anchor, assoc: direction };
+			}
+			// Adjacent gaps share the editable endpoint of an empty body.
+			if (mountedEmptyBody(candidate.position) === candidate.position ||
+				containerBodyLine(view.state, candidate.position)?.emptyAnchor === candidate.position) return candidate;
+			let coordinates = view.coordsAtPos(candidate.position, candidate.assoc < 0 ? -1 : 1);
+			let crossedHiddenCarrier = false;
+			const atomicBoundary = (point: VisualPosition) => {
+                let touches = false, inside = false;
+                for (const read of view.state.facet(EditorView.atomicRanges)) {
+                    read(view).between(point.position, point.position, (from, to) => {
+                        if (from === to) return;
+                        touches = true;
+                        if (forward ? from <= point.position && point.position < to : from < point.position && point.position <= to) inside = true;
+                    });
+                }
+                return {touches, inside};
+            };
+            // Prefix widgets may expose their block box instead of the adjacent text row.
+            for (;;) {
+                const boundary = atomicBoundary(candidate);
+                if (boundary.touches && !boundary.inside) {
+                    candidate = {...candidate, assoc: forward ? 1 : -1};
+                    coordinates = view.coordsAtPos(candidate.position, forward ? 1 : -1);
+                    crossedHiddenCarrier = true;
+                    break;
+                }
+                if (!coordinates || (coordinates.top < coordinates.bottom && !boundary.inside)) break;
+                const next = point(view.moveByChar(cursor(candidate), forward));
+                if (next.position === candidate.position) break;
+                candidate = next;
+                coordinates = view.coordsAtPos(candidate.position, candidate.assoc < 0 ? -1 : 1);
+                crossedHiddenCarrier = true;
+            }
+            if (crossedHiddenCarrier && coordinates && coordinates.top < coordinates.bottom) {
+				return this.alignGoalOnVisualLine!(candidate, goalX);
+			}
 			return coordinates ? renderedHit({ x: view.contentDOM.getBoundingClientRect().left + goalX,
 				y: (coordinates.top + coordinates.bottom) / 2 }) ?? candidate : candidate;
 		},

@@ -5,6 +5,7 @@ import type { SourceRange } from '../structured-list/model.js';
 import { quoteContainers, type CalloutCard } from './presentation-model.js';
 import { projectQuoteContent, quotePrefix } from './projection.js';
 import { discoverMath } from '../math/syntax.js';
+import { mapListBlankRuns } from '../structured-list/blank-runs.js';
 
 const cache = new WeakMap<EditorState, ReadonlyMap<CalloutCard, readonly ProjectionEntry[]>>();
 
@@ -15,16 +16,19 @@ function entriesForCard(state: EditorState, card: CalloutCard): readonly Project
 	const mapRange = (range: SourceRange): SourceRange => ({ from: content.toSource(range.from), to: content.toSource(range.to) });
 	const physicalRange = (range: SourceRange): SourceRange => ({ ...mapRange(range), from: state.doc.lineAt(content.toSource(range.from)).from });
 	const math = discoverMath(state).filter(expression => expression.display);
+	const mathLine = (from: number) => math.some(expression => state.doc.lineAt(expression.from).from <= from && from < expression.to);
 	return projectionEntries(content.state, undefined, lineFrom =>
 		quotePrefix(state.doc.lineAt(content.toSource(lineFrom)).text, card.depth + 1) === null).map(entry => ({
 		...entry,
+		blankRuns: entry.blankRuns && mapListBlankRuns(entry.blankRuns,at=>content.toSource(at),at=>state.doc.lineAt(content.toSource(at)).from)
+			.filter(run => !run.rows.some(row => mathLine(row.at))),
 		item: physicalRange(entry.item),
 		prefix: physicalRange(entry.prefix),
 		replacement: mapRange(entry.replacement),
 		collapsedSeparator: entry.collapsedSeparator ? mapRange(entry.collapsedSeparator) : null,
 		taskToken: entry.taskToken ? mapRange(entry.taskToken) : null,
 		ownedLines: entry.ownedLines.map(line => ({ ...line, range: physicalRange(line.range), prefix: physicalRange(line.prefix) }))
-			.filter(line => !math.some(expression => state.doc.lineAt(expression.from).from <= line.range.from && line.range.from < expression.to)),
+			.filter(line => !mathLine(line.range.from)),
 	}));
 }
 
@@ -46,7 +50,8 @@ export function calloutListDecorations(state: EditorState, entries: readonly Pro
 		const indentFrom = entry.prefix.from + quotePrefix(source.text, depth)!.length;
 		return [
 			Decoration.line({ class: `HyperMD-list-line HyperMD-list-line-${entry.marker.depth + 1}${entry.taskToken ? ' HyperMD-task-line' : ''}`,
-				attributes: { style: `--paraflow-list-depth:${entry.marker.depth}` } }).range(entry.prefix.from),
+				attributes: { style: `--paraflow-list-depth:${entry.marker.depth}`,
+					...(entry.taskToken ? { 'data-task': state.sliceDoc(entry.taskToken.from + 1, entry.taskToken.from + 2).toLowerCase() } : {}) } }).range(entry.prefix.from),
 			...(indentFrom < entry.replacement.from ? [Decoration.replace({}).range(indentFrom, entry.replacement.from)] : []),
 		];
 	});

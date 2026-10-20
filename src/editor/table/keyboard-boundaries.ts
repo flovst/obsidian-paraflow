@@ -11,19 +11,20 @@ import type {TableEditingOptions} from './editing-types';
 import {admittedFragment} from './admitted-dom';
 import {enterFollowingTable,lastTableCell} from './keyboard-entry';
 import {enterVirtualTail} from '../runtime/virtual-tail';
+import {tableExitSelection} from './vertical-exit';
 
 const emptyTableHistory=StateEffect.define<{from:number;restore:boolean}>({map:(value,changes)=>({...value,from:changes.mapPos(value.from)})});
 
-function cellCaret(view:EditorView,cell:HTMLTableCellElement,measure:boolean):{start:boolean;end:boolean;top:boolean;x:number}|null {
+function cellCaret(view:EditorView,cell:HTMLTableCellElement,measure:boolean,allowTextRange=false):{start:boolean;end:boolean;top:boolean;x:number}|null {
  const content=cell.querySelector<HTMLElement>('.cm-content'),nested=content?EditorView.findFromDOM(content):null;
  if(nested&&nested!==view){
   const selection=nested.state.selection;
-  if(selection.ranges.length!==1||!selection.main.empty||nested.composing||nested.state.readOnly)return null;
+  if(selection.ranges.length!==1||!allowTextRange&&!selection.main.empty||nested.composing||nested.state.readOnly)return null;
   const head=selection.main.head,point=measure?nested.coordsAtPos(head):null,first=measure?nested.coordsAtPos(0):null;
   return {start:head===0,end:head===nested.state.doc.length,top:!!point&&!!first&&point.top<first.bottom,x:point?.left??(measure?cell.getBoundingClientRect().left:0)};
  }
  const selection=cell.ownerDocument.getSelection();
- if(!selection?.isCollapsed||selection.rangeCount!==1||!cell.contains(selection.focusNode))return null;
+ if(!selection||!allowTextRange&&!selection.isCollapsed||selection.rangeCount!==1||!cell.contains(selection.anchorNode)||!cell.contains(selection.focusNode))return null;
  const range=selection.getRangeAt(0),offset=bookmarkRange(cell,range).from;
  const point=measure?Array.from(range.getClientRects()).find(box=>box.height>0):undefined;
  const body=cell.ownerDocument.createRange();body.selectNodeContents(cell);
@@ -69,7 +70,8 @@ export function createTableKeyboardBoundaries(options:TableEditingOptions,delete
    const wrapper=cell?.closest<HTMLElement>('.cm-table-widget,.paraflow-html-table-editor');
    if(!cell||!wrapper||!view.dom.contains(wrapper))return;
    const table=cell.closest('table')!,cells=Array.from(table.querySelectorAll<HTMLTableCellElement>('td,th')).filter(item=>item.closest('table')===table);
-   const caret=cellCaret(view,cell,event.key==='ArrowUp');if(!caret)return;
+   if(enter&&cells.filter(cell=>cell.classList.contains('is-selected')||cell.getAttribute('aria-selected')==='true').length>1)return;
+   const caret=cellCaret(view,cell,event.key==='ArrowUp',enter);if(!caret)return;
    if(rowDelete){if(deleteCaretRow(view,cell)){event.preventDefault();event.stopPropagation();}return;}
    if(enter&&(event.ctrlKey||event.metaKey)){if(insertCaretRow?.(view,cell)){event.preventDefault();event.stopPropagation();}return;}
    if(event.key==='Enter'&&(!enter||(cell.parentElement as HTMLTableRowElement).rowIndex+cell.rowSpan!==table.rows.length))return;
@@ -103,8 +105,8 @@ export function createTableKeyboardBoundaries(options:TableEditingOptions,delete
    }
    const selection=plan.selection as EditorSelection,head=selection.main.head;
    const adjacent=findEditableTableSources(view.state).find(item=>item.from<=head&&head<=item.to&&item.from!==source.from);
-   if(adjacent){if(!enterFollowingTable(view,adjacent.from,forward||enter))return;}
-   else {view.dispatch(plan);view.focus();}
+   if(adjacent){if(!enterFollowingTable(view,adjacent.from,forward||enter,goal))return;}
+   else {view.dispatch(goal!==undefined&&!plan.effects?{...plan,selection:tableExitSelection(view,head,goal,false)}:plan);view.focus();}
    event.preventDefault();event.stopPropagation();if(goal!==undefined)requireGoalXStore(view).write(goal);
   };
   view.dom.addEventListener('keydown',capture,true);

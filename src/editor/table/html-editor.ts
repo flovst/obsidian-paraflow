@@ -1,7 +1,6 @@
-import {registerEmptyBody} from '../runtime/empty-body-state';
 import {captureTableFocus,requestTableFocus,clearTableFocus,updateTableFocusBookmark,type TableFocusBookmark} from './focus-handoff';
 import {tableEdgeAxis} from './edge-hit';
-import {isolateHistory,redo,undo} from '@codemirror/commands';
+import {redo,undo} from '@codemirror/commands';
 import type {EditorView} from '@codemirror/view';
 import {closeSelection,intersects} from './grid';
 import type {CellPosition,CellRectangle,TableModel} from './model';
@@ -28,6 +27,8 @@ import {compositionStateField} from '../runtime/input-state';
 import {isWikiAnchor,readWikiAnchor} from './wiki-links';
 import {TableLinkPresentation} from './external-presentation';
 import {HtmlTableSourceSelection} from './html-source-selection';
+import {enterTableCell,tableRowCell} from './keyboard-entry';
+import {goalXStoreFor,requireGoalXStore} from '../runtime/navigation-core';
 
 const selectionOwners=new WeakMap<EditorView,Set<HtmlTableController>>();
 interface CellTextSelection {cell:CellPosition;anchorNode:Node;anchorOffset:number;focusNode:Node;focusOffset:number;}
@@ -47,6 +48,7 @@ export class HtmlTableController implements TableActionTarget {
 	private menu:{close:()=>void}|undefined;
 	private destroyed=false;
 	private composing=false;
+	private deletionBreaks:Set<Element>|null=null;
 	private restoringFocus=false;
 	private frozenText:TextBookmark|null=null;
 	private sourceSelection:{session:TableEditSession;map:HtmlTableSourceSelection}|null=null;
@@ -75,7 +77,7 @@ export class HtmlTableController implements TableActionTarget {
 		this.dom.ownerDocument.addEventListener('focusin',this.externalSelection,true);
 		this.dom.ownerDocument.addEventListener('copy',this.copy,true);
 		this.dom.ownerDocument.addEventListener('selectionchange',this.publishSourceSelection);
-		this.dom.addEventListener('input',this.input);this.dom.addEventListener('keydown',this.keyDown);
+		this.dom.addEventListener('beforeinput',this.beforeInput);this.dom.addEventListener('input',this.input);this.dom.addEventListener('keydown',this.keyDown);
 		this.dom.addEventListener('contextmenu',this.contextMenu);this.dom.addEventListener('paste',this.paste);
 		this.dom.addEventListener('click',this.linkClick,true);
 		this.dom.addEventListener('compositionstart',()=>{this.composing=true;});
@@ -134,7 +136,10 @@ export class HtmlTableController implements TableActionTarget {
 		const elements=Array.from(table.querySelectorAll<HTMLElement>('td,th'));
 		this.session.table.cells.forEach((cell,index)=>{
 			const element=elements[index]!;element.dataset.pfRow=String(cell.row);element.dataset.pfColumn=String(cell.column);
-			if(element.lastChild instanceof element.ownerDocument.defaultView!.HTMLBRElement){const placeholder=element.ownerDocument.createElement('br');placeholder.dataset.paraflowCellPlaceholder='true';element.append(placeholder);}
+			let tail=element.lastChild;
+			while(tail?.nodeType===3&&/^[\t\r\n ]*$/u.test(tail.textContent!))tail=tail.previousSibling;
+			// Empty contenteditable cells need a real line box for vertical caret alignment.
+			if(!tail||tail instanceof element.ownerDocument.defaultView!.HTMLBRElement){const placeholder=element.ownerDocument.createElement('br');placeholder.dataset.paraflowCellPlaceholder='true';element.append(placeholder);}
 			element.dataset.pfStripe=String(cell.row%2);element.setAttribute('contenteditable','true');element.setAttribute('tabindex','0');
 			element.setAttribute('aria-label',`第 ${cell.row+1} 行，第 ${cell.column+1} 列`);element.spellcheck=true;
 		});
@@ -210,6 +215,7 @@ export class HtmlTableController implements TableActionTarget {
 	}
 	private pointerDown=(event:PointerEvent):void=>{
 		const cell=this.getEventCell(event);if(!cell||event.button!==0)return;
+		goalXStoreFor(this.view)?.write(null);
 		const position=this.position(cell);this.current=position;
 		if(event.shiftKey){event.preventDefault();this.textAnchor=null;this.select(this.anchor,position);this.dom.ownerDocument.getSelection()?.removeAllRanges();}
 		else{this.pointerAnchor=position;this.textAnchor=null;this.select(position,position,false);const caret=this.pointerCaret(cell,event);if(caret)this.textAnchor={cell:position,anchorNode:caret.startContainer,anchorOffset:caret.startOffset,focusNode:caret.startContainer,focusOffset:caret.startOffset};}
@@ -304,8 +310,16 @@ export class HtmlTableController implements TableActionTarget {
 			else this.commit(next,true,drag.axis==='row'?{kind:'move',first:drag.first,last:drag.last,direction:destination-drag.first}:undefined);
 		}catch(error){this.options.notify(error instanceof Error?error.message:String(error));}
 	};
+	private beforeInput=(event:InputEvent):void=>{
+		const cell=this.getEventCell(event);
+		this.deletionBreaks=cell&&event.inputType.startsWith('delete')?new Set(cell.querySelectorAll('br')):null;
+	};
 	private input=(event:Event):void=>{
 		if(this.composing)return;const element=this.getEventCell(event);if(!element)return;
+		const previousBreaks=this.deletionBreaks;this.deletionBreaks=null;
+		// Chromium creates a BR caret carrier when deleting the final visible content.
+		const tail=element.lastElementChild;
+		if(previousBreaks&&tail?.tagName==='BR'&&!element.textContent?.trim()&&!previousBreaks.has(tail))tail.setAttribute('data-paraflow-cell-placeholder','true');
 		this.clearPreview();const position=this.position(element);
 		// Browsers may insert div for Enter. Standard paragraphs are the stored form.
 		for(const div of Array.from(element.querySelectorAll('div'))){const p=element.ownerDocument.createElement('p');p.append(...Array.from(div.childNodes));div.replaceWith(p);}
@@ -336,8 +350,10 @@ export class HtmlTableController implements TableActionTarget {
 		const transaction=this.view.state.update(this.session.replace(this.view.state,nextSource??'',change));
 		if(nextSource!==null&&focused){const cell=selectedCell??this.cellElement(this.current)!;requestTableFocus(this.view,transaction,this.session.target.from,focus??{...captureTableFocus(cell,this.current,cell.innerHTML),rectangle:this.selecting?this.rectangle:undefined});}
 		if(nextSource!==null)this.session=new TableEditSession(findEditableTableSources(transaction.state).find(target=>target.from===this.session.target.from)!);
+		const replacementSession=this.session;
 		this.view.dispatch(transaction);
-		if(this.destroyed)return;
+		// The host can reuse this widget for another table during representation changes.
+		if(this.destroyed||this.session!==replacementSession)return;
 		clearTableFocus(this.view);
 		if(nextSource!==null){const table=this.session.table;if(focus)this.current=focus.cell;if(structural){this.current={row:Math.min(this.current.row,table.rows-1),column:Math.min(this.current.column,table.columns-1)};this.rectangle=focus?.rectangle??closeSelection(table,this.current,this.current);this.trackRectangle={...this.rectangle};}this.render();if(focused){const offsets=focus??caret;this.focusCell(this.current,offsets?.to);if(offsets&&offsets.from!==offsets.to)this.restoreTextSelection({cell:this.current,from:offsets.from,to:offsets.to});}}
 	}
@@ -366,16 +382,18 @@ export class HtmlTableController implements TableActionTarget {
 	}
 	private keyDown=(event:KeyboardEvent):void=>{
 		if(event.isComposing||this.composing||this.view.composing||this.view.state.field(compositionStateField,false)||this.view.state.readOnly||!this.options.isActive(this.view)||this.options.isActiveView?.(this.view)===false)return;const mod=event.ctrlKey||event.metaKey;
+		if(event.key!=='ArrowUp'&&event.key!=='ArrowDown')goalXStoreFor(this.view)?.write(null);
 		if(!mod&&!event.altKey&&this.options.isActive(this.view)&&this.options.isActiveView?.(this.view)!==false&&this.arrowSelection(event))return;
+		if(!mod&&!event.altKey&&!event.shiftKey&&this.verticalCellMovement(event))return;
 		if(this.options.isActive(this.view)&&this.options.isActiveView?.(this.view)!==false&&exitHtmlTableDown(this.view,this.session,event))return;
 		if(mod&&event.key.toLowerCase()==='z'){event.preventDefault();event.stopPropagation();(event.shiftKey?redo:undo)(this.view);return;}
 		if(mod&&event.key.toLowerCase()==='y'){event.preventDefault();event.stopPropagation();redo(this.view);return;}
 		if(event.key==='Enter'&&!event.shiftKey){
 			const cell=this.getEventCell(event);
 			if(event.altKey||!cell)return;
+			const selection=cell.ownerDocument.getSelection();if(this.selecting&&this.positions.length>1||!selection||selection.rangeCount!==1||!cell.contains(selection.anchorNode)||!cell.contains(selection.focusNode))return;
 			const last=Number(cell.dataset.pfRow)+(cell as HTMLTableCellElement).rowSpan===this.session.table.rows;
 			if(mod||last){
-				const selection=cell.ownerDocument.getSelection();if(!selection?.isCollapsed||selection.rangeCount!==1||!cell.contains(selection.focusNode))return;
 				event.preventDefault();event.stopPropagation();
 				if(mod)this.insertRowAfter(Number(cell.dataset.pfRow));
 				else{this.view.dispatch(blockExitPlan(this.view.state,this.session.target.to,this.session.target.container?.prefixes[0]??''));this.view.focus();}
@@ -394,20 +412,35 @@ export class HtmlTableController implements TableActionTarget {
 					const caret=current.ownerDocument.createRange();caret.setStartAfter(inserted);caret.collapse(true);selection.removeAllRanges();selection.addRange(caret);
 				}
 			}else{
-				this.session.assertCurrent(this.view.state);const end=this.session.target.to;
-				const prefix=this.session.target.container?.prefixes[0]??'',insert=`\n${prefix}\n${prefix}`;
-				this.view.dispatch({changes:{from:end,insert},selection:{anchor:end+insert.length},effects:registerEmptyBody.of(end+insert.length),annotations:isolateHistory.of('full'),scrollIntoView:true});this.view.focus();
+				const cell=this.getEventCell(event)!;const current=this.position(cell),row=current.row+(cell as HTMLTableCellElement).rowSpan;
+				const next=this.session.table.cells.find(candidate=>intersects(candidate,{top:row,bottom:row,left:current.column,right:current.column}))!;
+				this.select(next,next,false);this.focusCell(next,0);
+				const target=this.cellElement(next)!,range=target.ownerDocument.createRange();range.selectNodeContents(target);
+				const selection=target.ownerDocument.getSelection()!;selection.removeAllRanges();selection.addRange(range);this.publishSourceSelection();
 			}return;
 		}
 		if(event.key==='Tab'){
 			event.preventDefault();event.stopPropagation();const cells=this.session.table.cells;const index=cells.findIndex(cell=>cell.row===this.current.row&&cell.column===this.current.column);const next=cells[index+(event.shiftKey?-1:1)];
 			if(next){this.select(next,next,false);this.focusCell(next,0);const cell=this.cellElement(next)!;const range=cell.ownerDocument.createRange();range.selectNodeContents(cell);const selection=cell.ownerDocument.getSelection();selection?.removeAllRanges();selection?.addRange(range);}
-			else if(!event.shiftKey){const row=this.session.table.rows;this.insert('row',row);this.focusCell({row,column:0},0);}
+			else if(!event.shiftKey)this.insertRowAfter(this.session.table.rows-1);
 			else{this.view.focus();this.view.dispatch({selection:{anchor:this.session.target.from},scrollIntoView:true});}return;
 		}
 		if(event.key==='Escape'){event.preventDefault();this.cancelDrag();this.textAnchor=null;this.select(this.current,this.current,false);this.menu?.close();return;}
 		if(this.selecting&&(event.key==='Backspace'||event.key==='Delete')){event.preventDefault();event.stopPropagation();this.writeSource(this.session.serializeContent({...this.session.table,cells:this.session.table.cells.map(cell=>intersects(cell,this.rectangle)?{...cell,html:''}:cell)}),false);this.render();return;}
 	};
+	private verticalCellMovement(event:KeyboardEvent):boolean {
+		if(event.key!=='ArrowUp'&&event.key!=='ArrowDown')return false;
+		const cell=this.getEventCell(event) as HTMLTableCellElement|null,selection=this.dom.ownerDocument.getSelection();
+		if(!cell||!selection?.isCollapsed||!selection.rangeCount)return false;
+		const text=this.captureText(cell);if(!text||!this.textBoundary(cell,text,event.key))return false;
+		const forward=event.key==='ArrowDown',row=Number(cell.dataset.pfRow)+(forward?cell.rowSpan:-1);
+		const table=cell.closest('table')!,store=requireGoalXStore(this.view),left=this.view.contentDOM.getBoundingClientRect().left;
+		const caret=Array.from(selection.getRangeAt(0).getClientRects()).find(box=>box.height>0);
+		const goal=store.read()??(caret?.left??cell.getBoundingClientRect().left)-left;
+		const next=tableRowCell(table,row,left+goal);if(!next)return false;
+		enterTableCell(this.view,next,left+goal,forward);this.publishSourceSelection();store.write(goal);
+		event.preventDefault();event.stopPropagation();return true;
+	}
 	private arrowSelection(event:KeyboardEvent):boolean {
 		if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key))return false;
 		const forward=event.key==='ArrowRight'||event.key==='ArrowDown';

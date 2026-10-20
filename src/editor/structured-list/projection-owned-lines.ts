@@ -3,7 +3,7 @@ import type {
 	SourceAnalysis,
 	SourceLine,
 } from './context-analysis.js';
-import { isEditableOwnedWhitespace } from './context-analysis.js';
+import { isEditableOwnedWhitespace, ownedBodyStart } from './context-analysis.js';
 import type {
 	ProjectionOwnedLine,
 	ProjectionOwnedLineKind,
@@ -52,10 +52,11 @@ function ownedLine(
 	kind: ProjectionOwnedLineKind,
 ): ProjectionOwnedLine {
 	return {
+		createdBody: line.createdEmptyBody,
 		depth: owner.depth,
 		kind,
 		ownerKind: owner.block.prefix.kind,
-		prefix: { from: line.from, to: kind === 'blank' ? line.to : line.from + line.indentText.length },
+		prefix: { from: line.from, to: kind === 'blank' ? line.to : ownedBodyStart(line) },
 		range: { from: line.from, to: line.to },
 		rendering: owner.depth < 6 ? 'projected' : 'native-depth',
 	};
@@ -109,7 +110,7 @@ function appendOwnedLine(
 	lastWhitespaceFrom: number | null,
 	completeSyntaxAuthority: boolean,
 ): void {
-	if (markerLineStarts.has(line.from) || line.codeLeaf) return;
+	if (markerLineStarts.has(line.from) || line.codeLeaf || line.mathLeaf) return;
 	const ownerIndex = deepestOwner(analysis, activeIndexes, line, completeSyntaxAuthority);
 	if (ownerIndex === null) return;
 	const owner = analysis.items[ownerIndex];

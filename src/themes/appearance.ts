@@ -6,13 +6,18 @@ export interface ThemeOverrides {
  accentColor?: string;
  fontFamily?: string;
  fontSize?: number | 'host';
- fontWeight?: number;
+ fontWeight?: number | 'host';
  width?: number | 'host';
  lineHeight?: number | 'host';
  marker?: 'layered' | 'disc' | 'circle' | 'square';
  metadataLayout?: 'content' | 'native';
  metadataPadding?: number;
  metadataGap?: number;
+}
+
+export function supportsThemeColorScheme(theme: ThemeManifest | null | undefined): boolean {
+ // Converted CSS keeps its own colors and media rules; the converter does not create palette variants.
+ return theme == null || theme.origin === 'builtin';
 }
 
 export function normalizeThemeOverrides(value: unknown): ThemeOverrides {
@@ -26,7 +31,7 @@ export function normalizeThemeOverrides(value: unknown): ThemeOverrides {
   const v = source[key];
   if (v === 'host' || (typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max)) result[key] = v;
  }
- if ([300, 400, 500].includes(Number(source.fontWeight)) && typeof source.fontWeight === 'number') result.fontWeight = source.fontWeight;
+ if (source.fontWeight === 'host' || (typeof source.fontWeight === 'number' && [300, 400, 500].includes(source.fontWeight))) result.fontWeight = source.fontWeight;
  if (['layered', 'disc', 'circle', 'square'].includes(String(source.marker))) result.marker = source.marker as ThemeOverrides['marker'];
  if (source.metadataLayout === 'content' || source.metadataLayout === 'native') result.metadataLayout = source.metadataLayout;
  for (const [key,max] of [['metadataPadding',100],['metadataGap',300]] as const) {
@@ -57,14 +62,17 @@ export function themeOverrideCss(id: string, value: ThemeOverrides): string {
   const v = value.fontSize === 'host' ? 'var(--paraflow-host-size)' : `${value.fontSize}px`;
   for (const name of ['content-font-size','paragraph-size','list-size']) put(`--paraflow-${name}`,v);
  }
- if (value.fontWeight) { put('--paraflow-paragraph-weight',String(value.fontWeight)); put('--paraflow-list-weight',String(value.fontWeight)); }
+ if (value.fontWeight) {
+  const v = value.fontWeight === 'host' ? 'var(--paraflow-host-weight)' : String(value.fontWeight);
+  put('--paraflow-paragraph-weight',v); put('--paraflow-list-weight',v);
+ }
  if (value.lineHeight) {
   const v = value.lineHeight === 'host' ? 'var(--paraflow-host-line-height)' : String(value.lineHeight);
   put('--paraflow-paragraph-line-height',v); put('--paraflow-content-line-height',v); put('--paraflow-list-line-height',v);
  }
  if (value.accentColor) {
   const v = value.accentColor === 'host' ? 'var(--paraflow-host-accent)' : value.accentColor;
-  put('--paraflow-link-color',v); put('--interactive-accent',v); put('--text-accent',v);
+  put('--paraflow-link-color',v); put('--paraflow-link-override',v); put('--interactive-accent',v); put('--text-accent',v);
  }
  if (value.marker) {
   const layered = value.marker === 'layered';

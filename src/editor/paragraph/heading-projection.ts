@@ -17,6 +17,7 @@ import type { Tree } from '@lezer/common';
 import type { AtxHeadingBlock, ParagraphBlock, SetextHeadingBlock } from './model.js';
 import { confirmedSyntaxEnd, discoverAtxHeadings, discoverParagraphAuthority, type HeadingBodyLine } from './syntax.js';
 import { discoverSetextHeadings } from './setext.js';
+import { classifyCurrentSelectionMode, requireCompositionState } from '../runtime/input-state.js';
 
 export const containerHeadingBodyLines = Facet.define<(state: EditorState) => readonly HeadingBodyLine[]>();
 
@@ -456,9 +457,17 @@ export const headingProjectionField = StateField.define<HeadingFieldState>({
 				: null,
 		);
 	},
-	provide: field => invertedEffects.of(transaction => transaction.docChanged&&
-		(transaction.startState.field(field).editSession||transaction.state.field(field).editSession)
-		? [restoreHeadingEditSession.of(transaction.startState.field(field).editSession)] : []),
+	provide: field => invertedEffects.of(transaction => {
+		if (!transaction.docChanged) return [];
+		const before = transaction.startState.field(field), after = transaction.state.field(field);
+		let removedPrefix = false;
+		transaction.changes.iterChangedRanges((from, to) => {
+			if (from < to && before.headings.some(heading => from < heading.prefixTo && heading.prefixFrom < to)) removedPrefix = true;
+		});
+		// Preserve committed identity when Undo restores a removed prefix, without retaining unrelated temporary edits.
+		return before.editSession || after.editSession || removedPrefix
+			? [restoreHeadingEditSession.of(before.editSession)] : [];
+	}),
 });
 
 export function getHeadingProjectionState(state: EditorState): HeadingProjectionState | null {
@@ -478,6 +487,15 @@ export function headingAtCaret(
 	const projection = requireHeadingProjectionState(state);
 	return projection.headings.find((heading) =>
 		heading.contentFrom <= position && position <= heading.to) ?? null;
+}
+
+/** Visible title-row ownership takes precedence over generic container boundaries. */
+export function headingBodyLineAt(state: EditorState, position: number): { readonly contentFrom: number; readonly to: number } | null {
+	const projection = getHeadingProjectionState(state);
+	if (!projection || !state.facet(headingProjectionEnabled)(state)) return null;
+	return projection.headings.find(heading => heading.from !== projection.editSession?.lineFrom &&
+		heading.contentFrom <= position && position <= heading.to) ??
+		projection.setextHeadings.flatMap(heading => heading.lines).find(line => line.contentFrom <= position && position <= line.to) ?? null;
 }
 
 export function normalizeHeadingSelectionEndpoint(
@@ -503,8 +521,24 @@ export function createHeadingProjection(
 	isActive: (view: EditorView) => boolean,
 	isStateActive: (state: EditorState) => boolean = () => true,
 ): Extension {
+	const headingHome = (view: EditorView, extend: boolean): boolean => {
+		if (!isActive(view) || view.composing || requireCompositionState(view.state) ||
+			view.state.selection.ranges.length !== 1 ||
+			!['caret', 'continuous', 'unknown'].includes(classifyCurrentSelectionMode(view.state))) return false;
+		const range = view.state.selection.main;
+		const titleRow = headingBodyLineAt(view.state, range.head);
+		if (!titleRow) return false;
+		// The key establishes normal intent even after an unannotated native End selection.
+		// Resolve before CM skips the atomic prefix to the preceding physical line.
+		const start = Math.max(view.moveToLineBoundary(range, false, true).head, titleRow.contentFrom);
+		view.dispatch({ selection: extend ? EditorSelection.range(range.anchor, start) : EditorSelection.cursor(start, 1),
+			scrollIntoView: true, userEvent: 'select' });
+		return true;
+	};
 	const setextEnd = (view: EditorView, extend: boolean): boolean => {
-		if (!isActive(view) || view.composing || view.state.selection.ranges.length !== 1) return false;
+		if (!isActive(view) || view.composing || requireCompositionState(view.state) ||
+			view.state.selection.ranges.length !== 1 ||
+			!['caret', 'continuous', 'unknown'].includes(classifyCurrentSelectionMode(view.state))) return false;
 		const range = view.state.selection.main;
 		const heading = requireHeadingProjectionState(view.state).setextHeadings.find(candidate =>
 			candidate.contentFrom <= range.head && range.head <= candidate.contentTo);
@@ -515,7 +549,10 @@ export function createHeadingProjection(
 		return true;
 	};
 	return [
-		Prec.highest(keymap.of([{ key: 'End', run: view => setextEnd(view, false), shift: view => setextEnd(view, true) }])),
+		Prec.highest(keymap.of([
+			{ key: 'Home', run: view => headingHome(view, false), shift: view => headingHome(view, true) },
+			{ key: 'End', run: view => setextEnd(view, false), shift: view => setextEnd(view, true) },
+		])),
 		EditorView.baseTheme(Object.fromEntries(Array.from({ length: 6 }, (_value, index) => {
 			const level = index + 1;
 			return [`.paraflow-heading-line--h${level}`, {

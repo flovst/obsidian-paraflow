@@ -63,10 +63,9 @@ function sourceMask(source: string, includeStrike: boolean): Uint8Array {
 /** A nonempty two-marker pair wins over a one-marker pair; consumed markers are never reused. */
 export function discoverTildeRuns(source: string): readonly TildeRun[] {
 	const blocked = sourceMask(source, false);
-	const ordinaryStrike = sourceMask(source, true);
 	const runs: TildeRun[] = [];
 	for (let from = 0; from < source.length; from++) {
-		if (!source.startsWith('~~~', from) || source[from - 1] === '~' || escaped(source, from) || ordinaryStrike[from]) continue;
+		if (source[from] !== '~' || source[from - 1] === '~' || escaped(source, from) || blocked[from]) continue;
 		const parts: TildePart[] = [];
 		let cursor = from;
 		while (source[cursor] === '~' && !blocked[cursor]) {
@@ -87,7 +86,7 @@ export function discoverTildeRuns(source: string): readonly TildeRun[] {
 			parts.push(part); cursor = part.to;
 		}
 		while (source[cursor] === '~' && !blocked[cursor]) cursor++;
-		if (parts.length) runs.push({ from, to: cursor, parts });
+		if (parts.length > 1 || (parts.length && source.startsWith('~~~', from))) runs.push({ from, to: cursor, parts });
 		from = cursor - 1;
 	}
 	return runs;

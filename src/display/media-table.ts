@@ -1,22 +1,27 @@
 export interface MediaTableDisplayOptions {
 	images: boolean;
 	imageCenter: boolean;
+	imageSourceReveal?: boolean;
 	tableDisplay: boolean;
 	tableEditing?: boolean;
 	tableAutoWrap?: boolean;
+	tableBreakHints?: boolean;
 }
 
 export const MEDIA_TABLE_CSS = `
+.paraflow-table-terminal-break::after { content:''; display:inline-block; width:0; height:1lh; vertical-align:top; }
+/* Native block replacement leaves an empty source carrier before the rendered table. */
+.markdown-source-view.mod-cm6.is-live-preview .paraflow-table-display-active .cm-line.HyperMD-table-row:has(>br:only-child):has(+.cm-table-widget) { height:0!important; min-height:0!important; line-height:0!important; padding-block:0!important; }
 /* Native cells freeze their dimensions before the display observer runs. */
 .markdown-source-view.mod-cm6:where(.is-live-preview) :where(.paraflow-table-display-active) .cm-table-widget { padding:0; margin-inline:0 !important; }
 .markdown-source-view.mod-cm6:where(.is-live-preview) :where(.paraflow-table-display-active) .cm-table-widget .table-wrapper { width:100%; }
-.markdown-source-view.mod-cm6:where(.is-live-preview) :where(.paraflow-table-display-active) .cm-table-widget .table-cell-wrapper { padding:0; }
+.markdown-source-view.mod-cm6:where(.is-live-preview) :where(.paraflow-table-display-active) .cm-table-widget .table-cell-wrapper { padding:0; height:auto; }
 .markdown-source-view.mod-cm6:where(.is-live-preview) :where(.paraflow-table-display-active) .cm-table-widget .table-cell-wrapper :is(.cm-scroller,.cm-content) { line-height:inherit; }
 .markdown-source-view.mod-cm6.is-live-preview :is(.paraflow-table-display-active.paraflow-paragraph-editing-active,.paraflow-table-display-active.paraflow-callout-active .paraflow-container-block) :is(.cm-table-widget,.paraflow-html-table-editor,table.table-editor,table.paraflow-editable-table) { margin-block:0; }
 /* The semantic gap owns standalone native HTML table spacing too. */
 .markdown-source-view.mod-cm6.is-live-preview > .cm-editor.paraflow-table-display-active.paraflow-paragraph-editing-active > .cm-scroller > .cm-sizer > .cm-contentContainer > .cm-content > .cm-html-embed > table.paraflow-display-table { margin-block:0; }
 .markdown-source-view.mod-cm6:where(.is-live-preview) :where(.paraflow-table-display-active) :is(table.table-editor,table.paraflow-editable-table) { width:100%; table-layout:auto; border-collapse:collapse; line-height:var(--paraflow-line-height,var(--line-height-normal,1.6)); }
-.markdown-source-view.mod-cm6:where(.is-live-preview) :where(.paraflow-table-display-active) :is(table.table-editor,table.paraflow-editable-table) > :where(thead,tbody,tfoot) > tr > :is(td,th) { border:1px solid var(--paraflow-border-color); padding:6px 13px; line-height:inherit; }
+.markdown-source-view.mod-cm6:where(.is-live-preview) :where(.paraflow-table-display-active) :is(table.table-editor,table.paraflow-editable-table) > :where(thead,tbody,tfoot) > tr > :is(td,th) { border:1px solid var(--paraflow-border-color); padding:6px 13px; line-height:inherit; vertical-align:middle; }
 .markdown-source-view.mod-cm6:where(.is-live-preview) :where(.paraflow-table-display-active) :is(table.table-editor,table.paraflow-editable-table) > :where(thead,tbody,tfoot) > tr > th:not([style*="font-weight" i],:is(table,thead,tbody,tfoot,tr)[style*="font-weight" i] *) { font-weight:var(--font-bold,700); }
 .markdown-source-view.mod-cm6:where(.is-live-preview) :where(.paraflow-table-display-active) :is(table.table-editor,table.paraflow-editable-table) > :where(thead,tbody,tfoot) > tr > th:not([style*="background" i],:is(table,thead,tbody,tfoot,tr)[style*="background" i] *) { background-color:var(--paraflow-table-header-background,var(--paraflow-surface-color,var(--background-secondary))); }
 .markdown-source-view.mod-cm6:where(.is-live-preview) :where(.paraflow-table-display-active) :is(table.table-editor,table.paraflow-editable-table) > :where(thead,tbody,tfoot) > tr > td:not([style*="background" i],:is(table,thead,tbody,tfoot,tr)[style*="background" i] *) { background-color:var(--paraflow-table-base-background,var(--background-primary)); }
@@ -41,14 +46,15 @@ img.paraflow-display-image-center { display: block; margin-inline: auto; }
 table.paraflow-display-table { width: 100%; table-layout: auto; border-collapse: collapse; }
 :is(.markdown-source-view.mod-cm6.is-live-preview, .markdown-reading-view) table.paraflow-display-table { line-height: var(--paraflow-line-height, var(--line-height-normal, 1.6)); }
 .markdown-source-view.mod-cm6 table.paraflow-display-table > :where(thead, tbody, tfoot) > tr > :is(td, th),
-.markdown-reading-view table.paraflow-display-table > :where(thead, tbody, tfoot) > tr > :is(td, th) { border: 1px solid var(--paraflow-border-color); padding: 6px 13px; line-height: inherit; }
+.markdown-reading-view table.paraflow-display-table > :where(thead, tbody, tfoot) > tr > :is(td, th) { border: 1px solid var(--paraflow-border-color); padding: 6px 13px; line-height: inherit; vertical-align: middle; }
 .markdown-reading-view table.paraflow-display-table { line-height: var(--paraflow-line-height, var(--line-height-normal, 1.6)); }
 .markdown-reading-view table.paraflow-display-table > :is(thead, tbody, tfoot) > tr > th { line-height: inherit; }
 .markdown-reading-view table.paraflow-display-table > :is(thead, tbody, tfoot) > tr > :is(td, th):empty::before { content: "\\200b"; }
 table.paraflow-display-table-self-scroll { display: block; width: max-content; max-width: 100%; overflow-x: auto; }
 table.paraflow-display-table > :is(thead, tbody, tfoot) > tr > :is(th, td) { white-space: normal; overflow-wrap: anywhere; }
 table.paraflow-table-wrap > :is(thead, tbody, tfoot) > tr > :is(td,th) { white-space:normal; overflow-wrap:anywhere; word-break:normal; }
-table.paraflow-table-wrap > :is(thead, tbody, tfoot) > tr > .paraflow-table-cell-keep-words { overflow-wrap:normal; }
+table.paraflow-table-wrap > :is(thead, tbody, tfoot) > tr > .paraflow-table-cell-keep-words,
+.markdown-source-view.mod-cm6.is-live-preview table.paraflow-table-wrap > :is(thead, tbody, tfoot) > tr > .paraflow-table-cell-keep-words { overflow-wrap:normal; }
 .markdown-source-view.mod-cm6.is-live-preview :is(.cm-table-widget,.paraflow-html-table-editor) table.paraflow-table-wrap :is(.table-cell-wrapper,.cm-scroller,.cm-content,.cm-line) { white-space:normal; overflow-wrap:inherit; word-break:normal; }
 .markdown-source-view.mod-cm6.is-live-preview :is(.cm-table-widget,.paraflow-html-table-editor) table.paraflow-table-wrap .cm-content { white-space:break-spaces; }
 table.paraflow-table-nowrap > :is(thead, tbody, tfoot) > tr > :is(td,th),
@@ -170,7 +176,7 @@ export class MediaTableDisplayController {
 	private tableViewports: HTMLElement[] = [];
 	private cleanupImages: (() => void) | null = null;
 
-	constructor(readonly root: HTMLElement) {}
+	constructor(readonly root: HTMLElement, private readonly reading = false) {}
 
 	update(options: MediaTableDisplayOptions): void {
 		this.destroy();
@@ -282,13 +288,15 @@ export class MediaTableDisplayController {
 	private tables(): void {
 		for (const table of within(this.root, 'table')) {
 			if (table.closest('.cm-editor') && table.closest('td, th')) continue;
+			// Reading postprocessors may run before their section joins the document.
+			const reading = this.reading || table.closest('.markdown-reading-view') !== null;
 			this.add(table, 'paraflow-display-table');
 			const wrapper = table.parentElement;
 			// Keep the native scroll owner so table selection and controls share its coordinates.
 			if (!table.closest('.cm-table-widget')) {
-				if (table !== this.root && wrapper?.matches('.table-wrapper, .paraflow-html-table-editor, .markdown-source-view.is-live-preview .cm-html-embed, .markdown-reading-view :is(.el-table,.el-div)')) this.add(wrapper, 'paraflow-display-table-viewport');
-				else if (table !== this.root && table.closest('.markdown-reading-view .paraflow-reading-math-section')) {
-					// A rerendered section may contain prose and several tables; each table owns its overflow.
+				if (table !== this.root && wrapper && (wrapper.matches('.table-wrapper, .paraflow-html-table-editor, .markdown-source-view.is-live-preview .cm-html-embed') || reading && wrapper.matches('.el-table,.el-div'))) this.add(wrapper, 'paraflow-display-table-viewport');
+				else if (table !== this.root && reading) {
+					// Mixed Reading containers keep prose outside each table's scroll viewport.
 					const viewport = table.ownerDocument.createElement('div');
 					this.add(viewport, 'paraflow-display-table-viewport');
 					table.before(viewport); viewport.append(table);
@@ -300,6 +308,11 @@ export class MediaTableDisplayController {
 			rows.forEach((row, index) => {
 				if (!manualStyle(row, row, 'background')) this.add(row, 'paraflow-display-row-neutral');
 				for (const cell of [...row.cells]) {
+					if (reading) {
+						let tail=cell.lastChild;
+						while(tail?.nodeType===3&&/^[\t\r\n ]*$/u.test(tail.textContent!))tail=tail.previousSibling;
+						if(tail instanceof cell.ownerDocument.defaultView!.HTMLBRElement&&!tail.hasAttribute('style'))this.add(cell,'paraflow-table-terminal-break');
+					}
 					const header = cell.tagName === 'TH';
 					if (!manualStyle(cell, table, 'background')) this.add(cell, header ? 'paraflow-display-header'
 						: index % 2 === 0 ? 'paraflow-display-cell-stripe' : 'paraflow-display-cell-base');

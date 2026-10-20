@@ -187,6 +187,11 @@ export function createTableEditingExtension(options:TableEditingOptions):Extensi
 			const active=options.isActive(view);
 			if(!active)actionLifecycles.set(view,lifecycle=Symbol());
 			if(update.docChanged||!active){clearTableActions(view);nativeContexts.delete(view);toolbar.hide();for(const controller of controllers.get(view)??[])controller.clearPreview();}toolbar.schedule();refresh();
+			if(update.transactions.some(transaction=>transaction.docChanged&&(transaction.isUserEvent('undo')||transaction.isUserEvent('redo')))){
+				const state=view.state;
+				// Host display effects may create another state before the restored widget receives focus.
+				queueMicrotask(()=>{if(!destroyed&&view.state.doc===state.doc&&view.state.selection.eq(state.selection)&&options.isActive(view)&&options.isActiveView?.(view)!==false&&!sourceGesture())restoreSourceSelection();});
+			}
 			if(update.selectionSet||!active)for(const controller of controllers.get(view)??[]){const selection=view.state.selection.main,target=controller.session.target;if(!active||selection.from<target.from||selection.to>target.to)controller.releaseSelection();}
 			nativeDragPreview.refreshOwnership();
 		},destroy(){destroyed=true;clearTableFocus(view);if(view.focus===focus){if(focusWasOwn)view.focus=originalFocus;else Reflect.deleteProperty(view,'focus');}view.dom.ownerDocument.removeEventListener('pointerdown',cancelFocus,true);view.dom.ownerDocument.removeEventListener('focusin',cancelFocus,true);view.dom.removeEventListener('keydown',cancelActivation,true);if(actionLifecycles.get(view)===lifecycle)actionLifecycles.delete(view);observer.disconnect();nativeControls.destroy();nativeDragPreview.destroy();nativeTextSelection.destroy();toolbar.destroy();view.dom.removeEventListener('contextmenu',captureContext,true);clearTableActions(view);for(const controller of controllers.get(view)??[])controller.destroy();controllers.delete(view);nativeContexts.delete(view);}};

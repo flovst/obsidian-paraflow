@@ -1,4 +1,4 @@
-import type { EditorState, Extension } from '@codemirror/state';
+import type { EditorState } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
 import { Component, editorEditorField, editorInfoField, editorLivePreviewField, finishRenderMath, getIcon, loadMathJax, loadPrism, MarkdownRenderChild, MarkdownRenderer, MarkdownView, Notice, normalizePath, Platform, Plugin, sanitizeHTMLToDom, TFile } from 'obsidian';
 import { createReadingMathRanges } from './reading/math-ranges';
@@ -9,47 +9,25 @@ import { ThemeManager } from './themes/manager.js';
 import { contentTokenBridge, resolveThemeUrls, scopeOverrides } from './themes/runtime-css.js';
 import type { ConvertedTheme, ThemeManifest } from './themes/model.js';
 import { createThemeArchive } from './themes/import-files.js';
-import { normalizeThemeOverrides, themeOverrideCss, themePaletteCss, type ThemeOverrides } from './themes/appearance.js';
+import { normalizeThemeOverrides, supportsThemeColorScheme, themeOverrideCss, themePaletteCss, type ThemeOverrides } from './themes/appearance.js';
 import { createBrowserClipboardSink } from './clipboard.js';
-import {
-	createEditorExtensionLifecycle,
-	type EditorExtensionLifecycle,
-} from './editor/extension-lifecycle.js';
-import { createEditorRuntimeExtension } from './editor/runtime/navigation-core.js';
-import { createVirtualTailExtension } from './editor/runtime/virtual-tail.js';
-import { createEditorPointerExtension } from './editor/runtime/pointer.js';
-import { createParagraphExtension } from './editor/paragraph/extension.js';
-import { createLineBreakProjection, type LineBreakKind } from './editor/paragraph/line-break-projection.js';
-import {
-	createStructuredListExtension,
-	createStructuredListRuntimeServiceFactory,
-} from './editor/structured-list/extension.js';
+import type { EditorExtensionLifecycle } from './editor/extension-lifecycle.js';
+import { createEditorComposition, type EditorComposition } from './editor/editor-composition.js';
+import type { LineBreakKind } from './editor/paragraph/line-break-projection.js';
 import { isPrimaryLivePreviewEditor, isPrimarySourceEditor } from './editor/surface.js';
 import { ParaFlowSettingTab } from './settings-tab.js';
-import { normalizeSettings, type ParaFlowSettings } from './settings.js';
+import { normalizeSettings, resetEditingSettings, type ParaFlowSettings, type SourceMaintenanceMode } from './settings.js';
 import { normalizeEnhancements, type EnhancementSettings } from './enhancement-settings.js';
-import { createBodyLayoutExtension } from './editor/body-layout.js';
 import { createReadingEnhancements, type ReadingEnhancements } from './reading/enhancements.js';
 import { readNativePrintSource } from './reading/source.js';
 import { createReadingMath } from './reading/math.js';
-import { createMediaTableDisplayExtension } from './editor/media-table.js';
-import { createCodeBlockExtension } from './editor/code-blocks/index.js';
+import { createModeScrollAlignment, type ModeScrollView } from './reading/mode-scroll.js';
 import { EnhancementStyles } from './display/styles.js';
-import { createFootnoteExtension } from './editor/footnotes/extension.js';
-import { createCommentExtension } from './editor/comments.js';
-import { createShorthandExtension } from './editor/shorthand/extension.js';
-import { createCalloutExtension } from './editor/callout/extension.js';
-import { createCalloutPresentation } from './editor/callout/presentation.js';
 import { refreshCalloutHeaderIcons, renderCalloutHeaderIcon } from './editor/callout/header-icon.js';
 import { createTableEditingIntegration } from './editor/table/obsidian-adapter.js';
-import { mathSourcePaletteExtension } from './themes/math-palette.js';
-import { createClipboardPasteExtension, pasteFromClipboard } from './editor/clipboard-paste.js';
-import { createRenderedBlockEditing } from './editor/rendered-blocks/extension.js';
-import { createIndentMaintenanceSaveExtension } from './editor/indent-maintenance-save.js';
+import { pasteFromClipboard } from './editor/clipboard-paste.js';
 import { createIndentModeMaintenance } from './editor/indent-maintenance-mode.js';
 import { planListIndentMaintenance } from './editor/list-indent-maintenance.js';
-import { createSourceViewExtension } from './editor/source-view.js';
-import { createMarkdownPairingPolicy } from './editor/markdown-pairing.js';
 import { createMathMetadataIntegration } from './metadata/obsidian.js';
 
 export function isParaFlowLivePreview(state: EditorState): boolean {
@@ -64,13 +42,72 @@ export default class ParaFlowPlugin extends Plugin {
 	private readonly themeManager = new ThemeManager();
 	private readonly enhancementStyles = new EnhancementStyles();
 	private disposed = false;
-	private readonly supplementalExtensions: Extension[] = [];
+	private editorComposition!: EditorComposition;
 	private readingEnhancements: ReadingEnhancements | null = null;
 	private tableEditing: ReturnType<typeof createTableEditingIntegration> | null = null;
+	private refreshMathMetadata: (() => Promise<void>) | null = null;
 	contentThemes: ThemeManifest[] = [];
 
 	get contentThemeId(): string | null { return this.settings.contentThemeId; }
 	get enhancements(): Readonly<EnhancementSettings> { return this.settings.enhancements; }
+
+	async setSourceMaintenanceMode(mode: SourceMaintenanceMode): Promise<void> {
+		const update = this.settingsUpdate.then(async () => {
+			if (this.disposed) return;
+			const next = { ...this.settings, enhancements: { ...this.settings.enhancements,
+				maintainListIndentOnSave: mode === 'save' || mode === 'both',
+				maintainListIndentOnModeChange: mode === 'mode-change' || mode === 'both' } };
+			await this.saveData(next);
+			if (!this.disposed) this.settings = next;
+		});
+		this.settingsUpdate = update.catch(() => undefined);
+		await update;
+	}
+
+	async resetEditingSettings(): Promise<void> {
+		const update = this.settingsUpdate.then(async () => {
+			if (this.disposed) return;
+			const lifecycle = this.editorLifecycle;
+			if (!lifecycle) throw new Error('ParaFlow lifecycle is not initialized');
+			const previous = this.settings;
+			const next = resetEditingSettings(previous);
+			const previousTheme = await this.prepareTheme(previous.contentThemeId);
+			const theme = await this.prepareTheme(next.contentThemeId, next.themeOverrides[next.contentThemeId ?? 'paraflow-follow'] ?? {});
+			const previousExtensions = [...this.editorComposition.supplementalExtensions];
+			await this.saveData(next);
+			if (this.disposed) return;
+			this.settings = next;
+			try {
+				this.editorComposition.rebuildSupplementalExtensions();
+				lifecycle.setEnabled('paragraph', next.paragraphEditingEnabled);
+				lifecycle.setEnabled('break-markers', next.breakMarkersEnabled);
+				lifecycle.setEnabled('structured-list', next.structuredListEditingEnabled);
+				this.app.workspace.updateOptions();
+				this.readingEnhancements?.refresh();
+				this.themeManager.setTheme(theme);
+				this.refreshCalloutIcons();
+				await this.refreshMathMetadata?.();
+				for (const leaf of this.app.workspace.getLeavesOfType('markdown')) {
+					if (leaf.view instanceof MarkdownView && leaf.view.getMode() === 'preview') leaf.view.previewMode.rerender(true);
+				}
+			} catch (error) {
+				this.settings = previous;
+				this.editorComposition.supplementalExtensions.splice(0, this.editorComposition.supplementalExtensions.length, ...previousExtensions);
+				const errors: unknown[] = [error];
+				for (const [feature, enabled] of [['paragraph', previous.paragraphEditingEnabled], ['break-markers', previous.breakMarkersEnabled], ['structured-list', previous.structuredListEditingEnabled]] as const) {
+					try { lifecycle.setEnabled(feature, enabled); } catch (rollbackError) { errors.push(rollbackError); }
+				}
+				try { this.app.workspace.updateOptions(); } catch (rollbackError) { errors.push(rollbackError); }
+				try { this.readingEnhancements?.refresh(); } catch (rollbackError) { errors.push(rollbackError); }
+				try { this.themeManager.setTheme(previousTheme); this.refreshCalloutIcons(); } catch (rollbackError) { errors.push(rollbackError); }
+				try { await this.saveData(previous); } catch (rollbackError) { errors.push(rollbackError); }
+				if (errors.length > 1) throw new AggregateError(errors, 'Editing reset rollback was incomplete');
+				throw error;
+			}
+		});
+		this.settingsUpdate = update.catch(() => undefined);
+		await update;
+	}
 
 	async setEnhancement<K extends keyof EnhancementSettings>(key: K, value: EnhancementSettings[K]): Promise<void> {
 		const update = this.settingsUpdate.then(async () => {
@@ -80,15 +117,21 @@ export default class ParaFlowPlugin extends Plugin {
 			await this.saveData(next);
 			if (this.disposed) return;
 			const previous=this.settings;
-			const previousExtensions=[...this.supplementalExtensions];
+			const previousExtensions=[...this.editorComposition.supplementalExtensions];
 			this.settings = next;
 			try {
-				this.rebuildSupplementalExtensions();
+				this.editorComposition.rebuildSupplementalExtensions();
 				this.app.workspace.updateOptions();
 				this.readingEnhancements?.refresh();
+				if (key === 'math') {
+					await this.refreshMathMetadata?.();
+					for (const leaf of this.app.workspace.getLeavesOfType('markdown')) {
+						if (leaf.view instanceof MarkdownView && leaf.view.getMode() === 'preview') leaf.view.previewMode.rerender(true);
+					}
+				}
 			} catch(error) {
 				this.settings=previous;
-				this.supplementalExtensions.splice(0,this.supplementalExtensions.length,...previousExtensions);
+				this.editorComposition.supplementalExtensions.splice(0,this.editorComposition.supplementalExtensions.length,...previousExtensions);
 				const errors: unknown[] = [error];
 				// A host refresh may have updated some views before failing.
 				try { this.app.workspace.updateOptions(); } catch (rollbackError) { errors.push(rollbackError); }
@@ -103,58 +146,6 @@ export default class ParaFlowPlugin extends Plugin {
 		await update;
 	}
 
-	private rebuildSupplementalExtensions(): void {
-		const extensions: Extension[] = [];
-		extensions.push(createMarkdownPairingPolicy(isPrimarySourceEditor));
-		extensions.push(mathSourcePaletteExtension(this.settings.enhancements.mathSourcePalette));
-		const isActive=(view: EditorView) => isParaFlowLivePreview(view.state) && isPrimaryLivePreviewEditor(view);
-		extensions.push(createSourceViewExtension({
-			isSourceView: view => isPrimarySourceEditor(view) && !isParaFlowLivePreview(view.state),
-			getOptions: () => ({
-				enabled: this.settings.enhancements.sourceView,
-				activeLine: this.settings.enhancements.sourceActiveLine,
-				whitespace: this.settings.enhancements.sourceWhitespace,
-				indentGuides: this.settings.enhancements.sourceIndentGuides,
-				lineNumbers: this.settings.enhancements.sourceLineNumbers,
-				lineNumberStyle: this.settings.enhancements.sourceLineNumberStyle,
-				lineNumberPosition: this.settings.enhancements.sourceLineNumberPosition,
-				newlineMarkers: this.settings.enhancements.sourceNewlineMarkers,
-				tabSize: this.settings.enhancements.sourceTabSize,
-			}),
-		}));
-		extensions.push(createIndentMaintenanceSaveExtension({
-			getEnabled: () => this.settings.enhancements.maintainListIndentOnSave,
-			isPrimaryEditor: view => isPrimarySourceEditor(view) && this.currentEditor() === view,
-			plan: planListIndentMaintenance,
-			save: view => this.saveEditor(view),
-			onError: error => { new Notice(`列表缩进维护或保存失败：${String(error)}`); },
-		}));
-
-		extensions.push(createClipboardPasteExtension({
-			isActive: view => isPrimarySourceEditor(view) && this.currentEditor() === view,
-			enabled: () => this.settings.enhancements.pasteCloseCodeFences,
-			getMode: view => isParaFlowLivePreview(view.state) ? this.settings.enhancements.livePreviewPasteMode : this.settings.enhancements.sourcePasteMode,
-			notify: message => { new Notice(message); },
-		}));
-		extensions.push(createCommentExtension({ isActive, getMode: () => this.settings.enhancements.commentDisplay }));
-		extensions.push(createShorthandExtension({ isActive, getSettings: () => this.settings.enhancements }));
-		if (this.settings.enhancements.bodyLayout) extensions.push(createBodyLayoutExtension(
-			isActive,
-			() => this.settings.enhancements,
-		));
-		if(this.settings.enhancements.images || this.settings.enhancements.tableDisplay || this.settings.enhancements.tableEditing) extensions.push(createMediaTableDisplayExtension(view=>isParaFlowLivePreview(view.state),()=>this.settings.enhancements));
-		if(this.settings.enhancements.code) extensions.push(createCodeBlockExtension({isActive,getOptions:()=>this.settings.enhancements,loadPrism}));
-		if(this.settings.enhancements.footnotes) extensions.push(createFootnoteExtension({isActive,
-			hideDefinitionMarkers: () => this.settings.enhancements.footnoteHideDefinitionMarkers,
-			notify:message=>{new Notice(message);}}));
-		if (this.settings.enhancements.callout) extensions.push(
-			createCalloutPresentation({ isActive, isViewSupported: isPrimarySourceEditor, isActiveState: isParaFlowLivePreview,
-				renderHeader: (source, element, view) => renderCalloutHeaderIcon(source, element, view, { getIcon, sanitizeHTMLToDom }),
-			}),
-		);
-		if(this.settings.enhancements.tableEditing && this.tableEditing) extensions.push(this.tableEditing.extension);
-		this.supplementalExtensions.splice(0, this.supplementalExtensions.length, ...extensions);
-	}
 	get contentThemeOverrides(): ThemeOverrides { return this.settings.themeOverrides[this.contentThemeId ?? 'paraflow-follow'] ?? {}; }
 
 	private syncThemeDocuments(): void {
@@ -173,8 +164,9 @@ export default class ParaFlowPlugin extends Plugin {
 	private async prepareTheme(id: string | null, overrides = this.settings.themeOverrides[id ?? 'paraflow-follow'] ?? {}): Promise<{ id: string; css: string } | null> {
 		const themeId = id ?? 'paraflow-follow';
 		const theme = id === null ? null : await this.themeStore.read(id);
-		const scheme = overrides.colorScheme === 'host' ? 'adaptive' : overrides.colorScheme ?? theme?.manifest.colorScheme ?? 'adaptive';
-		const css = themePaletteCss(themeId, scheme) + (theme?.css ?? '') + contentTokenBridge(themeId, overrides)
+		const overrideScheme = supportsThemeColorScheme(theme?.manifest) ? overrides.colorScheme : undefined;
+		const scheme = overrideScheme === 'host' ? 'adaptive' : overrideScheme ?? theme?.manifest.colorScheme ?? 'adaptive';
+		const css = themePaletteCss(themeId, scheme) + (theme?.css ?? '') + contentTokenBridge(themeId, overrides, theme?.manifest.origin)
 			+ themeOverrideCss(themeId, overrides) + scopeOverrides(theme?.overrides ?? '', themeId);
 		return { id: themeId, css: resolveThemeUrls(css, path => this.app.vault.adapter.getResourcePath(this.themeStore.path(themeId) + '/' + path)) };
 	}
@@ -314,12 +306,22 @@ export default class ParaFlowPlugin extends Plugin {
 		if (this.disposed) return;
 		const clipboard = createBrowserClipboardSink();
 		const metadataError = (error: unknown): void => { console.error('ParaFlow math metadata adaptation failed', error); new Notice('公式索引适配失败，请查看开发者控制台。'); };
-		try {
-			const metadata = await createMathMetadataIntegration(this.app, metadataError);
-			if (this.disposed) { metadata.destroy(); return; }
-			this.register(() => metadata.destroy());
-			this.app.workspace.onLayoutReady(() => { if (!this.disposed) void metadata.refreshExisting().catch(metadataError); });
-		} catch (error) { metadataError(error); }
+		let metadata: Awaited<ReturnType<typeof createMathMetadataIntegration>> | null = null;
+		this.refreshMathMetadata = async () => {
+			if (!this.settings.enhancements.math) { metadata?.destroy(); metadata = null; return; }
+			if (metadata) return;
+			try {
+				const current = await createMathMetadataIntegration(this.app, metadataError);
+				if (this.disposed) { current.destroy(); return; }
+				metadata = current;
+				this.app.workspace.onLayoutReady(() => {
+					if (!this.disposed && metadata === current) void current.refreshExisting().catch(metadataError);
+				});
+			} catch (error) { metadataError(error); }
+		};
+		this.register(() => { metadata?.destroy(); metadata = null; });
+		await this.refreshMathMetadata();
+		if (this.disposed) return;
 		const mathRenderer = createSvgMathRenderer({ document, loadMathJax,
 			getMathJax: () => (window as unknown as { MathJax: NativeMathJax }).MathJax });
 		const readingMath = createReadingMath({ loadMathJax, finishRenderMath, renderMath: mathRenderer.renderMath, getCachedMath: mathRenderer.getCachedMath,
@@ -331,21 +333,55 @@ export default class ParaFlowPlugin extends Plugin {
 		}, mathRenderer.renderMath);
 		this.register(() => readingRanges.destroy());
 		this.registerMarkdownPostProcessor(async (element, context) => {
+			const {math,bodyLayout}=this.settings.enhancements;
+			if (!math && !bodyLayout) return;
 			await readingRanges.render(element, context.getSectionInfo(element), context.sourcePath, (cleanup, onload) => {
 				const child = new MarkdownRenderChild(element); child.onunload = cleanup;
 				if (onload) child.onload = onload;
 				context.addChild(child);
-			}, context.docId);
+			}, context.docId,{math,bodyTabs:bodyLayout});
 		}, -1100);
-		this.registerMarkdownPostProcessor(element => { readingRanges.finish(element); }, 2100);
-		this.registerMarkdownPostProcessor(element => { readingMath.capture(element); }, -1000);
-		this.registerMarkdownPostProcessor((element, context) => readingMath.render(element, (math, cleanup) => {
+		this.registerMarkdownPostProcessor(element => { if (this.settings.enhancements.math || this.settings.enhancements.bodyLayout) readingRanges.finish(element); }, 2100);
+		this.registerMarkdownPostProcessor(element => { if (this.settings.enhancements.math) readingMath.capture(element); }, -1000);
+		this.registerMarkdownPostProcessor((element, context) => {
+			if (!this.settings.enhancements.math) return;
+			return readingMath.render(element, (math, cleanup) => {
 			const child = new MarkdownRenderChild(math);
 			child.onunload = cleanup;
 			context.addChild(child);
-		}), 1000);
-		const renderedBlocks = createRenderedBlockEditing({
-			isStateActive: isParaFlowLivePreview, isActive: view => isParaFlowLivePreview(view.state) && isPrimaryLivePreviewEditor(view), isViewSupported: isPrimarySourceEditor,
+			});
+		}, 1000);
+		this.editorComposition = createEditorComposition({
+			registerEditorExtension: extension => this.registerEditorExtension(extension),
+			updateOptions: () => this.app.workspace.updateOptions(),
+		}, {
+			getSettings: () => this.settings,
+			isLivePreview: isParaFlowLivePreview,
+			isPrimaryLivePreviewEditor,
+			isPrimarySourceEditor,
+			isPrimarySourceState: state => {
+				const view = state.field(editorEditorField, false);
+				const owner = state.field(editorInfoField, false)?.editor;
+				return !!view && (owner as typeof owner & { cm?: EditorView })?.cm === view;
+			},
+			currentEditor: () => this.currentEditor(),
+			saveEditor: view => this.saveEditor(view),
+			notify: message => { new Notice(message); },
+			clipboard,
+			loadPrism,
+			mathRendering: { renderMath: mathRenderer.renderMath, getCachedMath: mathRenderer.getCachedMath, isFocused: state => state.field(editorEditorField, false)?.hasFocus === true },
+			openReferenceLink: (destination, view) => {
+				if (/^(?:javascript|data|vbscript):/iu.test(destination.trim())) return;
+				if (/^(?:[a-z][a-z\d+.-]*:|\/\/)/iu.test(destination)) view.dom.ownerDocument.defaultView!.open(destination, '_external');
+				else void this.app.workspace.openLinkText(destination, view.state.field(editorInfoField).file?.path ?? '');
+			},
+			renderInlineHtml: (source, element, view) => {
+				const component = new Component(); component.load();
+				let disposed = false;
+				void MarkdownRenderer.render(this.app, source, element, view.state.field(editorInfoField).file?.path ?? '', component)
+					.then(() => { if (!disposed) view.requestMeasure(); });
+				return () => { disposed = true; component.unload(); };
+			},
 			sourcePath: view => view.state.field(editorInfoField).file?.path ?? '',
 			renderMarkdown: (source, target, view) => {
 				const component = new Component(); component.load();
@@ -354,77 +390,24 @@ export default class ParaFlowPlugin extends Plugin {
 					destroy: () => component.unload(),
 				};
 			},
+			renderCalloutHeader: (source, element, view) => renderCalloutHeaderIcon(source, element, view, { getIcon, sanitizeHTMLToDom }),
+			tableEditingExtension: () => this.tableEditing?.extension ?? null,
 		});
-		const services = createStructuredListRuntimeServiceFactory({ clipboard });
-		// An inner quote edits its projected body before the outer list can consume the key.
-		this.registerEditorExtension(createCalloutExtension(
-			view => this.settings.enhancements.callout && isParaFlowLivePreview(view.state) && isPrimaryLivePreviewEditor(view), {
-				listEditing: () => this.settings.structuredListEditingEnabled,
-				paragraphEditing: () => this.settings.paragraphEditingEnabled,
-			},
-		));
-		this.registerEditorExtension(createEditorPointerExtension({
-			disableSelectedTextDrag: () => this.settings.disableSelectedTextDrag,
-			hideCaretWhileDragSelecting: () => this.settings.hideCaretWhileDragSelecting,
-			isActive: isPrimarySourceEditor,
-			isLivePreview: isParaFlowLivePreview,
-		}));
-		this.registerEditorExtension(createVirtualTailExtension({
-			isActive: view => isParaFlowLivePreview(view.state) && isPrimaryLivePreviewEditor(view),
-		}));
-		this.editorLifecycle = createEditorExtensionLifecycle({
-			registerEditorExtension: (extension) => this.registerEditorExtension(extension),
-			updateOptions: () => this.app.workspace.updateOptions(),
-		}, {
-			navigationCore: () => createEditorRuntimeExtension({
-				isSelectionPresentationActive: isPrimaryLivePreviewEditor,
-				isSelectionPresentationStateActive: isParaFlowLivePreview,
-			}),
-			paragraph: () => [createParagraphExtension({
-				editLinksOnPlainClick: () => this.settings.editLinksOnPlainClick,
-				openReferenceLink: (destination, view) => {
-					if (/^(?:javascript|data|vbscript):/iu.test(destination.trim())) return;
-					if (/^(?:[a-z][a-z\d+.-]*:|\/\/)/iu.test(destination)) view.dom.ownerDocument.defaultView!.open(destination, '_external');
-					else void this.app.workspace.openLinkText(destination, view.state.field(editorInfoField).file?.path ?? '');
-				},
-				isLivePreview: isParaFlowLivePreview,
-				isSurface: isPrimaryLivePreviewEditor,
-				mathRendering: { renderMath: mathRenderer.renderMath, getCachedMath: mathRenderer.getCachedMath, isFocused: state => state.field(editorEditorField, false)?.hasFocus === true },
-				renderInlineHtml: (source, element, view) => {
-					const component = new Component(); component.load();
-					let disposed = false;
-					void MarkdownRenderer.render(this.app, source, element, view.state.field(editorInfoField).file?.path ?? '', component)
-						.then(() => { if (!disposed) view.requestMeasure(); });
-					return () => { disposed = true; component.unload(); };
-				},
-			}), renderedBlocks],
-			breakMarkers: () => createLineBreakProjection(
-				(view) => isParaFlowLivePreview(view.state) && isPrimaryLivePreviewEditor(view),
-				(kind) => kind === 'html' ? this.settings.htmlBreakMarkersEnabled : this.settings.hardBreakMarkersEnabled,
-			),
-			structuredList: () => createStructuredListExtension({
-				isLivePreview: isParaFlowLivePreview,
-				isSurface: isPrimaryLivePreviewEditor,
-				services,
-			}),
-		}, {
-			breakMarkers: this.settings.breakMarkersEnabled,
-			paragraph: this.settings.paragraphEditingEnabled,
-			structuredList: this.settings.structuredListEditingEnabled,
-		});
+		this.editorLifecycle = this.editorComposition.lifecycle;
 		this.addSettingTab(new ParaFlowSettingTab(this));
 		const currentEditor = () => this.currentEditor();
 		for (const mode of ['exact', 'smart'] as const) this.addCommand({
 			id: `paste-${mode}`, name: mode === 'exact' ? '本次精确粘贴 / Paste exact text' : '本次智能粘贴 / Smart paste',
 			checkCallback: checking => {
 				const view = currentEditor();
-				if (!view || !isPrimarySourceEditor(view) || view.state.readOnly) return false;
+				if (!this.settings.enhancements.clipboard || !view || !isPrimarySourceEditor(view) || view.state.readOnly) return false;
 				if (!checking) void pasteFromClipboard(view, mode, { getView: currentEditor, notify: message => { new Notice(message); } });
 				return true;
 			},
 		});
 		this.tableEditing=createTableEditingIntegration(this.app,{
-			isActive:view=>!Platform.isMobile&&this.settings.enhancements.tableEditing&&isParaFlowLivePreview(view.state)&&isPrimaryLivePreviewEditor(view),
+			getBreakEditingEnabled:()=>this.settings.paragraphEditingEnabled,
+			isActive:view=>!Platform.isMobile&&this.settings.enhancements.table&&this.settings.enhancements.tableEditing&&isParaFlowLivePreview(view.state)&&isPrimaryLivePreviewEditor(view),
 			getView:currentEditor,
 			getMergeWarning:()=>this.settings.enhancements.mergeWarning,
 			getAutoWrap:()=>this.settings.enhancements.tableAutoWrap,
@@ -434,9 +417,14 @@ export default class ParaFlowPlugin extends Plugin {
 		});
 		for(const command of this.tableEditing.commands)this.addCommand(command);
 		this.register(() => this.tableEditing?.destroy());
-		this.rebuildSupplementalExtensions();
-		this.registerEditorExtension(this.supplementalExtensions);
+		this.editorComposition.registerSupplementalExtensions();
 		const reading = this.readingEnhancements = createReadingEnhancements(() => this.settings.enhancements);
+		const modeScroll = createModeScrollAlignment();
+		const syncModeScroll = () => modeScroll.syncViews(this.app.workspace.getLeavesOfType('markdown')
+			.map(leaf => leaf.view).filter(view => view instanceof MarkdownView) as unknown as ModeScrollView[]);
+		this.register(() => modeScroll.destroy());
+		this.registerEvent(this.app.workspace.on('layout-change', syncModeScroll));
+		syncModeScroll();
 		this.register(() => { this.disposed = true; reading.destroy(); });
 		this.registerMarkdownPostProcessor(async (element, context) => {
 			const printSource = await readNativePrintSource(element, context.getSectionInfo(element) !== null, async () => {
@@ -446,12 +434,17 @@ export default class ParaFlowPlugin extends Plugin {
 			if (this.disposed) return;
 			const child = new MarkdownRenderChild(element);
 			let cleanup: (() => void) | undefined;
-			child.onload = () => { cleanup = reading.register(element,
+			child.onload = () => {
+				const sectionInfo = context.getSectionInfo(element);
+				const releaseScroll = sectionInfo ? modeScroll.register(element, context.sourcePath, sectionInfo.lineStart, sectionInfo.lineEnd, sectionInfo.text) : () => {};
+				const releaseReading = reading.register(element,
 				() => context.getSectionInfo(element)?.text ?? printSource,
 				() => {
 					const section = context.getSectionInfo(element);
 					return section ? section.text.split('\n').slice(section.lineStart, section.lineEnd + 1).join('\n') : printSource;
-				}); };
+				}, () => context.getSectionInfo(element));
+				cleanup = () => { releaseScroll(); releaseReading(); };
+			};
 			child.onunload = () => cleanup?.();
 			context.addChild(child);
 		});
@@ -471,10 +464,27 @@ export default class ParaFlowPlugin extends Plugin {
 			const nextSettings: ParaFlowSettings = {
 				...this.settings,
 				paragraphEditingEnabled: enabled,
+				breakMarkersEnabled: enabled,
+				enhancements: { ...this.settings.enhancements, bodyLayout: enabled },
 			};
 			await this.saveData(nextSettings);
-			lifecycle.setEnabled('paragraph', enabled);
+			const previous = this.settings;
 			this.settings = nextSettings;
+			try {
+				lifecycle.setEnabled('paragraph', enabled);
+				lifecycle.setEnabled('break-markers', enabled);
+				this.readingEnhancements?.refresh();
+			} catch (error) {
+				this.settings = previous;
+				const errors: unknown[] = [error];
+				try { lifecycle.setEnabled('paragraph', previous.paragraphEditingEnabled); } catch (rollbackError) { errors.push(rollbackError); }
+				try { lifecycle.setEnabled('break-markers', previous.paragraphEditingEnabled); } catch (rollbackError) { errors.push(rollbackError); }
+				try { this.app.workspace.updateOptions(); } catch (rollbackError) { errors.push(rollbackError); }
+				try { this.readingEnhancements?.refresh(); } catch (rollbackError) { errors.push(rollbackError); }
+				try { await this.saveData(previous); } catch (rollbackError) { errors.push(rollbackError); }
+				if (errors.length > 1) throw new AggregateError(errors, 'Paragraph update rollback was incomplete');
+				throw error;
+			}
 		});
 		this.settingsUpdate = update.catch(() => undefined);
 		await update;

@@ -10,6 +10,7 @@ import { destroyMermaidPreviews, mermaidThemeStylesChanged, mountMermaidPreview,
 export { renderedBlockEditorStyles } from './styles.js';
 export interface RenderedBlockEditingOptions {
 	isStateActive: (state: EditorState) => boolean;
+	isKindEnabled?: (kind: RenderedBlock['kind']) => boolean;
 	isActive: (view: EditorView) => boolean;
 	isViewSupported: (view: EditorView) => boolean;
 	sourcePath?: (view: EditorView) => string;
@@ -20,6 +21,9 @@ const cleanup = new WeakMap<HTMLElement, () => void>();
 const previewWidgets = new WeakMap<HTMLElement, PreviewWidget>();
 const mermaidCurrent = new WeakMap<HTMLElement, () => boolean>();
 const refreshPreview = StateEffect.define<null>();
+function enabledBlocks(state: EditorState, options: RenderedBlockEditingOptions): RenderedBlock[] {
+	return discoverRenderedBlocks(state).filter(block => options.isKindEnabled?.(block.kind) ?? true);
+}
 function label(kind: RenderedBlock['kind']): string { return kind === 'html' ? 'HTML' : 'Mermaid'; }
 function badge(view: EditorView, block: RenderedBlock): HTMLElement {
 	const element = view.dom.ownerDocument.createElement('button');
@@ -146,7 +150,7 @@ function project(state: EditorState, options: RenderedBlockEditingOptions, previ
 	const pressed = selectionPointerPressed(state);
 	const frozen = pressed ? previous?.pressed ? previous.frozen : previous?.active ?? null : null;
 	if (!enabled || !options.isStateActive(state)) return { previewRevision, enabled, focused, active: null, pressed, frozen: null, decorations: Decoration.none };
-	const blocks = discoverRenderedBlocks(state), selection = state.selection.main;
+	const blocks = enabledBlocks(state, options), selection = state.selection.main;
 	const caret = selection.empty ? blocks.find(block => block.from <= selection.head && selection.head <= block.to) ?? null : null;
 	const old = same(blocks, previous?.active ?? null);
 	const selected = old && state.selection.ranges.some(range => !range.empty && range.from < old.to && range.to > old.from) ? old : null;
@@ -154,7 +158,7 @@ function project(state: EditorState, options: RenderedBlockEditingOptions, previ
 	const ranges: Range<Decoration>[] = [];
 	for (const block of blocks) {
 		if (block !== active) {
-			ranges.push(Decoration.replace({ widget: new PreviewWidget(block, false, options, containerBlockFrame(state, block.from, block.to), previewRevision), block: true, inclusiveEnd: false }).range(block.from, block.to));
+			ranges.push(Decoration.replace({ widget: new PreviewWidget(block, false, options, containerBlockFrame(state, block.from, block.to), previewRevision), block: true, inclusiveEnd: true }).range(block.from, block.to));
 			continue;
 		}
 		for (const line of block.lines) {
@@ -223,7 +227,7 @@ export function createRenderedBlockEditing(options: RenderedBlockEditingOptions)
 			move(event); const start = gesture; gesture = null;
 			if (!start || start.dragged || !plain(event)) return;
 			const hit = targetBlock(event); if (!hit || hit.from !== start.from) return;
-			const block = discoverRenderedBlocks(view.state).find(item => item.from === start.from); if (!block) return;
+			const block = enabledBlocks(view.state, options).find(item => item.from === start.from); if (!block) return;
 			event.preventDefault(); event.stopImmediatePropagation();
 			view.focus(); view.dispatch({ selection: { anchor: block.bodyFrom }, effects: focus.of(true), userEvent: 'select', scrollIntoView: true });
 		};
@@ -252,13 +256,13 @@ export function createRenderedBlockEditing(options: RenderedBlockEditingOptions)
 	});
 	const protectSelection = EditorState.transactionFilter.of(transaction => {
 		if (!transaction.startState.field(projection).enabled || !options.isStateActive(transaction.startState)) return transaction;
-		const selection = codeEditableSelection(transaction, boundaries(discoverRenderedBlocks(transaction.startState)), false);
+		const selection = codeEditableSelection(transaction, boundaries(enabledBlocks(transaction.startState, options)), false);
 		return selection ? [transaction, { selection, sequential: true }] : transaction;
 	});
 	const protectDelete = (view: EditorView, back: boolean): boolean => {
 		if (!options.isActive(view) || view.composing || view.state.selection.ranges.length !== 1 || !view.state.selection.main.empty) return false;
 		const head = view.state.selection.main.head;
-		for (const block of discoverRenderedBlocks(view.state)) {
+		for (const block of enabledBlocks(view.state, options)) {
 			if (block.kind !== 'mermaid' || !block.fence) continue;
 			const index = block.lines.findIndex(line => head === (back ? line.contentFrom : line.to));
 			if (index < 0) continue;
@@ -280,7 +284,7 @@ export function createRenderedBlockEditing(options: RenderedBlockEditingOptions)
 		EditorView.focusChangeEffect.of((_state, focused) => focus.of(focused)),
 		nativeBlockOwnership.of((state, view) => {
 			if (!options.isViewSupported(view) || !options.isStateActive(state)) return null;
-			const blocks = discoverRenderedBlocks(state);
+			const blocks = enabledBlocks(state, options);
 			return (from, to, decoration) => {
 				const spec = decoration.spec as { widget?: WidgetType & { html?: unknown; start?: unknown; end?: unknown }; block?: boolean };
 				const widget = spec.widget;

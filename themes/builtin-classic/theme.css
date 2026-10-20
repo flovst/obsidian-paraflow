@@ -242,7 +242,7 @@ body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='m
 	> .markdown-preview-view
 	> .markdown-preview-sizer
 	:is(p, blockquote, ul, ol, dl, table):not(
-		:is(.callout *, .markdown-embed *)
+		:is(.callout *, .markdown-embed *, .paraflow-display-quote *)
 	) {
 	margin-block: var(--paraflow-block-gap);
 }
@@ -291,8 +291,6 @@ body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='m
 	> .markdown-preview-view
 	> .markdown-preview-sizer
 	li:not(:is(.callout *, .markdown-embed *)) {
-	margin-block: 0;
-	padding-block: var(--paraflow-list-row-padding, .3em);
 	line-height: var(--paraflow-reading-list-line-height);
 }
 
@@ -472,7 +470,7 @@ body[data-paraflow-theme="builtin-classic"] .markdown-reading-view {
 
 /* List content uses the same row rhythm for tight and loose source. */
 body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='markdown'] .markdown-reading-view > .markdown-preview-view > .markdown-preview-sizer li:not(:is(.callout *, .markdown-embed *)) > p {
- margin-block: 0;
+ line-height: inherit;
 }
 body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='markdown'] .markdown-reading-view > .markdown-preview-view > .markdown-preview-sizer li:not(:is(.callout *, .markdown-embed *)) > p + p {
  margin-block-start: var(--paraflow-block-gap);

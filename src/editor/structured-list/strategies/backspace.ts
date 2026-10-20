@@ -94,7 +94,8 @@ function desiredIndent(context: ListContext, reclassified: boolean): string {
 
 function requiredBoundarySpecs(context: ListContext): readonly BoundaryRequirement[] {
 	const requirements: BoundaryRequirement[] = [];
-	if (context.topology.previousSibling) {
+	if (context.topology.previousSibling || context.topology.whitespaceBoundaries.some(boundary =>
+		boundary.fromAnchor === 'previous-block' && boundary.toAnchor === 'current-marker-line')) {
 		requirements.push({
 			fromAnchor: 'previous-block',
 			role: 'preceding',
@@ -180,7 +181,7 @@ function hasTopLevelReclassification(
 	context: ListContext,
 	before: NormalizedStructuralBoundary | null,
 ): boolean {
-	return context.topology.depth > 0 &&
+	return (context.topology.depth > 0 || context.current.prefix.outerMarker.from > context.current.lineFrom) &&
 		before?.whitespace.newlineCount === 3 &&
 		before.whitespace.lines.length === 2;
 }

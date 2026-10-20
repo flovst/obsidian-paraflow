@@ -1,6 +1,7 @@
 import { isolateHistory } from '@codemirror/commands';
 import { syntaxTree } from '@codemirror/language';
 import { contentSyntaxTree } from './callout/projection.js';
+import { prefixPolicy } from './structured-list/prefix.js';
 import type { SyntaxNode } from '@lezer/common';
 import { Compartment, EditorSelection, EditorState, Prec, RangeSet, countColumn, findClusterBreak, type Extension } from '@codemirror/state';
 import {
@@ -94,6 +95,16 @@ const hardBreakMarker = Decoration.mark({ class: 'paraflow-source-newline parafl
 function hasSourceTrailingBreak(state: EditorState, position: number): boolean {
 	const line = state.doc.lineAt(position);
 	if (position === state.doc.length || !/\S.* {2}$/u.test(line.text)) return false;
+	let body = line.text;
+	for (;;) {
+		const unquoted = body.replace(/^(?:[ \t]*>[ \t]?)+/u, '');
+		const prefix = prefixPolicy.parse(unquoted, 0);
+		const content = unquoted.slice(prefix?.full.to ?? 0);
+		if (content === body) break;
+		body = content;
+	}
+	// Structure and a maintained boundary alone cannot introduce a body hard break.
+	if (!/[^\s\u200b]/u.test(body)) return false;
 	for (const tree of [contentSyntaxTree(state), syntaxTree(state)]) {
 		for (let node: SyntaxNode | null = tree.resolveInner(position - 1, -1); node; node = node.parent) {
 			if (/(?:InlineCode|FencedCode|CodeBlock|HTMLBlock|CommentBlock|CalloutNative|(?:^|[ _-])(?:code|math|comment|frontmatter|yaml)(?:$|[ _-]))/iu.test(node.name)) return false;

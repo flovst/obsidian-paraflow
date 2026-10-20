@@ -29,7 +29,7 @@ export function enhanceReadingTildeRuns(root: HTMLElement, source: string): () =
 			if (literal >= 0) searchFrom = literal + raw.length;
 			earlier = source.indexOf(raw, earlier + raw.length);
 		}
-		const candidates = [raw, native.join('')].map(value => ({ value, index: text.indexOf(value, searchFrom) }))
+		const candidates = [raw, native.join('')].map(value => value.replace(/\\([ \t!"#$%&'()*+,\-./:;<=>?@[\]\\^_`{|}~])/gu, '$1')).map(value => ({ value, index: text.indexOf(value, searchFrom) }))
 			.filter(match => match.index >= 0).sort((a, b) => a.index - b.index || b.value.length - a.value.length);
 		const match = candidates[0];
 		if (!match) continue;
@@ -50,7 +50,7 @@ export function enhanceReadingTildeRuns(root: HTMLElement, source: string): () =
 		for (const part of run.parts) {
 			replacement.append(source.slice(cursor, part.from));
 			const body = root.ownerDocument.createElement(part.kind === 'subscript' ? 'sub' : 'del');
-			body.textContent = source.slice(part.bodyFrom, part.bodyTo); replacement.append(body); cursor = part.to;
+			body.textContent = source.slice(part.bodyFrom, part.bodyTo).replace(/\\([ \t!"#$%&'()*+,\-./:;<=>?@[\]\\^_`{|}~])/gu, '$1'); replacement.append(body); cursor = part.to;
 		}
 		replacement.append(source.slice(cursor, run.to)); range.insertNode(replacement);
 		undo.push(() => { if (replacement.parentNode) replacement.replaceWith(saved); });

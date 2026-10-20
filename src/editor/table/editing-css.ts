@@ -1,12 +1,17 @@
 export const TABLE_EDITING_CSS=`
+.paraflow-table-break-hints { position:fixed; overflow:hidden; pointer-events:none; z-index:1; }
+.paraflow-table-break-hint { position:absolute; color:var(--paraflow-source-color,var(--text-faint)); white-space:nowrap; overflow:hidden; user-select:none; }
+.paraflow-table-break-hint-rich { box-sizing:border-box; padding-inline-start:.12em; }
 .paraflow-html-table-editor { --no-tooltip:true; max-width:100%; overflow-x:auto; margin-block:0.8em; }
 .paraflow-html-table-editor table { width:100%; max-width:100%; border-collapse:collapse; table-layout:auto; }
 .markdown-source-view.mod-cm6.is-live-preview :is(.cm-editor.paraflow-paragraph-editing-active,.cm-editor.paraflow-callout-active .paraflow-container-block) :is(.cm-table-widget.paraflow-table-controls,.paraflow-html-table-editor) { margin-block:0; }
 .markdown-source-view.mod-cm6.is-live-preview :is(.cm-editor.paraflow-paragraph-editing-active,.cm-editor.paraflow-callout-active .paraflow-container-block) :is(.cm-table-widget.paraflow-table-controls,.paraflow-html-table-editor) table.paraflow-display-table { margin-block:0; }
-.paraflow-html-table-editor :is(td,th) { min-width:3em; vertical-align:top; white-space:normal; overflow-wrap:anywhere; border:1px solid var(--table-border-color,var(--background-modifier-border)); outline:none; }
-.markdown-source-view.mod-cm6 .cm-table-widget.paraflow-table-controls :is(td,th),.paraflow-html-table-editor :is(td,th) { padding:6px 13px; line-height:var(--paraflow-line-height,var(--line-height-normal,1.6)); }
-.markdown-source-view.mod-cm6 .cm-table-widget.paraflow-table-controls .table-cell-wrapper { padding:0; }
+.paraflow-html-table-editor :is(td,th) { min-width:3em; vertical-align:middle; white-space:normal; overflow-wrap:anywhere; border:1px solid var(--table-border-color,var(--background-modifier-border)); outline:none; }
+.markdown-source-view.mod-cm6 .cm-table-widget.paraflow-table-controls :is(td,th),.paraflow-html-table-editor :is(td,th) { padding:6px 13px; line-height:var(--paraflow-line-height,var(--line-height-normal,1.6)); vertical-align:middle; }
+.markdown-source-view.mod-cm6 .cm-table-widget.paraflow-table-controls .table-cell-wrapper { padding:0; height:auto; }
 .markdown-source-view.mod-cm6 .cm-table-widget.paraflow-table-controls .table-cell-wrapper :is(.cm-scroller,.cm-content) { line-height:inherit; }
+/* Chromium paints the terminal BR caret just outside the nested scroller's left edge. */
+.markdown-source-view.mod-cm6 .cm-table-widget.paraflow-table-controls .cm-editor.paraflow-native-cell-source > .cm-scroller { overflow:visible; }
 .paraflow-html-table-editor th { text-align:start; }
 .paraflow-html-table-editor :is(td,th):focus { outline:none; }
 .paraflow-html-table-editor [aria-selected="true"] { --pf-selection-top:0px; --pf-selection-right:0px; --pf-selection-bottom:0px; --pf-selection-left:0px; outline:none; box-shadow:inset 0 var(--pf-selection-top) var(--interactive-accent),inset calc(-1 * var(--pf-selection-right)) 0 var(--interactive-accent),inset 0 calc(-1 * var(--pf-selection-bottom)) var(--interactive-accent),inset var(--pf-selection-left) 0 var(--interactive-accent),inset 0 0 0 9999px color-mix(in srgb,var(--interactive-accent) 14%,transparent); }

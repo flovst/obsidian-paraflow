@@ -29,6 +29,17 @@ export const DEFAULT_SETTINGS: ParaFlowSettings = Object.freeze({
 	structuredListEditingEnabled: true,
 });
 
+export type SourceMaintenanceMode = 'never' | 'save' | 'mode-change' | 'both';
+
+export function resetEditingSettings(current: ParaFlowSettings): ParaFlowSettings {
+	const themeOverrides = Object.fromEntries(Object.entries(current.themeOverrides).map(([id, overrides]) => {
+		const next = { ...overrides };
+		delete next.marker;
+		return [id, next];
+	}));
+	return { ...DEFAULT_SETTINGS, enhancements: { ...DEFAULT_ENHANCEMENTS }, contentThemeId: current.contentThemeId, themeOverrides };
+}
+
 export function normalizeSettings(value: unknown): ParaFlowSettings {
 	if (typeof value !== 'object' || value === null || Array.isArray(value)) {
 		return { ...DEFAULT_SETTINGS, enhancements: { ...DEFAULT_ENHANCEMENTS } };
@@ -43,9 +54,7 @@ export function normalizeSettings(value: unknown): ParaFlowSettings {
 	const lineBreakMarkersEnabled = 'lineBreakMarkersEnabled' in value
 		? value.lineBreakMarkersEnabled
 		: undefined;
-	const breakMarkersEnabled = 'breakMarkersEnabled' in value ? value.breakMarkersEnabled : undefined;
 	const htmlBreakMarkersEnabled = 'htmlBreakMarkersEnabled' in value ? value.htmlBreakMarkersEnabled : undefined;
-	const hardBreakMarkersEnabled = 'hardBreakMarkersEnabled' in value ? value.hardBreakMarkersEnabled : undefined;
 	const editLinksOnPlainClick = 'editLinksOnPlainClick' in value
 		? value.editLinksOnPlainClick
 		: undefined;
@@ -53,8 +62,13 @@ export function normalizeSettings(value: unknown): ParaFlowSettings {
 		? value.disableSelectedTextDrag
 		: undefined;
 	const hideCaretWhileDragSelecting = 'hideCaretWhileDragSelecting' in value ? value.hideCaretWhileDragSelecting : undefined;
+	const storedEnhancements = 'enhancements' in value && value.enhancements && typeof value.enhancements === 'object' ? value.enhancements : {};
+	const enhancements = normalizeEnhancements(storedEnhancements);
+	for (const key of ['headings', 'htmlBlocks'] as const) {
+		if (!(key in storedEnhancements)) enhancements[key] = typeof paragraphEnabled === 'boolean' ? paragraphEnabled : false;
+	}
 	return {
-		enhancements: normalizeEnhancements('enhancements' in value ? value.enhancements : undefined),
+		enhancements: { ...enhancements, bodyLayout: typeof paragraphEnabled === 'boolean' ? paragraphEnabled : false },
 		themeOverrides: Object.fromEntries(Object.entries('themeOverrides' in value && value.themeOverrides && typeof value.themeOverrides === 'object' && !Array.isArray(value.themeOverrides) ? value.themeOverrides : {})
 			.filter(([id]) => /^[a-z0-9][a-z0-9-]{0,79}$/u.test(id))
 			.map(([id, overrides]) => [id, normalizeThemeOverrides(overrides)])),
@@ -69,12 +83,10 @@ export function normalizeSettings(value: unknown): ParaFlowSettings {
 		editLinksOnPlainClick: typeof editLinksOnPlainClick === 'boolean'
 			? editLinksOnPlainClick
 			: DEFAULT_SETTINGS.editLinksOnPlainClick,
-		breakMarkersEnabled: typeof breakMarkersEnabled === 'boolean' ? breakMarkersEnabled
-			: typeof paragraphEnabled === 'boolean' ? paragraphEnabled : false,
+		breakMarkersEnabled: typeof paragraphEnabled === 'boolean' ? paragraphEnabled : false,
 		htmlBreakMarkersEnabled: typeof htmlBreakMarkersEnabled === 'boolean' ? htmlBreakMarkersEnabled
 			: typeof lineBreakMarkersEnabled === 'boolean' ? lineBreakMarkersEnabled : DEFAULT_SETTINGS.htmlBreakMarkersEnabled,
-		hardBreakMarkersEnabled: typeof hardBreakMarkersEnabled === 'boolean' ? hardBreakMarkersEnabled
-			: typeof lineBreakMarkersEnabled === 'boolean' ? lineBreakMarkersEnabled : DEFAULT_SETTINGS.hardBreakMarkersEnabled,
+		hardBreakMarkersEnabled: true,
 		paragraphEditingEnabled: typeof paragraphEnabled === 'boolean'
 			? paragraphEnabled
 			: false,

@@ -19,7 +19,13 @@ export const renderedBlockEditorStyles = `
   border: 1px solid var(--paraflow-border-color, var(--background-modifier-border));
   border-block-end-color: var(--background-modifier-border-hover, var(--text-faint));
 }
+.paraflow-rendered-block-mermaid { padding: 0; }
 .paraflow-rendered-block-mermaid .paraflow-rendered-block-content { text-align: center; overflow-x: auto; }
+.markdown-reading-view .mermaid.paraflow-reading-mermaid { text-align: center; overflow-x: auto; }
+.paraflow-rendered-block-mermaid .mermaid > svg,
+.markdown-reading-view .mermaid.paraflow-reading-mermaid > svg { display: block; margin-inline: auto; }
+.paraflow-rendered-block-mermaid .mermaid,
+.markdown-reading-view .mermaid.paraflow-reading-mermaid { font-weight: normal; }
 /* Keep native insertion/measurement live while a valid prior diagram is shown. */
 .paraflow-rendered-block-mermaid .paraflow-rendered-block-content.is-pending {
   position: absolute;
@@ -29,6 +35,7 @@ export const renderedBlockEditorStyles = `
   pointer-events: none;
 }
 .paraflow-rendered-block-html .paraflow-rendered-block-content { white-space: normal; }
+.paraflow-rendered-block-preview.paraflow-rendered-block-html { padding: 0; }
 .paraflow-rendered-block-content > :first-child { margin-block-start: 0; }
 .paraflow-rendered-block-content > :last-child { margin-block-end: 0; }
 .paraflow-rendered-block-preview[data-render-state="error"] .paraflow-rendered-block-content { color: var(--text-error); }

@@ -2,6 +2,7 @@ import type { EditorSelection, EditorState } from '@codemirror/state';
 import { buildSelectionScope } from './context-scopes.js';
 import {
 	sourceRange,
+	ownedBodyStart,
 	type AnalyzedItem,
 	type SourceAnalysis,
 	type SourceLine,
@@ -61,7 +62,7 @@ function selectedContentRange(
 		? line.from
 		: markerLine
 			? owner.block.content.from
-			: line.from + line.indentText.length;
+			: ownedBodyStart(line);
 	const start = Math.min(Math.max(desiredStart, source.from), source.to);
 	const visibleEnd = Math.min(source.to, line.to);
 	return sourceRange(start, Math.max(start, visibleEnd));

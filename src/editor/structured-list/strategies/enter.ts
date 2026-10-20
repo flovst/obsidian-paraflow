@@ -1,3 +1,4 @@
+import { EditorSelection } from '@codemirror/state';
 import type { EditPlan, EditPlanFragment, EditRegionId } from '../edit-plan.js';
 import { bodyEnterText } from '../../paragraph/body-enter.js';
 import type { ExceptionId } from '../exception-registry.js';
@@ -206,18 +207,32 @@ function splitPlan(
 			));
 		}
 	}
-	fragments.push(splitItem(
-		context,
-		currentContentId,
-		context.caret,
-		sameLevelPrefix(execution, taskState),
-	));
+	const separator = looseItem(context) ? `\n${physicalIndent(context)}\n` : '\n';
+	fragments.push(insertContentText(context, currentContentId,
+		separator + sameLevelPrefix(execution, taskState)));
 	fragments.push(...insertionRenumberFragments(execution));
 	return composeEditPlan(
 		execution.intent.operation,
 		context.editScope,
 		fragments,
 	);
+}
+
+function looseItem(context: ListContext): boolean {
+	return context.topology.whitespaceBoundaries.some(boundary => {
+		if (boundary.newlineCount !== 2) return false;
+		if (boundary.fromAnchor === 'previous-block') return boundary.toAnchor === 'current-marker-line';
+		if (boundary.fromAnchor !== 'current-marker-line') return false;
+		if (boundary.toAnchor === 'following-block') return context.topology.nextSibling !== null;
+		if (!boundary.toAnchor.startsWith('owned-block:')) return false;
+		return context.topology.ownedBlocks[Number(boundary.toAnchor.slice('owned-block:'.length))]?.kind === 'additional-paragraph';
+	});
+}
+
+function hasOwnedParagraph(context: ListContext): boolean {
+	return context.topology.ownedBlocks.some(block =>
+		(block.kind === 'continuation' || block.kind === 'additional-paragraph') &&
+		context.source.slice(block.range).trim().length > 0);
 }
 
 function taskStateForNonEmpty(
@@ -245,17 +260,55 @@ const nonEmptyPlanRules = [
 function nonEmptyPlan(execution: ExecutionFor<NonEmptyOperation>): EditPlan | null {
 	const { context } = execution;
 	if (context.caretContent.kind !== 'marker-line') return ownedBodyEnterPlan(execution);
-	if (context.caretZone === 'empty') return null;
+	if (context.caretZone === 'empty' && !hasOwnedParagraph(context)) return null;
 	const decision = nonEmptyPlanRules.find((rule) => rule.matches(context));
 	if (!decision) return null;
 	const continuation = decision.plan === continuationPlan;
 	return decision.plan(execution, taskStateForNonEmpty(context, continuation));
 }
 
+function terminalBodyAfterNestedList(context: ListContext): boolean {
+	const activeIndex = context.caretContent.ownedBlockIndex!;
+	const previousOwned = context.topology.ownedBlocks[activeIndex - 1];
+	return previousOwned?.kind === 'descendant' && context.source.slice(previousOwned.range).trim() !== '' &&
+		activeIndex === context.topology.ownedBlocks.length - 1;
+}
+
+function promoteEmptyBodyPlan(execution: ExecutionFor<EnterOperation>): EditPlan {
+	const { context } = execution;
+	const index = context.caretContent.ownedBlockIndex!;
+	const owned = context.topology.ownedBlocks[index]!;
+	const boundaryIndex = context.topology.whitespaceBoundaries.findIndex(boundary =>
+		boundary.toAnchor === `owned-block:${index}`);
+	const boundary = context.topology.whitespaceBoundaries[boundaryIndex];
+	const fragments: EditPlanFragment[] = [replaceOwnedBlockIndentation(context,
+		{ index, kind: 'owned-block' }, owned, sameLevelPrefix(execution, ' '))];
+	if (boundary && boundary.newlineCount > 1) fragments.unshift(rewriteWhitespaceBoundary(context.editScope,
+		boundary, { index: boundaryIndex, kind: 'whitespace-boundary' }, '\n'));
+	const plan = composeEditPlan(execution.intent.operation, context.editScope,
+		[...fragments, ...insertionRenumberFragments(execution)]);
+	const removed = boundary && boundary.newlineCount > 1 ? context.source.slice(boundary.range).length - 1 : 0;
+	return { ...plan, selection: EditorSelection.single(owned.range.from - Math.max(0, removed) + sameLevelPrefix(execution, ' ').length) };
+}
+
 function ownedBodyEnterPlan(execution: ExecutionFor<EnterOperation>): EditPlan {
 	const { context } = execution;
 	const owned = context.topology.ownedBlocks[context.caretContent.ownedBlockIndex!]!;
-	const insert = bodyEnterText(execution.intent.operation === 'shift-enter' ? 'shift-enter' : 'enter', owned.indentText);
+	if (execution.intent.operation === 'shift-enter') {
+		return composeEditPlan(execution.intent.operation, context.editScope,
+			[insertContentText(context, currentContentId, bodyEnterText('shift-enter', owned.indentText))]);
+	}
+	if (context.caretZone === 'empty' && terminalBodyAfterNestedList(context)) {
+		return promoteEmptyBodyPlan(execution);
+	}
+	if (context.caretContent.kind === 'continuation') {
+		const prefix = sameLevelPrefix(execution, taskStateForNonEmpty(context, false));
+		const split = context.caret === context.caretContent.range.from
+			? replaceOwnedBlockIndentation(context, { index: context.caretContent.ownedBlockIndex, kind: 'owned-block' }, owned, prefix)
+			: insertContentText(context, currentContentId, '\n' + prefix);
+		return composeEditPlan(execution.intent.operation, context.editScope, [split, ...insertionRenumberFragments(execution)]);
+	}
+	const insert = bodyEnterText('enter', owned.indentText);
 	return composeEditPlan(execution.intent.operation, context.editScope, [insertContentText(context, currentContentId, insert)]);
 }
 
@@ -286,7 +339,17 @@ function convertEmptyPlan(
 	layout: EmptyLayout,
 	exceptionId: ExceptionId | null,
 ): EditPlan {
-	const replacement = emptyReplacement(execution.context, layout);
+	const boundaries = execution.context.topology.whitespaceBoundaries;
+	const previous = boundaries.find(boundary =>
+		boundary.fromAnchor === 'previous-block' && boundary.toAnchor === 'current-marker-line');
+	const following = boundaries.find(boundary =>
+		boundary.fromAnchor === 'current-marker-line' && boundary.toAnchor === 'following-block');
+	// Existing loose-list separators already supply the gaps around the resulting body.
+	const before = Math.min(layout.caretLine, Math.max(0, (previous?.newlineCount ?? 1) - 1));
+	const after = Math.min(layout.lines - layout.caretLine - 1, Math.max(0, (following?.newlineCount ?? 1) - 1));
+	const replacement = emptyReplacement(execution.context, {
+		lines: layout.lines - before - after, caretLine: layout.caretLine - before,
+	});
 	const fragments = [
 		replaceEmptyItem(
 			execution.context,
@@ -367,6 +430,7 @@ export function enterEmptyNested(
 	if (context.caretZone !== 'empty' || context.topology.depth === 0) {
 		return { kind: 'pass-through' };
 	}
+	if (hasOwnedParagraph(context)) return { kind: 'pass-through' };
 	return editResult(convertEmptyPlan(
 		execution,
 		nestedEmptyLayouts[context.topology.siblingPosition],
@@ -383,6 +447,7 @@ export function enterEmptyTopLevel(
 	if (context.caretZone !== 'empty' || context.topology.depth !== 0) {
 		return { kind: 'pass-through' };
 	}
+	if (hasOwnedParagraph(context)) return { kind: 'pass-through' };
 	if (context.topology.siblingPosition === 'only') {
 		return editResult(duplicateEmptyPlan(execution));
 	}

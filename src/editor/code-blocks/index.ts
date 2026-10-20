@@ -13,6 +13,7 @@ import {createNativeDecorationOwnership,nativeBlockOwnership,isNativeReplacement
 import {createCodeSyntaxColors,type CodePrism} from './syntax-colors.js';
 import { createCodeParserSource } from './parser-source.js';
 import { createSharedMathParser } from '../math/shared-parser.js';
+import { createCodeBodySelection } from './selection.js';
 export { CODE_BLOCK_CSS } from './styles.js';
 export type { CodeBlockOptions } from './model.js';
 
@@ -94,7 +95,7 @@ function decorate(state: EditorState, blocks: CodeBlock[], options: CodeBlockOpt
 	return Decoration.set(ranges,true);
 }
 
-interface BlockMeasure {id:number; width:number; offset:number; overflowing:boolean; extents:Array<{element:HTMLElement; width:number}>; bar:HTMLElement | null}
+interface BlockMeasure {id:number; width:number; offset:number; overflowing:boolean; extents:Array<{element:HTMLElement; width:number}>; frameBorders:Array<{element:HTMLElement; left:string; right:string}>; bar:HTMLElement | null}
 
 export function createCodeBlockExtension(config: {
 	isActive: (view: EditorView)=>boolean;
@@ -125,7 +126,7 @@ export function createCodeBlockExtension(config: {
 			if(!widget&&isNativeReplacement(decoration)&&virtualOpenings.some(line=>line.from===from&&line.to===to))return true;
 			return from===to&&openings.has(from)&&!!widget&&Function.prototype.toString.call(widget.toDOM).includes('code-block-flair');
 		};
-	}),createCodeKeyboardExit(config.isActive),createCodeMarkerExtension(config.isActive,config.getOptions),field,ViewPlugin.fromClass(class {
+	}),createCodeBodySelection(config.isActive),createCodeKeyboardExit(config.isActive),createCodeMarkerExtension(config.isActive,config.getOptions),field,ViewPlugin.fromClass(class {
 		private destroyed=false;
 		private activationPending=false;
 		private naturalWidths=new Map<number,{width:number; typography:string}>();
@@ -152,7 +153,15 @@ export function createCodeBlockExtension(config: {
 			}
 			this.view.requestMeasure({key:this,read:view=>this.measure(view),write:measurements=>{
 				if(this.destroyed)return;
+				let insetChanged=false;
 				for(const entry of measurements) {
+					for(const frame of entry.frameBorders)for(const side of ['left','right'] as const) {
+						const property=`--paraflow-code-frame-border-${side}`;
+						if(frame.element.style.getPropertyValue(property)!==frame[side]) {
+							frame.element.style.setProperty(property,frame[side]);
+							insetChanged=true;
+						}
+					}
 					for(const extent of entry.extents)extent.element.style.width=`${extent.width}px`;
 					if(entry.bar) {
 						entry.bar.hidden=!entry.overflowing;
@@ -164,6 +173,7 @@ export function createCodeBlockExtension(config: {
 					}
 					scrollBlock(this.view,entry.id,entry.offset);
 				}
+				if(insetChanged)this.schedule();
 			}});
 		}
 		private measure(view: EditorView): BlockMeasure[] {
@@ -173,10 +183,16 @@ export function createCodeBlockExtension(config: {
 			if(!state.active)return [];
 			const result: BlockMeasure[]=[];
 			for(const block of state.blocks) {
-				const lines=[...view.contentDOM.querySelectorAll<HTMLElement>(`.paraflow-code-line[data-paraflow-code-block="${block.from}"]`)];
+				// Hidden editors have no layout width; retain their last valid overflow geometry.
+				const lines=[...view.contentDOM.querySelectorAll<HTMLElement>(`.paraflow-code-line[data-paraflow-code-block="${block.from}"]`)].filter(line=>line.clientWidth>0);
 				if(!lines.length)continue;
 				const bar=view.contentDOM.querySelector<HTMLElement>(`.paraflow-code-scroll[data-paraflow-code-block="${block.from}"]`);
 				const style=view.dom.ownerDocument.defaultView!.getComputedStyle(lines[0]!);
+				// Container frames are painted outside layout; reserve their actual themed borders.
+				const frameBorders=lines.filter(line=>line.classList.contains('paraflow-callout-line')).map(element=>{
+					const frame=view.dom.ownerDocument.defaultView!.getComputedStyle(element,'::after');
+					return {element,left:frame.borderLeftWidth,right:frame.borderRightWidth};
+				});
 				const paddingRight=Number.parseFloat(style.paddingRight)||0;
 				const borderLeft=Number.parseFloat(style.borderLeftWidth)||0;
 				const extents=lines.flatMap(line=>{
@@ -208,7 +224,7 @@ export function createCodeBlockExtension(config: {
 						else if(caret.right>rect.right-8)offset=Math.min(maximum,offset+caret.right-rect.right+8);
 					}
 				}
-				result.push({id:block.from,width,offset,overflowing:maximum>0,extents:extents.map(extent=>({element:extent.element,width:width-extent.natural})),bar});
+				result.push({id:block.from,width,offset,overflowing:maximum>0,extents:extents.map(extent=>({element:extent.element,width:width-extent.natural})),frameBorders,bar});
 			}
 			return result;
 		}

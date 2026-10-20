@@ -5,8 +5,8 @@ const inlineTargets: Record<string, string> = {
 	a: ':is(a,.cm-link,.cm-url,.cm-link .cm-underline)',
 	mark: ':is(mark,.cm-highlight,.paraflow-inline-body--highlight)',
 	code: ':is(code,.cm-inline-code,.paraflow-inline-body--inline-code)',
-	strong: ':is(strong,.cm-strong,.paraflow-inline-body--strong)',
-	b: ':is(b,.cm-strong,.paraflow-inline-body--strong)',
+	strong: ':is(strong,.cm-strong,.paraflow-inline-body--strong,.paraflow-inline-body--strong-emphasis)',
+	b: ':is(b,.cm-strong,.paraflow-inline-body--strong,.paraflow-inline-body--strong-emphasis)',
 	em: ':is(em,.cm-em,.paraflow-inline-body--emphasis)',
 	i: ':is(i,.cm-em,.paraflow-inline-body--emphasis)',
 };
@@ -75,4 +75,60 @@ export function projectContentThemeSelectors(ast: css.CssNode): void {
 			node.block.children.appendData(css.parse(`--paraflow-marker-size:${size}${background.important ? '!important' : ''}`, { context: 'declaration' }));
 		}
 	});
+}
+
+/** Text inside rendered diagrams has its own measured typography. */
+export function isolateDiagramParagraphs(ast: css.CssNode): void {
+	css.walk(ast, node => {
+		if (node.type !== 'Rule' || node.prelude.type !== 'SelectorList') return;
+		for (const selector of node.prelude.children) {
+			if (selector.type !== 'Selector') continue;
+			const parts = selector.children.toArray();
+			if (!parts.some(part => part.type === 'ClassSelector' && part.name === 'markdown-reading-view')) continue;
+			const target = parts.slice(parts.findLastIndex(part => part.type === 'Combinator') + 1);
+			const paragraph = target.some(part => {
+				if (part.type === 'TypeSelector') return part.name === 'p';
+				if (part.type !== 'PseudoClassSelector' || !['is', 'where'].includes(part.name)) return false;
+				let includesParagraph = false;
+				css.walk(part, child => { if (child.type === 'TypeSelector' && child.name === 'p') includesParagraph = true; });
+				return includesParagraph;
+			});
+			if (!paragraph || css.generate(selector).includes(':not(.mermaid *)')) continue;
+			const exclusion = css.parse(':where(:not(.mermaid *))', { context: 'selector' }) as css.Selector;
+			selector.children.appendData(exclusion.children.first!);
+		}
+	});
+}
+
+/** An explicit appearance accent overrides contextual theme links, including table links. */
+export function projectLinkAccentOverride(ast: css.CssNode): void {
+	const additions: Array<{list: css.List<css.CssNode>; item: css.ListItem<css.CssNode>; rule: css.Rule}> = [];
+	css.walk(ast, (node, item, list) => {
+		if (node.type !== 'Rule' || node.prelude.type !== 'SelectorList' || !item || !list) return;
+		const selectors = node.prelude.children.toArray().filter(selector => {
+			if (selector.type !== 'Selector') return false;
+			const parts = selector.children.toArray();
+			if (!parts.some(part => part.type === 'ClassSelector' && ['markdown-reading-view', 'is-live-preview'].includes(part.name))) return false;
+			let link = false;
+			for (const part of parts.slice(parts.findLastIndex(part => part.type === 'Combinator') + 1)) css.walk(part, child => {
+				if ((child.type === 'TypeSelector' && child.name === 'a') ||
+					(child.type === 'ClassSelector' && ['cm-link', 'cm-url', 'cm-underline'].includes(child.name))) link = true;
+			});
+			return link;
+		});
+		const colors = node.block.children.toArray().filter((part): part is css.Declaration => part.type === 'Declaration' && part.property.toLowerCase() === 'color');
+		if (!selectors.length || !colors.length || colors.every(color => css.generate(color.value).includes('--paraflow-link-override'))) return;
+		// Keep the authored fallback order and per-declaration priority, including repeated colors.
+		const declarations = colors.map(color => {
+			const original = css.generate(color.value);
+			const value = original.includes('--paraflow-link-override') ? original : `var(--paraflow-link-override,${original})`;
+			return `color:${value}${color.important ? '!important' : ''}`;
+		}).join(';');
+		const rule = css.parse(`${selectors.map(selector => css.generate(selector)).join(',')}{${declarations}}`) as css.StyleSheet;
+		additions.push({list,item,rule:rule.children.first as css.Rule});
+	});
+	for (const {list,item,rule} of additions) {
+		if (item.next && css.generate(item.next.data) === css.generate(rule)) continue;
+		if (item.next) list.insertData(rule,item.next); else list.appendData(rule);
+	}
 }

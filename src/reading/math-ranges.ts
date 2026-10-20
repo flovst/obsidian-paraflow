@@ -1,8 +1,9 @@
 import {parser, GFM} from '@lezer/markdown';
 import {scanMathRanges} from '../editor/math/range-scanner.js';
 import {mathSourceMarkers} from '../editor/math/transient-source.js';
-import {metadataGrammar,nativeInlineGrammarFor} from '../editor/callout/syntax.js';
+import {metadataGrammar,nativeInlineGrammarFor} from '../editor/markdown-grammar.js';
 import {buildFootnoteIndex,footnoteDefinitionContent,type FootnoteReference,type FootnoteIndex} from '../editor/footnotes/index.js';
+import {adaptReadingBodyTabSource} from './body-tab-source.js';
 
 const referenceGrammar=parser.configure([GFM,metadataGrammar]);
 interface Section {readonly text:string;readonly lineStart:number;readonly lineEnd:number}
@@ -11,6 +12,7 @@ type Render=(source:string,target:HTMLElement,path:string,own:Own)=>Promise<void
 type RenderMath=(source:string,display:boolean,owner:Document)=>HTMLElement|Promise<HTMLElement>;
 interface InlineMath {readonly start:string;readonly end:string;readonly source:string;readonly tex:string;readonly replacement:string}
 interface ReadingFootnoteReference extends FootnoteReference {readonly inline:boolean}
+export interface ReadingSourceOptions {readonly math:boolean;readonly bodyTabs:boolean}
 
 /** Definitions are invisible context; original document order keeps first-definition precedence. */
 function referenceContext(source:string):string {
@@ -62,7 +64,7 @@ function projectReadingMathSource(source:string):{source:string;inline:readonly 
 /** The transient input preserves physical rows; double-dollar inline math has explicit ownership. */
 export function adaptReadingMathSource(source:string):string|null {return projectReadingMathSource(source)?.source??null;}
 
-/** Public section rerendering keeps native Markdown semantics and component ownership. */
+/** Shared source adaptation preserves native rich Markdown and section/component ownership. */
 export function createReadingMathRanges(renderMarkdown:Render,renderMath?:RenderMath) {
  const nested=new WeakSet<HTMLElement>(),owners=new Map<HTMLElement,()=>void>();
  const documents=new Map<string,{
@@ -70,7 +72,7 @@ export function createReadingMathRanges(renderMarkdown:Render,renderMath?:Render
   roots:Set<HTMLElement>;dispose:(()=>void)[];current:boolean;
  }>();
  const finishers=new WeakMap<HTMLElement,()=>void>();
- let analysis:{source:string;adapted:string|null;inline:readonly InlineMath[];index:FootnoteIndex|null;references:string}|null=null;
+ let analysis:{source:string;math:boolean;bodyTabs:boolean;adapted:string|null;inline:readonly InlineMath[];index:FootnoteIndex|null;references:string}|null=null;
  let alive=true;
  const inside=(root:HTMLElement):boolean=>{for(let el:HTMLElement|null=root;el;el=el.parentElement)if(nested.has(el))return true;return false;};
  const mountInline=async(target:HTMLElement,inlineMath:readonly InlineMath[],valid:()=>boolean):Promise<void>=>{
@@ -101,12 +103,13 @@ export function createReadingMathRanges(renderMarkdown:Render,renderMath?:Render
  const destination=(docId:string,number:number)=>`fn-${number}-paraflow-${encodeURIComponent(docId)}`;
  const referenceId=(docId:string,ref:FootnoteReference)=>`fnref-${ref.number}-${ref.occurrence}-paraflow-${encodeURIComponent(docId)}`;
  return {
-  async render(root:HTMLElement,section:Section|null,path:string,own:Own,docId=''):Promise<boolean>{
+  async render(root:HTMLElement,section:Section|null,path:string,own:Own,docId='',options:ReadingSourceOptions={math:true,bodyTabs:false}):Promise<boolean>{
    if(!alive||!section||inside(root))return false;
    const lines=(text:string)=>text.split('\n').slice(section.lineStart,section.lineEnd+1).join('\n');
-   if(analysis?.source!==section.text){
-    const projection=projectReadingMathSource(section.text),adapted=projection?.source??null;
-    analysis={source:section.text,adapted,inline:projection?.inline??[],index:adapted===null?null:buildFootnoteIndex(adapted),references:adapted===null?'':referenceContext(adapted)};
+   if(analysis?.source!==section.text||analysis.math!==options.math||analysis.bodyTabs!==options.bodyTabs){
+    const body=options.bodyTabs?adaptReadingBodyTabSource(section.text):null;
+    const projection=options.math?projectReadingMathSource(body??section.text):null,adapted=projection?.source??body;
+    analysis={source:section.text,...options,adapted,inline:projection?.inline??[],index:adapted===null?null:buildFootnoteIndex(adapted),references:adapted===null?'':referenceContext(adapted)};
    }
    const adapted=analysis.adapted;
    if(adapted===null)return false;

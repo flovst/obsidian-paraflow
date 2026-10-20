@@ -78,8 +78,13 @@ function characterPrerequisites(
 
 function canonicalBoundary(
 	context: ListContext,
+	direction: 'backward' | 'forward' | null,
 ): NormalizedStructuralBoundary | null {
-	const boundary = context.topology.followingStructuralBoundary;
+	const boundary = direction !== 'forward' || context.caretContent.kind === 'marker-line'
+		? context.topology.followingStructuralBoundary
+		: context.topology.structuralBoundaries.find(candidate =>
+			candidate.whitespace.fromAnchor === `owned-block:${context.caretContent.ownedBlockIndex}` &&
+			candidate.removalRange.from === context.caretContent.range.to);
 	if (!boundary) return null;
 	const matches = context.topology.structuralBoundaries.filter((candidate) =>
 		sameNormalizedBoundaryIdentity(candidate, boundary));
@@ -141,7 +146,7 @@ function listBoundaryKind(
 	boundary: NormalizedStructuralBoundary,
 ): MergeBoundaryKind | null {
 	if (boundary.following.kind !== 'list-item') return null;
-	if (boundary.whitespace.toAnchor === 'owned-block:0') return 'descendant-item';
+	if (boundary.whitespace.toAnchor.startsWith('owned-block:')) return 'descendant-item';
 	return boundary.whitespace.toAnchor === 'following-block' ? 'same-level-item' : null;
 }
 
@@ -167,7 +172,7 @@ function directionMatchesBoundary(
 	kind: MergeBoundaryKind,
 ): boolean {
 	if (execution.intent.direction === 'forward') {
-		return execution.context.caret === execution.context.current.content.to;
+		return execution.context.caret === execution.context.caretContent.range.to;
 	}
 	const backwardKind = kind === 'continuation' || kind === 'additional-paragraph';
 	return execution.intent.direction === 'backward' && backwardKind &&
@@ -190,7 +195,7 @@ function boundaryRegionId(
 function boundaryPrerequisites(
 	execution: ExecutionFor<'backspace-delete-inside-content'>,
 ): BoundaryPrerequisites | null {
-	const canonical = canonicalBoundary(execution.context);
+	const canonical = canonicalBoundary(execution.context, execution.intent.direction);
 	if (!canonical) return null;
 	const kind = boundaryKind(canonical);
 	if (!kind || !directionMatchesBoundary(execution, canonical, kind)) return null;

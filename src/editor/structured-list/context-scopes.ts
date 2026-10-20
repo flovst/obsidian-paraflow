@@ -17,6 +17,7 @@ import type {
 } from './model.js';
 import type { HandledOperationId } from './operations.js';
 import { markdownColumns } from './prefix.js';
+import { indentBoundaryChanges } from './indent-boundaries.js';
 
 function region(
 	kind: EditRegionKind,
@@ -193,6 +194,18 @@ function contentDeleteLayout(
 	return regions;
 }
 
+function ownedContentDeleteLayout(current: ListBlockRef, topology: ListTopology,
+	caretContent: ListContext['caretContent']): readonly ContextEditRegion[] {
+	const regions = [...contentDeleteLayout(current, topology)];
+	for (const [index, boundary] of topology.structuralBoundaries.entries()) {
+		if (boundary.whitespace.fromAnchor !== `owned-block:${caretContent.ownedBlockIndex}` ||
+			boundary.removalRange.from !== caretContent.range.to) continue;
+		regions.push(region(boundary.following.kind === 'terminal-newlines' ? 'terminal-newlines' : 'structural-boundary',
+			index, boundary.removalRange, 'protected-prefix'));
+	}
+	return regions;
+}
+
 function sortRegions(regions: readonly ContextEditRegion[]): readonly ContextEditRegion[] {
 	return [...regions].sort((left, right) => {
 		const start = left.range.from - right.range.from;
@@ -229,7 +242,7 @@ function backspaceLayout(
 }
 
 function tabMovesMarker(current: ListBlockRef, topology: ListTopology): boolean {
-	const previous = topology.previousSibling;
+	const previous = topology.indentParent;
 	if (!previous) return false;
 	const target = markdownColumns(previous.prefix.indentText + previous.prefix.markerText + previous.prefix.separatorText);
 	return target !== markdownColumns(current.prefix.indentText);
@@ -265,17 +278,47 @@ export function terminalInsertionLine(
 	return sourceRange(analysis.source.length, analysis.source.length);
 }
 
+function emptyBodyEnterLayout(operation: HandledOperationId, current: ListBlockRef,
+	topology: ListTopology, caretContent: ListContext['caretContent']): readonly ContextEditRegion[] | null {
+	if (operation !== 'enter-non-empty' && operation !== 'enter-task-non-empty') return null;
+	if (caretContent.range.from !== caretContent.range.to) return null;
+	return [region('current-content', null, caretContent.range), ...orderedRegions(current, topology),
+		...whitespaceRegions(topology).map(region => ({ ...region, protection: 'protected-prefix' as const })),
+		region('owned-block', caretContent.ownedBlockIndex, topology.ownedBlocks[caretContent.ownedBlockIndex!]!.range, 'protected-prefix')];
+}
+
+function ownedBodyContentLayout(operation: HandledOperationId, current: ListBlockRef,
+	topology: ListTopology, caretContent: ListContext['caretContent'], position: number): readonly ContextEditRegion[] | null {
+	if (operation === 'backspace-delete-inside-content') return ownedContentDeleteLayout(current, topology, caretContent);
+	if (ownedContinuationEnter(operation, caretContent.kind)) {
+		const content = position === caretContent.range.from
+			? region('owned-block', caretContent.ownedBlockIndex, topology.ownedBlocks[caretContent.ownedBlockIndex!]!.range, 'protected-prefix')
+			: region('current-content', null, caretContent.range);
+		return [content, ...orderedRegions(current, topology)];
+	}
+	if (operation === 'tab' || nonEmptyEnterOperations.has(operation) || emptyEnterOperations.has(operation)) {
+		return [region('current-content', null, caretContent.range)];
+	}
+	return null;
+}
+
+function ownedContinuationEnter(operation: HandledOperationId, kind: ListContext['caretContent']['kind']): boolean {
+	return kind === 'continuation' && (operation === 'enter-non-empty' || operation === 'enter-task-non-empty');
+}
+
 function structuralLayoutAtCaret(
 	operation: HandledOperationId,
 	current: ListBlockRef,
 	topology: ListTopology,
 	caretContent: ListContext['caretContent'],
+	position: number,
 ): readonly ContextEditRegion[] {
 	if (caretContent.kind !== 'marker-line') {
 		if (boundaryBackspaceOperations.has(operation)) return [];
-		if (operation === 'tab' || nonEmptyEnterOperations.has(operation) || emptyEnterOperations.has(operation)) {
-			return [region('current-content', null, caretContent.range)];
-		}
+		const emptyBody = emptyBodyEnterLayout(operation, current, topology, caretContent);
+		if (emptyBody) return emptyBody;
+		const content = ownedBodyContentLayout(operation, current, topology, caretContent, position);
+		if (content) return content;
 		if (operation === 'shift-tab') return caretContent.subtreeBlockIndexes.map(index =>
 			region('owned-block', index, topology.ownedBlocks[index]!.range, 'protected-prefix'));
 	}
@@ -301,8 +344,11 @@ export function buildListScope(
 	if (runtime.editIntent === 'none' || runtime.editIntent === 'conditional-terminal') {
 		return createEditScope(runtime.operation, 'selection-only', [], analysis.source.length);
 	}
-	const layout = structuralLayoutAtCaret(runtime.operation, current, topology, caretContent);
-	const regions = sortRegions(layout);
+	const layout = structuralLayoutAtCaret(runtime.operation, current, topology, caretContent, position);
+	const joins = runtime.operation === 'tab' && caretContent.kind === 'marker-line'
+		? indentBoundaryChanges(analysis.source, current, topology) : [];
+	const regions = sortRegions([...layout, ...joins.map((change, index) =>
+		region('whitespace-boundary', topology.whitespaceBoundaries.length + index, change))]);
 	return createEditScope(runtime.operation, 'editable', regions, analysis.source.length);
 }
 

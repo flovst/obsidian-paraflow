@@ -3,6 +3,7 @@ import type { EditorSelection, EditorState } from '@codemirror/state';
 import {
 	analyzeSource,
 	containingLine,
+	ownedBodyStart,
 	itemAtPosition,
 	type AnalyzedItem,
 	type SourceAnalysis,
@@ -81,7 +82,7 @@ function buildAnalyzedListContext(
 			kind: owned.kind,
 			ownedBlockIndex,
 			subtreeBlockIndexes: paragraphSubtreeIndexes(topology.ownedBlocks, ownedBlockIndex),
-			range: { from: owned.range.from + owned.indentText.length, to: owned.range.to },
+			range: { from: ownedBodyStart(containingLine(analysis.lines, owned.range.from)), to: owned.range.to },
 		}
 		: { kind: 'marker-line', ownedBlockIndex: null, subtreeBlockIndexes: [], range: item.block.content };
 	return {

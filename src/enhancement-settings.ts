@@ -1,9 +1,18 @@
 import { isMathSourcePalette, type MathSourcePalette } from './themes/math-palette.js';
+import { isCodeSourcePalette, type CodeSourcePalette } from './themes/code-palette.js';
 
 export type PasteMode = 'exact' | 'smart';
 
 export interface EnhancementSettings {
+	headings: boolean;
+	htmlBlocks: boolean;
+	mermaid: boolean;
+	math: boolean;
+	inline: boolean;
+	clipboard: boolean;
+	table: boolean;
 	mathSourcePalette: MathSourcePalette;
+	codeSourcePalette: CodeSourcePalette;
 	bodyLayout: boolean;
 	callout: boolean;
 	footnotes: boolean;
@@ -12,6 +21,7 @@ export interface EnhancementSettings {
 	subscript: boolean;
 	superscript: boolean;
 	images: boolean;
+	imageSourceReveal: boolean;
 	code: boolean;
 	tableDisplay: boolean;
 	tableEditing: boolean;
@@ -42,10 +52,18 @@ export interface EnhancementSettings {
 	mergeWarning: boolean;
 }
 
-export type EnhancementToggle = Exclude<keyof EnhancementSettings, 'bodyTabMode' | 'bodyTabSize' | 'sourceTabSize' | 'sourceLineNumberStyle' | 'sourceLineNumberPosition' | 'paragraphSpacingEm' | 'commentDisplay' | 'codeLanguagePosition' | 'mathSourcePalette' | 'sourcePasteMode' | 'livePreviewPasteMode'>;
+export type EnhancementToggle = Exclude<keyof EnhancementSettings, 'bodyTabMode' | 'bodyTabSize' | 'sourceTabSize' | 'sourceLineNumberStyle' | 'sourceLineNumberPosition' | 'paragraphSpacingEm' | 'commentDisplay' | 'codeLanguagePosition' | 'mathSourcePalette' | 'codeSourcePalette' | 'sourcePasteMode' | 'livePreviewPasteMode'>;
 
 export const DEFAULT_ENHANCEMENTS: Readonly<EnhancementSettings> = Object.freeze({
+	headings: true,
+	htmlBlocks: true,
+	mermaid: true,
+	math: true,
+	inline: true,
+	clipboard: true,
+	table: true,
 	mathSourcePalette: 'one-light',
+	codeSourcePalette: 'obsidian',
 	bodyLayout: true,
 	callout: true,
 	footnotes: true,
@@ -54,6 +72,7 @@ export const DEFAULT_ENHANCEMENTS: Readonly<EnhancementSettings> = Object.freeze
 	subscript: true,
 	superscript: true,
 	images: true,
+	imageSourceReveal: true,
 	code: true,
 	tableDisplay: true,
 	tableEditing: true,
@@ -88,6 +107,7 @@ export function normalizeEnhancements(value: unknown): EnhancementSettings {
 	const settings = { ...DEFAULT_ENHANCEMENTS };
 	if (!value || typeof value !== 'object' || Array.isArray(value)) return settings;
 	for (const key of Object.keys(settings) as Array<keyof EnhancementSettings>) {
+		if (key === 'footnoteHideDefinitionMarkers' || key === 'tableHideAddControls') continue;
 		const candidate: unknown = Reflect.get(value, key);
 		if (key === 'bodyTabMode') {
 			if (candidate === 'fixed' || candidate === 'tab-stops') settings[key] = candidate;
@@ -103,6 +123,8 @@ export function normalizeEnhancements(value: unknown): EnhancementSettings {
 			if (candidate === 'exact' || candidate === 'smart') settings[key] = candidate;
 		} else if (key === 'mathSourcePalette') {
 			if (isMathSourcePalette(candidate)) settings[key] = candidate;
+		} else if (key === 'codeSourcePalette') {
+			if (isCodeSourcePalette(candidate)) settings[key] = candidate;
 		} else if (key === 'commentDisplay') {
 			if (candidate === 'always' || candidate === 'editing') settings[key] = candidate;
 		} else if (key === 'codeLanguagePosition') {

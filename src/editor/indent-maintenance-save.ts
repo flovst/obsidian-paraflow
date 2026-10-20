@@ -30,7 +30,7 @@ export function createIndentMaintenanceSaveExtension(options: IndentMaintenanceS
 				const plan = options.plan(this.view.state);
 				if (plan.length) {
 					const changes = this.view.state.changes(plan);
-					this.view.dispatch({ changes, selection: this.view.state.selection.map(changes),
+					this.view.dispatch({ changes,
 						annotations: [Transaction.userEvent.of('input.paraflow.indent-maintenance'), isolateHistory.of('full')],
 					});
 				}

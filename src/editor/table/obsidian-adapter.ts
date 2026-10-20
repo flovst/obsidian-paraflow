@@ -10,8 +10,9 @@ import {refreshTableAddControlOwnership} from './add-controls';
 import {bindTableCellScope} from './cell-key-scope';
 import type {TableConversionLoss} from './markdown-serialization';
 import type {NativeCellEditor,NativeClipboardAction} from './native-text-actions';
+import {createNativeCellSourceEditing,type NativeSourceCell} from './native-cell-source';
 
-interface NativeEditorOwner {cm:EditorView;editorComponent?:{cm:EditorView;tableCell?:{cm:EditorView;cell:{el:HTMLElement};editor:NativeCellEditor}};}
+interface NativeEditorOwner {cm:EditorView;editorComponent?:{cm:EditorView;tableCell?:NativeSourceCell&{cell:NativeSourceCell['cell']&{el:HTMLElement};editor:NativeCellEditor}};}
 interface ClipboardHostWindow extends Window {electron?:{remote:{getCurrentWebContents:()=>Record<NativeClipboardAction,()=>void>}};}
 
 class ConversionDialog extends Modal {
@@ -86,6 +87,7 @@ class DimensionsDialog extends Modal {
 }
 
 export interface TableEditingHost {
+	getBreakEditingEnabled:()=>boolean;
 	getAutoWrap:()=>boolean;
 	setAutoWrap:(enabled:boolean)=>Promise<void>;
 	getHideAddControls?:()=>boolean;
@@ -133,5 +135,11 @@ export function createTableEditingIntegration(app:App,host:TableEditingHost) {
 		{id:'table-actions',name:'表格操作与格式',checkCallback:checking=>{const view=host.getView();if(!view||!canEditCurrentTable(view,options))return false;if(!checking){try{showCurrentTableMenu(view,options);}catch(error){report(error);}}return true;}},
 		{id:'insert-html-table',name:'新建可合并表格',checkCallback:checking=>{const view=host.getView();if(!view||!options.isActive(view))return false;if(!checking)void insertNewTable(view,options).catch(report);return true;}},
 	];
-	return {options,extension:createTableEditingExtension(options),commands,destroy:()=>{app.workspace.offref(leafChange);}};
+	const cellSources=createNativeCellSourceEditing(view=>host.isActive(view)&&host.getBreakEditingEnabled(),view=>{
+		const owner=view.state.field(editorInfoField,false)?.editor as unknown as NativeEditorOwner|undefined;
+		const component=owner?.editorComponent,active=component?.tableCell;
+		return owner?.cm===view&&component?.cm===view&&active&&active.editor.cm===active.cm&&
+			typeof active.cell.text==='string'&&typeof active.cell.getAbsoluteOffsets==='function'?active:null;
+	});
+	return {options,extension:[createTableEditingExtension(options),cellSources],commands,destroy:()=>{app.workspace.offref(leafChange);}};
 }

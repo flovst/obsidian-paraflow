@@ -32,6 +32,20 @@ export function enhanceReadingShorthand(root: HTMLElement, settings: ShorthandSe
 		if (index < 0) continue;
 		cursor = index + node.length;
 		if (node.parentElement?.closest(excluded)) continue;
+		// Native inline parsing restarts after an escape and can consume our closing
+		// caret plus an alphanumeric suffix as a block ID at the end of that owner.
+		let text = node.data;
+		let recovered = '';
+		if (!node.nextSibling) for (const item of ranges) {
+			if (item.kind !== 'superscript' || offsets[cursor] !== item.to - 1 || offsets.indexOf(item.from, index) < index) continue;
+			const body = source.slice(item.from + 1, item.to - 1);
+			let slashes = 0;
+			for (let at = body.length - 2; at >= 0 && body[at] === '\\'; at--) slashes++;
+			if (slashes % 2 !== 1 || !/[!"#$%&'()*+,\-./:;<=>?@[\]\\^_`{|}~]/u.test(body.at(-1)!)) continue;
+			const suffix = /^\^[a-zA-Z0-9-]+(?=$|[\r\n*_~=\]])/u.exec(decoded.slice(cursor));
+			if (!suffix) continue;
+			recovered = suffix[0]; text += recovered; cursor += recovered.length; break;
+		}
 		const matches = ranges.filter(item => {
 			const start = offsets.indexOf(item.from, index);
 			const end = offsets.indexOf(item.to - 1, index);
@@ -43,10 +57,10 @@ export function enhanceReadingShorthand(root: HTMLElement, settings: ShorthandSe
 		for (const item of matches) {
 			const start = offsets.indexOf(item.from, index) - index;
 			const end = offsets.indexOf(item.to - 1, index) - index + 1;
-			if (start > previous) replacement.push(root.ownerDocument.createTextNode(node.data.slice(previous, start)));
+			if (start > previous) replacement.push(root.ownerDocument.createTextNode(text.slice(previous, start)));
 			const element = root.ownerDocument.createElement(item.kind === 'subscript' ? 'sub' : 'sup');
 			element.className = 'paraflow-shorthand-reading';
-			const rendered = node.data.slice(start + 1, end - 1).replace(/\\([ \t])/gu, '$1');
+			const rendered = text.slice(start + 1, end - 1).replace(/\\([ \t])/gu, '$1');
 			element.textContent = rendered;
 			const literal = node.data.slice(start, end);
 			restore.push(() => {
@@ -58,7 +72,13 @@ export function enhanceReadingShorthand(root: HTMLElement, settings: ShorthandSe
 			replacement.push(element);
 			previous = end;
 		}
-		if (previous < node.length) replacement.push(root.ownerDocument.createTextNode(node.data.slice(previous)));
+		if (previous < text.length) {
+			const tail = root.ownerDocument.createTextNode(text.slice(previous)); replacement.push(tail);
+			if (recovered) {
+				const original = tail.data;
+				restore.push(() => { if (tail.data === original) tail.remove(); });
+			}
+		}
 		node.replaceWith(...replacement);
 	}
 	const restoreTildes = settings.subscript ? enhanceReadingTildeRuns(root, source) : () => {};

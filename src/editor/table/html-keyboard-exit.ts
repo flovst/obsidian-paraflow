@@ -7,6 +7,7 @@ import {blockExitPlan} from '../block-exit';
 import {enterFollowingTable} from './keyboard-entry';
 import {findEditableTableSources} from './edit-session';
 import {EditorSelection} from '@codemirror/state';
+import {tableExitSelection} from './vertical-exit';
 
 /** Contenteditable's default Down can flow sideways into the next cell. */
 export function exitHtmlTableDown(view:EditorView,session:TableEditSession,event:KeyboardEvent):boolean {
@@ -27,8 +28,10 @@ export function exitHtmlTableDown(view:EditorView,session:TableEditSession,event
 	const plan=blockExitPlan(view.state,session.target.to,session.target.container?.prefixes[0]??'',goal);
 	const head=(plan.selection as EditorSelection).main.head;
 	const next=findEditableTableSources(view.state).find(target=>target.from>session.target.to&&target.from<=head&&head<=target.to);
-	if(next) {if(!enterFollowingTable(view,next.from))return false;}
-	else {view.dispatch(plan);view.focus();}
+	if(next) {if(!enterFollowingTable(view,next.from,true,goal))return false;}
+	else {
+		view.dispatch(plan.effects?plan:{...plan,selection:tableExitSelection(view,head,goal,true)});view.focus();
+	}
 	event.preventDefault();event.stopPropagation();
 	store.write(goal);return true;
 }

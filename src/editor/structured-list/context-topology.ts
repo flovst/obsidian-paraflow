@@ -1,5 +1,6 @@
 import {
 	containingLine,
+	ownedBodyStart,
 	isOnlyBoundaryWhitespace,
 	isEditableOwnedWhitespace,
 	sourceRange,
@@ -145,7 +146,7 @@ function followingForOwned(
 		if (descendant) return { block: descendant.block, kind: 'list-item' };
 	}
 	const line = containingLine(analysis.lines, owned.range.from);
-	const content = sourceRange(line.from + line.indentText.length, line.to);
+	const content = sourceRange(ownedBodyStart(line), line.to);
 	return { kind: owned.kind === 'additional-paragraph' ? 'additional-paragraph' : 'continuation', range: content };
 }
 
@@ -220,6 +221,14 @@ function anchorPoints(
 	return points;
 }
 
+function physicalPrecedingItem(analysis: SourceAnalysis, item: AnalyzedItem): AnalyzedItem | null {
+	if (item.depth !== 0 || item.block.prefix.outerMarker.from === item.line.from) return null;
+	const previous = analysis.items.filter(candidate => candidate.line.from < item.line.from).at(-1);
+	if (!previous || previous.block.prefix.outerMarker.from - previous.line.from !==
+		item.block.prefix.outerMarker.from - item.line.from) return null;
+	return analysis.source.text.slice(previous.block.item.to,item.line.from) === '\n\n\n' ? previous : null;
+}
+
 function itemRelations(analysis: SourceAnalysis, item: AnalyzedItem): ItemRelations {
 	const siblings = directSiblingRun(analysis, item);
 	const siblingIndex = siblings.indexOf(item);
@@ -231,6 +240,15 @@ function itemRelations(analysis: SourceAnalysis, item: AnalyzedItem): ItemRelati
 		siblingIndex,
 		siblings,
 	};
+}
+
+function indentParent(analysis: SourceAnalysis, item: AnalyzedItem): AnalyzedItem | null {
+	const previous = analysis.items.filter(candidate => candidate.parentIndex === item.parentIndex &&
+		candidate.line.from < item.line.from).at(-1);
+	if (!previous) return null;
+	const from = previous.block.item.to;
+	return isOnlyBoundaryWhitespace(analysis.source.text.slice(from, item.line.from)) &&
+		(itemFamily(previous) !== itemFamily(item) || !hasListGroupBoundary(analysis.source.text, from, item.line.from)) ? previous : null;
 }
 
 function siblingPosition(index: number, count: number): ListTopology['siblingPosition'] {
@@ -279,10 +297,12 @@ export function buildListTopology(
 	item: AnalyzedItem,
 ): ListTopology {
 	const relations = itemRelations(analysis, item);
+	const tabParent = indentParent(analysis, item);
 	const parentRelations = relations.parent ? itemRelations(analysis, relations.parent) : null;
 	const owned = ownedBlocks(analysis, item);
 	const external = externalFollowing(analysis, item, relations.nextSibling);
-	const points = anchorPoints(analysis, item, relations.previousSibling, owned, external);
+	// Physical paragraph boundaries survive even when two empty rows end sibling membership.
+	const points = anchorPoints(analysis, item, relations.previousSibling ?? physicalPrecedingItem(analysis,item), owned, external);
 	const whitespace = buildWhitespaceFacts(analysis, points);
 	const structural = buildNormalizedBoundaries(analysis, points, whitespace);
 	const following = firstFollowing(analysis, item, owned, external);
@@ -294,7 +314,7 @@ export function buildListTopology(
 		followingStructuralBoundary: matchingBoundary(structural, following),
 		nextSibling: optionalBlock(relations.nextSibling),
 		orderedSequence: orderedSequence(item, relations.siblings),
-		orderedIndentStart: orderedIndentStart(analysis, relations.previousSibling),
+		orderedIndentStart: orderedIndentStart(analysis, tabParent),
 		parentOrderedSequence: relations.parent && parentRelations
 			? orderedSequence(relations.parent, parentRelations.siblings)
 			: null,
@@ -302,6 +322,7 @@ export function buildListTopology(
 		parent: optionalBlock(relations.parent),
 		precedingContainer: precedingBlock(relations),
 		previousSibling: optionalBlock(relations.previousSibling),
+		indentParent: optionalBlock(tabParent),
 		siblingPosition: siblingPosition(relations.siblingIndex, relations.siblings.length),
 		structuralBoundaries: structural,
 		whitespaceBoundaries: whitespace,
@@ -316,6 +337,7 @@ export function buildProjectionContext(
 	const siblings = directSiblingRun(analysis, item);
 	return {
 		block: item.block,
+		blankRuns: analysis.blankRuns.filter(run => run.ownerFrom === item.line.from).map(({run})=>run),
 		depth: item.depth,
 		ownedLines,
 		orderedSequence: orderedSequence(item, siblings),

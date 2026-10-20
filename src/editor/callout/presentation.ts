@@ -19,6 +19,8 @@ import { containerPrefixClickTargets } from '../structured-list/mouse.js';
 import { createRenderedSourceClickExtension, handoffRenderedSourceGesture, renderedSourceClickPosition } from '../runtime/rendered-source-click.js';
 import {activateQuoteDraft,createQuoteDraftState} from './quote-draft.js';
 import {createEmptyBodies,registerEmptyBody} from '../runtime/empty-body-state.js';
+import { containerBodyLineProviders } from '../runtime/container-body-boundaries.js';
+import { calloutBodyLine } from './body-boundaries.js';
 
 export interface CalloutPresentationOptions {
 	readonly isActive: (view: EditorView) => boolean;
@@ -48,6 +50,23 @@ const metadataField = StateField.define<number | null>({
 		return transaction.state.doc.lineAt(transaction.state.selection.main.head).from === position ? position : null;
 	},
 });
+
+export function isCalloutMetadataEditing(state: EditorState, from: number): boolean {
+	return state.field(metadataField, false) === from;
+}
+
+function headerBoundary(state: EditorState, card: CalloutCard): number {
+	return card.from + quotePrefix(state.doc.lineAt(card.from).text, card.depth)!.lastIndexOf('>');
+}
+
+export function calloutHeaderStart(state: EditorState, titleStartOnly = false): number | null {
+	const selection = state.selection.main;
+	if (state.selection.ranges.length !== 1 || !selection.empty) return null;
+	const card = calloutCards(state).find(candidate => !isCalloutMetadataEditing(state, candidate.from) &&
+		(titleStartOnly ? selection.head === titleFrom(candidate) : selection.head === headerBoundary(state,candidate) ||
+			titleFrom(candidate) <= selection.head && selection.head <= candidate.headerTo));
+	return card ? headerBoundary(state, card) : null;
+}
 
 class HeaderIcon {
 	node: HTMLElement | undefined;
@@ -83,8 +102,17 @@ class Header extends WidgetType {
 			container.append(placeholder);
 		}
 		const edit = view.dom.ownerDocument.createElement('button');
-		edit.type = 'button'; edit.className = 'paraflow-callout-edit'; edit.textContent = '⋯';
+		edit.type = 'button'; edit.className = 'paraflow-callout-edit';
 		edit.setAttribute('aria-label', '编辑标注类型和折叠元数据');
+		const sourceIcon = view.dom.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'svg');
+		sourceIcon.setAttribute('viewBox', '0 0 16 16'); sourceIcon.setAttribute('aria-hidden', 'true');
+		sourceIcon.setAttribute('focusable', 'false');
+		const sourcePath = view.dom.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'path');
+		sourcePath.setAttribute('d', 'M5 4.5 1.5 8 5 11.5 M11 4.5 14.5 8 11 11.5 M9.5 3 6.5 13');
+		sourcePath.setAttribute('fill', 'none'); sourcePath.setAttribute('stroke', 'currentColor');
+		sourcePath.setAttribute('stroke-width', '0.8'); sourcePath.setAttribute('stroke-linecap', 'round');
+		sourcePath.setAttribute('stroke-linejoin', 'round');
+		sourceIcon.append(sourcePath); edit.append(sourceIcon);
 		edit.addEventListener('click', event => {
 			event.preventDefault(); event.stopPropagation();
 			view.dispatch({ effects: editMetadata.of(this.card.from), selection: { anchor: this.card.from + quotePrefix(view.state.doc.lineAt(this.card.from).text, this.card.depth)!.length } });
@@ -394,6 +422,7 @@ export function createCalloutPresentation(options: CalloutPresentationOptions): 
 			filter: (_from, _to, decoration) => (decoration.spec as { paraflowCalloutPrefix?: boolean }).paraflowCalloutPrefix === true,
 		}) ?? Decoration.none) });
 	return [createEmptyBodies(),createQuoteDraftState(state=>options.isActiveState?.(state)!==false),containerPresentation.of(options), createCalloutNativeOwnership(options), codeFolding(), metadataField, initializedFolds, boundaries, createTitleEditing(options), createRenderedSourceClickExtension(),
+		containerBodyLineProviders.of((state, position) => options.isActiveState?.(state) === false ? null : calloutBodyLine(state, position)),
 		containerHeadingBodyLines.of(state => options.isActiveState?.(state) === false ? [] : calloutHeadingBodyLines(state)),
 		containerThematicBreaks.of(state => options.isActiveState?.(state) === false ? [] : calloutThematicBreaks(state)),
 		containerListProjections.of(state => options.isActiveState?.(state) === false ? [] : calloutListEntries(state)),
@@ -449,6 +478,7 @@ export function createCalloutPresentation(options: CalloutPresentationOptions): 
 		'.paraflow-callout-icon .callout-icon, .paraflow-callout-icon svg': { width: '1em', height: '1em', flex: 'none' },
 		'.paraflow-callout-fold': { display: 'inline-flex', verticalAlign: 'middle', marginInlineStart: '.25em', padding: '0', width: '1em', height: '1em', border: '0', background: 'none', boxShadow: 'none', color: 'var(--callout-color)' },
 		'.paraflow-callout-fold > svg': { width: '1em', height: '1em' },
-		'.paraflow-callout-edit': { position: 'absolute', right: '0', top: '0', border: '0', background: 'transparent', boxShadow: 'none', cursor: 'pointer' },
+		'.paraflow-callout-edit': { position: 'absolute', right: '0', top: '0', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: 'calc(var(--paraflow-callout-title-leading, 1.3) * 1em)', padding: '0 4px', fontSize: 'inherit', color: 'var(--paraflow-source-control-color, #333333)', border: '0', background: 'transparent', boxShadow: 'none', cursor: 'pointer' },
+		'.paraflow-callout-edit > svg': { display: 'block', width: '1em', height: '1em', flex: 'none' },
 	})];
 }

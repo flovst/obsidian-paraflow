@@ -1,7 +1,7 @@
 import { Text, type EditorState } from '@codemirror/state';
 import { parser } from '@lezer/markdown';
 import { findTableSources } from '../table/edit-session.js';
-import { metadataGrammar, nativeInlineGrammarFor } from '../callout/syntax.js';
+import { metadataGrammar, nativeInlineGrammarFor, standaloneBreakGrammar } from '../markdown-grammar.js';
 import { mathRangeIndex } from '../math/syntax.js';
 export interface RenderedBlock {
 	kind: 'html' | 'mermaid'; from: number; to: number; bodyFrom: number; bodyTo: number;
@@ -11,7 +11,7 @@ export interface RenderedBlock {
 	fence: { openingTo: number; closingFrom: number; continuation: string } | null;
 }
 const cache = new WeakMap<Text, RenderedBlock[]>();
-const grammar = parser.configure(metadataGrammar);
+const grammar = parser.configure([metadataGrammar, standaloneBreakGrammar]);
 const tagPattern = /<!--[\s\S]*?(?:-->|$)|<\/?[A-Za-z][\w:-]*(?:[^<>"']|"[^"]*"|'[^']*')*>/gu;
 
 export function discoverRenderedBlocks(state: EditorState): RenderedBlock[] {

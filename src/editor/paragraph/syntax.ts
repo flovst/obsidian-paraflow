@@ -1,4 +1,4 @@
-import { language, syntaxTreeAvailable } from '@codemirror/language';
+import { language, syntaxTree as nativeSyntaxTree, syntaxTreeAvailable } from '@codemirror/language';
 import { mathSyntaxTree as syntaxTree } from '../math/semantic-tree.js';
 import type { EditorState, Text } from '@codemirror/state';
 import type { SyntaxNode, Tree } from '@lezer/common';
@@ -22,6 +22,7 @@ import { emptyBodies } from '../runtime/empty-body-state.js';
 import { pendingMathAt, pendingMathRanges, type PendingMathRange } from '../math/candidate-ranges.js';
 import { codeDraft } from '../code-blocks/draft-state.js';
 import { discoverSetextHeadings } from './setext.js';
+import { standaloneBreakGrammar } from '../markdown-grammar.js';
 
 const newlineRunPattern = /^\n{2,}$/u;
 
@@ -101,6 +102,7 @@ function isHypermdBlockNodeForState(state: EditorState, node: SyntaxNode): boole
 }
 
 const htmlBoundaryCache = new WeakMap<Text, { readonly end: number; readonly blocks: readonly TopLevelBlockBoundary[] }>();
+export const htmlBoundaryGrammar=markdownParser.configure(standaloneBreakGrammar);
 
 /** HyperMD HTML tokens identify tags, not block boundaries. Admit only grammar-confirmed HTML blocks. */
 function htmlGrammarBoundaries(state: EditorState): readonly TopLevelBlockBoundary[] {
@@ -108,7 +110,7 @@ function htmlGrammarBoundaries(state: EditorState): readonly TopLevelBlockBounda
 	const cached = htmlBoundaryCache.get(state.doc);
 	if (cached?.end === end) return cached.blocks;
 	const blocks: TopLevelBlockBoundary[] = [];
-	const source=state.sliceDoc(0, end),tree = markdownParser.parse(source);
+	const source=state.sliceDoc(0, end),tree = htmlBoundaryGrammar.parse(source);
 	let extents:ReturnType<typeof htmlBlockExtents>|undefined;
 	let consumed=0;
 	for (let node = tree.topNode.firstChild; node; node = node.nextSibling) {
@@ -137,7 +139,8 @@ function isHypermdHeadingName(name: string): boolean {
 function isHypermdState(state: EditorState): boolean {
 	if (state.facet(language)?.name === 'hypermd') return true;
 	let found = false;
-	syntaxTree(state).iterate({
+	// Shared math tokens do not change the underlying Markdown parser's identity.
+	nativeSyntaxTree(state).iterate({
 		enter: (node) => {
 			if (node.name !== 'Document' && isHypermdBlockNodeForState(state, node.node)) found = true;
 		},
@@ -468,14 +471,24 @@ export interface ParagraphAuthoritySlice {
 function standardBoundaryBlocks(state:EditorState,nodes: readonly SyntaxNode[]): readonly TopLevelBlockBoundary[] {
 	const boundaries: TopLevelBlockBoundary[] = [];
 	const htmlBlocks=htmlGrammarBoundaries(state);
+	const mathBlocks=hypermdDelimitedBoundaries(state).filter(block=>block.kind==='math-block');
 	const included=new Set<TopLevelBlockBoundary>();
 	let htmlIndex=0;
 	for (const node of nodes) {
 		while(htmlIndex<htmlBlocks.length&&htmlBlocks[htmlIndex]!.to<=node.from)htmlIndex++;
 		const html=htmlBlocks[htmlIndex];
 		if(html&&html.from<=node.from&&node.to<=html.to){if(!included.has(html)){boundaries.push(html);included.add(html);}continue;}
+		const math=mathBlocks.find(block=>block.from<=node.from&&node.to<=block.to);
+		if(math){if(!included.has(math)){boundaries.push(math);included.add(math);}continue;}
 		if (node.name === 'Paragraph') {
-			boundaries.push({ from: node.from, kind: 'paragraph', to: node.to });
+			let from=node.from;
+			for(const math of mathBlocks.filter(block=>node.from<=block.from&&block.to<=node.to)) {
+				const before=state.sliceDoc(from,math.from).trimEnd();
+				if(before)boundaries.push({from,kind:'paragraph',to:from+before.length});
+				boundaries.push(math);from=math.to;
+				while(from<node.to&&state.sliceDoc(from,from+1)==='\n')from++;
+			}
+			if(from<node.to)boundaries.push({ from, kind: 'paragraph', to: node.to });
 			continue;
 		}
 		if (/^(?:ATXHeading[1-6]|SetextHeading[12])$/u.test(node.name)) {

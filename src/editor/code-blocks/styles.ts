@@ -171,10 +171,10 @@ export const CODE_BLOCK_CSS = LIST_BLOCK_GEOMETRY_CSS + `
   overflow-wrap: anywhere !important;
 }
 .cm-content > .cm-line.paraflow-callout-line.paraflow-code-line {
-  --paraflow-code-inset: calc(var(--paraflow-container-inset) + var(--paraflow-code-local-inset, var(--paraflow-block-code-padding-left, .65em)));
+  --paraflow-code-inset: calc(var(--paraflow-container-inset) + var(--paraflow-code-frame-border-left, 0px) + var(--paraflow-code-local-inset, var(--paraflow-block-code-padding-left, .65em)));
   --paraflow-container-end-inset: calc(var(--paraflow-container-callouts) * var(--paraflow-callout-padding, 12px));
   border-inline: 0 !important;
-  padding-inline-end: calc(var(--paraflow-container-end-inset) + .65em) !important;
+  padding-inline-end: calc(var(--paraflow-container-end-inset) + var(--paraflow-code-frame-border-right, 0px) + var(--paraflow-block-code-padding-right, .65em)) !important;
   background: linear-gradient(to right, transparent var(--paraflow-container-inset), var(--paraflow-block-code-background, var(--code-background, var(--background-secondary))) var(--paraflow-container-inset), var(--paraflow-block-code-background, var(--code-background, var(--background-secondary))) calc(100% - var(--paraflow-container-end-inset)), transparent calc(100% - var(--paraflow-container-end-inset))) !important;
 }
 .cm-line.paraflow-code-indented {
@@ -198,7 +198,7 @@ export const CODE_BLOCK_CSS = LIST_BLOCK_GEOMETRY_CSS + `
 }
 .cm-content > .cm-line.paraflow-callout-line:is(.paraflow-code-indented,.paraflow-code-fenced-list) {
   margin-inline-start: 0;
-  --paraflow-code-inset: calc(var(--paraflow-container-inset) + var(--paraflow-code-list-inset) + var(--paraflow-code-local-inset, var(--paraflow-block-code-padding-left, .65em)));
+  --paraflow-code-inset: calc(var(--paraflow-container-inset) + var(--paraflow-code-list-inset) + var(--paraflow-code-frame-border-left, 0px) + var(--paraflow-code-local-inset, var(--paraflow-block-code-padding-left, .65em)));
   background: linear-gradient(to right, transparent calc(var(--paraflow-container-inset) + var(--paraflow-code-list-inset)), var(--paraflow-block-code-background, var(--code-background, var(--background-secondary))) calc(var(--paraflow-container-inset) + var(--paraflow-code-list-inset)), var(--paraflow-block-code-background, var(--code-background, var(--background-secondary))) calc(100% - var(--paraflow-container-end-inset)), transparent calc(100% - var(--paraflow-container-end-inset))) !important;
 }
 .cm-content > .cm-line.paraflow-callout-line.paraflow-code-line::after {
@@ -286,6 +286,9 @@ export const CODE_BLOCK_CSS = LIST_BLOCK_GEOMETRY_CSS + `
 .paraflow-code-extent { display: inline-block; height: 0; pointer-events: none; user-select: none; }
 pre.paraflow-code-display {
   position: relative;
+  font-family: var(--paraflow-block-code-font, var(--font-monospace));
+  font-size: var(--paraflow-block-code-size, .9em);
+  color: var(--paraflow-block-code-color, var(--code-normal));
   max-width: 100%;
   overflow-x: auto !important;
   white-space: pre !important;
@@ -302,6 +305,11 @@ pre.paraflow-code-display:has(.paraflow-code-row[data-paraflow-line]) {
 }
 pre.paraflow-code-display > code {
   display: block;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  padding: 0;
   width: max-content;
   min-width: 100%;
   white-space: pre !important;

@@ -1,6 +1,7 @@
 import { syntaxTree } from '@codemirror/language';
 import { StateField, type EditorState, type Extension, type Range } from '@codemirror/state';
-import { Decoration, ViewPlugin, type DecorationSet, type EditorView } from '@codemirror/view';
+import { Decoration, ViewPlugin, type DecorationSet, type EditorView, type ViewUpdate } from '@codemirror/view';
+import { createInputStateExtension, requireCompositionState } from './runtime/input-state.js';
 
 export interface CommentOptions {
 	readonly isActive: (view: EditorView) => boolean;
@@ -33,8 +34,8 @@ const commentRanges = StateField.define<readonly CommentRange[]>({
 });
 
 export function createCommentExtension(options: CommentOptions): Extension {
-	function project(view: EditorView, composing: boolean): DecorationSet {
-		if (!options.isActive(view) || composing || view.composing) return Decoration.none;
+	function project(view: EditorView): DecorationSet {
+		if (!options.isActive(view)) return Decoration.none;
 		const ranges: Range<Decoration>[] = [];
 		for (const comment of view.state.field(commentRanges)) {
 			const visible = options.getMode() === 'always' || view.state.selection.ranges.some(
@@ -46,21 +47,20 @@ export function createCommentExtension(options: CommentOptions): Extension {
 	}
 	const projection = ViewPlugin.fromClass(class {
 		decorations: DecorationSet;
-		composing = false;
 		destroyed = false;
 		constructor(readonly view: EditorView) {
 			const active = options.isActive(view);
-			this.decorations = project(view, false);
+			this.decorations = project(view);
 			queueMicrotask(() => { if (!this.destroyed && active !== options.isActive(view)) view.dispatch({}); });
 		}
-		update(): void { this.decorations = project(this.view, this.composing); }
+		update(update: ViewUpdate): void {
+			this.decorations = options.isActive(this.view) && (this.view.compositionStarted || this.view.composing || requireCompositionState(update.state))
+				? this.decorations.map(update.changes) : project(this.view);
+		}
 		destroy(): void { this.destroyed = true; }
-	}, { decorations: value => value.decorations, eventHandlers: {
-		compositionstart() { this.composing = true; this.view.dispatch({}); },
-		compositionend() { this.composing = false; this.view.dispatch({}); },
-	} });
+	}, { decorations: value => value.decorations });
 	// Non-atomic marks retain native cursor/selection, copying, and Undo semantics.
-	return [commentRanges, projection];
+	return [createInputStateExtension(), commentRanges, projection];
 }
 
 export const COMMENT_CSS = `

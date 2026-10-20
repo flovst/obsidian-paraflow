@@ -3,24 +3,17 @@ import { Prec, StateField, type EditorState, type Extension, type Range } from '
 import { Decoration, EditorView, ViewPlugin, WidgetType, type DecorationSet } from '@codemirror/view';
 import type { Tree } from '@lezer/common';
 import { parser } from '@lezer/markdown';
-import { metadataGrammar, nativeInlineGrammarFor } from '../callout/syntax.js';
+import { metadataGrammar, nativeInlineGrammarFor, standaloneBreakGrammar } from '../markdown-grammar.js';
 import { mathRangeIndex } from '../math/syntax.js';
 import { bindRenderedSourceClick, createRenderedSourceClickExtension } from '../runtime/rendered-source-click.js';
 import { createRenderedSourceNavigation, renderedSourceHit, type VisualPosition } from '../runtime/navigation-core.js';
 import { createNativeDecorationOwnership, nativeBlockOwnership, nativeInlineOwnership, isNativeReplacement } from '../runtime/native-decoration-ownership.js';
+import {nativeCellSourceEditing} from '../table/native-cell-source.js';
 
 const lineBreakOwners = new WeakMap<EditorView, () => boolean>();
 
 const htmlBreak = /^<br[ \t]*\/?[ \t]*>$/iu;
-const breakGrammar = parser.configure([metadataGrammar, {
-	defineNodes: [{ name: 'StandaloneBreaks', block: true }],
-	parseBlock: [{ name: 'StandaloneBreaks', before: 'HTMLBlock', parse(context, line) {
-		if (line.indent >= line.baseIndent + 4 || !/^(?:<br[ \t]*\/?[ \t]*>[ \t]*)+$/iu.test(line.text.slice(line.pos))) return false;
-		context.addElement(context.elt('StandaloneBreaks', context.lineStart + line.pos, context.lineStart + line.text.length));
-		context.nextLine();
-		return true;
-	} }],
-}]);
+const breakGrammar = parser.configure([metadataGrammar, standaloneBreakGrammar]);
 
 export type LineBreakKind = 'hard' | 'html';
 
@@ -81,6 +74,16 @@ function sourceCharacterRect(element: HTMLElement, offset: number): DOMRect {
 	return range.getBoundingClientRect();
 }
 
+function terminalBreakPosition(view: EditorView, node: Node, offset: number): number | null {
+	const terminal = [...view.contentDOM.querySelectorAll<HTMLElement>('.paraflow-html-break-empty-line')]
+		.find(element => element.closest('.cm-editor') === view.dom);
+	if (!terminal) return null;
+	if (node === terminal || terminal.contains(node)) return view.state.doc.length;
+	const widget = terminal.parentElement!, line = widget.parentElement!;
+	// Chromium resolves the empty visual row after the widget; the host CM may map it to the tag above.
+	return node === line && offset > [...line.childNodes].indexOf(widget) ? view.state.doc.length : null;
+}
+
 function breakCharacterAt(view: EditorView, { x, y }: { x: number; y: number }): VisualPosition | null {
 	for (const entry of requireLineBreakProjectionState(view.state).entries) {
 		if (entry.kind !== 'html') continue;
@@ -100,18 +103,23 @@ function breakCharacterAt(view: EditorView, { x, y }: { x: number; y: number }):
 }
 
 class HtmlBreakWidget extends WidgetType {
-	eq(other: WidgetType): boolean { return other instanceof HtmlBreakWidget; }
+	constructor(private readonly terminal=false){super();}
+	eq(other: WidgetType): boolean { return other instanceof HtmlBreakWidget&&other.terminal===this.terminal; }
 	get lineBreaks(): number { return 1; }
 	ignoreEvent(): boolean { return false; }
 	toDOM(view: EditorView): HTMLElement {
 		const root = view.dom.ownerDocument.createElement('span');
 		root.className = 'paraflow-html-break';
 		root.append(view.dom.ownerDocument.createElement('br'));
+		if(this.terminal){
+			const line=view.dom.ownerDocument.createElement('span');line.className='paraflow-html-break-empty-line';
+			root.append(line);
+		}
 		return root;
 	}
 }
 
-function discoverEntries(state: EditorState): readonly LineBreakProjectionEntry[] {
+export function discoverLineBreakEntries(state: EditorState): readonly LineBreakProjectionEntry[] {
 	const excluded: Array<{ from: number; to: number }> = [];
 	syntaxTree(state).iterate({ enter(node) {
 		if (/(?:^|[ _])(?:math|comment)(?:$|[ _-])/u.test(node.name)) excluded.push({ from: node.from, to: node.to });
@@ -153,7 +161,7 @@ function project(state: EditorState, entries: readonly LineBreakProjectionEntry[
 		// Source editing and hint visibility must not change the owner of the break.
 		// A physical newline directly after the tag already supplies that break.
 		if (entry.to === state.doc.length || state.doc.lineAt(entry.to).to !== entry.to) {
-			decorations.push(Decoration.widget({ side: -1, widget: new HtmlBreakWidget() }).range(entry.to));
+			decorations.push(Decoration.widget({ side: -1, widget: new HtmlBreakWidget(entry.to===state.doc.length) }).range(entry.to));
 		}
 	}
 	return Decoration.set(decorations, true);
@@ -162,7 +170,7 @@ function project(state: EditorState, entries: readonly LineBreakProjectionEntry[
 function build(state: EditorState, previous?: LineBreakFieldState): LineBreakFieldState {
 	const tree = syntaxTree(state);
 	const complete = syntaxTreeAvailable(state, state.doc.length);
-	const entries = previous?.entries ?? (complete ? discoverEntries(state) : []);
+	const entries = previous?.entries ?? (complete ? discoverLineBreakEntries(state) : []);
 	return Object.freeze({ complete, entries, tree,
 		decorationsByOptions: [0, 1, 2, 3, 4, 5, 6, 7].map(options => project(state, entries, options)),
 	});
@@ -190,9 +198,10 @@ export function requireLineBreakProjectionState(state: EditorState): LineBreakFi
 }
 
 export function createLineBreakProjection(
-	isActive: (view: EditorView) => boolean,
+	isPrimaryActive: (view: EditorView) => boolean,
 	markersEnabled: (kind: LineBreakKind) => boolean = () => true,
 ): Extension {
+	const isActive=(view:EditorView)=>isPrimaryActive(view)||view.state.facet(nativeCellSourceEditing);
 	const owner = (state: EditorState, view: EditorView) => {
 		if (!isActive(view)) return null;
 		const entries = requireLineBreakProjectionState(state).entries.filter(entry => entry.kind === 'html');
@@ -201,18 +210,21 @@ export function createLineBreakProjection(
 	};
 	return [
 		lineBreakProjectionField,
+		EditorView.baseTheme({'.paraflow-html-break-empty-line':{display:'inline-block',width:'0',height:'1lh',verticalAlign:'top'}}),
 		createNativeDecorationOwnership(), nativeBlockOwnership.of(owner), nativeInlineOwnership.of(owner),
 		createRenderedSourceNavigation(),
 		createRenderedSourceClickExtension(),
 		ViewPlugin.define(view => {
 			lineBreakOwners.set(view, () => isActive(view));
+			const unbindTerminal = bindRenderedSourceClick(view, view.contentDOM,
+				(node, offset) => terminalBreakPosition(view, node, offset), () => isActive(view));
 			const initiallyActive = isActive(view);
 			let destroyed = false;
 			// CodeMirror adds editor DOM attributes after its first decoration pass.
 			queueMicrotask(() => {
 				if (!destroyed && initiallyActive !== isActive(view)) view.dispatch({});
 			});
-			return { destroy() { destroyed = true; lineBreakOwners.delete(view); } };
+			return { destroy() { destroyed = true; unbindTerminal(); lineBreakOwners.delete(view); } };
 		}),
 		renderedSourceHit.of((view, coordinates) => isActive(view) && markersEnabled('html')
 			? breakCharacterAt(view, coordinates) : null),

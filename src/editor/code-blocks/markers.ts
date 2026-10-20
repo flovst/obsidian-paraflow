@@ -1,10 +1,10 @@
-import { countColumn, EditorSelection, EditorState, Transaction, Prec, StateField, type Extension, type Range } from '@codemirror/state';
+import { EditorSelection, EditorState, Transaction, Prec, StateField, type Extension, type Range } from '@codemirror/state';
 import { syntaxTree } from '@codemirror/language';
 import { Decoration, EditorView, ViewPlugin, WidgetType, keymap } from '@codemirror/view';
 import { codeBlockEdit, codeBlocksIn, discoverCodeBlocks, type CodeBlock } from './model.js';
 import { openCodeLanguagePopup, type CodeLanguagePopup } from './language-popup.js';
 import type { EnhancementSettings } from '../../enhancement-settings.js';
-import { codeBodyStart, codeDraftStart, codeEditableSelection, codeMarkersActive } from './editable-boundaries.js';
+import { codeBodyStart, codeDraftStart, codeEditableSelection, codeMarkersActive, codeContinuationPrefix as continuationPrefix } from './editable-boundaries.js';
 import { containerBlockFrame, wrapContainerBlock, type ContainerFrame } from '../callout/container-surface.js';
 import { listBlockInset } from '../paragraph/list-block-geometry.js';
 import { invertedEffects, isolateHistory } from '@codemirror/commands';
@@ -15,11 +15,6 @@ import type { CodeBlockOptions } from './model.js';
 import {setVirtualTail, isVirtualTailActive} from '../runtime/virtual-tail.js';
 import { blockContinuationPrefix, blockLineContentFrom, planBlockBodyKey } from '../runtime/block-body.js';
 import { deleteAdjacentCode } from './operations.js';
-
-function continuationPrefix(state: EditorState, block: CodeBlock): string {
-	const text=state.doc.lineAt(block.closed?block.barAt:block.from).text;
-	return text.slice(0,text.search(/`{3,}|~{3,}/u)).replace(/(?:[-+*]|\d+[.)])[ \t]+$/u,marker=>' '.repeat(countColumn(marker,4)));
-}
 
 class EmptyCodeCaret extends WidgetType {
 	eq():boolean{return true;}
@@ -246,7 +241,7 @@ export function createCodeMarkerExtension(isActive: (view: EditorView) => boolea
 				}
 			}
 			const enteringTail=tr.effects.find(effect=>effect.is(setVirtualTail))?.value;
-			if(enteringTail&&!draft?.typed&&!tr.docChanged&&!tr.startState.readOnly&&tr.startState.field(field).active){
+			if(enteringTail&&selection.main.empty&&!draft?.typed&&!tr.docChanged&&!tr.startState.readOnly&&tr.startState.field(field).active){
 				const block=codeBlocksIn(tr.startState.doc).find(block=>!block.indented&&!block.closed&&block.to===tr.startState.doc.length);
 				if(block){
 					const fence=/`{3,}|~{3,}/u.exec(tr.startState.doc.lineAt(block.from).text)![0],insert=`\n${continuationPrefix(tr.startState,block)}${fence}\n`;

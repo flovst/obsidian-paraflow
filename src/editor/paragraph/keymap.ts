@@ -26,6 +26,7 @@ import {
 } from './operations.js';
 
 export interface ParagraphKeymapOptions {
+	readonly includeHeadings?: boolean;
 	readonly isLivePreview: (state: EditorState) => boolean;
 	readonly isSurface: (view: EditorView) => boolean;
 	readonly visual?: (view: EditorView) => VisualNavigationAdapter;
@@ -86,10 +87,10 @@ export function dispatchParagraphOperation(
 		return true;
 	}
 	const plan = operation === 'backspace'
-		? planHeadingBackspace(view.state) ?? planGapDeletion(view.state, operation)
+		? (options.includeHeadings === false ? null : planHeadingBackspace(view.state)) ?? planGapDeletion(view.state, operation)
 		: operation === 'delete'
 			? planGapDeletion(view.state, operation)
-		: planParagraphEnter(view.state, operation);
+		: planParagraphEnter(view.state, operation, options.includeHeadings !== false);
 	if (!plan) return false;
 	dispatchParagraphEditPlan(view, plan, plan.operation);
 	return true;
