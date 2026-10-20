@@ -332,16 +332,28 @@ function allListItems(state: EditorState): readonly ListItemSyntax[] {
 	const items = standard.length > 0
 		? standard
 		: normalizedObsidianItems(state, obsidianListLines(state, facts));
+	const latestStartByEnd = new Map<number, number>();
+	const boundaries: { markerFrom: number; to: number }[] = [];
+	for (const item of items) {
+		latestStartByEnd.set(item.itemNode.to, Math.max(latestStartByEnd.get(item.itemNode.to) ?? -1, item.itemNode.from));
+		const boundary = listGroupBoundary(state.doc, 0, item.markerLine.from);
+		if (boundary !== null) boundaries.push({ markerFrom: item.markerLine.from, to: boundary });
+	}
 	return items.map(item => {
 		// Preserve the parent body left after its final nested marker is removed.
-		const endsWithDescendant = items.some(child => child.itemNode.from > item.itemNode.from && child.itemNode.to === item.itemNode.to);
+		const endsWithDescendant = latestStartByEnd.get(item.itemNode.to)! > item.itemNode.from;
 		let to = trailingOwnedWhitespaceEnd(state, item, endsWithDescendant);
 		to = runtimeOwnedEnd(state, item, to);
-		for (const next of items) {
-			if (next.markerLine.from <= item.markerLine.from || next.markerLine.from > to) continue;
-			const boundary = listGroupBoundary(state.doc, item.markerLine.to, next.markerLine.from);
-			if (boundary !== null) to = Math.min(to, boundary);
+		let first = 0, last = boundaries.length;
+		while (first < last) {
+			const middle = (first + last) >>> 1;
+			if (boundaries[middle]!.markerFrom <= item.markerLine.from) first = middle + 1;
+			else last = middle;
 		}
+		// Marker rows are nonempty, so the first later blank-run boundary is also
+		// the earliest boundary the original owner-relative scan can encounter.
+		const boundary = boundaries[first];
+		if (boundary && boundary.markerFrom <= to) to = Math.min(to, boundary.to);
 		return to === item.itemNode.to ? item : {...item, itemNode: range(item.itemNode.from, to)};
 	});
 }

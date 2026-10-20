@@ -6,6 +6,7 @@ import { getParagraphProjectionState } from '../paragraph/projection.js';
 import { discoverCodeBlocks } from './model.js';
 import {documentContentStart,isVirtualEdgeActive} from '../runtime/virtual-tail.js';
 import {calloutGaps} from '../callout/gaps.js';
+import {quoteContainers} from '../callout/presentation-model.js';
 
 export const codeMarkersActive = Facet.define<boolean,boolean>({combine:values=>values.some(Boolean)});
 import {codeDraftStart} from './draft-state.js';
@@ -47,7 +48,8 @@ export function editableEndpoint(state: EditorState, blocks: readonly CodeBlock[
 	}
 	const index=getParagraphProjectionState(state)?.rangeIndex;
 	const normalized = direction && index ? index.normalize(position,direction<0?-1:1) : position;
-	const gap = direction ? calloutGaps(state).find(gap => gap.from < normalized && normalized < gap.to) : undefined;
+	const inContainer = direction && quoteContainers(state).some(card => card.from <= normalized && normalized <= card.to);
+	const gap = inContainer ? calloutGaps(state).find(gap => gap.from < normalized && normalized < gap.to) : undefined;
 	return gap ? direction < 0 ? gap.from : gap.to : normalized;
 }
 

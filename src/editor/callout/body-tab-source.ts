@@ -11,6 +11,7 @@ export function quotedParagraphTabStarts(source:string):readonly number[] {
 
 /** Opening indentation and following body keep their full-source owner after prefix removal. */
 export function quotedTabStarts(source:string):{paragraphs:readonly number[];blocks:readonly number[]} {
+ if(!source.includes('\t'))return {paragraphs:[],blocks:[]};
  const inserts=new Set<number>();
  const blocks=new Set<number>();
  const math=scanMathRanges(source);

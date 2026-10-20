@@ -69,8 +69,19 @@ export function projectMathTree(tree: Tree, expressions: readonly MathExpression
 	]).concat(code.map(range => ({ ...range, type: codeToken }))).sort((a, b) => a.from - b.from);
 	function project(node: SyntaxNode, admitted: typeof tokens): Tree {
 		const children: { from: number; tree: Tree }[] = [];
+		let nextToken = 0;
+		let active: typeof tokens = [];
+		const overlapping = (from: number, to: number): typeof tokens => {
+			active = active.filter(token => token.to > from);
+			while (nextToken < admitted.length && admitted[nextToken]!.from < to) {
+				const token = admitted[nextToken++]!;
+				if (token.to > from) active.push(token);
+			}
+			return active;
+		};
 		const insert = (from: number, to: number): void => {
-			for (const token of admitted) {
+			if (from >= to) return;
+			for (const token of overlapping(from, to)) {
 				const start = Math.max(from, token.from), stop = Math.min(to, token.to);
 				if (start < stop) children.push({ from: start, tree: new Tree(token.type, [], [], stop - start) });
 			}
@@ -78,7 +89,7 @@ export function projectMathTree(tree: Tree, expressions: readonly MathExpression
 		let position = node.from;
 		for (let child = node.firstChild; child; child = child.nextSibling) {
 			insert(position, child.from);
-			const overlaps = admitted.filter(token => token.from < child.to && child.from < token.to);
+			const overlaps = overlapping(child.from, child.to);
 			const structuralPrefix = /^(?:QuoteMark|ListMark)$/u.test(child.name) || child.name.split('_').some(name => /^(?:formatting-quote|formatting-list)(?:-|$)/u.test(name));
 			if (!overlaps.length || structuralPrefix) children.push({ from: child.from, tree: child.toTree() });
 			else if (child.firstChild || /^(?:Paragraph|TableCell|ATXHeading[1-6]|SetextHeading[12]|HyperMD-)/u.test(child.name)) {

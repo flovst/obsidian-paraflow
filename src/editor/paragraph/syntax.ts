@@ -988,6 +988,7 @@ function topLevelBoundaries(
 		const blocks = standardBoundariesForNodes(state, nodes, within === undefined);
 		return adjustCodeDraftBoundaries(state, adjustPendingMathBoundaries(state, blocks), within);
 	}
+	if (within !== undefined) return boundaryNeighborhood(discoverParagraphAuthority(state).blocks, within);
 	const containers = [...hypermdListBoundaries(state), ...hypermdFootnoteBoundaries(state)];
 	const headings = hypermdHeadingBoundaries(state);
 	const all = admitEmptyBodies(state, confirmedBlocks(state, classifyMediaBlocks(state, splitBoundariesAtSeparatorlessLiterals(state, [
@@ -1252,11 +1253,28 @@ function authorityFromBlocks(
 	};
 }
 
+const authorities = new WeakMap<EditorState, {
+	readonly nativeTree: Tree;
+	readonly semanticTree: Tree;
+	readonly confirmedTo: number;
+	readonly authority: ParagraphAuthority;
+}>();
+
 export function discoverParagraphAuthority(
 	state: EditorState,
 	within?: readonly ParagraphGap[],
 ): ParagraphAuthority {
-	return authorityFromBlocks(state, topLevelBoundaries(state, within));
+	if (within !== undefined) return authorityFromBlocks(state, topLevelBoundaries(state, within));
+	const nativeTree = nativeSyntaxTree(state), semanticTree = syntaxTree(state), confirmedTo = confirmedSyntaxEnd(state);
+	const cached = authorities.get(state);
+	if (cached?.nativeTree === nativeTree && cached.semanticTree === semanticTree && cached.confirmedTo === confirmedTo) {
+		return cached.authority;
+	}
+	// State identity owns draft/container facets. Coverage can advance before CM
+	// publishes a new native tree, so tree identities alone do not prove freshness.
+	const authority = authorityFromBlocks(state, topLevelBoundaries(state));
+	authorities.set(state, { nativeTree, semanticTree, confirmedTo, authority });
+	return authority;
 }
 
 export function discoverParagraphAuthorityWithin(

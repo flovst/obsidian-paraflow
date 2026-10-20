@@ -55,6 +55,15 @@ export function scanMathRanges(source: string): MathRangeIndex {
 		rows.push({ from: offset, to: offset + text.length, body: offset + prefix.length, depth: (prefix.match(/>/gu) ?? []).length });
 		offset += text.length + 1;
 	}
+	function rowAt(position: number): typeof rows[number] {
+		let first = 0, last = rows.length;
+		while (first + 1 < last) {
+			const middle = (first + last) >>> 1;
+			if (rows[middle]!.from <= position) first = middle;
+			else last = middle;
+		}
+		return rows[first]!;
+	}
 	const expressions: MathExpression[] = [], candidates: MathRange[] = [];
 	let rowIndex = 0;
 	for (let at = 0; at < source.length;) {
@@ -81,7 +90,7 @@ export function scanMathRanges(source: string): MathRangeIndex {
 		for (let search = end; search < limit;) {
 			if (source[search] !== '$' || escaped(source, search)) { search++; continue; }
 			const stop = runEnd(source, search), size = stop - search;
-			const closingRow = rows.find(item => item.from <= search && search <= item.to)!;
+			const closingRow = rowAt(search);
 			if (double && closingRow.depth !== row.depth) { search = stop; continue; }
 			// A close may share its run with the next opener, but an unowned run never opens math.
 			const nextWidth = size - width;
@@ -91,7 +100,7 @@ export function scanMathRanges(source: string): MathRangeIndex {
 			search = stop;
 		}
 		if (close >= 0 && close > end) {
-			const closingRow = rows.find(item => item.from <= close && close <= item.to)!;
+			const closingRow = rowAt(close);
 			const display = double && blockStart && !source.slice(end, row.to).trim() &&
 				close === closingRow.body && !source.slice(close + width, closingRow.to).trim();
 			const math = { from: at, to: close + width, contentFrom: end, contentTo: close, display };

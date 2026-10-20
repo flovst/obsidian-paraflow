@@ -1,4 +1,4 @@
-import { createdBodyOwnership } from '../runtime/empty-body-state.js';
+import { createdBodyOwnership, emptyBodies } from '../runtime/empty-body-state.js';
 import type { EditorState } from '@codemirror/state';
 import { syntaxTree } from '@codemirror/language';
 import { discoverCodeBlocks } from '../code-blocks/model.js';
@@ -12,7 +12,6 @@ import type {
 	WhitespaceLineFact,
 } from './model.js';
 import { markdownColumns, prefixPolicy } from './prefix.js';
-import { isCreatedListEmptyBody } from './empty-body-state.js';
 import { sourceListBlankRuns } from './blank-runs.js';
 
 export interface SourceLine {
@@ -110,17 +109,32 @@ function analyzeLines(state: EditorState, source: SourceSnapshot): readonly Sour
 		}
 		return undefined;
 	} });
+	code.sort((left, right) => left.from - right.from);
+	math.sort((left, right) => left.from - right.from);
+	const bodies = new Map<number, string>();
+	createdBodyOwnership(state).forEach(body => {
+		if (!bodies.has(body.lineFrom)) bodies.set(body.lineFrom, body.prefix);
+	});
+	const empty = new Set(emptyBodies(state));
+	let codeIndex = 0, codeTo = -1, mathIndex = 0, mathTo = -1;
+	const codeLeafAt = (from: number): boolean => {
+		while (codeIndex < code.length && code[codeIndex]!.from <= from) codeTo = Math.max(codeTo, code[codeIndex++]!.to);
+		return from < codeTo;
+	};
+	const mathLeafAt = (from: number, to: number): boolean => {
+		while (mathIndex < math.length && math[mathIndex]!.from < to) mathTo = Math.max(mathTo, math[mathIndex++]!.to);
+		return from < mathTo;
+	};
 	for (let number = 1; number <= state.doc.lines; number += 1) {
 		const documentLine = state.doc.line(number);
 		const text = source.text.slice(documentLine.from, documentLine.to);
-		const knownBody = createdBodyOwnership(state).find(body => body.lineFrom === documentLine.from);
-        const indentText = knownBody?.prefix ?? /^[ \t]*/u.exec(text)?.[0] ?? '';
+		const indentText = bodies.get(documentLine.from) ?? /^[ \t]*/u.exec(text)?.[0] ?? '';
 		const nextFrom = number < state.doc.lines ? state.doc.line(number + 1).from : documentLine.to;
 		lines.push({
 			blockExitAnchor: exits.has(documentLine.to),
-		createdEmptyBody: createdBodyLine(state, documentLine.from, documentLine.to),
-			codeLeaf: code.some(block => block.from <= documentLine.from && documentLine.from < block.to),
-			mathLeaf: math.some(block => block.from < documentLine.to && documentLine.from < block.to),
+			createdEmptyBody: bodies.has(documentLine.from) || empty.has(documentLine.to),
+			codeLeaf: codeLeafAt(documentLine.from),
+			mathLeaf: mathLeafAt(documentLine.from, documentLine.to),
 			from: documentLine.from,
 			indentText,
 			newlineTo: nextFrom,
@@ -130,10 +144,6 @@ function analyzeLines(state: EditorState, source: SourceSnapshot): readonly Sour
 		});
 	}
 	return lines;
-}
-
-function createdBodyLine(state: EditorState, from: number, to: number): boolean {
-	return createdBodyOwnership(state).some(body => body.lineFrom === from) || isCreatedListEmptyBody(state, to);
 }
 
 function containerIndent(line: SourceLine, owner: AnalyzedItem): string {
@@ -149,48 +159,69 @@ function containerIndent(line: SourceLine, owner: AnalyzedItem): string {
 }
 
 export function containingLine(lines: readonly SourceLine[], position: number): SourceLine {
-	const found = lines.find((line) => line.from <= position && position <= line.to);
-	if (!found) throw new RangeError('Position is not in an analyzed source line');
+	let first = 0, last = lines.length;
+	while (first < last) {
+		const middle = (first + last) >>> 1;
+		if (lines[middle]!.to < position) first = middle + 1;
+		else last = middle;
+	}
+	const found = lines[first];
+	if (!found || !(found.from <= position && position <= found.to)) throw new RangeError('Position is not in an analyzed source line');
 	return found;
 }
 
-function containsItem(candidate: ListItemSyntax, current: ListItemSyntax): boolean {
-	return candidate.itemNode.from < current.itemNode.from &&
-		candidate.itemNode.to >= current.itemNode.to;
-}
-
-function isParentCandidate(
-	candidate: ListItemSyntax,
-	current: ListItemSyntax,
-	candidateIndex: number,
-	currentIndex: number,
-): boolean {
-	return candidateIndex !== currentIndex && containsItem(candidate, current);
-}
-
-function parentIndexFor(items: readonly ListItemSyntax[], index: number): number | null {
-	const current = items[index];
-	if (!current) return null;
-	const parents = items
-		.map((candidate, candidateIndex) => ({ candidate, index: candidateIndex }))
-		.filter(({ candidate, index: candidateIndex }) =>
-			isParentCandidate(candidate, current, candidateIndex, index))
-		.sort((left, right) =>
-			(left.candidate.itemNode.to - left.candidate.itemNode.from) -
-			(right.candidate.itemNode.to - right.candidate.itemNode.from));
-	return parents[0]?.index ?? null;
-}
-
-function depthFor(parentIndexes: readonly (number | null)[], index: number): number {
-	let depth = 0;
-	let parent = parentIndexes[index] ?? null;
-	const seen = new Set<number>();
-	while (parent !== null && !seen.has(parent)) {
-		seen.add(parent);
-		depth += 1;
-		parent = parentIndexes[parent] ?? null;
+function containmentIndexes(items: readonly ListItemSyntax[], lines: readonly SourceLine[]) {
+	const ranges = items.map((item, index) => ({ from: item.itemNode.from, to: item.itemNode.to, index }));
+	const ordered = [...ranges].sort((left, right) => left.from - right.from);
+	const ends = [...new Set(ranges.map(item => item.to))].sort((left, right) => left - right);
+	const parents = ranges.map<number | null>(() => null);
+	const owners = lines.map<number | null>(() => null);
+	const depths = ranges.map(() => 0);
+	const queries = [
+		...ranges.map(item => ({ ...item, parent: true, result: parents })),
+		...lines.map((line, index) => ({ from: line.to, to: line.to, index, parent: false, result: owners })),
+	].sort((left, right) => left.from - right.from || Number(right.parent) - Number(left.parent));
+	const endIndex = (to: number): number => {
+		let first = 0, last = ends.length;
+		while (first < last) {
+			const middle = (first + last) >>> 1;
+			if (ends[middle]! < to) first = middle + 1;
+			else last = middle;
+		}
+		return ends.length - first;
+	};
+	const better = (left: number | null, right: number | null): number | null => {
+		if (left === null) return right;
+		if (right === null) return left;
+		const a = ranges[left]!, b = ranges[right]!;
+		const difference = (a.to - a.from) - (b.to - b.from);
+		return difference < 0 || difference === 0 && left < right ? left : right;
+	};
+	// Reverse end ranks form a suffix-min Fenwick index. It preserves crossing
+	// ranges and stable size ties without assuming syntax owners stay nested.
+	const best = Array.from({ length: ends.length + 1 }, (): number | null => null);
+	const admit = (index: number, to: number): void => {
+		for (let at = endIndex(to); at < best.length; at += at & -at) best[at] = better(best[at]!, index);
+	};
+	const containing = (to: number): number | null => {
+		let found: number | null = null;
+		for (let at = endIndex(to); at > 0; at -= at & -at) found = better(found, best[at]!);
+		return found;
+	};
+	let cursor = 0;
+	for (const query of queries) {
+		while (cursor < ordered.length && (ordered[cursor]!.from < query.from ||
+			!query.parent && ordered[cursor]!.from === query.from)) {
+			const item = ordered[cursor++]!;
+			admit(item.index, item.to);
+		}
+		query.result[query.index] = containing(query.to);
 	}
-	return depth;
+	for (const item of ordered) {
+		const parent = parents[item.index]!;
+		depths[item.index] = parent === null ? 0 : depths[parent]! + 1;
+	}
+	return { parents, owners, depths };
 }
 
 function blockFor(syntax: ListItemSyntax, line: SourceLine, source: SourceSnapshot): ListBlockRef {
@@ -210,20 +241,21 @@ export function analyzeSource(
 ): SourceAnalysis {
 	const source = snapshotFor(state);
 	const lines = analyzeLines(state, source);
-	const parentIndexes = syntaxItems.map((_, index) => parentIndexFor(syntaxItems, index));
+	const { parents, owners, depths } = containmentIndexes(syntaxItems, lines);
 	const items = syntaxItems.map((syntax, index): AnalyzedItem => {
 		const line = containingLine(lines, syntax.markerLine.from);
 		return {
 			block: blockFor(syntax, line, source),
-			depth: depthFor(parentIndexes, index),
+			depth: depths[index]!,
 			line,
-			parentIndex: parentIndexes[index] ?? null,
+			parentIndex: parents[index]!,
 			syntax,
 		};
 	});
 	const analysis = { items, lines, source };
-	const normalizedLines = lines.map(line => {
-		const owner = itemAtPosition(analysis, line.to);
+	const normalizedLines = lines.map((line, index) => {
+		const ownerIndex = owners[index]!;
+		const owner = ownerIndex === null ? null : items[ownerIndex]!;
 		return owner && owner.line.from !== line.from
 			? { ...line, indentText: containerIndent(line, owner) }
 			: line;

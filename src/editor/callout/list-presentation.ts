@@ -7,7 +7,7 @@ import { projectQuoteContent, quotePrefix } from './projection.js';
 import { discoverMath } from '../math/syntax.js';
 import { mapListBlankRuns } from '../structured-list/blank-runs.js';
 
-const cache = new WeakMap<EditorState, ReadonlyMap<CalloutCard, readonly ProjectionEntry[]>>();
+const cache = new WeakMap<EditorState, Map<CalloutCard, readonly ProjectionEntry[]>>();
 
 function entriesForCard(state: EditorState, card: CalloutCard): readonly ProjectionEntry[] {
 	const first = card.kind === 'callout' ? card.headerTo + 1 : card.from;
@@ -35,10 +35,17 @@ function entriesForCard(state: EditorState, card: CalloutCard): readonly Project
 export function calloutListEntries(state: EditorState, cards: readonly CalloutCard[] = quoteContainers(state)): readonly ProjectionEntry[] {
 	let byCard = cache.get(state);
 	if (!byCard) {
-		byCard = new Map(quoteContainers(state).map(card => [card, entriesForCard(state, card)]));
+		byCard = new Map();
 		cache.set(state, byCard);
 	}
-	return cards.flatMap(card => byCard.get(card)!);
+	return cards.flatMap(card => {
+		let entries = byCard.get(card);
+		if (!entries) {
+			entries = entriesForCard(state, card);
+			byCard.set(card, entries);
+		}
+		return entries;
+	});
 }
 
 /** Only container indentation is removed here; marker and task rendering are shared. */

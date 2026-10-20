@@ -42,8 +42,25 @@ export interface CalloutProjection {
 	toSource(position: number): number;
 }
 
+const projections = new WeakMap<EditorState, Map<string, CalloutProjection | null>>();
+
 /** A selection-independent content view used by the shared list presentation. */
 export function projectQuoteContent(state: EditorState, from: number, to: number, depth: number): CalloutProjection | null {
+	let ranges = projections.get(state);
+	if (!ranges) {
+		ranges = new Map();
+		projections.set(state, ranges);
+	}
+	const key = `${from}:${to}:${depth}`;
+	const cached = ranges.get(key);
+	if (cached !== undefined) return cached;
+	// Source and ownership facets are immutable here; host syntax progress is not an input.
+	const projection = buildQuoteContent(state, from, to, depth);
+	ranges.set(key, projection);
+	return projection;
+}
+
+function buildQuoteContent(state: EditorState, from: number, to: number, depth: number): CalloutProjection | null {
 	if (from > to) return null;
 	const first = state.doc.lineAt(from).number;
 	const last = state.doc.lineAt(to).number;
