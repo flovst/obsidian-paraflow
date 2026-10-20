@@ -105,14 +105,25 @@ export function withTablePrefixes(target:TableSource,source:string,change?:RowSt
 	return source.split('\n').map((line,index)=>(prefixes[index]??continuation)+line).join('\n');
 }
 
+/** Parsed content has no DOM or source positions; sessions can safely share these values. */
+function immutableEnvelope(envelope:HtmlTable):HtmlTable {
+	for(const cell of envelope.table.cells) {
+		Object.freeze(cell.attributes);Object.freeze(cell.style);Object.freeze(cell);
+	}
+	Object.freeze(envelope.table.cells);Object.freeze(envelope.table);
+	for(const group of envelope.rowGroups)Object.freeze(group);
+	Object.freeze(envelope.rowGroups);
+	return Object.freeze(envelope);
+}
+
 /** A snapshot is intentionally invalid after any change to its source range. */
 export class TableEditSession {
 	readonly envelope: HtmlTable;
 	readonly target:TableSource;
 	get table(): TableModel { return this.envelope.table; }
-	constructor(private readonly parsedTarget:TableSource,renderedTo=parsedTarget.to) {
+	constructor(private readonly parsedTarget:TableSource,renderedTo=parsedTarget.to,parsedEnvelope?:HtmlTable) {
 		this.target=renderedTo===parsedTarget.to?parsedTarget:{...parsedTarget,to:renderedTo,source:parsedTarget.source.slice(0,renderedTo-parsedTarget.from)};
-		this.envelope = htmlToGrid(this.target.kind === 'html' ? this.target.source : markdownToHtml(this.target.source));
+		this.envelope = parsedEnvelope ?? immutableEnvelope(htmlToGrid(this.target.kind === 'html' ? this.target.source : markdownToHtml(this.target.source)));
 	}
 	assertCurrent(state: EditorState): void {
 		assertTableSourceCurrent(state,this.parsedTarget);

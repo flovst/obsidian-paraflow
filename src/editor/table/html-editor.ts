@@ -147,7 +147,12 @@ export class HtmlTableController implements TableActionTarget {
 		this.dom.replaceChildren(fragment);this.paintSelection();
 	}
 	update(session:TableEditSession):void {
-		if(session.target.source===this.session.target.source&&session.target.from===this.session.target.from&&session.target.container?.rawSource===this.session.target.container?.rawSource)return;
+		if(session.target.source===this.session.target.source&&session.target.kind===this.session.target.kind){
+			this.session=session;this.dom.dataset.pfTableFrom=String(session.target.from);
+			const selection=this.view.state.selection.main,active=this.dom.ownerDocument.activeElement;
+			if(active&&this.dom.contains(active)&&(selection.from<session.target.from||selection.to>session.target.to))(active as HTMLElement).blur();
+			return;
+		}
 		this.menu?.close();this.clearPreview();this.cancelDrag();const bookmark=this.textBookmark;
 		const focused=this.dom.contains(this.dom.ownerDocument.activeElement);this.session=session;
 		this.dom.dataset.pfTableFrom=String(session.target.from);this.current={row:Math.min(this.current.row,session.table.rows-1),column:Math.min(this.current.column,session.table.columns-1)};

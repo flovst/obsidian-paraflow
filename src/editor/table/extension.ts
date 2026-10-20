@@ -1,10 +1,10 @@
 import {clearTableActivationResume,clearTableFocus,hasTableActivationRequest,hasTableFocusRequest,resumeHtmlActivationFocus,restoreTableFocus,tableFocusOwner,type TableFocusBookmark} from './focus-handoff';
 import {Prec,StateEffect,StateField,type EditorState,type Extension,type Range} from '@codemirror/state';
-import {Decoration,EditorView,ViewPlugin,WidgetType,type DecorationSet} from '@codemirror/view';
+import {Decoration,EditorView,ViewPlugin,WidgetType} from '@codemirror/view';
 import {findEditableTableSources,TableEditSession,type TableSource} from './edit-session';
 import type {TableEditingOptions} from './editing-types';
 import {HtmlTableController} from './html-editor';
-import {createTable,gridToHtml,TableSerializationError} from './serialization';
+import {createTable,gridToHtml,TableSerializationError,type HtmlTable} from './serialization';
 import {isolateHistory} from '@codemirror/commands';
 import {NativeTableTarget} from './native-target';
 import {clearTableActions} from './table-actions';
@@ -82,24 +82,26 @@ class TableWidget extends WidgetType {
 
 export function createTableEditingExtension(options:TableEditingOptions):Extension {
 	const activation=StateEffect.define<{active:boolean;containers:boolean}>();
-	const build=(state:EditorState,tables:readonly TableSource[],active:boolean,containers:boolean):DecorationSet=>{
-		if(!active)return Decoration.none;const ranges:Range<Decoration>[]=[];
+	const build=(state:EditorState,tables:readonly TableSource[],active:boolean,containers:boolean,previous:ReadonlyMap<string,HtmlTable>)=>{
+		const models=new Map<string,HtmlTable>();
+		if(!active)return {decorations:Decoration.none,models};const ranges:Range<Decoration>[]=[];
 		for(const table of tables){if(table.container?table.container.kind==='quote'&&!containers:table.kind!=='html')continue;
-			try{const session=new TableEditSession(table),edge=state.field(virtualTailState,false);
+			try{const session=new TableEditSession(table,table.to,table.kind==='html'?previous.get(table.source):undefined),edge=state.field(virtualTailState,false);
+				if(table.kind==='html')models.set(table.source,session.envelope);
 				const before=!!edge&&edge.side==='before'&&!table.container&&!state.sliceDoc(0,table.from).trim();
 				const after=!!edge&&edge.side!=='before'&&!table.container&&!state.sliceDoc(table.to).trim();
 				ranges.push(Decoration.replace({block:true,...(before?{inclusiveStart:false}:{}),...(after?{inclusiveEnd:false}:{}),widget:new TableWidget(session,options,containerBlockFrame(state,table.from,table.to))}).range(table.from,table.to));}
 			catch{/* Unsupported HTML retains the native/source editor; commands report its exact reason. */}
 		}
 		for(const [from,edge] of listTableBoundaryRows(state,tables))ranges.push(Decoration.line({class:'paraflow-block-boundary-gap',attributes:{'data-paraflow-before':edge.before,'data-paraflow-after':edge.after}}).range(from));
-		return Decoration.set(ranges,true);
+		return {decorations:Decoration.set(ranges,true),models};
 	};
 	const field=StateField.define({
-		create(state){return {tables:findEditableTableSources(state),active:false,containers:false,decorations:Decoration.none};},
+		create(state){return {tables:findEditableTableSources(state),active:false,containers:false,decorations:Decoration.none,models:new Map<string,HtmlTable>()};},
 		update(value,tr){const active=tr.effects.find(effect=>effect.is(activation))?.value;
 			if(!tr.docChanged&&active===undefined&&!tr.reconfigured&&tr.startState.field(virtualTailState,false)===tr.state.field(virtualTailState,false))return value;
 			const tables=tr.docChanged?findEditableTableSources(tr.state):value.tables;const enabled=active?.active??value.active,containers=active?.containers??value.containers;
-			return {tables,active:enabled,containers,decorations:build(tr.state,tables,enabled,containers)};
+			return {tables,active:enabled,containers,...build(tr.state,tables,enabled,containers,value.models)};
 		},provide:field=>Prec.highest(EditorView.decorations.from(field,value=>value.decorations)),
 	});
 	return [tableFocusOwner.of(view=>options.isActive(view)&&options.isActiveView?.(view)!==false),EditorView.editorAttributes.of(view=>({class:hasTableActivationRequest(view)?'paraflow-table-focus-pending':''})),EditorView.baseTheme({'&.paraflow-table-focus-pending > .cm-scroller .cm-cursorLayer':{visibility:'hidden'},'&.paraflow-table-focus-pending > .cm-scroller .cm-content':{caretColor:'transparent'},'.cm-content > .paraflow-list-table-container':{boxSizing:'border-box',
