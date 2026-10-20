@@ -1,12 +1,12 @@
 import { Facet, StateField, type EditorState } from '@codemirror/state';
-import { discoverTildeRuns, type ShorthandSettings, type TildeRun } from './syntax.js';
+import { shorthandAnalysis, type ShorthandSettings, type TildeRun } from './syntax.js';
 
 export const shorthandSettings = Facet.define<() => ShorthandSettings, (() => ShorthandSettings) | null>({
 	combine: values => values[0] ?? null,
 });
 export const tildeRuns = StateField.define<readonly TildeRun[]>({
-	create: state => discoverTildeRuns(state.doc.toString()),
-	update: (value, transaction) => transaction.docChanged ? discoverTildeRuns(transaction.newDoc.toString()) : value,
+	create: state => shorthandAnalysis(state.doc).tildeRuns,
+	update: (value, transaction) => transaction.docChanged ? shorthandAnalysis(transaction.newDoc).tildeRuns : value,
 });
 
 export function ownsTildeRun(state: EditorState, from: number, to: number): boolean {

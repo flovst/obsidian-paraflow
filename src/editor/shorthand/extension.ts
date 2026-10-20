@@ -2,14 +2,14 @@ import { EditorSelection, EditorState, Prec, StateField, type Extension, type Ra
 import { Decoration, ViewPlugin, type DecorationSet, type EditorView, type ViewUpdate } from '@codemirror/view';
 import { classifyCurrentSelectionMode, createInputStateExtension, recognizedNormalSelectionTransaction, requireCompositionState } from '../runtime/input-state.js';
 import { createInlineRevealPointerExtension, inlineEndpointOwners, inlineRevealPointerHeld, type InlineBodyOwner } from '../runtime/inline-reveal.js';
-import { discoverShorthand, type ShorthandRange, type ShorthandSettings } from './syntax.js';
+import { shorthandAnalysis, type ShorthandRange, type ShorthandSettings } from './syntax.js';
 import { shorthandSettings, tildeRuns } from './tilde-run.js';
 import { bindRenderedSourceClick, createRenderedSourceClickExtension } from '../runtime/rendered-source-click.js';
 import { createNativeDecorationOwnership, nativeInlineOwnership, isNativeReplacement } from '../runtime/native-decoration-ownership.js';
 
 const shorthandRanges = StateField.define<readonly ShorthandRange[]>({
-	create: state => discoverShorthand(state.doc.toString()),
-	update: (value, transaction) => transaction.docChanged ? discoverShorthand(transaction.newDoc.toString()) : value,
+	create: state => shorthandAnalysis(state.doc).shorthand,
+	update: (value, transaction) => transaction.docChanged ? shorthandAnalysis(transaction.newDoc).shorthand : value,
 });
 
 const escapedBodyCharacter = /[ \t!"#$%&'()*+,\-./:;<=>?@[\]\\^_`{|}~]/u;
