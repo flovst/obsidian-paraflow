@@ -3,6 +3,23 @@ export interface ParagraphBlock {
 	readonly to: number;
 }
 
+export interface ParagraphEndpointIndex<T extends ParagraphBlock> {
+	readonly byStart: ReadonlyMap<number, T>;
+	readonly byEnd: ReadonlyMap<number, T>;
+}
+
+/** Keep the first source entry at duplicate endpoints, matching exact Array.find. */
+export function createParagraphEndpointIndex<T extends ParagraphBlock>(
+	blocks: readonly T[],
+): ParagraphEndpointIndex<T> {
+	const byStart = new Map<number, T>(), byEnd = new Map<number, T>();
+	for (const block of blocks) {
+		if (!byStart.has(block.from)) byStart.set(block.from, block);
+		if (!byEnd.has(block.to)) byEnd.set(block.to, block);
+	}
+	return { byStart, byEnd };
+}
+
 export type TopLevelBlockBoundaryKind =
 	| 'paragraph'
 	| 'media'
@@ -143,10 +160,14 @@ export interface ParagraphAuthority {
 }
 
 /** Editable empty bodies delimit ordinary paragraphs within a multi-gap run. */
-export function paragraphGapTags(blocks: readonly TopLevelBlockBoundary[], run: ParagraphRun):
+export function paragraphGapTags(
+	blocks: readonly TopLevelBlockBoundary[],
+	run: ParagraphRun,
+	endpoints?: ParagraphEndpointIndex<TopLevelBlockBoundary>,
+):
 	(position: number) => { before: string; after: string } {
-	const before = paragraphBoundaryTag(blocks.find(block => block.to === run.from));
-	const after = paragraphBoundaryTag(blocks.find(block => block.from === run.to));
+	const before = paragraphBoundaryTag(endpoints ? endpoints.byEnd.get(run.from) : blocks.find(block => block.to === run.from));
+	const after = paragraphBoundaryTag(endpoints ? endpoints.byStart.get(run.to) : blocks.find(block => block.from === run.to));
 	const editable = run.rows.filter(row => row.kind === 'editable');
 	const first = editable[0]?.at ?? Infinity;
 	const last = editable.at(-1)?.at ?? -Infinity;

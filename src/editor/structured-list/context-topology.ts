@@ -49,62 +49,116 @@ function siblingsAreAdjacent(
 		left.block.item.to, right.line.from);
 }
 
-function directSiblingRun(
-	analysis: SourceAnalysis,
-	item: AnalyzedItem,
-): readonly AnalyzedItem[] {
-	const candidates = analysis.items.filter((candidate) => candidate.parentIndex === item.parentIndex);
-	const currentIndex = candidates.indexOf(item);
-	if (currentIndex < 0) return [item];
-	let start = currentIndex;
-	let end = currentIndex;
-	while (start > 0 && siblingsAreAdjacent(analysis, candidates[start - 1], candidates[start])) start -= 1;
-	while (end + 1 < candidates.length && siblingsAreAdjacent(analysis, candidates[end], candidates[end + 1])) end += 1;
-	return candidates.slice(start, end + 1);
+interface TopologyIndex {
+	readonly relations: ReadonlyMap<AnalyzedItem, ItemRelations>;
+	readonly sequences: ReadonlyMap<AnalyzedItem, OrderedSequenceContext>;
+	readonly byMarker: ReadonlyMap<number, readonly AnalyzedItem[]>;
+	readonly positions: ReadonlyMap<AnalyzedItem, number>;
+	readonly children: ReadonlyMap<number | null, readonly AnalyzedItem[]>;
+	readonly starts: readonly number[];
+	readonly ends: readonly number[];
 }
 
-function orderedSequence(
-	item: AnalyzedItem,
-	siblings: readonly AnalyzedItem[],
-): OrderedSequenceContext | null {
-	if (item.block.prefix.orderedValue === null) return null;
-	const ordered = siblings.filter((candidate) => candidate.block.prefix.orderedValue !== null);
-	const currentIndex = ordered.indexOf(item);
-	const firstValue = ordered[0]?.block.prefix.orderedValue;
-	if (currentIndex < 0 || firstValue === null || firstValue === undefined) return null;
-	return {
-		currentIndex,
-		items: ordered.map((candidate) => candidate.block),
-		renderedValue: firstValue + currentIndex,
+// The key is one immutable analysis, never an EditorState or source Text.
+const topologyIndexes = new WeakMap<SourceAnalysis, TopologyIndex>();
+
+function siblingIndexes(analysis: SourceAnalysis, children: ReadonlyMap<number | null, readonly AnalyzedItem[]>) {
+	const relations = new Map<AnalyzedItem, ItemRelations>();
+	const sequences = new Map<AnalyzedItem, OrderedSequenceContext>();
+	for (const candidates of children.values()) {
+		let start = 0;
+		while (start < candidates.length) {
+			let end = start + 1;
+			while (end < candidates.length && siblingsAreAdjacent(analysis, candidates[end - 1], candidates[end])) end++;
+			const siblings = candidates.slice(start, end);
+			const firstValue = siblings[0]!.block.prefix.orderedValue;
+			const blocks = firstValue === null ? null : siblings.map(candidate => candidate.block);
+			siblings.forEach((item, siblingIndex) => {
+				relations.set(item, { siblings, siblingIndex, previousSibling: siblings[siblingIndex - 1] ?? null,
+					nextSibling: siblings[siblingIndex + 1] ?? null,
+					parent: item.parentIndex === null ? null : analysis.items[item.parentIndex] ?? null });
+				if (blocks && firstValue !== null) sequences.set(item, { currentIndex: siblingIndex, items: blocks, renderedValue: firstValue + siblingIndex });
+			});
+			start = end;
+		}
+	}
+	return { relations, sequences };
+}
+
+function topologyIndex(analysis: SourceAnalysis): TopologyIndex {
+	const cached = topologyIndexes.get(analysis);
+	if (cached) return cached;
+	const children = new Map<number | null, AnalyzedItem[]>();
+	const byMarker = new Map<number, AnalyzedItem[]>();
+	const positions = new Map<AnalyzedItem, number>();
+	analysis.items.forEach((item, index) => {
+		positions.set(item, index);
+		const siblings = children.get(item.parentIndex) ?? [];
+		siblings.push(item); children.set(item.parentIndex, siblings);
+		const markers = byMarker.get(item.line.from) ?? [];
+		markers.push(item); byMarker.set(item.line.from, markers);
+	});
+	const { relations, sequences } = siblingIndexes(analysis, children);
+	const starts: number[] = [], ends: number[] = [];
+	let clock = 0;
+	const pending = (children.get(null) ?? []).map(item => ({ item, exit: false })).reverse();
+	while (pending.length) {
+		const { item, exit } = pending.pop()!;
+		const index = positions.get(item)!;
+		if (exit) { ends[index] = clock; continue; }
+		starts[index] = clock++;
+		pending.push({ item, exit: true });
+		const nested = children.get(index) ?? [];
+		for (let at = nested.length - 1; at >= 0; at--) pending.push({ item: nested[at]!, exit: false });
+	}
+	const result = { relations, sequences, byMarker, positions, children, starts, ends };
+	topologyIndexes.set(analysis, result);
+	return result;
+}
+
+function orderedSequence(analysis: SourceAnalysis, item: AnalyzedItem): OrderedSequenceContext | null {
+	return topologyIndex(analysis).sequences.get(item) ?? null;
+}
+
+/** Sweep only this owner's descendants, retaining depth and original-order ties. */
+function descendantOwners(analysis: SourceAnalysis, item: AnalyzedItem): ReadonlyMap<SourceLine, AnalyzedItem> {
+	const index = topologyIndex(analysis), root = index.positions.get(item)!;
+	const descendants = analysis.items.map((candidate, order) => ({ candidate, order }))
+		.filter(({ order }) => index.starts[root]! < index.starts[order]! && index.starts[order]! < index.ends[root]!)
+		.map(({ candidate, order }) => ({ candidate, order, from: candidate.block.item.from, to: candidate.block.item.to, depth: candidate.depth }))
+		.sort((a, b) => a.from - b.from || a.order - b.order);
+	type Owner = typeof descendants[number];
+	const heap: Owner[] = [];
+	const better = (a: Owner, b: Owner) => a.depth > b.depth || a.depth === b.depth && a.order < b.order;
+	const push = (owner: Owner) => {
+		let at = heap.length; heap.push(owner);
+		while (at > 0) {
+			const parent = (at - 1) >>> 1;
+			if (!better(owner, heap[parent]!)) break;
+			heap[at] = heap[parent]!; at = parent;
+		}
+		heap[at] = owner;
 	};
-}
-
-function isDescendantOf(
-	analysis: SourceAnalysis,
-	candidate: AnalyzedItem,
-	ancestor: AnalyzedItem,
-): boolean {
-	let parent = candidate.parentIndex;
-	while (parent !== null) {
-		const parentItem = analysis.items[parent];
-		if (parentItem === ancestor) return true;
-		parent = parentItem?.parentIndex ?? null;
+	const pop = () => {
+		const tail = heap.pop()!;
+		if (!heap.length) return;
+		let at = 0;
+		while (at * 2 + 1 < heap.length) {
+			let child = at * 2 + 1;
+			if (child + 1 < heap.length && better(heap[child + 1]!, heap[child]!)) child++;
+			if (!better(heap[child]!, tail)) break;
+			heap[at] = heap[child]!; at = child;
+		}
+		heap[at] = tail;
+	};
+	const owners = new Map<SourceLine, AnalyzedItem>();
+	let cursor = 0;
+	for (const line of analysis.lines.filter(line => item.line.from < line.from && line.from < item.block.item.to)) {
+		while (cursor < descendants.length && descendants[cursor]!.from <= line.to) push(descendants[cursor++]!);
+		while (heap.length && heap[0]!.to <= line.from) pop();
+		owners.set(line, heap[0]?.candidate ?? item);
 	}
-	return false;
-}
-
-function deepestOwner(
-	analysis: SourceAnalysis,
-	item: AnalyzedItem,
-	line: SourceLine,
-): AnalyzedItem {
-	let owner = item;
-	for (const candidate of analysis.items) {
-		const insideLine = candidate.block.item.from <= line.to && line.from < candidate.block.item.to;
-		const descendant = candidate.depth > item.depth && isDescendantOf(analysis, candidate, item);
-		if (insideLine && descendant && candidate.depth > owner.depth) owner = candidate;
-	}
-	return owner;
+	return owners;
 }
 
 function ownedBlockKind(line: SourceLine, descendant: boolean, paragraphBroken: boolean): OwnedBlock['kind'] {
@@ -116,9 +170,10 @@ function ownedBlockKind(line: SourceLine, descendant: boolean, paragraphBroken: 
 function ownedBlocks(analysis: SourceAnalysis, item: AnalyzedItem): readonly OwnedBlock[] {
 	const owned: OwnedBlock[] = [];
 	let paragraphBroken = false;
+	const owners = descendantOwners(analysis, item);
 	for (const line of analysis.lines) {
 		if (line.from <= item.line.from || line.from >= item.block.item.to) continue;
-		const owner = deepestOwner(analysis, item, line);
+		const owner = owners.get(line)!;
 		if (line.whitespaceKind !== null && !isEditableOwnedWhitespace(analysis, owner, line)) {
 			paragraphBroken = true;
 			continue;
@@ -141,8 +196,7 @@ function followingForOwned(
 ): FollowingBoundary {
 	if (owned.kind === 'code-leaf') return { kind: 'unsupported' };
 	if (owned.kind === 'descendant') {
-		const descendant = analysis.items.find((candidate) =>
-			candidate.depth > item.depth && candidate.line.from === owned.range.from);
+		const descendant = topologyIndex(analysis).byMarker.get(owned.range.from)?.find(candidate => candidate.depth > item.depth);
 		if (descendant) return { block: descendant.block, kind: 'list-item' };
 	}
 	const line = containingLine(analysis.lines, owned.range.from);
@@ -230,16 +284,7 @@ function physicalPrecedingItem(analysis: SourceAnalysis, item: AnalyzedItem): An
 }
 
 function itemRelations(analysis: SourceAnalysis, item: AnalyzedItem): ItemRelations {
-	const siblings = directSiblingRun(analysis, item);
-	const siblingIndex = siblings.indexOf(item);
-	const parent = item.parentIndex === null ? null : analysis.items[item.parentIndex] ?? null;
-	return {
-		nextSibling: siblings[siblingIndex + 1] ?? null,
-		parent,
-		previousSibling: siblings[siblingIndex - 1] ?? null,
-		siblingIndex,
-		siblings,
-	};
+	return topologyIndex(analysis).relations.get(item)!;
 }
 
 function indentParent(analysis: SourceAnalysis, item: AnalyzedItem): AnalyzedItem | null {
@@ -284,10 +329,11 @@ function precedingBlock(relations: ItemRelations): ListBlockRef | null {
 
 function orderedIndentStart(analysis: SourceAnalysis, previous: AnalyzedItem | null): number {
 	if (!previous) return 1;
-	const previousIndex = analysis.items.indexOf(previous);
-	const lastChild = analysis.items.filter(candidate => candidate.parentIndex === previousIndex).at(-1);
+	const index = topologyIndex(analysis);
+	const previousIndex = index.positions.get(previous)!;
+	const lastChild = index.children.get(previousIndex)?.at(-1);
 	if (!lastChild || lastChild.block.prefix.orderedValue === null) return 1;
-	const sequence = orderedSequence(lastChild, directSiblingRun(analysis, lastChild));
+	const sequence = orderedSequence(analysis, lastChild);
 	if (!sequence) throw new Error('An ordered child requires a normalized ordered sequence');
 	return sequence.renderedValue + 1;
 }
@@ -313,10 +359,10 @@ export function buildListTopology(
 		followingBoundary: following,
 		followingStructuralBoundary: matchingBoundary(structural, following),
 		nextSibling: optionalBlock(relations.nextSibling),
-		orderedSequence: orderedSequence(item, relations.siblings),
+		orderedSequence: orderedSequence(analysis, item),
 		orderedIndentStart: orderedIndentStart(analysis, tabParent),
 		parentOrderedSequence: relations.parent && parentRelations
-			? orderedSequence(relations.parent, parentRelations.siblings)
+			? orderedSequence(analysis, relations.parent)
 			: null,
 		ownedBlocks: owned,
 		parent: optionalBlock(relations.parent),
@@ -334,12 +380,11 @@ export function buildProjectionContext(
 	item: AnalyzedItem,
 	ownedLines: readonly ProjectionOwnedLine[],
 ): ProjectionListContext {
-	const siblings = directSiblingRun(analysis, item);
 	return {
 		block: item.block,
-		blankRuns: analysis.blankRuns.filter(run => run.ownerFrom === item.line.from).map(({run})=>run),
+		blankRuns: analysis.blankRunsByOwner.get(item.line.from) ?? [],
 		depth: item.depth,
 		ownedLines,
-		orderedSequence: orderedSequence(item, siblings),
+		orderedSequence: orderedSequence(analysis, item),
 	};
 }

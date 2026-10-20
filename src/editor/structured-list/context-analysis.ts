@@ -12,7 +12,7 @@ import type {
 	WhitespaceLineFact,
 } from './model.js';
 import { markdownColumns, prefixPolicy } from './prefix.js';
-import { sourceListBlankRuns } from './blank-runs.js';
+import { sourceListBlankRuns, type ListBlankRun } from './blank-runs.js';
 
 export interface SourceLine {
 	readonly from: number;
@@ -40,29 +40,28 @@ export interface SourceAnalysis {
 	readonly lines: readonly SourceLine[];
 	readonly items: readonly AnalyzedItem[];
 	readonly blankRuns: ReturnType<typeof sourceListBlankRuns>;
+	readonly blankRunsByOwner: ReadonlyMap<number, readonly ListBlankRun[]>;
+	readonly blankRowEditable: ReadonlyMap<number, boolean>;
+	readonly precedesListItem: ReadonlySet<number>;
+	readonly closesNestedList: ReadonlySet<number>;
 }
 
 function closesNestedList(analysis: SourceAnalysis, line: SourceLine): boolean {
-	const index = analysis.lines.indexOf(line);
-	const previous = analysis.items.find(item => item.line.from === analysis.lines[index - 1]?.from);
-	const next = analysis.items.find(item => item.line.from === analysis.lines[index + 1]?.from);
-	return previous !== undefined && next !== undefined && previous.depth > next.depth;
+	return analysis.closesNestedList.has(line.from);
 }
 
 export function isEditableOwnedWhitespace(analysis: SourceAnalysis, owner: AnalyzedItem, line: SourceLine): boolean {
 	if (line.whitespaceKind === null) return false;
 	if (line.whitespaceKind === 'sentinel-tab' || line.text.includes('\u200b')) return true;
 	if (line.createdEmptyBody) return true;
-	const run = analysis.blankRuns.find(candidate =>
-		candidate.run.range.from < line.from && line.from < candidate.run.range.to)?.run;
-	if (run) return run.editableBodies.some(body => body.to === line.to);
+	const editable = analysis.blankRowEditable.get(line.from);
+	if (editable !== undefined) return editable;
 	if (precedesListItem(analysis, line)) return false;
 	return editableWhitespaceBody(analysis, owner, line);
 }
 
 function precedesListItem(analysis: SourceAnalysis, line: SourceLine): boolean {
-	const next = analysis.lines.find(candidate => candidate.from > line.to && candidate.whitespaceKind === null);
-	return next !== undefined && analysis.items.some(item => item.line.from === next.from);
+	return analysis.precedesListItem.has(line.from);
 }
 
 function editableWhitespaceBody(analysis: SourceAnalysis, owner: AnalyzedItem, line: SourceLine): boolean {
@@ -235,6 +234,41 @@ function blockFor(syntax: ListItemSyntax, line: SourceLine, source: SourceSnapsh
 	};
 }
 
+function blankRunIndexes(blankRuns: SourceAnalysis['blankRuns']) {
+	const blankRunsByOwner = new Map<number, ListBlankRun[]>();
+	const blankRowEditable = new Map<number, boolean>();
+	for (const { ownerFrom, run } of blankRuns) {
+		let runs = blankRunsByOwner.get(ownerFrom);
+		if (!runs) blankRunsByOwner.set(ownerFrom, runs = []);
+		runs.push(run);
+		for (const row of run.rows) blankRowEditable.set(row.at, row.kind === 'editable');
+	}
+	return { blankRunsByOwner, blankRowEditable };
+}
+
+function itemsByMarkerStart(items: readonly AnalyzedItem[]) {
+	const markerItems = new Map<number | undefined, AnalyzedItem>();
+	for (const item of items) if (!markerItems.has(item.line.from)) markerItems.set(item.line.from, item);
+	return markerItems;
+}
+
+function nestedListCloses(previous: AnalyzedItem | undefined, next: AnalyzedItem | undefined): boolean {
+	return previous !== undefined && next !== undefined && previous.depth > next.depth;
+}
+
+function whitespaceIndexes(lines: readonly SourceLine[], items: readonly AnalyzedItem[]) {
+	const markerItems = itemsByMarkerStart(items);
+	const precedesListItem = new Set<number>(), closesNestedList = new Set<number>();
+	let nextIsItem = false;
+	for (let index = lines.length - 1; index >= 0; index--) {
+		const line = lines[index]!;
+		if (nextIsItem) precedesListItem.add(line.from);
+		if (line.whitespaceKind === null) nextIsItem = markerItems.has(line.from);
+		if (nestedListCloses(markerItems.get(lines[index - 1]?.from), markerItems.get(lines[index + 1]?.from))) closesNestedList.add(line.from);
+	}
+	return { precedesListItem, closesNestedList };
+}
+
 export function analyzeSource(
 	state: EditorState,
 	syntaxItems: readonly ListItemSyntax[],
@@ -252,7 +286,6 @@ export function analyzeSource(
 			syntax,
 		};
 	});
-	const analysis = { items, lines, source };
 	const normalizedLines = lines.map((line, index) => {
 		const ownerIndex = owners[index]!;
 		const owner = ownerIndex === null ? null : items[ownerIndex]!;
@@ -260,8 +293,9 @@ export function analyzeSource(
 			? { ...line, indentText: containerIndent(line, owner) }
 			: line;
 	});
-	const normalized = {...analysis,lines:normalizedLines};
-	return {...normalized,blankRuns:sourceListBlankRuns(normalized)};
+	const normalized = { items, lines: normalizedLines, source };
+	const blankRuns = sourceListBlankRuns(normalized);
+	return {...normalized, blankRuns, ...blankRunIndexes(blankRuns), ...whitespaceIndexes(normalizedLines, items)};
 }
 
 export function itemAtPosition(

@@ -16,12 +16,14 @@ import { codeDraft } from '../code-blocks/draft-state.js';
 import { pendingMathRanges } from '../math/candidate-ranges.js';
 import type {
 	ParagraphAuthority,
+	ParagraphBlock,
+	ParagraphEndpointIndex,
 	ParagraphGap,
 	ParagraphPhysicalRow,
 	ParagraphRun,
 	TopLevelBlockBoundary,
 } from './model.js';
-import { capabilitiesForTopLevelBlock, paragraphGapTags } from './model.js';
+import { capabilitiesForTopLevelBlock, createParagraphEndpointIndex, paragraphGapTags } from './model.js';
 import {
 	confirmedSyntaxEnd,
 	discoverParagraphAuthority,
@@ -122,24 +124,35 @@ export function createParagraphRangeIndex(
 			return Object.freeze({ ...gap });
 		}));
 	const sortedAnchors = Object.freeze([...editableAnchors].sort((left, right) => left - right));
+	let gapIndex = 0;
 	for (let index = 0; index < sortedAnchors.length; index += 1) {
 		const anchor = sortedAnchors[index]!;
 		assertDocumentPosition(anchor, documentLength);
 		if (index > 0 && sortedAnchors[index - 1] === anchor) {
 			throw new Error('Paragraph editable anchors must be unique');
 		}
-		if (sortedGaps.some((gap) => gap.from < anchor && anchor < gap.to)) {
+		while (gapIndex < sortedGaps.length && sortedGaps[gapIndex]!.to <= anchor) gapIndex += 1;
+		const gap = sortedGaps[gapIndex];
+		if (gap && gap.from < anchor && anchor < gap.to) {
 			throw new Error('Paragraph editable anchor is inside a gap');
 		}
 	}
+	const hasZeroAnchor = sortedAnchors[0] === 0;
 	const containingGap = (position: number): ParagraphGap | null => {
 		assertDocumentPosition(position, documentLength);
-		return sortedGaps.find((gap) => (gap.from < position || position === 0 && gap.from === 0 && !sortedAnchors.includes(0)) && position < gap.to) ?? null;
+		let low = 0, high = sortedGaps.length;
+		while (low < high) {
+			const middle = (low + high) >>> 1;
+			if (sortedGaps[middle]!.from < position) low = middle + 1;
+			else high = middle;
+		}
+		const gap = sortedGaps[position === 0 && !hasZeroAnchor ? 0 : low - 1];
+		return gap && gap.from <= position && position < gap.to ? gap : null;
 	};
 	const normalize = (position: number, bias: -1 | 1): number => {
 		assertDocumentPosition(position, documentLength);
 		const gap = containingGap(position);
-		return gap ? (bias < 0 && (gap.from !== 0 || sortedAnchors.includes(0)) ? gap.from : gap.to) : position;
+		return gap ? (bias < 0 && (gap.from !== 0 || hasZeroAnchor) ? gap.from : gap.to) : position;
 	};
 	return Object.freeze({
 		gaps: sortedGaps,
@@ -213,22 +226,22 @@ function sameRun(left: ParagraphRun, right: ParagraphRun): boolean {
 }
 
 function runEnvelope(
-	authority: ParagraphAuthority,
+	boundaries: ParagraphEndpointIndex<ParagraphBlock>,
 	run: ParagraphRun,
 	documentLength: number,
 ): ParagraphGap {
 	if (run.kind === 'leading') {
-		const right = authority.boundaries.find((boundary) => boundary.from === run.to);
+		const right = boundaries.byStart.get(run.to);
 		if (!right) throw new Error('Leading paragraph run has no right boundary envelope');
 		return { from: 0, to: right.to };
 	}
 	if (run.kind === 'trailing') {
-		const left = authority.boundaries.find((boundary) => boundary.to === run.from);
+		const left = boundaries.byEnd.get(run.from);
 		if (!left) throw new Error('Trailing paragraph run has no left boundary envelope');
 		return { from: left.from, to: documentLength };
 	}
-	const left = authority.boundaries.find((boundary) => boundary.to === run.from);
-	const right = authority.boundaries.find((boundary) => boundary.from === run.to);
+	const left = boundaries.byEnd.get(run.from);
+	const right = boundaries.byStart.get(run.to);
 	if (!left || !right) throw new Error('Middle paragraph run has an incomplete boundary envelope');
 	return { from: left.from, to: right.to };
 }
@@ -243,11 +256,13 @@ function atomicRanges(entry: ParagraphProjectionEntry): readonly Range<RangeValu
 
 function buildEntry(
 	state: EditorState,
-	authority: ParagraphAuthority,
+	blocks: readonly TopLevelBlockBoundary[],
+	blockEndpoints: ParagraphEndpointIndex<TopLevelBlockBoundary>,
+	boundaries: ParagraphEndpointIndex<ParagraphBlock>,
 	run: ParagraphRun,
 ): ParagraphProjectionEntry {
 	recordProjectionWork(state, 'build-entry');
-	const tags = paragraphGapTags(authority.blocks, run);
+	const tags = paragraphGapTags(blocks, run, blockEndpoints);
 	return Object.freeze({
 		atomicValue: new ParagraphGapRangeValue(),
 		decorationValues: Object.freeze(run.rows.map((row) => {
@@ -256,7 +271,7 @@ function buildEntry(
 				...(row.kind === 'gap-head'
 					? { 'data-paraflow-before': before, 'data-paraflow-after': after } : {}) } });
 		})),
-		envelope: Object.freeze(runEnvelope(authority, run, state.doc.length)),
+		envelope: Object.freeze(runEnvelope(boundaries, run, state.doc.length)),
 		run,
 	});
 }
@@ -376,7 +391,9 @@ function rebuildAll(state: EditorState): ParagraphProjectionFieldState {
 	recordProjectionWork(state, 'analyze-full');
 	const syntax = syntaxAuthority(state);
 	const authority = discoverParagraphAuthority(state);
-	const entries = authority.runs.map((run) => buildEntry(state, authority, run));
+	const blocks = createParagraphEndpointIndex(authority.blocks);
+	const boundaries = createParagraphEndpointIndex(authority.boundaries);
+	const entries = authority.runs.map((run) => buildEntry(state, authority.blocks, blocks, boundaries, run));
 	return stateFromEntries(
 		state,
 		authority.complete,
@@ -492,8 +509,10 @@ function updateCompleteDocument(
 	const localSlice = localAuthority(transaction.state, analysisRanges);
 	const local = localSlice.authority;
 	if (!local.complete) throw new Error('Complete syntax authority became incomplete during analysis');
+	const blockEndpoints = createParagraphEndpointIndex(local.blocks);
+	const boundaries = createParagraphEndpointIndex(local.boundaries);
 	const localRuns = local.runs
-		.map((run) => ({ envelope: runEnvelope(local, run, transaction.state.doc.length), run }));
+		.map((run) => ({ envelope: runEnvelope(boundaries, run, transaction.state.doc.length), run }));
 	const reusedRuns = new Set<ParagraphRun>();
 	const unaffected = mappedUnaffected.map((entry) => {
 		const localRun = localRuns.find(({ run }) => sameRun(entry.run, run));
@@ -507,7 +526,7 @@ function updateCompleteDocument(
 	});
 	const added = localRuns
 		.filter(({ run }) => !reusedRuns.has(run))
-		.map(({ run }) => buildEntry(transaction.state, local, run));
+		.map(({ run }) => buildEntry(transaction.state, local.blocks, blockEndpoints, boundaries, run));
 	const rangeSets = updateRangeSets(value, transaction, removed, added);
 	const blocks = mergeBlocks(
 		value.authority.blocks,

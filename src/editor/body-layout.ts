@@ -4,7 +4,7 @@ import { Decoration, EditorView, ViewPlugin } from '@codemirror/view';
 import type { EnhancementSettings } from '../enhancement-settings.js';
 import { discoverParagraphAuthority } from './paragraph/syntax.js';
 import { standaloneMediaKind } from './paragraph/media.js';
-import { paragraphGapTags } from './paragraph/model.js';
+import { createParagraphEndpointIndex, paragraphGapTags } from './paragraph/model.js';
 import { blockBoundarySpacingActive } from './paragraph/boundary-spacing.js';
 import { createBodyTabExtension, type BodyTabOptions } from './body-tabs.js';
 
@@ -39,8 +39,9 @@ export function createBodyLayoutExtension(
 				decorations.push(Decoration.line({class: 'paraflow-body-paragraph' + (options.paragraphIndent ? ' paraflow-body-indent' : '')}).range(state.doc.lineAt(paragraph.from).from));
 			}
 			if (options.paragraphSpacingEm !== null) {
+				const endpoints = createParagraphEndpointIndex(authority.blocks);
 				for (const run of authority.runs) {
-					const tags = paragraphGapTags(authority.blocks, run);
+					const tags = paragraphGapTags(authority.blocks, run, endpoints);
 					const spacing=`${options.paragraphSpacingEm}em`;
 					for(const row of run.rows.filter(row=>row.kind==='gap-head')) {
 						const neighbors = tags(row.at), before = neighbors.before === 'p', after = neighbors.after === 'p';
