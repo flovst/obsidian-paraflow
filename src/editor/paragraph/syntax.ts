@@ -1271,7 +1271,15 @@ export function discoverFootnoteDefinitionBoundaries(state: EditorState): readon
 	// These transforms depend on surrounding containers and may remove or split definitions.
 	if (pendingMathRanges(state).length || state.facet(codeDraft)) return definitions(discoverParagraphAuthority(state).blocks);
 	const bodies = hypermdFootnoteBoundaries(state);
-	if (bodies.length && separatorlessListLiteralLines(state, bodies).length) return definitions(discoverParagraphAuthority(state).blocks);
+	if (bodies.length) {
+		// Range-limited Tree.iterate still starts at the root; scan once for all definitions.
+		let bodyIndex = 0;
+		for (const literal of separatorlessListLiteralLines(state)) {
+			while (bodyIndex < bodies.length && bodies[bodyIndex]!.to < literal.from) bodyIndex++;
+			if (bodyIndex === bodies.length) break;
+			if (bodies[bodyIndex]!.from <= literal.to) return definitions(discoverParagraphAuthority(state).blocks);
+		}
+	}
 	return confirmedBlocks(state, bodies);
 }
 
