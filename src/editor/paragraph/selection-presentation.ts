@@ -20,7 +20,7 @@ import {
 import type { SourceRange } from '../structured-list/model.js';
 import { getParagraphProjectionState } from './projection.js';
 import { classifyCurrentSelectionMode } from '../runtime/input-state.js';
-import { mathPreviewReplacementOwner } from '../math/extension.js';
+import { mathPreviewReplacementOwner } from '../math/preview-owner.js';
 
 const ACTIVE_CLASS = 'paraflow-gap-selection-presentation-active';
 const LIST_RANGE_HEAD_CLASS = 'paraflow-list-range-head-hidden';

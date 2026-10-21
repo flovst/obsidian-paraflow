@@ -21,6 +21,7 @@ import { mathDraftRanges, mathNativeOwnership } from './native-ownership.js';
 import { createBlockBodySelection } from '../runtime/block-selection.js';
 import { blockContinuationPrefix } from '../runtime/block-body.js';
 import { mathEditingActivation } from './activation.js';
+import { setMathPreviewReplacementOwner } from './preview-owner.js';
 
 export interface MathEditingOptions {
 	readonly isEnabled?: () => boolean;
@@ -127,12 +128,6 @@ function renderPreview(view: EditorView, source: string, display: boolean,
 
 const previews = new WeakMap<HTMLElement, ReturnType<typeof renderPreview>>();
 const previewWidgets = new WeakMap<HTMLElement, MathWidget>();
-const previewOwners = new WeakMap<HTMLElement, { readonly from: number; readonly to: number }>();
-
-/** Only a replacement owns source; the active-source companion is a point widget. */
-export function mathPreviewReplacementOwner(dom: HTMLElement): { readonly from: number; readonly to: number } | undefined {
-	return previewOwners.get(dom);
-}
 
 class MathWidget extends WidgetType {
 	constructor(readonly source: string, readonly display: boolean, readonly options: MathEditingOptions, readonly frame: ContainerFrame | null,
@@ -148,7 +143,7 @@ class MathWidget extends WidgetType {
 		const result = renderPreview(view, this.source, this.display,
 			'paraflow-math-rendered' + (this.display ? ' paraflow-math-block-preview' : ' math-inline'), this.options, true);
 		const dom = wrapContainerBlock(view, result.dom, this.frame);
-		if (this.owner) previewOwners.set(result.dom, this.owner);
+		setMathPreviewReplacementOwner(result.dom, this.owner);
 		previews.set(dom, result);
 		previewWidgets.set(dom, this);
 		return dom;
@@ -157,8 +152,7 @@ class MathWidget extends WidgetType {
 		const previous = previewWidgets.get(dom)!;
 		if (this.display !== previous.display || this.options !== previous.options || this.frame?.key !== previous.frame?.key) return false;
 		const preview = previews.get(dom)!;
-		if (this.owner) previewOwners.set(preview.dom, this.owner);
-		else previewOwners.delete(preview.dom);
+		setMathPreviewReplacementOwner(preview.dom, this.owner);
 		if (this.source !== previous.source) preview.render(this.source);
 		previewWidgets.set(dom, this);
 		return true;
