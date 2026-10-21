@@ -12,6 +12,7 @@ import { enumerateListItems } from './structured-list/syntax.js';
 import { classifyCurrentSelectionMode, compositionStateField, excludedSelectionModeForTransaction, recognizedNormalSelectionTransaction } from './runtime/input-state.js';
 import { bodyTabDelimiterOffset, literalBodyTab } from './literal-tab.js';
 import {quotePrefix} from './callout/prefix.js';
+import { completionOwnsTab } from './runtime/tab-ownership.js';
 
 export type BodyTabOptions = Pick<EnhancementSettings, 'bodyTabMode' | 'bodyTabSize'>;
 
@@ -83,13 +84,6 @@ export function insertBodyTab(view: EditorView): boolean {
 	view.dispatch({ changes: {from:caret, insert}, selection: EditorSelection.single(caret + insert.length),
 		scrollIntoView:true, annotations:Transaction.userEvent.of('input') });
 	return true;
-}
-
-function completionOwnsTab(view: EditorView): boolean {
-	if (view.contentDOM.getAttribute('aria-autocomplete') === 'list' && view.contentDOM.getAttribute('aria-expanded') === 'true') return true;
-	// Obsidian's native suggest popup is outside the editor and has no completion ARIA.
-	return [...view.dom.ownerDocument.querySelectorAll<HTMLElement>('.suggestion-container')].some(popup =>
-		popup.getClientRects().length > 0 && popup.querySelector('.suggestion > .suggestion-item.is-selected') !== null);
 }
 
 /** Only a proven ordinary-body start owns the formatting delimiter inserted with leading tabs. */

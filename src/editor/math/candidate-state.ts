@@ -12,6 +12,8 @@ const restorePending = StateEffect.define<Pick<MathCandidates, 'ranges' | 'accep
     accepted: value.accepted.map(math => ({ ...math, from: changes.mapPos(math.from, 1), to: changes.mapPos(math.to, -1), contentFrom: changes.mapPos(math.contentFrom, -1), contentTo: changes.mapPos(math.contentTo, 1) })),
 }) });
 export const confirmMath = StateEffect.define<number | null>({ map: (from, changes) => from === null ? null : changes.mapPos(from, 1) });
+/** A semantic source edit retains its already proven delimiter owner. */
+export const retainMathSource = StateEffect.define<MathExpression>();
 function candidates(state: EditorState): readonly PendingMathRange[] { return mathRangeIndex(state).candidates; }
 function independentParagraphs(state: EditorState, range: PendingMathRange): boolean {
     const first = state.doc.lineAt(range.from).number, last = state.doc.lineAt(range.to).number;
@@ -45,6 +47,20 @@ function exactMath(expressions: readonly MathExpression[]): ReadonlyMap<string, 
     }
     return result;
 }
+/** Retained edge whitespace never grants ownership across other Markdown boundaries. */
+function validRetainedInline(state: EditorState, math: MathExpression): boolean {
+    if (/\d/u.test(state.sliceDoc(math.to, math.to + 1))) return false;
+    let escapes = 0;
+    for (let at = math.from - 1; at >= 0 && state.sliceDoc(at, at + 1) === '\\'; at--) escapes++;
+    if (escapes % 2) return false;
+    escapes = 0;
+    for (const char of state.sliceDoc(math.contentFrom, math.contentTo)) {
+        if (char === '\n' || char === '$' && escapes % 2 === 0) return false;
+        escapes = char === '\\' ? escapes + 1 : 0;
+    }
+    if (escapes % 2) return false;
+    return !mathRangeIndex(state).opaque.some(range => range.from <= math.from && math.from < range.to);
+}
 function mappedAccepted(value: MathCandidates, tr: Transaction, closed: ReadonlyMap<string, MathExpression>): readonly MathExpression[] {
     return value.accepted.flatMap(math => {
         let touched = false;
@@ -57,8 +73,10 @@ function mappedAccepted(value: MathCandidates, tr: Transaction, closed: Readonly
             contentFrom: tr.changes.mapPos(math.contentFrom, -1), contentTo: tr.changes.mapPos(math.contentTo, 1) };
         const parsed = closed.get(`${next.from}:${next.to}`);
         if (parsed) next.display = parsed.display;
-        if (next.from >= next.to || tr.state.sliceDoc(next.from, next.contentFrom) !== '$$' || tr.state.sliceDoc(next.contentTo, next.to) !== '$$') return [];
-        // A preserved two-byte slice must still occupy the same complete dollar run.
+        const opening = tr.startState.sliceDoc(math.from, math.contentFrom), closing = tr.startState.sliceDoc(math.contentTo, math.to);
+        if (next.from >= next.to || tr.state.sliceDoc(next.from, next.contentFrom) !== opening || tr.state.sliceDoc(next.contentTo, next.to) !== closing) return [];
+        if (!math.display && opening.length === 1 && !validRetainedInline(tr.state, next)) return [];
+        // A preserved delimiter slice must still occupy the same complete dollar run.
         // This also retains legal adjacent close/open pairs inside a four-dollar run.
         return dollarTokenIdentity(tr.startState, math.from, math.contentFrom) === dollarTokenIdentity(tr.state, next.from, next.contentFrom) &&
             dollarTokenIdentity(tr.startState, math.contentTo, math.to) === dollarTokenIdentity(tr.state, next.contentTo, next.to) ? [next] : [];
@@ -109,7 +127,10 @@ export function createMathCandidateExtension(isActive: (state: EditorState) => b
             const mapped = (restored?.value.ranges ?? value.ranges.map(range => ({ from: tr.changes.mapPos(range.from, 1), to: tr.changes.mapPos(range.to, -1) })));
             const confirmed = tr.effects.find(effect => effect.is(confirmMath));
             const confirmAll = confirmed?.value === null || active && !value.active && value.dirty;
-            const preserved = restored?.value.accepted ?? mappedAccepted(value, tr, paired);
+            const retained = tr.effects.find(effect => effect.is(retainMathSource));
+            const sourceOwners = retained && !value.accepted.some(math => math.from === retained.value.from && math.to === retained.value.to)
+                ? { ...value, accepted: [...value.accepted, retained.value] } : value;
+            const preserved = restored?.value.accepted ?? mappedAccepted(sourceOwners, tr, paired);
             const preservedPairs = exactMath(preserved), preservedOwners = createRangeQuery(preserved);
             const mappedStarts = new Set(mapped.map(range => range.from));
             const previousDisplayStarts = new Set(discoverParsedMath(tr.startState).filter(math => math.display).map(math => math.from));

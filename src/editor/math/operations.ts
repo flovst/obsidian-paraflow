@@ -5,9 +5,29 @@ import { classifyCurrentSelectionMode, requireCompositionState, selectionModeAnn
 import { discoverMath, type MathExpression } from './syntax.js';
 import { projectMathSource } from './source.js';
 import { adjacentBlock, blockContinuationPrefix, planBlockBodyKey } from '../runtime/block-body.js';
+import { completionOwnsTab } from '../runtime/tab-ownership.js';
+import { retainMathSource } from './candidate-state.js';
 
 /** A semantic whole-block edit has already validated its math owner. */
 export const mathBlockEdit = Annotation.define<boolean>();
+
+/** TeX whitespace belongs to math, including leading tabs and empty body rows. */
+export function insertMathTab(view: EditorView): boolean {
+	const state = view.state, head = state.selection.main.head;
+	if (state.readOnly || view.composing || requireCompositionState(state) ||
+		classifyCurrentSelectionMode(state) !== 'caret' || state.selection.ranges.length !== 1 ||
+		!state.selection.main.empty || completionOwnsTab(view)) return false;
+	const math = discoverMath(state).find(math => math.contentFrom <= head && head <= math.contentTo);
+	if (!math) return false;
+	const source = projectMathSource(state, math);
+	const lines = math.display ? source.bodyLines : source.lines;
+	if (!lines.some(line => line.from <= head && head <= line.to)) return false;
+	view.dispatch({ changes: { from: head, insert: '\t' }, selection: { anchor: head + 1 },
+		effects: retainMathSource.of(math),
+		userEvent: 'input.math-tab', scrollIntoView: true,
+		annotations: [mathBlockEdit.of(true), isolateHistory.of('full'), selectionModeAnnotation.of('normal')] });
+	return true;
+}
 
 export function editMathBody(view: EditorView, key: 'Enter' | 'Shift-Enter' | 'Backspace' | 'Delete',
 	isActive: (state: EditorState) => boolean, active: MathExpression | null = null): boolean {

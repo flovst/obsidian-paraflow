@@ -16,7 +16,7 @@ import { mathTooltipPosition } from './tooltip.js';
 import { createMathKeyboardEntry } from './navigation.js';
 import { createCreationHistory, creationHistory } from '../runtime/creation-history.js';
 import { clampMathBody, projectMathSource, type MathSource } from './source.js';
-import { deleteAdjacentMath, deleteEmptyMath, editMathBody, mathBlockEdit } from './operations.js';
+import { deleteAdjacentMath, deleteEmptyMath, editMathBody, insertMathTab, mathBlockEdit } from './operations.js';
 import { mathDraftRanges, mathNativeOwnership } from './native-ownership.js';
 import { createBlockBodySelection } from '../runtime/block-selection.js';
 import { blockContinuationPrefix } from '../runtime/block-body.js';
@@ -316,6 +316,11 @@ function buildProjection(state: EditorState, options: MathEditingOptions,
 	} : null;
 	return { previewRevision, active, activeSource, frozen, pressed, held, inlineActive, inlineFrozen: focused ? inlineFrozen : [],
 		decorations: Decoration.set(decorations, true), tooltip };
+}
+
+/** Compose before structural Tab owners; the remaining math keys retain their order. */
+export function createMathTabExtension(isActive: (view: EditorView) => boolean): Extension {
+	return Prec.highest(keymap.of([{ key: 'Tab', run: view => isActive(view) && insertMathTab(view) }]));
 }
 
 export function createMathEditingExtension(options: MathEditingOptions): Extension {

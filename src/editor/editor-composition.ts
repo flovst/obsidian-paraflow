@@ -27,7 +27,7 @@ import { createCodeBlockExtension } from './code-blocks/index.js';
 import { createHeadingEditing } from './paragraph/heading-editing.js';
 import { createInlineSelectionProjection } from './paragraph/inline-selection-projection.js';
 import { createLinkInteraction } from './paragraph/link-interaction.js';
-import { createMathEditingExtension } from './math/extension.js';
+import { createMathEditingExtension, createMathTabExtension } from './math/extension.js';
 import { createFootnoteExtension } from './footnotes/extension.js';
 import { sourceBlockScroll } from '../reading/source-scroll.js';
 
@@ -66,6 +66,8 @@ export function createEditorComposition(host: EditorExtensionLifecycleHost, depe
 		sourcePath: dependencies.sourcePath, renderMarkdown: dependencies.renderMarkdown,
 	});
 	const services = createStructuredListRuntimeServiceFactory({ clipboard: dependencies.clipboard });
+	moduleHost.registerEditorExtension(createMathTabExtension(view =>
+		getSettings().enhancements.math && !!dependencies.mathRendering && isActive(view)));
 	// An inner quote edits its projected body before the outer list can consume the key.
 	moduleHost.registerEditorExtension(createCalloutExtension(view => getSettings().enhancements.callout && isActive(view), {
 		listEditing: () => getSettings().structuredListEditingEnabled,
