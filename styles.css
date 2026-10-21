@@ -377,7 +377,7 @@ body[data-paraflow-theme] .tooltip.mod-left .tooltip-arrow { top: calc(50% - 4px
 
 .markdown-source-view.mod-cm6.is-live-preview
 	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
-	:where(.paraflow-structured-list-active *, .paraflow-callout-line).HyperMD-list-line:not(.paraflow-code-line) {
+	:where(.paraflow-structured-list-active *, .paraflow-callout-line).HyperMD-list-line:not(.paraflow-code-line, .paraflow-math-source-block) {
 	padding-block: var(--paraflow-list-row-padding, .3em);
 	line-height: var(--paraflow-list-line-height, var(--paraflow-line-height));
 }
@@ -402,7 +402,7 @@ body[data-paraflow-theme] .tooltip.mod-left .tooltip-arrow { top: calc(50% - 4px
 
 .markdown-source-view.mod-cm6.is-live-preview
 	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
-	:where(.paraflow-structured-list-active *, .paraflow-callout-line).HyperMD-list-line-1:not(.paraflow-code-line):not(.paraflow-list-owned-line) {
+	:where(.paraflow-structured-list-active *, .paraflow-callout-line).HyperMD-list-line-1:not(.paraflow-code-line, .paraflow-math-source-block):not(.paraflow-list-owned-line) {
 	padding-inline-start: calc(
 		var(--paraflow-container-inset, 0px) + var(--paraflow-live-list-base-indent) + var(--paraflow-live-list-content-offset) +
 			var(--paraflow-live-list-hanging-indent)
@@ -415,7 +415,7 @@ body[data-paraflow-theme] .tooltip.mod-left .tooltip-arrow { top: calc(50% - 4px
 
 .markdown-source-view.mod-cm6.is-live-preview
 	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
-	:where(.paraflow-structured-list-active *, .paraflow-callout-line).HyperMD-list-line-2:not(.paraflow-code-line):not(.paraflow-list-owned-line) {
+	:where(.paraflow-structured-list-active *, .paraflow-callout-line).HyperMD-list-line-2:not(.paraflow-code-line, .paraflow-math-source-block):not(.paraflow-list-owned-line) {
 	padding-inline-start: calc(
 		var(--paraflow-container-inset, 0px) + var(--paraflow-live-list-base-indent) + var(--paraflow-live-list-indent) +
 			var(--paraflow-live-list-content-offset) + var(--paraflow-live-list-hanging-indent)
@@ -428,7 +428,7 @@ body[data-paraflow-theme] .tooltip.mod-left .tooltip-arrow { top: calc(50% - 4px
 
 .markdown-source-view.mod-cm6.is-live-preview
 	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
-	:where(.paraflow-structured-list-active *, .paraflow-callout-line).HyperMD-list-line-3:not(.paraflow-code-line):not(.paraflow-list-owned-line) {
+	:where(.paraflow-structured-list-active *, .paraflow-callout-line).HyperMD-list-line-3:not(.paraflow-code-line, .paraflow-math-source-block):not(.paraflow-list-owned-line) {
 	padding-inline-start: calc(
 		var(--paraflow-container-inset, 0px) + var(--paraflow-live-list-base-indent) + 2 * var(--paraflow-live-list-indent) +
 			var(--paraflow-live-list-content-offset) + var(--paraflow-live-list-hanging-indent)
@@ -441,7 +441,7 @@ body[data-paraflow-theme] .tooltip.mod-left .tooltip-arrow { top: calc(50% - 4px
 
 .markdown-source-view.mod-cm6.is-live-preview
 	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
-	:where(.paraflow-structured-list-active *, .paraflow-callout-line).HyperMD-list-line-4:not(.paraflow-code-line):not(.paraflow-list-owned-line) {
+	:where(.paraflow-structured-list-active *, .paraflow-callout-line).HyperMD-list-line-4:not(.paraflow-code-line, .paraflow-math-source-block):not(.paraflow-list-owned-line) {
 	padding-inline-start: calc(
 		var(--paraflow-container-inset, 0px) + var(--paraflow-live-list-base-indent) + 3 * var(--paraflow-live-list-indent) +
 			var(--paraflow-live-list-content-offset) + var(--paraflow-live-list-hanging-indent)
@@ -454,7 +454,7 @@ body[data-paraflow-theme] .tooltip.mod-left .tooltip-arrow { top: calc(50% - 4px
 
 .markdown-source-view.mod-cm6.is-live-preview
 	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
-	:where(.paraflow-structured-list-active *, .paraflow-callout-line).HyperMD-list-line-5:not(.paraflow-code-line):not(.paraflow-list-owned-line) {
+	:where(.paraflow-structured-list-active *, .paraflow-callout-line).HyperMD-list-line-5:not(.paraflow-code-line, .paraflow-math-source-block):not(.paraflow-list-owned-line) {
 	padding-inline-start: calc(
 		var(--paraflow-container-inset, 0px) + var(--paraflow-live-list-base-indent) + 4 * var(--paraflow-live-list-indent) +
 			var(--paraflow-live-list-content-offset) + var(--paraflow-live-list-hanging-indent)
@@ -467,7 +467,7 @@ body[data-paraflow-theme] .tooltip.mod-left .tooltip-arrow { top: calc(50% - 4px
 
 .markdown-source-view.mod-cm6.is-live-preview
 	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
-	:where(.paraflow-structured-list-active *, .paraflow-callout-line).HyperMD-list-line-6:not(.paraflow-code-line):not(.paraflow-list-owned-line) {
+	:where(.paraflow-structured-list-active *, .paraflow-callout-line).HyperMD-list-line-6:not(.paraflow-code-line, .paraflow-math-source-block):not(.paraflow-list-owned-line) {
 	padding-inline-start: calc(
 		var(--paraflow-container-inset, 0px) + var(--paraflow-live-list-base-indent) + 5 * var(--paraflow-live-list-indent) +
 			var(--paraflow-live-list-content-offset) + var(--paraflow-live-list-hanging-indent)
@@ -480,7 +480,7 @@ body[data-paraflow-theme] .tooltip.mod-left .tooltip-arrow { top: calc(50% - 4px
 
 .markdown-source-view.mod-cm6.is-live-preview
 	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
-	:where(.paraflow-structured-list-active *, .paraflow-callout-line).paraflow-list-marker-line:not(.paraflow-code-line):not(.paraflow-list-owned-line) {
+	:where(.paraflow-structured-list-active *, .paraflow-callout-line).paraflow-list-marker-line:not(.paraflow-code-line, .paraflow-math-source-block):not(.paraflow-list-owned-line) {
 	padding-inline-start: calc(
 		var(--paraflow-container-inset, 0px) + var(--paraflow-live-list-base-indent) +
 			var(--paraflow-list-depth) * var(--paraflow-live-list-indent) +
@@ -530,7 +530,7 @@ body[data-paraflow-theme] .tooltip.mod-left .tooltip-arrow { top: calc(50% - 4px
 
 .markdown-source-view.mod-cm6.is-live-preview
 	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
-	.paraflow-list-owned-line-1 {
+	.paraflow-list-owned-line-1:not(.paraflow-math-source-block) {
 	padding-inline-start: calc(
 		var(--paraflow-container-inset, 0px) + var(--paraflow-live-list-base-indent) + var(--paraflow-live-list-content-offset) + var(--paraflow-list-owned-hanging-indent, 0px)
 	) !important;
@@ -539,7 +539,7 @@ body[data-paraflow-theme] .tooltip.mod-left .tooltip-arrow { top: calc(50% - 4px
 
 .markdown-source-view.mod-cm6.is-live-preview
 	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
-	.paraflow-list-owned-line-2 {
+	.paraflow-list-owned-line-2:not(.paraflow-math-source-block) {
 	padding-inline-start: calc(
 		var(--paraflow-container-inset, 0px) + var(--paraflow-live-list-base-indent) + var(--paraflow-live-list-indent) +
 			var(--paraflow-live-list-content-offset) + var(--paraflow-list-owned-hanging-indent, 0px)
@@ -549,7 +549,7 @@ body[data-paraflow-theme] .tooltip.mod-left .tooltip-arrow { top: calc(50% - 4px
 
 .markdown-source-view.mod-cm6.is-live-preview
 	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
-	.paraflow-list-owned-line-3 {
+	.paraflow-list-owned-line-3:not(.paraflow-math-source-block) {
 	padding-inline-start: calc(
 		var(--paraflow-container-inset, 0px) + var(--paraflow-live-list-base-indent) + 2 * var(--paraflow-live-list-indent) +
 			var(--paraflow-live-list-content-offset) + var(--paraflow-list-owned-hanging-indent, 0px)
@@ -559,7 +559,7 @@ body[data-paraflow-theme] .tooltip.mod-left .tooltip-arrow { top: calc(50% - 4px
 
 .markdown-source-view.mod-cm6.is-live-preview
 	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
-	.paraflow-list-owned-line-4 {
+	.paraflow-list-owned-line-4:not(.paraflow-math-source-block) {
 	padding-inline-start: calc(
 		var(--paraflow-container-inset, 0px) + var(--paraflow-live-list-base-indent) + 3 * var(--paraflow-live-list-indent) +
 			var(--paraflow-live-list-content-offset) + var(--paraflow-list-owned-hanging-indent, 0px)
@@ -569,7 +569,7 @@ body[data-paraflow-theme] .tooltip.mod-left .tooltip-arrow { top: calc(50% - 4px
 
 .markdown-source-view.mod-cm6.is-live-preview
 	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
-	.paraflow-list-owned-line-5 {
+	.paraflow-list-owned-line-5:not(.paraflow-math-source-block) {
 	padding-inline-start: calc(
 		var(--paraflow-container-inset, 0px) + var(--paraflow-live-list-base-indent) + 4 * var(--paraflow-live-list-indent) +
 			var(--paraflow-live-list-content-offset) + var(--paraflow-list-owned-hanging-indent, 0px)
@@ -579,7 +579,7 @@ body[data-paraflow-theme] .tooltip.mod-left .tooltip-arrow { top: calc(50% - 4px
 
 .markdown-source-view.mod-cm6.is-live-preview
 	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
-	.paraflow-list-owned-line-6 {
+	.paraflow-list-owned-line-6:not(.paraflow-math-source-block) {
 	padding-inline-start: calc(
 		var(--paraflow-container-inset, 0px) + var(--paraflow-live-list-base-indent) + 5 * var(--paraflow-live-list-indent) +
 			var(--paraflow-live-list-content-offset) + var(--paraflow-list-owned-hanging-indent, 0px)
