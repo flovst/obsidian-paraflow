@@ -1,5 +1,6 @@
 import {
 	EditorSelection,
+	StateEffect,
 	type EditorState,
 	type Extension,
 	type SelectionRange,
@@ -24,6 +25,7 @@ import { mathPreviewReplacementOwner } from '../math/preview-owner.js';
 
 const ACTIVE_CLASS = 'paraflow-gap-selection-presentation-active';
 const LIST_RANGE_HEAD_CLASS = 'paraflow-list-range-head-hidden';
+const codeSelectionScrolled = StateEffect.define<null>();
 
 export interface GapSelectionPresentationOptions {
 	readonly isActive: (view: EditorView) => boolean;
@@ -335,17 +337,18 @@ function mathWidgetMarkers(view: EditorView, exclusions: readonly SourceRange[])
 }
 
 function textSelectionMarkers(view: EditorView, fragment: SelectionRange): readonly RectangleMarker[] {
-	const markers = RectangleMarker.forRange(view, 'cm-selectionBackground', fragment);
-	if (markers.length < 2 || markers.every(marker =>
-		marker.top === markers[0]!.top && marker.height === markers[0]!.height)) return markers;
 	const start = view.domAtPos(fragment.from), end = view.domAtPos(fragment.to);
 	const element = start.node.nodeType === Node.ELEMENT_NODE ? start.node as Element : start.node.parentElement;
 	const line = element?.closest('.cm-line');
-	if (!line || !(line.classList.contains('paraflow-list-owned-line') ||
+	const code = line?.classList.contains('paraflow-code-line');
+	const markers = code ? [] : RectangleMarker.forRange(view, 'cm-selectionBackground', fragment);
+	if (!code && (markers.length < 2 || markers.every(marker =>
+		marker.top === markers[0]!.top && marker.height === markers[0]!.height))) return markers;
+	if (!line || !code && !(line.classList.contains('paraflow-list-owned-line') ||
 		line.querySelector('.paraflow-list-marker, .paraflow-task-prefix'))) return markers;
 
-	// CM fills wrapped rows using the first editor line's box. List bodies have
-	// their own hanging indent; measure the already prefix-excluded text instead.
+	// CM's editor-wide wrapped fill cannot express local code/list geometry.
+	// Measure the already prefix-excluded text rows instead.
 	const range = view.dom.ownerDocument.createRange();
 	range.setStart(start.node, start.offset);
 	range.setEnd(end.node, end.offset);
@@ -353,8 +356,25 @@ function textSelectionMarkers(view: EditorView, fragment: SelectionRange): reado
 	const left = (view.textDirection === Direction.LTR ? scroll.left : scroll.right - view.scrollDOM.clientWidth * view.scaleX)
 		- view.scrollDOM.scrollLeft * view.scaleX;
 	const top = scroll.top - view.scrollDOM.scrollTop * view.scaleY;
-	return Array.from(range.getClientRects()).filter(rect => rect.width > 0 && rect.height > 0)
-		.map(rect => new RectangleMarker('cm-selectionBackground', rect.left - left, rect.top - top, rect.width, rect.height));
+	let clipLeft = -Infinity, clipRight = Infinity;
+	if (code) {
+		// The external selection layer does not inherit the row's overflow clip.
+		// Padding owns container insets; wrapped rows already include their gutter.
+		const style = view.dom.ownerDocument.defaultView!.getComputedStyle(line);
+		const rect = line.getBoundingClientRect();
+		clipLeft = rect.left + (parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft)) * view.scaleX;
+		clipRight = rect.right - (parseFloat(style.borderRightWidth) + parseFloat(style.paddingRight)) * view.scaleX;
+		if (line.hasAttribute('data-paraflow-line') && !line.classList.contains('paraflow-code-wrap') &&
+			!line.classList.contains('paraflow-code-virtual')) {
+			const gutter = view.dom.ownerDocument.defaultView!.getComputedStyle(line, '::before');
+			clipLeft += (parseFloat(gutter.width) + parseFloat(gutter.marginRight)) * view.scaleX;
+		}
+	}
+	return Array.from(range.getClientRects()).flatMap(rect => {
+		const from = Math.max(rect.left, clipLeft), to = Math.min(rect.right, clipRight);
+		return to > from && rect.height > 0
+			? [new RectangleMarker('cm-selectionBackground', from - left, rect.top - top, to - from, rect.height)] : [];
+	});
 }
 
 /** Union the approved vertical expansion so each pixel receives selection alpha only once. */
@@ -399,6 +419,22 @@ export function createGapSelectionPresentation(
 	const mountedViews = new WeakSet<EditorView>();
 	return [
 		selectionExclusionSnapshotPlugin,
+		ViewPlugin.define(view => {
+			let mounted = true, pending = false;
+			const scroll = (event: Event) => {
+				const target = event.target as Element;
+				if (pending || !target.classList.contains('paraflow-code-line') ||
+					!presentsSelection(view, options) || view.state.selection.ranges.every(range => range.empty)) return;
+				pending = true;
+				// One block scrolls several rows. Notify the layer once, without editing history.
+				queueMicrotask(() => {
+					pending = false;
+					if (mounted) view.dispatch({ effects: codeSelectionScrolled.of(null) });
+				});
+			};
+			view.contentDOM.addEventListener('scroll', scroll, true);
+			return { destroy() { mounted = false; view.contentDOM.removeEventListener('scroll', scroll, true); } };
+		}),
 		EditorView.editorAttributes.of(view => {
 			if (!presentsSelection(view, options)) return { class: '' };
 			const { state } = view;
@@ -437,7 +473,8 @@ export function createGapSelectionPresentation(
 			},
 			update(update): boolean {
 				return update.docChanged || update.selectionSet || update.viewportChanged ||
-					update.geometryChanged || projectionChanged(update);
+					update.geometryChanged || projectionChanged(update) ||
+					update.transactions.some(transaction => transaction.effects.some(effect => effect.is(codeSelectionScrolled)));
 			},
 		}),
 	];
