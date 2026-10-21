@@ -4,6 +4,7 @@ import type { ConvertedTheme, ThemeDiagnostic, ThemeInput } from './model';
 import { projectHeadingThemeSelectors } from './heading-selectors.js';
 import { projectContentThemeSelectors } from './content-selectors.js';
 import { projectQuoteThemeTokens } from './quote-selectors.js';
+import { cssName, themeResource } from './resource-policy.js';
 
 export const CONVERTER_VERSION = '7';
 interface SourceRule { node: css.Rule | css.Atrule; file: string; media: string[] }
@@ -117,7 +118,7 @@ export function convertTyporaTheme(input: ThemeInput, options: { id: string; nam
 				}
 				if (node.type === 'Comment') continue;
 				if (node.type !== 'Atrule') throw new Error(`CSS syntax error in ${file}:${node.loc?.start.line ?? 1}`);
-				const name = node.name.toLowerCase();
+				const name = cssName(node.name);
 				if (name === 'charset') continue;
 				if (name === 'import') {
 					const prelude = node.prelude;
@@ -213,8 +214,9 @@ export function convertTyporaTheme(input: ThemeInput, options: { id: string; nam
 		const value = css.clone(declaration.value);
 		let usable = true;
 		css.walk(value, node => {
-			if (node.type === 'Function' && ['image-set', '-webkit-image-set', 'image', 'src'].includes(node.name.toLowerCase())) {
-				report(source.file, declaration, 'skipped', `Unsupported resource function ${node.name}`); usable = false;
+			const resource = themeResource(node);
+			if (resource && 'kind' in resource && resource.kind === 'unsupported-function') {
+				report(source.file, declaration, 'skipped', `Unsupported resource function ${resource.name}`); usable = false;
 			}
 			if (node.type === 'Dimension' && node.unit.toLowerCase() === 'rem') {
 				const replacement = css.parse(`calc(${node.value} * var(--paraflow-root-font-size, 16px))`, { context: 'value' }) as css.Value;

@@ -8,23 +8,28 @@ import { projectHeadingThemeSelectors } from './heading-selectors.js';
 import { projectSourceThemeTokens } from './width-selectors.js';
 import { isolateDiagramParagraphs, projectContentThemeSelectors, projectLinkAccentOverride } from './content-selectors.js';
 import { projectQuoteThemeTokens } from './quote-selectors.js';
+import { themeResource } from './resource-policy.js';
 
 export function resolveThemeUrls(source: string, resourcePath: (path: string) => string): string {
 	const ast = css.parse(source, { parseCustomProperty: true, onParseError(error) { throw error; } });
+	css.walk(ast, node => {
+		const resource = themeResource(node);
+		if (resource && 'kind' in resource) {
+			if (resource.kind === 'import') throw new Error('Theme CSS must contain no runtime imports');
+			throw new Error(`Unsupported theme resource function: ${resource.name}`);
+		}
+		if (!resource || resource.value.startsWith('data:')) return;
+		const match = /^([^?#]*)(.*)$/u.exec(resource.value)!;
+		const path = validateRelativePath(decodeURIComponent(match[1]!));
+		if (!path.startsWith('assets/')) throw new Error(`Theme URL must be inside assets/: ${path}`);
+		resource.value = resourcePath(path) + match[2]!;
+	});
 	projectHeadingThemeSelectors(ast);
 	projectContentThemeSelectors(ast);
 	projectQuoteThemeTokens(ast);
 	projectSourceThemeTokens(ast);
 	isolateDiagramParagraphs(ast);
 	projectLinkAccentOverride(ast);
-	css.walk(ast, (node) => {
-		if (node.type === 'Atrule' && node.name.toLowerCase() === 'import') throw new Error('Theme CSS must contain no runtime imports');
-		if (node.type !== 'Url' || node.value.startsWith('data:')) return;
-		const match = /^([^?#]*)(.*)$/u.exec(node.value)!;
-		const path = validateRelativePath(decodeURIComponent(match[1]!));
-		if (!path.startsWith('assets/')) throw new Error(`Theme URL must be inside assets/: ${path}`);
-		node.value = resourcePath(path) + match[2]!;
-	});
 	return css.generate(ast);
 }
 
