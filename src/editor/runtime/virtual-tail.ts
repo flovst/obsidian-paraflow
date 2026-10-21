@@ -241,13 +241,24 @@ const tailView=ViewPlugin.define(view=>{
 			if(!['ArrowDown','ArrowRight','ArrowUp','ArrowLeft'].includes(event.key))return;
 			const before=event.key==='ArrowUp'||event.key==='ArrowLeft',head=selection.main.head;
 			const boundary=before?documentContentStart(view.state):documentContentEnd(view.state);
-			const setext=discoverSetextHeadings(view.state).find(heading=>heading.to===boundary);
-			const quote=before?quoteContainers(view.state).find(card=>card.from===boundary&&card.depth===1):undefined;
+			const boundaryLine=view.state.doc.lineAt(boundary);
+			const quote=before&&boundaryLine.text.includes('>')?quoteContainers(view.state).find(card=>card.from===boundary&&card.depth===1):undefined;
 			const firstText=quote?.blocks[0]?.positions[0];
 			// A later paragraph must not stand in for an initial table, code or math block.
 			const quoteStart=quote?.kind==='callout'?calloutTitleBlock(view.state,quote)?.positions[0]:
 				firstText!==undefined&&view.state.doc.lineAt(firstText).from===quote?.from?firstText:undefined;
-			const endpoint=quoteStart??normalizeParagraphSelectionEndpoint(view.state,before?boundary:(setext?.contentTo??boundary),before?1:-1);
+			let endpoint=quoteStart??normalizeParagraphSelectionEndpoint(view.state,boundary,before?1:-1);
+			if(!before) {
+				const possibleSetext=/[=-][ \t]*$/u.test(boundaryLine.text);
+				// A Setext suffix can move the edge back one source row. Other hidden
+				// code/math/container boundaries have already been normalized above.
+				const earliest=possibleSetext&&boundaryLine.number>1?Math.min(endpoint,boundaryLine.from-1):endpoint;
+				if(event.key==='ArrowRight'?head<earliest:view.state.doc.lineAt(head).number<view.state.doc.lineAt(earliest).number)return;
+				if(possibleSetext) {
+					const setext=discoverSetextHeadings(view.state).find(heading=>heading.to===boundary);
+					if(setext)endpoint=normalizeParagraphSelectionEndpoint(view.state,setext.contentTo,-1);
+				}
+			}
 			if(event.key==='ArrowRight'&&head<endpoint||event.key==='ArrowLeft'&&head>endpoint)return;
 			if(event.key==='ArrowDown'||event.key==='ArrowUp') {
 				if(before?view.state.doc.lineAt(head).number>view.state.doc.lineAt(endpoint).number:view.state.doc.lineAt(head).number<view.state.doc.lineAt(endpoint).number)return;

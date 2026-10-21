@@ -20,7 +20,7 @@ import type { SyntaxNode, Tree } from '@lezer/common';
 import { inlineHtmlConstruct, InlineHtmlWidget, type InlineHtmlRenderer } from './inline-html.js';
 import { LiteralStrikeWidget, malformedNativeStrikeRanges } from './malformed-native-strike.js';
 import { unresolvedShortcutReferences } from './literal-reference.js';
-import { ownsTildeRun } from '../shorthand/tilde-run.js';
+import { ownsTildeRun, shorthandSettings } from '../shorthand/tilde-run.js';
 import { contentSyntaxTree } from '../callout/projection.js';
 import { pendingMathAt, pendingMathRanges, type PendingMathRange } from '../math/candidate-ranges.js';
 export type { InlineHtmlRenderer } from './inline-html.js';
@@ -1140,13 +1140,41 @@ function unpairedCodeBody(state: EditorState, marker: SyntaxNode, constructs: re
 	return { from: body.from, to: body.to };
 }
 
-export function literalFormattingMarkers(state: EditorState, visibleRanges: readonly { from: number; to: number }[]) {
+interface LiteralMarkerSnapshot {
+	readonly tree: Tree;
+	readonly pending: readonly PendingMathRange[];
+	readonly subscript: boolean;
+	readonly queries: {
+		readonly spans: readonly SourceSpan[];
+		readonly pendingContent: Tree | null;
+		readonly literals: readonly SourceSpan[];
+	}[];
+}
+const literalMarkerSnapshots = new WeakMap<Text, LiteralMarkerSnapshot>();
+
+export function literalFormattingMarkers(
+	state: EditorState,
+	visibleRanges: readonly SourceSpan[],
+): readonly SourceSpan[] {
 	const ranges = visibleRanges.map(range => EditorSelection.range(
 		state.doc.lineAt(range.from).from, state.doc.lineAt(range.to).to));
+	// Coverage can advance independently of projected semantic-tree identity.
 	if (ranges.some(range => !syntaxTreeAvailable(state, range.to))) return [];
+	const tree = syntaxTree(state), pending = pendingMathRanges(state);
+	const pendingContent = pending.length > 0 && discoverySpans(state, ranges).some(span =>
+		pending.some(item => span.from <= item.to && item.from <= span.to)) ? contentSyntaxTree(state) : null;
+	const subscript = Boolean(state.facet(shorthandSettings)?.().subscript);
+	let snapshot = literalMarkerSnapshots.get(state.doc);
+	if (!snapshot || snapshot.tree !== tree || snapshot.pending !== pending || snapshot.subscript !== subscript) {
+		snapshot = { tree, pending, subscript, queries: [] };
+		literalMarkerSnapshots.set(state.doc, snapshot);
+	}
+	const cached = snapshot.queries.find(query => query.pendingContent === pendingContent && query.spans.length === ranges.length &&
+		query.spans.every((span, index) => span.from === ranges[index]!.from && span.to === ranges[index]!.to));
+	if (cached) return cached.literals;
 	const constructs = discoverInlineSemanticConstructs(state, ranges);
 	const literals: { from: number; to: number }[] = [];
-	for (const range of ranges) syntaxTree(state).iterate({ from: range.from, to: range.to, enter(ref) {
+	for (const range of ranges) tree.iterate({ from: range.from, to: range.to, enter(ref) {
 		const tokens = nameTokens(ref.name);
 		if (!tokens.some(token => token === 'formatting' || token.startsWith('formatting-')) ||
 			!flatHypermdFormattingMarker(state, ref.node) || ownsTildeRun(state, ref.from, ref.to)) return;
@@ -1157,6 +1185,10 @@ export function literalFormattingMarkers(state: EditorState, visibleRanges: read
 			if (body) literals.push(body);
 		}
 	} });
+	// Decoration and native-ownership consumers interleave viewport and local queries.
+	// Retain only a few spans so scrolling cannot retain every visited viewport.
+	if (snapshot.queries.length === 4) snapshot.queries.shift();
+	snapshot.queries.push({ spans: ranges, pendingContent, literals });
 	return literals;
 }
 

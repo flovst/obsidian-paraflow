@@ -153,7 +153,10 @@ function isObsidianNoBulletLineName(name: string): boolean {
 	return nodeNameTokens(name).includes('HyperMD-list-line-nobullet');
 }
 
+const syntaxFacts = new WeakMap<Tree, readonly SyntaxNodeFact[]>();
 function collectSyntaxFacts(tree: Tree): readonly SyntaxNodeFact[] {
+	const cached = syntaxFacts.get(tree);
+	if (cached) return cached;
 	const facts: SyntaxNodeFact[] = [];
 	tree.iterate({
 		enter: (node) => {
@@ -162,6 +165,7 @@ function collectSyntaxFacts(tree: Tree): readonly SyntaxNodeFact[] {
 			}
 		},
 	});
+	syntaxFacts.set(tree, facts);
 	return facts;
 }
 
