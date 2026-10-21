@@ -849,6 +849,16 @@ body[data-paraflow-theme] .tooltip.mod-left .tooltip-arrow { top: calc(50% - 4px
 	background-color: transparent !important;
 }
 
+/* Code text uses browser paint so local overflow clips text and selection together. */
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor.paraflow-gap-selection-presentation-active
+	.paraflow-code-line::highlight(paraflow-code-selection),
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor.paraflow-gap-selection-presentation-active
+	.paraflow-code-line *::highlight(paraflow-code-selection) {
+	background-color: var(--text-selection);
+}
+
 /* Table editors own their selection paint, including inherited browser highlights. */
 .markdown-source-view.mod-cm6.is-live-preview
 	> .cm-editor.paraflow-gap-selection-presentation-active
