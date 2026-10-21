@@ -1,5 +1,5 @@
 import { ensureSyntaxTree, language, syntaxTree, type Language } from '@codemirror/language';
-import { EditorState, Facet, type Text } from '@codemirror/state';
+import { EditorState, Facet, StateField, type Text } from '@codemirror/state';
 import { NodeType, Tree, type Parser, type SyntaxNode } from '@lezer/common';
 // eslint-disable-next-line import/no-extraneous-dependencies -- Uses the same highlight tags as CodeMirror's native language highlighter.
 import { styleTags, tags } from '@lezer/highlight';
@@ -13,7 +13,21 @@ import { maskMathSource } from './source-mask.js';
 
 export function isLiteralDollarLine(text: string): boolean { return /^[ \t]*(?:>[ \t]*)*\${3,}$/u.test(text); }
 export const baseMathLanguage = Facet.define<Language, Language | null>({ combine: values => values[0] ?? null });
-const trees = new WeakMap<Text, { parser: Parser; ranges: readonly PendingMathRange[]; accepted: readonly MathExpression[]; code: CodeParserSource; quotes: readonly PendingMathRange[]; tree: Tree }>();
+const trees = new WeakMap<Text, { parser: Parser; ranges: readonly PendingMathRange[]; accepted: readonly MathExpression[]; code: CodeParserSource; quotes: readonly PendingMathRange[]; tree: Tree; shadow: EditorState }>();
+/** Retain only the last queried shadow, never the source state's transaction history. */
+export const mathSemanticParseCache = StateField.define<EditorState | null>({
+	create: () => null,
+	update: (previous, transaction) => trees.get(transaction.startState.doc)?.shadow ?? previous,
+});
+
+function updateShadow(previous: EditorState | null | undefined, native: Language, source: string): EditorState {
+	if (!previous || previous.facet(language) !== native) return EditorState.create({ doc: source, extensions: [native] });
+	const before = previous.doc.toString();
+	let from = 0, oldTo = before.length, newTo = source.length;
+	while (from < oldTo && from < newTo && before.charCodeAt(from) === source.charCodeAt(from)) from++;
+	while (oldTo > from && newTo > from && before.charCodeAt(oldTo - 1) === source.charCodeAt(newTo - 1)) { oldTo--; newTo--; }
+	return from === oldTo && from === newTo ? previous : previous.update({ changes: { from, to: oldTo, insert: source.slice(from, newTo) } }).state;
+}
 const dollarPresence = new WeakMap<Text, boolean>();
 function containsDollar(doc: Text): boolean {
 	const cached = dollarPresence.get(doc);
@@ -115,10 +129,11 @@ export function mathSyntaxTree(state: EditorState): Tree {
 	if (cached?.parser === native.parser && cached.ranges === ranges && cached.accepted === accepted && cached.code === code && cached.quotes === quotes) return cached.tree;
 	const expressions = acceptedParserMath(state, ranges), masks = mathParserMasks(state, ranges, expressions);
 	if (!masks.length && !code.masks.length && !quotes.length) return syntaxTree(state);
-	const shadow = EditorState.create({ doc: maskQuoteDraftSource(maskCodeSource(maskedMathSource(state, masks), code.masks), quotes), extensions: [native] });
+	const source = maskQuoteDraftSource(maskCodeSource(maskedMathSource(state, masks), code.masks), quotes);
+	const shadow = updateShadow(cached?.shadow ?? state.field(mathSemanticParseCache, false), native, source);
 	const parsed = ensureSyntaxTree(shadow, shadow.doc.length, Infinity);
 	if (!parsed) throw new Error('Math semantic source did not complete parsing');
 	const tree = projectMathTree(parsed, expressions, code.opaque);
-	trees.set(state.doc, { parser: native.parser, ranges, accepted, code, quotes, tree });
+	trees.set(state.doc, { parser: native.parser, ranges, accepted, code, quotes, tree, shadow });
 	return tree;
 }

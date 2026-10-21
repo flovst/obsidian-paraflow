@@ -28,6 +28,7 @@ import { createHeadingEditing } from './paragraph/heading-editing.js';
 import { createInlineSelectionProjection } from './paragraph/inline-selection-projection.js';
 import { createLinkInteraction } from './paragraph/link-interaction.js';
 import { createMathEditingExtension, createMathTabExtension } from './math/extension.js';
+import { mathSemanticParseCache } from './math/semantic-tree.js';
 import { createFootnoteExtension } from './footnotes/extension.js';
 import { sourceBlockScroll } from '../reading/source-scroll.js';
 
@@ -58,7 +59,7 @@ export function createEditorComposition(host: EditorExtensionLifecycleHost, depe
 	const isCurrentSourceEditor = (view: EditorView) => isPrimarySourceEditor(view) && dependencies.currentEditor() === view;
 	const navigationCore = createEditorRuntimeExtension({ isSelectionPresentationActive: isPrimaryLivePreviewEditor, isSelectionPresentationStateActive: isLivePreview });
 	// Host registration and removal must keep every owner together with its shared runtime.
-	const extensionRoot: Extension[] = [navigationCore, sourceBlockScroll];
+	const extensionRoot: Extension[] = [mathSemanticParseCache, navigationCore, sourceBlockScroll];
 	const moduleHost: EditorExtensionLifecycleHost = { registerEditorExtension: extension => { extensionRoot.push(extension); }, updateOptions: () => host.updateOptions() };
 	const renderedBlocks = createRenderedBlockEditing({
 		isStateActive: isLivePreview, isActive, isViewSupported: isPrimarySourceEditor,

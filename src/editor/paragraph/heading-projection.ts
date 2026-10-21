@@ -69,7 +69,7 @@ export interface HeadingPresentation {
 
 interface HeadingFieldState extends HeadingProjectionState {
 	readonly enabled: boolean;
-	readonly editEligibleBlocks: readonly ParagraphBlock[];
+	readonly editEligibleBlocks: () => readonly ParagraphBlock[];
 	readonly tree: Tree;
 	readonly confirmedTo: number;
 }
@@ -114,8 +114,11 @@ class HeadingBadgeWidget extends WidgetType {
 	}
 }
 
-function headingEditEligibleBlocks(state: EditorState): readonly ParagraphBlock[] {
-	return Object.freeze([...discoverParagraphAuthority(state).blocks
+function headingEditEligibleBlocks(state: EditorState): () => readonly ParagraphBlock[] {
+	let blocks: readonly ParagraphBlock[] | undefined;
+	// Preserve authoritative draft ownership, but ordinary edits need only the
+	// committed heading presentation. Reuse this snapshot across selection changes.
+	return () => blocks ??= Object.freeze([...discoverParagraphAuthority(state).blocks
 		.filter(({ kind }) => kind === 'paragraph' || kind === 'heading')
 		.map(({ from, to }) => Object.freeze({ from, to })), ...bodyLines(state).filter(line => syntaxTreeAvailable(state, line.to))]
 		.sort((a, b) => a.from - b.from));
@@ -139,16 +142,16 @@ function isHeadingEditLineEligible(
 
 function editSessionAtSelection(
 	state: EditorState,
-	editEligibleBlocks: readonly ParagraphBlock[],
+	editEligibleBlocks: () => readonly ParagraphBlock[],
 ): HeadingEditSession | null {
 	if (state.selection.ranges.length !== 1) return null;
 	const selection = state.selection.main;
 	const line = state.doc.lineAt(selection.head);
 	if (state.doc.lineAt(selection.anchor).from !== line.from) return null;
-	if (!isHeadingEditLineEligible(editEligibleBlocks, line.from, line.to)) return null;
 	const bodyFrom = headingBodyFrom(state, line.from);
 	const match = /^(#{1,6})(?:([ \t]+)(.*))?$/u.exec(state.sliceDoc(bodyFrom, line.to));
 	if (!match) return null;
+	if (!isHeadingEditLineEligible(editEligibleBlocks(), line.from, line.to)) return null;
 	const level = match[1]!.length as AtxHeadingBlock['level'];
 	const separator = match[2] ?? '';
 	const body = match[3];
@@ -248,7 +251,7 @@ function editSessionAfterTransaction(
 	value: HeadingFieldState,
 	transaction: Transaction,
 	headings: readonly AtxHeadingBlock[],
-	editEligibleBlocks: readonly ParagraphBlock[],
+	editEligibleBlocks: () => readonly ParagraphBlock[],
 ): HeadingEditSession | null {
 	const candidate = editSessionAtSelection(transaction.state, editEligibleBlocks);
 	if (!candidate) return null;
@@ -297,7 +300,7 @@ function projectHeadings(
 	tree: Tree,
 	complete: boolean,
 	headings: readonly AtxHeadingBlock[],
-	editEligibleBlocks: readonly ParagraphBlock[],
+	editEligibleBlocks: () => readonly ParagraphBlock[],
 	editSession: HeadingEditSession | null,
 ): HeadingFieldState {
 	const setextHeadings = discoverSetextHeadings(state);
@@ -452,7 +455,7 @@ export const headingProjectionField = StateField.define<HeadingFieldState>({
 			headings,
 			editEligibleBlocks,
 			enabled
-				? restored && (!restored.value || isHeadingEditLineEligible(editEligibleBlocks, restored.value.lineFrom, restored.value.lineTo))
+				? restored && (!restored.value || isHeadingEditLineEligible(editEligibleBlocks(), restored.value.lineFrom, restored.value.lineTo))
 					? restored.value : editSessionAfterTransaction(value, transaction, headings, editEligibleBlocks)
 				: null,
 		);
