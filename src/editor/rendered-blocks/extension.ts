@@ -4,7 +4,7 @@ import { Decoration, EditorView, ViewPlugin, WidgetType, keymap, type Decoration
 import { createNativeDecorationOwnership, isNativeReplacement, nativeBlockOwnership } from '../runtime/native-decoration-ownership.js';
 import { selectionPointerPressed } from '../runtime/selection-session.js';
 import { codeEditableSelection } from '../code-blocks/editable-boundaries.js';
-import type { CodeBlock } from '../code-blocks/model.js';
+import type { CodeBlock } from '../code-blocks/source-scan.js';
 import { discoverRenderedBlocks, htmlSourceTokens, type RenderedBlock } from './model.js';
 import { destroyMermaidPreviews, mermaidThemeStylesChanged, mountMermaidPreview, refreshMermaidPreviews } from './mermaid-preview.js';
 export { renderedBlockEditorStyles } from './styles.js';

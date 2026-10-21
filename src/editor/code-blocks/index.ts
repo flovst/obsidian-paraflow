@@ -1,7 +1,8 @@
 import { StateEffect, StateField, type EditorState, type Extension, type Range } from '@codemirror/state';
 import { syntaxTree } from '@codemirror/language';
 import { Decoration, EditorView, ViewPlugin, WidgetType, type DecorationSet, type ViewUpdate } from '@codemirror/view';
-import { discoverCodeBlocks, type CodeBlock, type CodeBlockOptions } from './model.js';
+import { discoverCodeBlocks, type CodeBlockOptions } from './model.js';
+import { type CodeBlock } from './source-scan.js';
 import { createRenderedContainerCodeBlocks } from './rendered-containers.js';
 import { createCodeMarkerExtension } from './markers.js';
 import { codeDraftStart } from './draft-state.js';

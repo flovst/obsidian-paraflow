@@ -1,4 +1,5 @@
-import { isRenderedCodeLanguage, type CodeBlockOptions } from '../editor/code-blocks/model.js';
+import type { CodeBlockOptions } from '../editor/code-blocks/model.js';
+import { isRenderedCodeLanguage } from '../editor/code-blocks/source-scan.js';
 
 function hasNativeCopy(pre: HTMLElement): boolean {
 	if(pre.querySelector('.copy-code-button'))return true;

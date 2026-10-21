@@ -1,6 +1,6 @@
 import {EditorState,Facet,StateEffect,StateField,type Transaction} from '@codemirror/state';
 import {invertedEffects} from '@codemirror/commands';
-import {codeBlocksIn} from './model.js';
+import { codeBlocksIn } from './source-scan.js';
 import {compositionStateField} from '../runtime/input-state.js';
 
 export interface CodeDraft {from:number;to:number;end:number;typed:boolean}

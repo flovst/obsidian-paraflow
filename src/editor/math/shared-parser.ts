@@ -3,7 +3,8 @@ import { Compartment, Prec, type Extension, type Range } from '@codemirror/state
 import { Decoration, ViewPlugin, type DecorationSet, type EditorView, type ViewUpdate } from '@codemirror/view';
 import { Parser, TreeFragment, type Input, type PartialParse, type Tree } from '@lezer/common';
 import { mathCandidatesActive, pendingMath, type PendingMathRange } from './candidate-ranges.js';
-import { baseMathLanguage, mathParserMasks, maskMathSource, acceptedParserMath, projectMathTree } from './semantic-tree.js';
+import { maskMathSource } from './source-mask.js';
+import { baseMathLanguage, mathParserMasks, acceptedParserMath, projectMathTree } from './semantic-tree.js';
 import { codeParserSource, maskCodeSource, type CodeParserSource } from '../code-blocks/parser-source.js';
 import { quoteDraftMasks, maskQuoteDraftSource } from '../callout/quote-draft.js';
 import { acceptedMath, discoverMath, type MathExpression } from './syntax.js';

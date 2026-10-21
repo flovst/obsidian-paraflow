@@ -1,5 +1,5 @@
 import { countColumn, EditorSelection, Facet, type EditorState, type SelectionRange, type Transaction } from '@codemirror/state';
-import type { CodeBlock } from './model.js';
+import type { CodeBlock } from './source-scan.js';
 import { containerBlockFrame } from '../callout/container-surface.js';
 import { projectQuoteContent } from '../callout/projection.js';
 import { getParagraphProjectionState } from '../paragraph/projection.js';

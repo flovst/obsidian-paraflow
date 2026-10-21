@@ -9,6 +9,7 @@ import { pendingMathRanges, type PendingMathRange } from './candidate-ranges.js'
 import { acceptedMath, discoverMath, mathRangeIndex } from './syntax.js';
 import type { MathExpression } from './range-scanner.js';
 import { createRangeQuery } from './range-query.js';
+import { maskMathSource } from './source-mask.js';
 
 export function isLiteralDollarLine(text: string): boolean { return /^[ \t]*(?:>[ \t]*)*\${3,}$/u.test(text); }
 export const baseMathLanguage = Facet.define<Language, Language | null>({ combine: values => values[0] ?? null });
@@ -47,17 +48,6 @@ export function mathParserMasks(state: EditorState, ranges: readonly PendingMath
 		else merged.push(mask);
 	}
 	return merged;
-}
-export function maskMathSource(source: string, masks: readonly PendingMathRange[], fill: 'x' | ' ' = 'x'): string {
-	let result = '', from = 0;
-	for (const mask of masks) {
-		result += source.slice(from, mask.from) + source.slice(mask.from, mask.to).split('\n').map((line, index) => {
-			const prefix = index ? /^[ \t]*(?:>[ \t]*)*/u.exec(line)![0] : '';
-			return prefix + line.slice(prefix.length).replace(/[^\r]/g, fill);
-		}).join('\n');
-		from = mask.to;
-	}
-	return result + source.slice(from);
 }
 export function maskedMathSource(state: EditorState, masks: readonly PendingMathRange[]): string { return maskMathSource(state.sliceDoc(), masks); }
 

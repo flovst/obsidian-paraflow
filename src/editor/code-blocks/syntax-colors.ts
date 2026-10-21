@@ -1,7 +1,8 @@
 import { Prec, type EditorState, type Extension, type Range } from '@codemirror/state';
 import { Decoration, EditorView, ViewPlugin, type DecorationSet, type ViewUpdate } from '@codemirror/view';
 import { syntaxTree } from '@codemirror/language';
-import { discoverCodeBlocks, type CodeBlock } from './model.js';
+import { discoverCodeBlocks } from './model.js';
+import { type CodeBlock } from './source-scan.js';
 import { codeDraftStart } from './draft-state.js';
 import { quoteContainers } from '../callout/presentation-model.js';
 import { projectQuoteContent } from '../callout/projection.js';

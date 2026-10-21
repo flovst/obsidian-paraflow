@@ -1,5 +1,5 @@
 import { countColumn, findColumn, Text, type EditorState } from '@codemirror/state';
-import type { CodeBlock } from './model.js';
+import type { CodeBlock } from './source-scan.js';
 
 /** Remove only the four-column code prefix; remaining indentation belongs to the container. */
 function fencePrefix(prefix: string): string {

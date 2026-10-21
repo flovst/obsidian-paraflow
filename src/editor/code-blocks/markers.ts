@@ -1,7 +1,8 @@
 import { EditorSelection, EditorState, Transaction, Prec, StateField, type Extension, type Range } from '@codemirror/state';
 import { syntaxTree } from '@codemirror/language';
 import { Decoration, EditorView, ViewPlugin, WidgetType, keymap } from '@codemirror/view';
-import { codeBlockEdit, codeBlocksIn, discoverCodeBlocks, type CodeBlock } from './model.js';
+import { codeBlockEdit, discoverCodeBlocks } from './model.js';
+import { codeBlocksIn, type CodeBlock } from './source-scan.js';
 import { openCodeLanguagePopup, type CodeLanguagePopup } from './language-popup.js';
 import type { EnhancementSettings } from '../../enhancement-settings.js';
 import { codeBodyStart, codeDraftStart, codeEditableSelection, codeMarkersActive, codeContinuationPrefix as continuationPrefix } from './editable-boundaries.js';

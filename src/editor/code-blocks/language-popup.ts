@@ -1,6 +1,7 @@
 import { isolateHistory } from '@codemirror/commands';
 import type { EditorView } from '@codemirror/view';
-import { discoverCodeBlocks, isRenderedCodeLanguage } from './model.js';
+import { discoverCodeBlocks } from './model.js';
+import { isRenderedCodeLanguage } from './source-scan.js';
 import { planIndentedCodeLanguage } from './language-plan.js';
 
 export interface CodeLanguagePopup {

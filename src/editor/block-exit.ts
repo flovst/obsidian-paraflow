@@ -1,6 +1,6 @@
 import {EditorSelection, type EditorState, type TransactionSpec} from '@codemirror/state';
 import {isolateHistory} from '@codemirror/commands';
-import {codeBlocksIn} from './code-blocks/model';
+import { codeBlocksIn } from './code-blocks/source-scan';
 import {findEditableTableSources} from './table/edit-session';
 import {selectionModeAnnotation} from './runtime/input-state';
 import {prefixPolicy} from './structured-list/prefix';

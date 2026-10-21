@@ -2,7 +2,7 @@ import {EditorSelection, EditorState, Facet, Prec, StateEffect, StateField, Tran
 import {Decoration, EditorView, ViewPlugin, WidgetType, getDrawSelectionConfig} from '@codemirror/view';
 import {invertedEffects, isolateHistory} from '@codemirror/commands';
 import {compositionStateField, selectionModeAnnotation} from './input-state';
-import {codeBlocksIn} from '../code-blocks/model';
+import { codeBlocksIn } from '../code-blocks/source-scan';
 import {codeDraft} from '../code-blocks/draft-state';
 import {discoverSetextHeadings} from '../paragraph/setext';
 import {createBlankPointerExtension} from './blank-pointer.js';
