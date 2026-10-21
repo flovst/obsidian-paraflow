@@ -21,7 +21,14 @@ const indexes = new WeakMap<Text, { definitions: ReadonlyMap<string, string>; li
 function referenceIndex(state: EditorState) {
 	const cached = indexes.get(state.doc);
 	if (cached) return cached;
-	const tree = referenceParser.configure(nativeInlineGrammarFor(mathRangeIndex(state).expressions)).parse(state.doc.toString());
+	const source = state.doc.toString();
+	// A reference definition requires a colon immediately after its closing label.
+	if (!source.includes(']:')) {
+		const index = { definitions: new Map<string, string>(), links: [] as ResolvedReferenceLink[] };
+		indexes.set(state.doc, index);
+		return index;
+	}
+	const tree = referenceParser.configure(nativeInlineGrammarFor(mathRangeIndex(state).expressions)).parse(source);
 	const definitions = new Map<string, string>();
 	tree.iterate({ enter(ref) {
 		if (ref.name !== 'LinkReference') return;
