@@ -19,11 +19,11 @@ export type { CodeBlockOptions } from './model.js';
 
 const offsets=new WeakMap<EditorView,Map<number,number>>();
 
-function scrollBlock(view: EditorView, id: number, offset: number): void {
+function scrollBlock(view: EditorView, id: number, offset: number, lines?: readonly HTMLElement[]): void {
 	let values=offsets.get(view);
 	if(!values) {values=new Map();offsets.set(view,values);}
 	values.set(id,offset);
-	for(const line of view.contentDOM.querySelectorAll<HTMLElement>(`.paraflow-code-line[data-paraflow-code-block="${id}"]`)) {
+	for(const line of lines ?? view.contentDOM.querySelectorAll<HTMLElement>(`.paraflow-code-line[data-paraflow-code-block="${id}"]`)) {
 		line.scrollLeft=offset;
 		// Keep the inset container frame at the viewport edge while code scrolls beneath it.
 		line.style.setProperty('--paraflow-code-scroll-offset', `${line.scrollLeft}px`);
@@ -95,7 +95,21 @@ function decorate(state: EditorState, blocks: CodeBlock[], options: CodeBlockOpt
 	return Decoration.set(ranges,true);
 }
 
-interface BlockMeasure {id:number; width:number; offset:number; overflowing:boolean; extents:Array<{element:HTMLElement; width:number}>; frameBorders:Array<{element:HTMLElement; left:string; right:string}>; bar:HTMLElement | null}
+interface BlockMeasure {id:number; lines:HTMLElement[]; width:number; offset:number; overflowing:boolean; extents:Array<{element:HTMLElement; width:number}>; frameBorders:Array<{element:HTMLElement; left:string; right:string}>; bar:HTMLElement | null}
+
+function codeLineAt(block: CodeBlock, position: number): CodeBlock['lines'][number] | undefined {
+	let low=0,high=block.lines.length;
+	while(low<high) {const middle=(low+high)>>>1;if(block.lines[middle]!.from<=position)low=middle+1;else high=middle;}
+	const line=block.lines[low-1];
+	return line && position<=line.to ? line : undefined;
+}
+
+function hasCodeCaret(blocks: readonly CodeBlock[], position: number): boolean {
+	let low=0,high=blocks.length;
+	while(low<high) {const middle=(low+high)>>>1;if(blocks[middle]!.from<=position)low=middle+1;else high=middle;}
+	const block=blocks[low-1];
+	return !!block && !!codeLineAt(block,position);
+}
 
 export function createCodeBlockExtension(config: {
 	isActive: (view: EditorView)=>boolean;
@@ -104,14 +118,17 @@ export function createCodeBlockExtension(config: {
 }): Extension {
 	const activate=StateEffect.define<boolean>();
 	const field=StateField.define({
-		create(state) {return {active:false,blocks:discoverCodeBlocks(state),options:{...config.getOptions()},decorations:Decoration.none};},
+		create(state) {
+			const blocks=discoverCodeBlocks(state);
+			return {active:false,blocks,byId:new Map(blocks.map(block=>[block.from,block])),options:{...config.getOptions()},decorations:Decoration.none};
+		},
 		update(value,tr) {
 			const active=tr.effects.find(effect=>effect.is(activate))?.value ?? value.active;
 			const options=config.getOptions();
 			const syntaxChanged=syntaxTree(tr.startState)!==syntaxTree(tr.state);
 			if(!tr.docChanged && !syntaxChanged && tr.state.facet(codeDraftStart)===tr.startState.facet(codeDraftStart) && active===value.active && options.codeLineNumbers===value.options.codeLineNumbers && options.codeWordWrap===value.options.codeWordWrap)return value;
 			const blocks=tr.docChanged || syntaxChanged ? discoverCodeBlocks(tr.state) : value.blocks;
-			return {active,blocks,options:{...options},decorations:active ? decorate(tr.state,blocks,options) : Decoration.none};
+			return {active,blocks,byId:blocks===value.blocks ? value.byId : new Map(blocks.map(block=>[block.from,block])),options:{...options},decorations:active ? decorate(tr.state,blocks,options) : Decoration.none};
 		},
 		provide: value=>EditorView.decorations.from(value,state=>state.decorations),
 	});
@@ -131,17 +148,52 @@ export function createCodeBlockExtension(config: {
 		private activationPending=false;
 		private naturalWidths=new Map<number,{width:number; typography:string}>();
 		private rendered: ReturnType<typeof createRenderedContainerCodeBlocks>;
+		private contextDocument: Document | null=null;
+		private contextAncestors: Element[]=[];
+		private contextObserver: MutationObserver | null=null;
+		private contextChanged=():void=>this.schedule();
+		private fontsChanged=():void=>{this.naturalWidths.clear();this.schedule();};
 		constructor(readonly view: EditorView) {
 			this.rendered=createRenderedContainerCodeBlocks(view.contentDOM,{isActive:()=>config.isActive(view),getOptions:config.getOptions});
-			this.schedule();
+			this.bindContext();
+			this.syncActivation();
 		}
 		update(update: ViewUpdate): void {
 			if(update.docChanged) {offsets.delete(this.view);this.naturalWidths.clear();}
 			if(update.startState.field(field).options.codeLineNumbers!==update.state.field(field).options.codeLineNumbers)this.naturalWidths.clear();
 			this.rendered.refresh();
+			this.bindContext();
+			this.syncActivation();
+			const before=update.startState.field(field),after=update.state.field(field);
+			const movedHead=update.startState.selection.main.head!==update.state.selection.main.head;
+			if(before!==after || update.viewportChanged || update.geometryChanged || update.focusChanged || update.transactions.some(tr=>tr.reconfigured) ||
+				(movedHead && after.active && !after.options.codeWordWrap && this.view.hasFocus && hasCodeCaret(after.blocks,update.state.selection.main.head)))this.schedule();
+		}
+		private bindContext(): void {
+			const owner=this.view.dom.ownerDocument,ancestors:Element[]=[];
+			for(let node:Element|null=this.view.dom;node;node=node.parentElement)ancestors.push(node);
+			if(owner===this.contextDocument && ancestors.length===this.contextAncestors.length && ancestors.every((node,index)=>node===this.contextAncestors[index]))return;
+			this.releaseContext();this.contextDocument=owner;this.contextAncestors=ancestors;
+			const win=owner.defaultView!;
+			this.contextObserver=new win.MutationObserver(records=>{
+				if(records.some(record=>record.type!=='attributes' || record.oldValue!==(record.target as Element).getAttribute(record.attributeName!)))this.schedule();
+			});
+			this.contextObserver.observe(owner.head,{childList:true,subtree:true,characterData:true,attributes:true,attributeOldValue:true});
+			for(const node of ancestors)this.contextObserver.observe(node,{attributes:true,attributeFilter:['class','style'],attributeOldValue:true});
+			for(const node of [this.view.contentDOM,this.view.scrollDOM])this.contextObserver.observe(node,{attributes:true,attributeFilter:['class','style'],attributeOldValue:true});
+			win.addEventListener('resize',this.contextChanged);
+			win.visualViewport?.addEventListener('resize',this.contextChanged);
+			owner.fonts?.addEventListener('loadingdone',this.fontsChanged);
 			this.schedule();
 		}
-		private schedule(): void {
+		private releaseContext(): void {
+			this.contextObserver?.disconnect();
+			const win=this.contextDocument?.defaultView;
+			win?.removeEventListener('resize',this.contextChanged);
+			win?.visualViewport?.removeEventListener('resize',this.contextChanged);
+			this.contextDocument?.fonts?.removeEventListener('loadingdone',this.fontsChanged);
+		}
+		private syncActivation(): void {
 			if(!this.activationPending) {
 				this.activationPending=true;
 				queueMicrotask(()=>{
@@ -151,6 +203,9 @@ export function createCodeBlockExtension(config: {
 					if(active!==this.view.state.field(field).active)this.view.dispatch({effects:activate.of(active)});
 				});
 			}
+		}
+		private schedule(): void {
+			if(this.destroyed)return;
 			this.view.requestMeasure({key:this,read:view=>this.measure(view),write:measurements=>{
 				if(this.destroyed)return;
 				let insetChanged=false;
@@ -171,7 +226,7 @@ export function createCodeBlockExtension(config: {
 						track.style.width=`${entry.width}px`;
 						entry.bar.scrollLeft=entry.offset;
 					}
-					scrollBlock(this.view,entry.id,entry.offset);
+					scrollBlock(this.view,entry.id,entry.offset,entry.lines);
 				}
 				if(insetChanged)this.schedule();
 			}});
@@ -182,11 +237,19 @@ export function createCodeBlockExtension(config: {
 			const state=view.state.field(field);
 			if(!state.active)return [];
 			const result: BlockMeasure[]=[];
-			for(const block of state.blocks) {
+			const mounted=new Map<number,HTMLElement[]>();
+			for(const line of view.contentDOM.querySelectorAll<HTMLElement>('.paraflow-code-line[data-paraflow-code-block]')) {
+				const id=Number(line.dataset.paraflowCodeBlock);
+				const lines=mounted.get(id);if(lines)lines.push(line);else mounted.set(id,[line]);
+			}
+			const bars=new Map<number,HTMLElement>();
+			if(mounted.size)for(const bar of view.contentDOM.querySelectorAll<HTMLElement>('.paraflow-code-scroll[data-paraflow-code-block]'))bars.set(Number(bar.dataset.paraflowCodeBlock),bar);
+			for(const [id,mountedLines] of mounted) {
+				const block=state.byId.get(id)!;
 				// Hidden editors have no layout width; retain their last valid overflow geometry.
-				const lines=[...view.contentDOM.querySelectorAll<HTMLElement>(`.paraflow-code-line[data-paraflow-code-block="${block.from}"]`)].filter(line=>line.clientWidth>0);
+				const lines=mountedLines.filter(line=>line.clientWidth>0);
 				if(!lines.length)continue;
-				const bar=view.contentDOM.querySelector<HTMLElement>(`.paraflow-code-scroll[data-paraflow-code-block="${block.from}"]`);
+				const bar=bars.get(id) ?? null;
 				const style=view.dom.ownerDocument.defaultView!.getComputedStyle(lines[0]!);
 				// Container frames are painted outside layout; reserve their actual themed borders.
 				const frameBorders=lines.filter(line=>line.classList.contains('paraflow-callout-line')).map(element=>{
@@ -204,7 +267,8 @@ export function createCodeBlockExtension(config: {
 				// Retain that width only while its font and horizontal spacing still apply.
 				const typography=[style.fontFamily,style.fontSize,style.fontWeight,style.fontStyle,style.getPropertyValue('font-stretch'),
 					style.fontVariant,style.fontFeatureSettings,style.fontVariationSettings,style.letterSpacing,
-					style.wordSpacing,style.paddingLeft,style.paddingRight].join(';');
+					style.wordSpacing,style.paddingLeft,style.paddingRight,style.borderLeftWidth,style.borderRightWidth,style.getPropertyValue('zoom'),
+					view.scaleX,view.scaleY,view.dom.ownerDocument.defaultView!.devicePixelRatio].join(';');
 				const previous=this.naturalWidths.get(block.from);
 				const naturalWidth=Math.max(previous?.typography===typography ? previous.width : 0,...extents.map(extent=>extent.natural));
 				if(!state.options.codeWordWrap)this.naturalWidths.set(block.from,{width:naturalWidth,typography});
@@ -212,7 +276,7 @@ export function createCodeBlockExtension(config: {
 				const maximum=Math.max(0,...lines.map(line=>width-line.clientWidth));
 				let offset=state.options.codeWordWrap ? 0 : Math.min(maximum,offsets.get(view)?.get(block.from) ?? 0);
 				const head=view.state.selection.main.head;
-				const current=block.lines.find(line=>head>=line.from && head<=line.to);
+				const current=codeLineAt(block,head);
 				if(current && view.hasFocus && !state.options.codeWordWrap) {
 					const line=lines.find(element=>view.posAtDOM(element)===current.from);
 					const caret=view.coordsAtPos(head);
@@ -224,10 +288,10 @@ export function createCodeBlockExtension(config: {
 						else if(caret.right>rect.right-8)offset=Math.min(maximum,offset+caret.right-rect.right+8);
 					}
 				}
-				result.push({id:block.from,width,offset,overflowing:maximum>0,extents:extents.map(extent=>({element:extent.element,width:width-extent.natural})),frameBorders,bar});
+				result.push({id:block.from,lines:mountedLines,width,offset,overflowing:maximum>0,extents:extents.map(extent=>({element:extent.element,width:width-extent.natural})),frameBorders,bar});
 			}
 			return result;
 		}
-		destroy(): void {this.destroyed=true;this.rendered.destroy();offsets.delete(this.view);this.naturalWidths.clear();}
+		destroy(): void {this.destroyed=true;this.releaseContext();this.rendered.destroy();offsets.delete(this.view);this.naturalWidths.clear();}
 	})];
 }
