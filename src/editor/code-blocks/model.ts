@@ -1,7 +1,7 @@
 import { Annotation, Text, type EditorState } from '@codemirror/state';
 import { syntaxTree } from '@codemirror/language';
 import type { EnhancementSettings } from '../../enhancement-settings.js';
-import { discoverParagraphAuthority } from '../paragraph/syntax.js';
+import { discoverFootnoteDefinitionBoundaries } from '../paragraph/syntax.js';
 import {codeDraft} from './draft-state.js';
 import { acceptedMath, discoverMath, type MathExpression } from '../math/syntax.js';
 import { pendingMath, type PendingMathRange } from '../math/candidate-ranges.js';
@@ -32,7 +32,7 @@ export function discoverCodeBlocks(state: EditorState): CodeBlock[] {
 	const cached=owned.get(state.doc);
 	if(cached?.tree===tree&&cached.draft===(draft?.from??null)&&cached.draftTo===(draft?.to??null)&&cached.accepted===accepted&&cached.pending===pending)return cached.blocks;
 	const expressions=discoverMath(state), math=createRangeQuery(expressions);
-	const definitions=discoverParagraphAuthority(state).blocks.filter(block=>block.kind==='footnote-definition');
+	const definitions=discoverFootnoteDefinitionBoundaries(state);
 	const hostMarkerLines = new Set<number>();
 	const hostCodeLines = new Set<number>();
 	tree.iterate({ enter(node) {

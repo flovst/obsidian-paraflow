@@ -1260,6 +1260,21 @@ const authorities = new WeakMap<EditorState, {
 	readonly authority: ParagraphAuthority;
 }>();
 
+/** Code ownership needs whole definition bodies, not paragraph spacing or marker-only footnote indexes. */
+export function discoverFootnoteDefinitionBoundaries(state: EditorState): readonly TopLevelBlockBoundary[] {
+	const definitions = (blocks: readonly TopLevelBlockBoundary[]): readonly TopLevelBlockBoundary[] =>
+		blocks.filter(block => block.kind === 'footnote-definition');
+	const cached = authorities.get(state);
+	if (cached?.nativeTree === nativeSyntaxTree(state) && cached.semanticTree === syntaxTree(state) &&
+		cached.confirmedTo === confirmedSyntaxEnd(state)) return definitions(cached.authority.blocks);
+	if (!isHypermdState(state)) return [];
+	// These transforms depend on surrounding containers and may remove or split definitions.
+	if (pendingMathRanges(state).length || state.facet(codeDraft)) return definitions(discoverParagraphAuthority(state).blocks);
+	const bodies = hypermdFootnoteBoundaries(state);
+	if (bodies.length && separatorlessListLiteralLines(state, bodies).length) return definitions(discoverParagraphAuthority(state).blocks);
+	return confirmedBlocks(state, bodies);
+}
+
 export function discoverParagraphAuthority(
 	state: EditorState,
 	within?: readonly ParagraphGap[],
