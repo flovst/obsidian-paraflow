@@ -3,6 +3,7 @@ import { EditorState, Prec, RangeSet, StateEffect, StateField, type Extension, t
 import { Decoration, EditorView, ViewPlugin, WidgetType, keymap, type DecorationSet, type ViewUpdate } from '@codemirror/view';
 import { calloutCards, quoteContainers, decodeCalloutBlock, calloutTitleBlock, calloutTitleFrom as titleFrom, type CalloutCard } from './presentation-model.js';
 import { quotePrefix } from './projection.js';
+import { mathQuotePrefix } from '../math/quote-prefix.js';
 import { calloutGaps, createCalloutGapProtection } from './gaps.js';
 import { containerLayout } from './container-layout.js';
 import { ContainerRails as Rails, containerInset, containerPresentation, containerRailTails, containerSurfaceStyles } from './container-surface.js';
@@ -291,7 +292,7 @@ function project(view: EditorView, options: CalloutPresentationOptions, icons: M
 			containerRailTails(ancestors, line.to)), side: -1 }).range(line.from));
 		const owner = listLines.get(line.from);
 		const header = card.kind === 'callout' && line.from === card.from;
-		const prefix = quotePrefix(line.text, card.depth);
+		const prefix = mathQuotePrefix(view.state, line.from, card.depth);
 		const blank = !header && prefix !== null && !line.text.slice(prefix.length).trim();
 		const ownedGap = blank ? gaps.find(candidate => candidate.from <= line.from && (line.to < candidate.to || candidate.edge === 'trailing' && line.to === candidate.to)) : undefined;
 		const gap = ownedGap !== undefined;

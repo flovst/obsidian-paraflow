@@ -1,8 +1,9 @@
 import type { EditorState } from '@codemirror/state';
 import { quoteContainers } from '../callout/presentation-model.js';
-import { projectQuoteContent, quotePrefix } from '../callout/projection.js';
+import { projectQuoteContent } from '../callout/projection.js';
 import type { MathExpression } from './syntax.js';
 import { blockContinuationPrefix, blockLineContentFrom } from '../runtime/block-body.js';
+import { mathQuotePrefix } from './quote-prefix.js';
 
 export interface MathSourceLine {
 	readonly number: number;
@@ -34,8 +35,9 @@ export function projectMathSource(state: EditorState, math: MathExpression): Mat
 	for (let number = opening.number; number <= closing.number; number++) {
 		const line = state.doc.line(number), mapped = projected?.lines[number - opening.number];
 		// Lazy quote continuation has no physical prefix; preserve its full TeX text.
-		const prefix = mapped?.prefix ?? (card ? quotePrefix(line.text, card.depth) ?? '' : '');
-		const prefixTo = Math.max(mapped ? projected.toSource(mapped.virtualFrom) : line.from + prefix.length,
+		const prefix = mapped?.prefix ?? (card ? mathQuotePrefix(state, line.from, card.depth) ?? '' : '');
+		const bodyTab = prefix.endsWith('>') && line.text[prefix.length] === '\t';
+		const prefixTo = bodyTab ? line.from + prefix.length : Math.max(mapped ? projected.toSource(mapped.virtualFrom) : line.from + prefix.length,
 			math.display && number > opening.number ? blockLineContentFrom(state, number, continuation) : line.from);
 		const from = Math.max(math.contentFrom, prefixTo), to = Math.min(math.contentTo, line.to);
 		lines.push({ number, prefixFrom: line.from, prefixTo, from, to, text: state.sliceDoc(from, to) });

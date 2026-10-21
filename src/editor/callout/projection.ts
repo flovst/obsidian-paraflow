@@ -9,6 +9,7 @@ import { containerListGrammar, metadataGrammar, nativeInlineGrammarFor } from '.
 import { hasNativeOwnership } from './syntax.js';
 import { mathSyntaxTree } from '../math/semantic-tree.js';
 import { mathRangeIndex } from '../math/syntax.js';
+import { mathQuotePrefix } from '../math/quote-prefix.js';
 import { quoteDraftMasks, maskQuoteDraftSource } from './quote-draft.js';
 import { scanMathRanges } from '../math/range-scanner.js';
 import { codeDraft, type CodeDraft } from '../code-blocks/draft-state.js';
@@ -133,7 +134,7 @@ function buildQuoteContent(state: EditorState, from: number, to: number, depth: 
 	let virtualFrom = 0;
 	for (let number = first; number <= last; number += 1) {
 		const line = state.doc.line(number);
-		let prefix = quotePrefix(line.text, depth);
+		let prefix = mathQuotePrefix(state, line.from, depth);
 		if (prefix === null) {
 			const container = containerAt(state, line.from);
 			if (!container || quoteDepth(container) < depth) return null;

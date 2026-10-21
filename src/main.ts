@@ -29,6 +29,7 @@ import { pasteFromClipboard } from './editor/clipboard-paste.js';
 import { createIndentModeMaintenance } from './editor/indent-maintenance-mode.js';
 import { planListIndentMaintenance } from './editor/list-indent-maintenance.js';
 import { createMathMetadataIntegration } from './metadata/obsidian.js';
+import { readNativeDecorationBindingStatus, type NativeDecorationBindingStatus } from './editor/runtime/native-decoration-ownership.js';
 
 export function isParaFlowLivePreview(state: EditorState): boolean {
 	return state.field(editorLivePreviewField, false) === true;
@@ -50,6 +51,9 @@ export default class ParaFlowPlugin extends Plugin {
 
 	get contentThemeId(): string | null { return this.settings.contentThemeId; }
 	get enhancements(): Readonly<EnhancementSettings> { return this.settings.enhancements; }
+	readNativeDecorationBindingStatus(view: EditorView): NativeDecorationBindingStatus {
+		return readNativeDecorationBindingStatus(view);
+	}
 
 	async setSourceMaintenanceMode(mode: SourceMaintenanceMode): Promise<void> {
 		const update = this.settingsUpdate.then(async () => {

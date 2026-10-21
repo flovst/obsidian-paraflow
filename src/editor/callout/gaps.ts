@@ -8,6 +8,7 @@ import { projectQuoteContent, quotePrefix } from './projection.js';
 import { calloutListEntries } from './list-presentation.js';
 import { createParagraphEndpointIndex, paragraphGapTags } from '../paragraph/model.js';
 import {emptyBodies} from '../runtime/empty-body-state.js';
+import { discoverMath } from '../math/syntax.js';
 
 interface Gap { readonly from: number; readonly to: number; readonly before?: string; readonly after?: string; readonly edge?: 'leading' | 'trailing' }
 const cache = new WeakMap<EditorState, readonly Gap[]>();
@@ -53,7 +54,10 @@ export function calloutGaps(state: EditorState): readonly Gap[] {
 			gaps.set(from, {from,to:projection.toSource(tail.to),edge:'trailing'});
 		}
 	}
-	const result = [...gaps.values()].sort((a, b) => a.from - b.from);
+	const mathBodies = gaps.size ? discoverMath(state).filter(math => math.display) : [];
+	// Retained formula source remains editable when an interior delimiter changes paragraph parsing.
+	const result = [...gaps.values()].filter(gap => !mathBodies.some(math =>
+		math.contentFrom <= gap.from && gap.to <= math.contentTo)).sort((a, b) => a.from - b.from);
 	cache.set(state, result);
 	return result;
 }

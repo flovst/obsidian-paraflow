@@ -1,7 +1,7 @@
 import type { EditorState } from '@codemirror/state';
 import { codeDraft } from '../code-blocks/draft-state.js';
 import { pendingMathRanges } from '../math/candidate-ranges.js';
-import { mathRangeIndex } from '../math/syntax.js';
+import { acceptedMath, mathRangeIndex } from '../math/syntax.js';
 import { createdBodyOwnership, emptyBodies } from '../runtime/empty-body-state.js';
 import { quoteDraftMasks } from './quote-draft.js';
 
@@ -29,11 +29,11 @@ export function sameContainerSource(a: SourceContext, b: SourceContext): boolean
 
 /** Body ownership includes effect-only/history changes even when Text identity stays unchanged. */
 export function containerBodyContext(state: EditorState) {
-	return { ...containerSourceContext(state), pending: pendingMathRanges(state),
+	return { ...containerSourceContext(state), accepted: state.facet(acceptedMath), pending: pendingMathRanges(state),
 		empty: emptyBodies(state), created: createdBodyOwnership(state) };
 }
 
 export function sameContainerBody(a: ReturnType<typeof containerBodyContext>, b: ReturnType<typeof containerBodyContext>): boolean {
-	return sameContainerSource(a, b) && sameRecords(a.pending, b.pending) && sameRecords(a.created, b.created) &&
+	return sameContainerSource(a, b) && sameRecords(a.accepted, b.accepted) && sameRecords(a.pending, b.pending) && sameRecords(a.created, b.created) &&
 		(a.empty === b.empty || a.empty.length === b.empty.length && a.empty.every((value, index) => value === b.empty[index]));
 }
