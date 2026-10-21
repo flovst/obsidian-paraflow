@@ -1,7 +1,7 @@
-import { Language, language } from '@codemirror/language';
+import { Language, language, ParseContext } from '@codemirror/language';
 import { Compartment, Prec, type Extension, type Range } from '@codemirror/state';
 import { Decoration, ViewPlugin, type DecorationSet, type EditorView, type ViewUpdate } from '@codemirror/view';
-import { Parser, TreeFragment, type Input, type Tree } from '@lezer/common';
+import { Parser, TreeFragment, type Input, type PartialParse, type Tree } from '@lezer/common';
 import { mathCandidatesActive, pendingMath, type PendingMathRange } from './candidate-ranges.js';
 import { baseMathLanguage, mathParserMasks, maskMathSource, acceptedParserMath, projectMathTree } from './semantic-tree.js';
 import { codeParserSource, maskCodeSource, type CodeParserSource } from '../code-blocks/parser-source.js';
@@ -61,8 +61,17 @@ function sharedParser(): Extension {
 								const tree = nativeTrees.get(fragment.tree);
 								return tree ? [new TreeFragment(fragment.from, fragment.to, tree, fragment.offset, fragment.openStart, fragment.openEnd)] : [];
 							});
-							const parsing = native.parser.startParse({ length: input.length, lineChunks: false,
-								chunk: pos => source.slice(pos), read: (start, end) => source.slice(start, end) }, nativeFragments, ranges);
+							const context = ParseContext.get(), viewport = context?.viewport;
+							let parsing: PartialParse;
+							try {
+								// A far viewport must not restart stream state inside a fence. Keep
+								// saved context at construction; advance retains normal viewport/time limits.
+								if (context && viewport) context.viewport = { from: Math.min(viewport.from, ranges[0]!.from), to: viewport.to };
+								parsing = native.parser.startParse({ length: input.length, lineChunks: false,
+									chunk: pos => source.slice(pos), read: (start, end) => source.slice(start, end) }, nativeFragments, ranges);
+							} finally {
+								if (context && viewport) context.viewport = viewport;
+							}
 							return {
 								advance() {
 									const tree = parsing.advance();

@@ -65,7 +65,8 @@ export const mathEditorStyles = `
   pointer-events: none;
   user-select: none;
 }
-.cm-editor.paraflow-math-active .paraflow-math-source-block .cm-indent { display: none; }
+/* Leading whitespace remains editable; only its native indent guide is decorative. */
+.cm-editor.paraflow-math-active .paraflow-math-source-block .cm-indent::before { display: none; }
 .cm-editor.paraflow-math-active .cm-line.paraflow-math-source-start {
   border-block-start: 1px solid var(--paraflow-border-color);
   border-radius: 3px 3px 0 0;

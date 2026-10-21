@@ -5,7 +5,7 @@ import { classifyCurrentSelectionMode, compositionStateField, selectionModeAnnot
 import { planCalloutInput, planCalloutKey, planContainerStartEnter, planEmptyCalloutBackspace, type CalloutKey } from './editing.js';
 import { calloutHeaderStart, isCalloutMetadataEditing } from './presentation.js';
 import { planCalloutClipboard } from './selection.js';
-import { projectCallout, projectQuoteContent } from './projection.js';
+import { projectCallout, projectQuoteContent, quoteContentReuse } from './projection.js';
 import { quoteContainers } from './presentation-model.js';
 import { enumerateListItems } from '../structured-list/syntax.js';
 import { mathCandidatesActive } from '../math/candidate-ranges.js';
@@ -97,7 +97,7 @@ export function createCalloutExtension(isActive: (view: EditorView) => boolean, 
 		return true;
 	}
 	const keys: readonly CalloutKey[] = ['Enter', 'Shift-Enter', 'Tab', 'Shift-Tab', 'Backspace', 'Delete'];
-	return [createCreationHistory('container', (_state, view) => isActive(view) && (options.paragraphEditing?.(view) ?? true)),
+	return [quoteContentReuse, createCreationHistory('container', (_state, view) => isActive(view) && (options.paragraphEditing?.(view) ?? true)),
 		Prec.highest(keymap.of([
 			{key:'Home',run:view=>bodyHome(view,false),shift:view=>bodyHome(view,true)},
 			{key:'ArrowDown',run:view=>isActive(view) && moveAcrossCalloutGap(view,true)},

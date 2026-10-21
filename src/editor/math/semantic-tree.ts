@@ -48,12 +48,12 @@ export function mathParserMasks(state: EditorState, ranges: readonly PendingMath
 	}
 	return merged;
 }
-export function maskMathSource(source: string, masks: readonly PendingMathRange[]): string {
+export function maskMathSource(source: string, masks: readonly PendingMathRange[], fill: 'x' | ' ' = 'x'): string {
 	let result = '', from = 0;
 	for (const mask of masks) {
 		result += source.slice(from, mask.from) + source.slice(mask.from, mask.to).split('\n').map((line, index) => {
 			const prefix = index ? /^[ \t]*(?:>[ \t]*)*/u.exec(line)![0] : '';
-			return prefix + line.slice(prefix.length).replace(/[^\r]/g, 'x');
+			return prefix + line.slice(prefix.length).replace(/[^\r]/g, fill);
 		}).join('\n');
 		from = mask.to;
 	}

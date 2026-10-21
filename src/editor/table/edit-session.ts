@@ -10,6 +10,7 @@ import {quoteContainers} from '../callout/presentation-model';
 import {projectQuoteContent} from '../callout/projection';
 import {rewriteMarkdownCellContents} from './markdown-serialization';
 import {htmlBlockExtents} from './html-table-range';
+import {containerBodyContext,sameContainerBody} from '../callout/source-context';
 
 export interface TableSource {
 	readonly from: number;
@@ -38,7 +39,9 @@ export function findTableSources(source: string, tree:Tree=markdownParser.parse(
 	return tables;
 }
 
-const sourceCache=new WeakMap<Text,TableSource[]>();
+const stateSources=new WeakMap<EditorState,TableSource[]>();
+// Preserve old-state answers; only the latest ownership variant is shared by states with the same Text.
+const sourceCache=new WeakMap<Text,{context:ReturnType<typeof containerBodyContext>|null;tables:TableSource[]}>();
 function findListTableSources(state:EditorState,tree:Tree):TableSource[] {
 	const tables:TableSource[]=[];
 	tree.iterate({enter(node){
@@ -69,9 +72,18 @@ function findListTableSources(state:EditorState,tree:Tree):TableSource[] {
 }
 /** Containers contribute only source mapping; their body uses the ordinary table parser. */
 export function findEditableTableSources(state:EditorState):TableSource[] {
-	const cached=sourceCache.get(state.doc);if(cached)return cached;
-	const source=state.doc.toString(),tree=markdownParser.parse(source);
-	const tables=[...findTableSources(source,tree),...findListTableSources(state,tree)];
+	const cached=stateSources.get(state);if(cached)return cached;
+	const shared=sourceCache.get(state.doc);
+	if(shared?.context===null){stateSources.set(state,shared.tables);return shared.tables;}
+	const source=shared?undefined:state.doc.toString();
+	// Every GFM table has a literal pipe, and every HTML table has a literal opening angle bracket.
+	if(source!==undefined&&!source.includes('|')&&!source.includes('<')){
+		const tables:TableSource[]=[];sourceCache.set(state.doc,{context:null,tables});stateSources.set(state,tables);return tables;
+	}
+	const context=source!==undefined&&!source.includes('>')?null:containerBodyContext(state);
+	if(shared&&context&&sameContainerBody(shared.context,context)){stateSources.set(state,shared.tables);return shared.tables;}
+	const text=source??state.doc.toString(),tree=markdownParser.parse(text);
+	const tables=[...findTableSources(text,tree),...findListTableSources(state,tree)];
 	for(const card of quoteContainers(state)){
 		const body=projectQuoteContent(state,card.kind==='callout'?card.headerTo+1:card.from,card.to,card.depth);if(!body)continue;
 		for(const table of findTableSources(body.state.doc.toString(),syntaxTree(body.state))){
@@ -81,7 +93,7 @@ export function findEditableTableSources(state:EditorState):TableSource[] {
 			tables.push({...table,from,to,container:{kind:'quote',depth:card.depth,prefixes,rawSource:state.sliceDoc(from,to)}});
 		}
 	}
-	tables.sort((a,b)=>a.from-b.from);sourceCache.set(state.doc,tables);return tables;
+	tables.sort((a,b)=>a.from-b.from);sourceCache.set(state.doc,{context,tables});stateSources.set(state,tables);return tables;
 }
 
 export function assertTableSourceCurrent(state:EditorState,target:TableSource):void {

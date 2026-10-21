@@ -4,6 +4,10 @@ import { parser } from '@lezer/markdown';
 import type { EnhancementSettings } from '../../enhancement-settings.js';
 import { discoverParagraphAuthority } from '../paragraph/syntax.js';
 import {codeDraft} from './draft-state.js';
+import { acceptedMath, discoverMath, type MathExpression } from '../math/syntax.js';
+import { pendingMath, type PendingMathRange } from '../math/candidate-ranges.js';
+import { createRangeQuery } from '../math/range-query.js';
+import { maskMathSource } from '../math/semantic-tree.js';
 
 export type CodeBlockOptions = Pick<EnhancementSettings, 'codeWordWrap' | 'codeLineNumbers'> & Partial<Pick<EnhancementSettings, 'codeLanguagePosition'>>;
 export const codeBlockEdit = Annotation.define<boolean>();
@@ -24,13 +28,27 @@ export function isRenderedCodeLanguage(language: string): boolean {
 }
 
 const discovered = new WeakMap<Text, CodeBlock[]>();
-const owned = new WeakMap<Text, { tree: ReturnType<typeof syntaxTree>; draft:number|null; blocks: CodeBlock[] }>();
+const owned = new WeakMap<Text, { tree: ReturnType<typeof syntaxTree>; draft:number|null; draftTo:number|null; accepted: readonly MathExpression[]; pending: readonly PendingMathRange[]; blocks: CodeBlock[] }>();
+
+/** An ordinary opener preserves block separation; blank TeX rows cannot start code. */
+function codeSourceWithoutMath(doc: Text, expressions: readonly MathExpression[]): Text {
+	const masked=maskMathSource(doc.toString(),expressions,' '), parts: string[]=[];
+	let from=0;
+	for(const expression of expressions) {
+		parts.push(masked.slice(from,expression.from),'x');
+		from=expression.from+1;
+	}
+	parts.push(masked.slice(from));
+	return Text.of(parts.join('').split('\n'));
+}
 
 export function discoverCodeBlocks(state: EditorState): CodeBlock[] {
 	const tree=syntaxTree(state);
 	const draft=state.facet(codeDraft);
+	const accepted=state.facet(acceptedMath), pending=state.facet(pendingMath);
 	const cached=owned.get(state.doc);
-	if(cached?.tree===tree&&cached.draft===(draft?.from??null))return cached.blocks;
+	if(cached?.tree===tree&&cached.draft===(draft?.from??null)&&cached.draftTo===(draft?.to??null)&&cached.accepted===accepted&&cached.pending===pending)return cached.blocks;
+	const expressions=discoverMath(state), math=createRangeQuery(expressions);
 	const definitions=discoverParagraphAuthority(state).blocks.filter(block=>block.kind==='footnote-definition');
 	const hostMarkerLines = new Set<number>();
 	const hostCodeLines = new Set<number>();
@@ -42,7 +60,10 @@ export function discoverCodeBlocks(state: EditorState): CodeBlock[] {
 			/^[ \t]*(?:>[ \t]*)*(?:[-+*]|\d+[.)])[ \t]+/u.test(line.text)) hostMarkerLines.add(line.from);
 	} });
 	// Only the pending opener is literal; existing suffix blocks retain their own grammar.
-	const parsed=draft?codeBlocksIn(state.doc.replace(draft.from,draft.to,Text.of([' '.repeat(draft.to-draft.from)]))):codeBlocksIn(state.doc);
+	const source=draft?state.doc.replace(draft.from,draft.to,Text.of([' '.repeat(draft.to-draft.from)])):state.doc;
+	let parsed=codeBlocksIn(source);
+	// Reparse the exceptional overlap so genuine code after TeX retains its own extent.
+	if(parsed.some(block=>math.overlaps(block.from,block.to)))parsed=codeBlocksIn(codeSourceWithoutMath(source,expressions));
 	const blocks=parsed.flatMap(block=>{
 		if (definitions.some(definition=>block.from<=definition.to && block.to>=definition.from)) return [];
 		if (!block.indented || !hostMarkerLines.has(block.from) || hostCodeLines.has(block.from)) return [block];
@@ -94,6 +115,7 @@ export function discoverCodeBlocks(state: EditorState): CodeBlock[] {
 		const tokens = node.name.split(/[\s_]+/u);
 		if (!tokens.includes('hmd-indented-code') || tokens.includes('hmd-list-indent')) return;
 		const line = state.doc.lineAt(node.from);
+		if (math.overlaps(line.from, line.to)) return;
 		if(draft&&line.from>=draft.from&&line.from<=draft.end)return;
 		if (blocks.some(block => block.from <= line.from && line.from < block.to)) return;
 		if (definitions.some(definition => definition.from <= line.to && line.from <= definition.to)) return;
@@ -119,9 +141,9 @@ export function discoverCodeBlocks(state: EditorState): CodeBlock[] {
 		hostBlock.barAt = line.to;
 		previousNumber = number;
 	}
-	blocks.sort((left,right)=>left.from-right.from);
-	owned.set(state.doc,{tree,draft:draft?.from??null,blocks});
-	return blocks;
+	const result=blocks.filter(block=>!math.overlaps(block.from,block.to)).sort((left,right)=>left.from-right.from);
+	owned.set(state.doc,{tree,draft:draft?.from??null,draftTo:draft?.to??null,accepted,pending,blocks:result});
+	return result;
 }
 
 export function codeBlocksIn(doc: Text): CodeBlock[] {

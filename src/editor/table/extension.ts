@@ -86,8 +86,8 @@ export function createTableEditingExtension(options:TableEditingOptions):Extensi
 		const models=new Map<string,HtmlTable>();
 		if(!active)return {decorations:Decoration.none,models};const ranges:Range<Decoration>[]=[];
 		for(const table of tables){if(table.container?table.container.kind==='quote'&&!containers:table.kind!=='html')continue;
-			try{const session=new TableEditSession(table,table.to,table.kind==='html'?previous.get(table.source):undefined),edge=state.field(virtualTailState,false);
-				if(table.kind==='html')models.set(table.source,session.envelope);
+			try{const key=table.kind+':'+table.source,session=new TableEditSession(table,table.to,models.get(key)??previous.get(key)),edge=state.field(virtualTailState,false);
+				models.set(key,session.envelope);
 				const before=!!edge&&edge.side==='before'&&!table.container&&!state.sliceDoc(0,table.from).trim();
 				const after=!!edge&&edge.side!=='before'&&!table.container&&!state.sliceDoc(table.to).trim();
 				ranges.push(Decoration.replace({block:true,...(before?{inclusiveStart:false}:{}),...(after?{inclusiveEnd:false}:{}),widget:new TableWidget(session,options,containerBlockFrame(state,table.from,table.to))}).range(table.from,table.to));}
@@ -99,8 +99,9 @@ export function createTableEditingExtension(options:TableEditingOptions):Extensi
 	const field=StateField.define({
 		create(state){return {tables:findEditableTableSources(state),active:false,containers:false,decorations:Decoration.none,models:new Map<string,HtmlTable>()};},
 		update(value,tr){const active=tr.effects.find(effect=>effect.is(activation))?.value;
-			if(!tr.docChanged&&active===undefined&&!tr.reconfigured&&tr.startState.field(virtualTailState,false)===tr.state.field(virtualTailState,false))return value;
-			const tables=tr.docChanged?findEditableTableSources(tr.state):value.tables;const enabled=active?.active??value.active,containers=active?.containers??value.containers;
+			const tables=findEditableTableSources(tr.state);
+			if(tables===value.tables&&active===undefined&&!tr.reconfigured&&tr.startState.field(virtualTailState,false)===tr.state.field(virtualTailState,false))return value;
+			const enabled=active?.active??value.active,containers=active?.containers??value.containers;
 			return {tables,active:enabled,containers,...build(tr.state,tables,enabled,containers,value.models)};
 		},provide:field=>Prec.highest(EditorView.decorations.from(field,value=>value.decorations)),
 	});

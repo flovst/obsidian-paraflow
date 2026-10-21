@@ -1,10 +1,10 @@
 import { pendingMath, pendingMathAt, pendingMathRanges, type PendingMathRange } from '../math/candidate-ranges.js';
 import { defineLanguageFacet, ensureSyntaxTree, Language, languageDataProp, syntaxTree } from '@codemirror/language';
-import { EditorSelection, EditorState, Facet, type Text } from '@codemirror/state';
+import { EditorSelection, EditorState, Facet, StateField, type Text } from '@codemirror/state';
 import type { SyntaxNode, Tree } from '@lezer/common';
 import { GFM, parser } from '@lezer/markdown';
 import { paragraphProjectionField } from '../paragraph/projection.js';
-import {emptyBodies,emptyBodyState,createdBodyOwnership,createdBodyOwnershipState} from '../runtime/empty-body-state.js';
+import {emptyBodies,emptyBodyState,createdBodyOwnership,createdBodyOwnershipState,type CreatedBodyOwnership} from '../runtime/empty-body-state.js';
 import { containerListGrammar, metadataGrammar, nativeInlineGrammarFor } from '../markdown-grammar.js';
 import { hasNativeOwnership } from './syntax.js';
 import { mathSyntaxTree } from '../math/semantic-tree.js';
@@ -46,6 +46,55 @@ export interface CalloutProjection {
 const projections = new WeakMap<EditorState, Map<string, CalloutProjection | null>>();
 const sourceProjections = new WeakMap<Text, { context: ReturnType<typeof containerBodyContext>; ranges: Map<string, CalloutProjection | null> }>();
 
+interface BodyInputs {
+	readonly source: string;
+	readonly pending: readonly PendingMathRange[];
+	readonly draft: CodeDraft | null;
+	readonly quotes: readonly PendingMathRange[];
+	readonly tabs: readonly number[];
+	readonly empty: readonly number[];
+	readonly created: readonly CreatedBodyOwnership[];
+}
+interface BodyCandidate {
+	readonly from: number;
+	readonly to: number;
+	readonly depth: number;
+	readonly rowFrom: number;
+	readonly rowTo: number;
+	readonly inputs: BodyInputs;
+	readonly state: EditorState;
+}
+const bodyKey = (from: number, to: number, depth: number): string => `${from}:${to}:${depth}`;
+
+/** Retain only requested, untouched bodies; global source mappings are rebuilt by each caller. */
+export const quoteContentReuse = StateField.define<Map<string, BodyCandidate>>({
+	create: () => new Map(),
+	update(value, transaction) {
+		if (!transaction.docChanged) return value;
+		const mapped = new Map<string, BodyCandidate>();
+		for (const candidate of value.values()) {
+			if (transaction.changes.touchesRange(candidate.rowFrom, candidate.rowTo)) continue;
+			const from = transaction.changes.mapPos(candidate.from, 1), to = transaction.changes.mapPos(candidate.to, -1);
+			mapped.set(bodyKey(from, to, candidate.depth), {...candidate, from, to,
+				rowFrom: transaction.changes.mapPos(candidate.rowFrom, 1), rowTo: transaction.changes.mapPos(candidate.rowTo, -1)});
+		}
+		return mapped;
+	},
+});
+
+function sameBodyInputs(a: BodyInputs, b: BodyInputs): boolean {
+	const numbers = (left: readonly number[], right: readonly number[]) => left.length === right.length && left.every((value, index) => value === right[index]);
+	const ranges = (left: readonly PendingMathRange[], right: readonly PendingMathRange[]) => left.length === right.length &&
+		left.every((value, index) => value.from === right[index]!.from && value.to === right[index]!.to);
+	return a.source === b.source && ranges(a.pending, b.pending) && ranges(a.quotes, b.quotes) && numbers(a.tabs, b.tabs) && numbers(a.empty, b.empty) &&
+		(a.draft === b.draft || !!a.draft && !!b.draft && a.draft.from === b.draft.from && a.draft.to === b.draft.to && a.draft.end === b.draft.end && a.draft.typed === b.draft.typed) &&
+		a.created.length === b.created.length && a.created.every((value, index) => {
+			const other = b.created[index]!;
+			return value.lineFrom === other.lineFrom && value.bodyFrom === other.bodyFrom && value.ownerFrom === other.ownerFrom &&
+				value.prefix === other.prefix && value.ownerPrefix === other.ownerPrefix && value.maintenanceFrom === other.maintenanceFrom;
+		});
+}
+
 /** Closed source-row containment, including prefix positions and the final row endpoint. */
 function projectedLineAt(lines: readonly ProjectedLine[], position: number): ProjectedLine | undefined {
 	let low = 0, high = lines.length;
@@ -67,7 +116,7 @@ export function projectQuoteContent(state: EditorState, from: number, to: number
 		sourceProjections.set(state.doc, { context, ranges });
 		projections.set(state, ranges);
 	}
-	const key = `${from}:${to}:${depth}`;
+	const key = bodyKey(from, to, depth);
 	const cached = ranges.get(key);
 	if (cached !== undefined) return cached;
 	// Source and ownership facets are immutable here; host syntax progress is not an input.
@@ -118,26 +167,34 @@ function buildQuoteContent(state: EditorState, from: number, to: number, depth: 
 	let tabs=paragraphTabs.get(state.doc);
 	if(!tabs){const found=quotedTabStarts(state.sliceDoc());tabs=[...found.paragraphs,...found.blocks].sort((a,b)=>a-b);paragraphTabs.set(state.doc,tabs);}
 	const tabMasks=tabs.filter(at=>from<=at&&at<=to).map(at=>({from:toVirtual(at),to:toVirtual(at)+1,fill:' ' as const}));
-	const masks = [...codeDraftMask(source, draft), ...quotes,...tabMasks].sort((a, b) => a.from - b.from);
-	const normalized = maskCodeSource(source, masks);
-	const projectedLanguage = new Language(languageData, bodyTabParser(codeDraftParser(grammar.configure(nativeInlineGrammarFor(scanMathRanges(normalized).expressions, pending)), masks),tabMasks.map(mask=>mask.from)), [], 'paraflow-callout-content');
 	const byStart = new Map(lines.map(line => [line.from, line]));
-	const virtual = EditorState.create({ doc: source, extensions: [projectedLanguage,projectedContent.of(true),pendingMath.of(pending),codeDraft.of(draft),quoteDraftMasks.of(quotes),
-		emptyBodyState.init(()=>drafts),createdBodyOwnershipState.init(()=>createdBodyOwnership(state).flatMap(body => {
+	const created = createdBodyOwnership(state).flatMap(body => {
             const line=byStart.get(body.lineFrom);
             if(!line)return [];
             const owner=body.ownerFrom===null?null:byStart.get(body.ownerFrom);
             return [{...body,lineFrom:line.virtualFrom,bodyFrom:toVirtual(body.bodyFrom),prefix:body.prefix.slice(line.prefix.length),
                 ...(body.maintenanceFrom===undefined?{}:{maintenanceFrom:toVirtual(body.maintenanceFrom)}),
                 ownerFrom:owner?.virtualFrom??null,ownerPrefix:owner?body.ownerPrefix.slice(owner.prefix.length):''}];
-        })),paragraphProjectionField] });
-	ensureSyntaxTree(virtual, virtual.doc.length, Infinity);
-	// Publish the completed parse context before consumers read syntaxTree(state).
-	const parsed = virtual.update({}).state;
+        });
+	const inputs: BodyInputs = {source, pending, draft, quotes, tabs: tabMasks.map(mask => mask.from), empty: drafts, created};
+	const candidates = state.field(quoteContentReuse, false), key = bodyKey(from, to, depth), candidate = candidates?.get(key);
+	let parsed: EditorState;
+	if (candidate && sameBodyInputs(candidate.inputs, inputs)) parsed = candidate.state;
+	else {
+		const masks = [...codeDraftMask(source, draft), ...quotes,...tabMasks].sort((a, b) => a.from - b.from);
+		const normalized = maskCodeSource(source, masks);
+		const projectedLanguage = new Language(languageData, bodyTabParser(codeDraftParser(grammar.configure(nativeInlineGrammarFor(scanMathRanges(normalized).expressions, pending)), masks),inputs.tabs), [], 'paraflow-callout-content');
+		const virtual = EditorState.create({ doc: source, extensions: [projectedLanguage,projectedContent.of(true),pendingMath.of(pending),codeDraft.of(draft),quoteDraftMasks.of(quotes),
+			emptyBodyState.init(()=>drafts),createdBodyOwnershipState.init(()=>created),paragraphProjectionField] });
+		ensureSyntaxTree(virtual, virtual.doc.length, Infinity);
+		// Publish the completed parse context before consumers read syntaxTree(state).
+		parsed = virtual.update({}).state;
+	}
+	candidates?.set(key, {from, to, depth, rowFrom: state.doc.line(first).from, rowTo: state.doc.line(last).to, inputs, state: parsed});
 	return {
 		depth, end: to, lines, state: parsed,
 		toSource(position) {
-			const line = virtual.doc.lineAt(position);
+			const line = parsed.doc.lineAt(position);
 			const projected = lines[line.number - 1]!;
 			return projected.from + projected.prefix.length + position - line.from;
 		},
