@@ -1,5 +1,6 @@
-import { EditorSelection, Prec, Transaction, type Extension } from '@codemirror/state';
+import { Prec, type Extension } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
+import { handoffRenderedSourceGesture, isRenderedSourceGesture } from '../runtime/rendered-source-click.js';
 import { inlineSemanticConstructAt } from './inline-selection-projection.js';
 import { resolvedReferenceLinkAt, type ResolvedReferenceLink } from './literal-reference.js';
 
@@ -30,7 +31,7 @@ function destinationText(source: string, view: EditorView): string {
 }
 
 export function createLinkInteraction(options: LinkInteractionOptions): Extension {
-	const pendingClicks = new WeakMap<EditorView, ResolvedReferenceLink | null>();
+	const pendingClicks = new WeakMap<EditorView, ResolvedReferenceLink>();
 	return Prec.highest(EditorView.domEventHandlers({
 		click(event, view) {
 			if (!pendingClicks.has(view)) return false;
@@ -47,6 +48,7 @@ export function createLinkInteraction(options: LinkInteractionOptions): Extensio
 			return true;
 		},
 		mousedown(event, view) {
+			if (isRenderedSourceGesture(event)) return false;
 			pendingClicks.delete(view);
 			if (!options.isActive(view)) return false;
 			const position = view.posAtCoords({ x: event.clientX, y: event.clientY });
@@ -59,13 +61,8 @@ export function createLinkInteraction(options: LinkInteractionOptions): Extensio
 			}
 			if (!options.editLinksOnPlainClick() || !isPlainPrimaryButton(event) ||
 				(!reference && inlineSemanticConstructAt(view.state, position, 'link') === null)) return false;
-			consume(event);
-			pendingClicks.set(view, null);
-			view.focus();
-			view.dispatch({
-				annotations: Transaction.userEvent.of('select.pointer'),
-				selection: EditorSelection.cursor(position),
-			});
+			handoffRenderedSourceGesture(view, event, position,
+				() => options.isActive(view) && options.editLinksOnPlainClick());
 			return true;
 		},
 	}));

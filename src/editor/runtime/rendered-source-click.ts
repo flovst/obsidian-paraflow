@@ -13,6 +13,11 @@ interface SourceHit {
 const hits = new WeakMap<MouseEvent, SourceHit>();
 const pointerHits = new WeakMap<EditorView, SourceHit>();
 const pendingNativeClicks = new WeakSet<EditorView>();
+
+/** Source gestures must reach CM without being intercepted again by their owner. */
+export function isRenderedSourceGesture(event: MouseEvent): boolean {
+	return hits.has(event);
+}
 /** Resolve a browser text hit before a host-owned widget changes its DOM. */
 export function renderedSourceClickPosition(event: Pick<MouseEvent, 'clientX' | 'clientY'>, element: HTMLElement,
 	resolve: (node: Node, offset: number) => number | null): number | null {
