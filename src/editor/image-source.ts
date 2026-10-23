@@ -85,7 +85,8 @@ export function createImageSourceActivation(isActive: (view: EditorView) => bool
 		}
 		const observer = new win.MutationObserver(records => {
 			if (reveal && records.some(record => record.type === 'attributes' && record.target === reveal!.image)) reveal.center = null;
-			scheduleLayout();
+			// Adopt the native replacement before it can paint at tooltip geometry.
+			layout();
 		});
 		observer.observe(view.dom, { childList: true, subtree: true, attributes: true, attributeFilter: ['width', 'height', 'src'] });
 		view.dom.addEventListener('load', scheduleLayout, true);

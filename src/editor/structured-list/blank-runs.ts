@@ -126,7 +126,9 @@ export function sourceListBlankRuns(analysis: Pick<SourceAnalysis, 'items' | 'li
 		const selected = ownerFor(lines);
 		if (lines.every(line=>line.createdEmptyBody)) return [];
 		const first = lines[0]!, last = lines.at(-1)!;
-		if (!selected || first.from === 0 || !(selected.to > last.to || markerStarts.has(last.to + 1))) return [];
+		if (!selected || first.from === 0) return [];
+		const externalSeparator = selected.to === last.to && last.newlineTo < analysis.source.length;
+		if (!(selected.to > last.to || markerStarts.has(last.to + 1) || externalSeparator)) return [];
 		const owner = selected.item;
 		return [{ownerFrom:owner.line.from,run:runFor(lines.map(line => ({
 			depth:owner.depth,kind:'blank',ownerKind:owner.block.prefix.kind,

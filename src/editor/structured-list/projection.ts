@@ -21,6 +21,7 @@ import { buildProjectionContexts } from './context.js';
 import { structuralEditAnnotation } from './edit-plan.js';
 import { listBlankRuns, mapListBlankRuns, type ListBlankRun } from './blank-runs.js';
 import { createListEmptyBodyState } from './empty-body-state.js';
+import { emptyBodyState, createdBodyOwnershipState } from '../runtime/empty-body-state.js';
 import {
 	markerForProjection,
 	StructuredListMarkerWidget,
@@ -646,6 +647,10 @@ function classifyNonDocumentProjectionUpdate(
 	cachedOldAuthority: ProjectionAuthority | null,
 	invalidation: ProjectionInvalidation,
 ): ProjectionUpdateDecision {
+	if (transaction.startState.field(emptyBodyState, false) !== transaction.state.field(emptyBodyState, false) ||
+		transaction.startState.field(createdBodyOwnershipState, false) !== transaction.state.field(createdBodyOwnershipState, false)) {
+		return { analysis: projectionAnalysis(transaction.state), invalidation: { kind: 'rebuild-all' } };
+	}
 	if (!cachedOldAuthority) return { analysis: null, invalidation };
 	const currentSyntax = projectionSyntaxAuthority(transaction.state);
 	if (sameSyntaxAuthority(cachedOldAuthority.syntax, currentSyntax)) {

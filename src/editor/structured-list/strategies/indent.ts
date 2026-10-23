@@ -340,10 +340,15 @@ function topLevelBoundaryFragments(
 	execution: ExecutionFor<'shift-tab'>,
 	indexes: ReturnType<typeof topLevelBoundaryIndexes>,
 ): { readonly after: readonly EditPlanFragment[]; readonly before: readonly EditPlanFragment[] } {
-	const count = topLevelAfterCount(execution.context);
+	const { context } = execution;
+	const count = topLevelAfterCount(context);
+	const precedingStart = context.source.text.lastIndexOf('\n', context.current.lineFrom - 2) + 1;
+	// HyperMD can include the existing separator in the preceding item's range.
+	const precedingBlank = context.current.lineFrom > 0 &&
+		/^[ \t]*$/u.test(context.source.text.slice(precedingStart, context.current.lineFrom - 1));
 	return {
 		after: count === 0 ? [] : [addedBoundaryNewline(execution, indexes.after, count)],
-		before: indexes.before === null ? [] : [addedBoundaryNewline(execution, indexes.before)],
+		before: indexes.before === null || precedingBlank ? [] : [addedBoundaryNewline(execution, indexes.before)],
 	};
 }
 

@@ -44,10 +44,17 @@ export const virtualTailState = StateField.define<VirtualTail|null>({
 export function isVirtualEdgeActive(state:EditorState):boolean {return !!state.field(virtualTailState,false);}
 export function isVirtualTailActive(state:EditorState):boolean {return state.selection.main.empty&&isVirtualEdgeActive(state);}
 
+function terminalNewlineStart(state:EditorState):number {return state.doc.length-state.sliceDoc().match(/\n*$/u)![0].length;}
+
 /** Only root separator rows belong to the tail; block-internal blanks remain source. */
 export function documentContentEnd(state:EditorState):number {
 	if(codeBlocksIn(state.doc).some(block=>!block.indented&&!block.closed&&block.to===state.doc.length)&&!state.facet(codeDraft)?.typed)return state.doc.length;
-	return state.doc.length-(state.sliceDoc().match(/\n[ \t\n]*$/u)?.[0].length??0);
+	const length=state.doc.length,newlines=length-terminalNewlineStart(state);
+	if(newlines===length)return length;
+	// Earlier pairs are real empty paragraphs. The final gap also owns its odd folded LF.
+	const from=length-Math.min(newlines,newlines%2===1?3:2);
+	const anchors=getParagraphProjectionState(state)?.rangeIndex.editableAnchors.filter(at=>from<at&&at<length);
+	return anchors?.at(-1)??from;
 }
 
 export function documentContentStart(state:EditorState):number {return state.sliceDoc().match(/^[ \t]*\n(?:[ \t]*\n)*/u)?.[0].length??0;}
@@ -63,7 +70,8 @@ function materializeTail(state:EditorState,text:string):TransactionSpec {
 /** The selection remains a legal source position; the effect owns its distinct visual meaning. */
 export function enterVirtualTail(state:EditorState,options:Partial<VirtualTail>&{anchor?:number}={}):TransactionSpec {
 	const side=options.side??'after',projection=getParagraphProjectionState(state);
-	const real=projection?.rangeIndex.editableAnchors.filter(at=>side==='before'?at<documentContentStart(state):at>documentContentEnd(state)&&at<state.doc.length);
+	const trailingStart=terminalNewlineStart(state);
+	const real=projection?.rangeIndex.editableAnchors.filter(at=>side==='before'?at<documentContentStart(state):at>trailingStart&&at>state.selection.main.head&&at<state.doc.length);
 	const position=real?.length?(side==='before'?real[0]!:real.at(-1)!):side==='before'?0:state.doc.length;
 	const selection=options.anchor===undefined?EditorSelection.create([EditorSelection.cursor(position,side==='before'?-1:1,undefined,options.goalColumn)]):EditorSelection.single(options.anchor,position);
 	if(real?.length)return {selection,effects:setVirtualTail.of(null),annotations:selectionModeAnnotation.of('normal'),userEvent:'move.line',scrollIntoView:true};
@@ -118,8 +126,7 @@ const tailDecoration=StateField.define({
 		const end=tr.newDoc.length,contentEnd=documentContentEnd(tr.state),start=documentContentStart(tr.state),edge=tr.state.field(virtualTailState);
 		const blocks=getParagraphProjectionState(tr.state)?.authority.blocks;
 		const codes=codeBlocksIn(tr.newDoc),beforeTag=codes.some(block=>block.from===start)?'code-block':paragraphBoundaryTag(blocks?.[0]),afterTag=codes.some(block=>block.to===contentEnd)?'code-block':paragraphBoundaryTag(blocks?.at(-1));
-		const head=tr.state.selection.main.head,editingBlank=!isVirtualTailActive(tr.state)&&head>contentEnd&&head<end;
-		const ranges=contentEnd<end&&!editingBlank?[Decoration.replace({block:true,inclusiveStart:false,inclusiveEnd:false}).range(contentEnd,end)]:[];
+		const ranges=contentEnd<end?[Decoration.replace({block:true,inclusiveStart:false,inclusiveEnd:false}).range(contentEnd,end)]:[];
 		if(edge?.side==='before'&&start)ranges.push(Decoration.replace({block:true,inclusiveStart:false,inclusiveEnd:false}).range(0,start));
 		// Block endings at EOF use side 1; the outside paragraph follows those surfaces.
 		ranges.push(Decoration.widget({widget:new TailWidget(!!edge&&edge.side!=='before',getDrawSelectionConfig(tr.state).cursorBlinkRate!,'after',afterTag),block:true,side:2}).range(end));
@@ -162,7 +169,7 @@ const nativeTailInput=Prec.highest(EditorView.inputHandler.of((view,_from,_to,te
 		userEvent:native.annotation(Transaction.userEvent)??'input.type',annotations:isolateHistory.of('before'),scrollIntoView:true});
 	return true;
 }));
-const compositionTails=new WeakMap<EditorView,{doc:Text;tail:VirtualTail;appendOnly:boolean}>();
+const compositionTails=new WeakMap<EditorView,{doc:Text;tail:VirtualTail;appendOnly:boolean;from:number}>();
 function commitCompositionHead(view:EditorView):void {
 	const session=compositionTails.get(view);
 	if(session?.tail.side!=='before')return;
@@ -180,7 +187,7 @@ function prepareCompositionTail(view:EditorView):void {
 	if(!tail||!view.state.selection.main.empty||!enabled(view))return;
 	const before=tail.side==='before';
 	const from=before?0:documentContentEnd(view.state),suffix=before?view.state.sliceDoc(0,documentContentStart(view.state)):view.state.sliceDoc(from),appendOnly=!before&&/^\n*$/u.test(suffix)&&suffix.length<=(from?4:2);
-	compositionTails.set(view,{doc:view.state.doc,tail,appendOnly});
+	compositionTails.set(view,{doc:view.state.doc,tail,appendOnly,from});
 	const prepared=before?{changes:{from:0,insert:firstBlankRowLength(view.state.doc)?'\n':'\n\n'},selection:{anchor:0}}:appendOnly?{changes:{from:view.state.doc.length,insert:'\n'.repeat((from?4:2)-suffix.length)},selection:{anchor:from+(from?2:0)}}:materializeTail(view.state,'');
 	view.dispatch({...prepared,effects:[setVirtualTail.of(null),prepareTailComposition.of(true)],
 		userEvent:'input.type.compose',annotations:isolateHistory.of('before'),scrollIntoView:true});
@@ -198,13 +205,13 @@ const compositionTailInput=Prec.highest(EditorView.domEventHandlers({composition
 	const session=compositionTails.get(view);compositionTails.delete(view);
 	if(session&&!event.data)queueMicrotask(()=>{
 		if(!view.plugin(tailView)||view.compositionStarted)return;
-		const {doc,tail,appendOnly}=session;
+		const {doc,tail,appendOnly,from}=session;
 		if(tail.side==='before'){
 			const count=firstBlankRowLength(doc)?1:2;
 			if(view.state.doc.toString()!=='\n'.repeat(count)+doc.toString())return;
 			view.dispatch({changes:{from:0,to:count},selection:{anchor:0},effects:[setVirtualTail.of(tail),prepareTailComposition.of(false)],annotations:Transaction.addToHistory.of(false)});return;
 		}
-		const from=doc.length-(doc.toString().match(/\n[ \t\n]*$/u)?.[0].length??0),expected=doc.sliceString(0,from)+(from?'\n\n':'')+'\n\n';
+		const expected=doc.sliceString(0,from)+(from?'\n\n':'')+'\n\n';
 		if(view.state.doc.toString()!==expected)return;
 		view.dispatch({changes:appendOnly?{from:doc.length,to:view.state.doc.length}:{from,to:view.state.doc.length,insert:doc.sliceString(from)},selection:{anchor:doc.length},effects:[setVirtualTail.of(tail),prepareTailComposition.of(false)],annotations:Transaction.addToHistory.of(false)});
 	});
@@ -275,16 +282,17 @@ const tailView=ViewPlugin.define(view=>{
 		if(update.docChanged||update.selectionSet||update.viewportChanged||update.geometryChanged||update.transactions.some(tr=>tr.effects.length)||update.startState.field(virtualTailState)!==view.state.field(virtualTailState)||update.startState.field(tailEnabled)!==view.state.field(tailEnabled))view.requestMeasure({key:'paraflow-edge-carriers',read:()=>{
 			if(destroyed)return [];
 			const tail=view.state.field(virtualTailState),start=documentContentStart(view.state),end=documentContentEnd(view.state);
-			const head=view.state.selection.main.head,length=view.state.doc.length;
+			const length=view.state.doc.length;
+			const retainedEnd=end<length&&end>terminalNewlineStart(view.state);
 			// An unfinished code block's empty final line remains an ordinary source destination.
 			const internalEmptyEnd=end===length&&view.state.doc.lineAt(length).length===0;
-			const ownsEnd=view.state.field(tailEnabled)&&length>0&&!internalEmptyEnd&&!(!tail&&head>end&&head<length);
+			const ownsEnd=view.state.field(tailEnabled)&&length>0&&!internalEmptyEnd;
 			let neighbor=false;
 			return Array.from(view.contentDOM.children).map(node=>{
 				const row=node as HTMLElement;
 				const eligible=!row.textContent&&(row.classList.contains('cm-line')||row.classList.contains('paraflow-block-boundary-gap'));
 				const at=eligible?view.posAtDOM(row):0;
-				const collapse=eligible&&((tail?.side==='before'&&at<=start)||(ownsEnd&&at>=end));
+				const collapse=eligible&&((tail?.side==='before'&&at<=start)||(ownsEnd&&at>=end&&!(retainedEnd&&at===end)));
 				const first=tail?.side==='before'&&!neighbor&&!collapse&&!row.matches('.paraflow-virtual-head,.paraflow-virtual-tail')&&row.getBoundingClientRect().height>0;
 				if(first)neighbor=true;
 				return {row,collapse,first};

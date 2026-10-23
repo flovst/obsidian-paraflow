@@ -215,33 +215,34 @@ export function createVisualNavigationAdapter(view: EditorView): VisualNavigatio
 			let coordinates = view.coordsAtPos(candidate.position, candidate.assoc < 0 ? -1 : 1);
 			let crossedHiddenCarrier = false;
 			const atomicBoundary = (point: VisualPosition) => {
-                let touches = false, inside = false;
-                for (const read of view.state.facet(EditorView.atomicRanges)) {
-                    read(view).between(point.position, point.position, (from, to) => {
-                        if (from === to) return;
-                        touches = true;
-                        if (forward ? from <= point.position && point.position < to : from < point.position && point.position <= to) inside = true;
-                    });
-                }
-                return {touches, inside};
-            };
-            // Prefix widgets may expose their block box instead of the adjacent text row.
-            for (;;) {
-                const boundary = atomicBoundary(candidate);
-                if (boundary.touches && !boundary.inside) {
-                    candidate = {...candidate, assoc: forward ? 1 : -1};
-                    coordinates = view.coordsAtPos(candidate.position, forward ? 1 : -1);
-                    crossedHiddenCarrier = true;
-                    break;
-                }
-                if (!coordinates || (coordinates.top < coordinates.bottom && !boundary.inside)) break;
-                const next = point(view.moveByChar(cursor(candidate), forward));
-                if (next.position === candidate.position) break;
-                candidate = next;
-                coordinates = view.coordsAtPos(candidate.position, candidate.assoc < 0 ? -1 : 1);
-                crossedHiddenCarrier = true;
-            }
-            if (crossedHiddenCarrier && coordinates && coordinates.top < coordinates.bottom) {
+				let touches = false, inside = false;
+				for (const read of view.state.facet(EditorView.atomicRanges)) {
+					read(view).between(point.position, point.position, (from, to) => {
+						if (from === to) return;
+						touches = true;
+						// A prefix's outer endpoint can be the visible editable body start.
+						if (from < point.position && point.position < to) inside = true;
+					});
+				}
+				return {touches, inside};
+			};
+			// Prefix widgets may expose their block box instead of the adjacent text row.
+			for (;;) {
+				const boundary = atomicBoundary(candidate);
+				if (boundary.touches && !boundary.inside) {
+					candidate = {...candidate, assoc: forward ? 1 : -1};
+					coordinates = view.coordsAtPos(candidate.position, forward ? 1 : -1);
+					crossedHiddenCarrier = true;
+					if (coordinates && coordinates.top < coordinates.bottom) break;
+				}
+				if (!coordinates || (coordinates.top < coordinates.bottom && !boundary.inside)) break;
+				const next = point(view.moveByChar(cursor(candidate), forward));
+				if (next.position === candidate.position) break;
+				candidate = next;
+				coordinates = view.coordsAtPos(candidate.position, candidate.assoc < 0 ? -1 : 1);
+				crossedHiddenCarrier = true;
+			}
+			if (crossedHiddenCarrier && coordinates && coordinates.top < coordinates.bottom) {
 				return this.alignGoalOnVisualLine!(candidate, goalX);
 			}
 			return coordinates ? renderedHit({ x: view.contentDOM.getBoundingClientRect().left + goalX,

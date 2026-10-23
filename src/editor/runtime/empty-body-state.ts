@@ -97,6 +97,19 @@ function mapOwnership(record:CreatedBodyOwnership,changes:ChangeDesc):CreatedBod
  return {lineFrom,bodyFrom,ownerFrom,prefix:record.prefix,ownerPrefix:record.ownerPrefix,
   ...(maintenanceFrom===null?{}:{maintenanceFrom})};
 }
+
+const ownerMarker = /^([ \t]*(?:>[ \t]*)*)(?:[-+*]|\d+[.)])[ \t]+/u;
+
+function mapSplitOwner(record: CreatedBodyOwnership, mapped: CreatedBodyOwnership, transaction: Transaction): CreatedBodyOwnership {
+ if (record.ownerFrom === null) return mapped;
+ const before = transaction.startState.doc.lineAt(record.ownerFrom);
+ const after = transaction.newDoc.lineAt(transaction.changes.mapPos(before.to, 1));
+ if (after.from === mapped.ownerFrom || after.from >= mapped.lineFrom) return mapped;
+ const marker = ownerMarker.exec(after.text);
+ // A split transfers the following bodies to the marker carrying the original suffix.
+ if (!marker || marker[1] !== ownerMarker.exec(before.text)?.[1]) return mapped;
+ return { ...mapped, ownerFrom: after.from, ownerPrefix: marker[0] };
+}
 const restoreOwnership = StateEffect.define<readonly CreatedBodyOwnership[]>({
  map:(records,changes)=>records.flatMap(record=>{const mapped=mapOwnership(record,changes);return mapped?[mapped]:[];}),
 });
@@ -107,14 +120,15 @@ export const createdBodyOwnershipState = StateField.define<readonly CreatedBodyO
   if (!tr.docChanged && !tr.effects.some(effect=>effect.is(restoreOwnership)||effect.is(registerEmptyBody)))return value;
   let records:CreatedBodyOwnership[]=value.flatMap(record=>{
    if (externallyReplacesBody(tr, record.lineFrom)) return [];
-   const mapped=mapOwnership(record,tr.changes);
-   if(!mapped)return [];
+   const positions=mapOwnership(record,tr.changes);
+   if(!positions)return [];
+   const mapped=mapSplitOwner(record,positions,tr);
    const {lineFrom,bodyFrom,ownerFrom}=mapped;
    const marker=mapped.maintenanceFrom;
    const maintenanceFrom=marker!==undefined&&tr.newDoc.sliceString(marker,marker+1)==='\u200b'?marker:undefined;
    const line=tr.newDoc.lineAt(lineFrom),owner=ownerFrom===null?null:tr.newDoc.lineAt(ownerFrom);
-   return line.from===lineFrom&&tr.newDoc.sliceString(lineFrom,bodyFrom)===record.prefix&&(owner===null||(owner.from===ownerFrom&&owner.text.startsWith(record.ownerPrefix)))
-    ? [{lineFrom,bodyFrom,ownerFrom,prefix:record.prefix,ownerPrefix:record.ownerPrefix,
+   return line.from===lineFrom&&tr.newDoc.sliceString(lineFrom,bodyFrom)===mapped.prefix&&(owner===null||(owner.from===ownerFrom&&owner.text.startsWith(mapped.ownerPrefix)))
+    ? [{lineFrom,bodyFrom,ownerFrom,prefix:mapped.prefix,ownerPrefix:mapped.ownerPrefix,
        ...(maintenanceFrom===undefined?{}:{maintenanceFrom})}] : [];
   });
   for(const effect of tr.effects)if(effect.is(restoreOwnership))records=[...effect.value];
@@ -134,7 +148,7 @@ export const createdBodyOwnershipState = StateField.define<readonly CreatedBodyO
    let owner:CreatedBodyOwnership={lineFrom:line.from,bodyFrom:line.to,ownerFrom:null,prefix,ownerPrefix:''};
    for(let number=line.number-1;number>=1;number--) {
     const candidate=tr.newDoc.line(number);
-    const marker=/^([ \t]*(?:>[ \t]*)*)(?:[-+*]|\d+[.)])[ \t]+/u.exec(candidate.text);
+    const marker=ownerMarker.exec(candidate.text);
     if(!marker) {
      if(candidate.text.trim() && markdownColumns(/^[ \t]*(?:>[ \t]*)*/u.exec(candidate.text)![0]) <= markdownColumns(prefix))break;
      continue;

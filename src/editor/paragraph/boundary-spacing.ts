@@ -2,6 +2,7 @@ import { Facet, Prec, StateField, type EditorState, type Extension, type Range }
 import { Decoration, EditorView, WidgetType, type DecorationSet } from '@codemirror/view';
 import { paragraphBoundaryTag } from './model.js';
 import { requireParagraphProjectionState, type ParagraphProjectionState } from './projection.js';
+import { getStructuredListProjectionState, getStructuredListSelectionTransparentRanges, type StructuredListProjectionState } from '../structured-list/projection.js';
 
 export const blockBoundarySpacingActive = Facet.define<boolean, boolean>({ combine: values => values.some(Boolean) });
 
@@ -22,11 +23,13 @@ class BlockBoundaryGap extends WidgetType {
 function build(state: EditorState, projection: ParagraphProjectionState): DecorationSet {
 	const ranges: Range<Decoration>[] = [];
 	const blocks = projection.authority.blocks;
+	const listGapEnds = new Set(getStructuredListSelectionTransparentRanges(state).map(range => range.to));
 	for (let index = 1; index < blocks.length; index += 1) {
 		const before = blocks[index - 1]!;
 		const after = blocks[index]!;
 		// Sibling items share list rhythm. Actual blank runs already have a gap owner.
 		if (before.kind === 'list-item' && after.kind === 'list-item') continue;
+		if (listGapEnds.has(after.from)) continue;
 		if (state.sliceDoc(before.to, after.from) !== '\n') continue;
 		ranges.push(Decoration.widget({
 			block: true, side: -1,
@@ -47,19 +50,22 @@ function build(state: EditorState, projection: ParagraphProjectionState): Decora
 export function createBlockBoundarySpacing(isActive: (state: EditorState) => boolean): Extension {
 	const field = StateField.define<{
 		projection: ParagraphProjectionState;
+		listProjection: StructuredListProjectionState | null;
 		active: boolean;
 		decorations: DecorationSet;
 	}>({
 		create(state) {
 			const projection = requireParagraphProjectionState(state);
+			const listProjection = getStructuredListProjectionState(state);
 			const active = isActive(state);
-			return { projection, active, decorations: active ? build(state, projection) : Decoration.none };
+			return { projection, listProjection, active, decorations: active ? build(state, projection) : Decoration.none };
 		},
 		update(value, tr) {
 			const projection = requireParagraphProjectionState(tr.state);
+			const listProjection = getStructuredListProjectionState(tr.state);
 			const active = isActive(tr.state);
-			return projection === value.projection && active === value.active ? value : {
-				projection, active, decorations: active ? build(tr.state, projection) : Decoration.none,
+			return projection === value.projection && listProjection === value.listProjection && active === value.active ? value : {
+				projection, listProjection, active, decorations: active ? build(tr.state, projection) : Decoration.none,
 			};
 		},
 		provide: value => [EditorView.decorations.from(value, state => state.decorations),
