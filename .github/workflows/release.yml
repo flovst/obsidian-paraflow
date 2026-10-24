@@ -1,0 +1,76 @@
+name: Release Obsidian plugin
+
+on:
+    push:
+        tags:
+            - '*'
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+            id-token: write
+            attestations: write
+        steps:
+            - uses: actions/checkout@v6
+
+            - name: Use Node.js
+              uses: actions/setup-node@v6
+              with:
+                  node-version: 24
+                  cache: 'npm'
+
+            - name: Validate release tag
+              shell: bash
+              run: |
+                  tag="${GITHUB_REF#refs/tags/}"
+                  version="$(node -p "JSON.parse(require('fs').readFileSync('manifest.json', 'utf8')).version")"
+
+                  if [[ "$tag" != "$version" ]]; then
+                    echo "Release tag '$tag' must match manifest version '$version'." >&2
+                    exit 1
+                  fi
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Lint plugin
+              run: npm run lint
+
+            - name: Build plugin
+              run: npm run build
+
+            - name: Package showcase vault
+              run: node .github/package-showcase.mjs
+
+            - name: Attest required plugin assets
+              uses: actions/attest@v4
+              with:
+                  subject-path: |
+                      main.js
+                      manifest.json
+                      dist/showcase-paraflow-*.zip
+
+            - name: Attest optional styles
+              if: ${{ hashFiles('styles.css') != '' }}
+              uses: actions/attest@v4
+              with:
+                  subject-path: styles.css
+
+            - name: Create draft release
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              shell: bash
+              run: |
+                  tag="${GITHUB_REF#refs/tags/}"
+                  assets=(main.js manifest.json "dist/showcase-paraflow-$tag.zip")
+
+                  if [[ -f styles.css ]]; then
+                    assets+=(styles.css)
+                  fi
+
+                  gh release create "$tag" \
+                    --title="$tag" \
+                    --draft \
+                    "${assets[@]}"

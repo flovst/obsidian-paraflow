@@ -8,6 +8,7 @@ export default defineConfig(
 		'.local/**',
 		'dist',
 		'esbuild.config.mjs',
+		'.github/package-showcase.mjs',
 		'version-bump.mjs',
 		'versions.json',
 		'main.js',
@@ -33,6 +34,7 @@ export default defineConfig(
 		},
 	},
 	...obsidianmd.configs.recommended,
+
 	{
 		files: ['src/settings-tab.ts', 'src/themes/import-modal.ts'],
 		rules: { 'obsidianmd/ui/sentence-case': ['warn', { enforceCamelCaseLower: true, brands: ['Typora', 'ParaFlow', 'Obsidian', 'Markdown'], ignoreWords: ['ZIP'] }] },
