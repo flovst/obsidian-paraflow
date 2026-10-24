@@ -1,0 +1,1675 @@
+[
+  {
+    "file": "newsprint.css",
+    "line": 3,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported @include-when-export; no global rule emitted"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 8,
+    "surface": "shared",
+    "status": "approximate",
+    "reason": "Content scope normalization preserves rule/declaration order, but removed html/body/#write selector specificity may differ"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 8,
+    "surface": "shared",
+    "status": "mapped",
+    "reason": "Font registration namespaced to this theme"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 16,
+    "surface": "shared",
+    "status": "mapped",
+    "reason": "Font registration namespaced to this theme"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 24,
+    "surface": "shared",
+    "status": "mapped",
+    "reason": "Font registration namespaced to this theme"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 32,
+    "surface": "shared",
+    "status": "mapped",
+    "reason": "Font registration namespaced to this theme"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 40,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 40,
+    "surface": "live-preview",
+    "status": "mapped",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 53,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 53,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 60,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported property -webkit-font-smoothing"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 63,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 63,
+    "surface": "live-preview",
+    "status": "mapped",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 63,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 63,
+    "surface": "live-preview",
+    "status": "mapped",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 95,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "List geometry or marker removal rejected: list-style-type"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 96,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "List geometry or marker removal rejected: list-style-position"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 100,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "List geometry or marker removal rejected: list-style-position"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 98,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 98,
+    "surface": "shared",
+    "status": "approximate",
+    "reason": "Marker appearance applied through the shared ParaFlow marker interface"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 105,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "List geometry or marker removal rejected: list-style"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 105,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "List geometry or marker removal rejected: list-style"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 110,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported property quotes"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 110,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported property quotes"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 112,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: blockquote:before"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 113,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: blockquote:after"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 114,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: q:before"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 115,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: q:after"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 119,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 119,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 129,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 129,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 130,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 130,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 131,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 131,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 132,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 132,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 133,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 133,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 134,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 134,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 142,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview h1 layout property margin-top is not transferred"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 137,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 137,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 150,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview h2 layout property margin-top is not transferred"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 152,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview h2 layout property margin-bottom is not transferred"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 144,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 144,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 150,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview h3 layout property margin-top is not transferred"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 152,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview h3 layout property margin-bottom is not transferred"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 145,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 145,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 155,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 155,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 161,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview h4 layout property margin-top is not transferred"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 158,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 158,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 164,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 164,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 165,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 165,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 171,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview h1 layout property margin-bottom is not transferred"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 169,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 169,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 176,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 176,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 180,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 180,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 181,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 181,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 186,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 189,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview blockquote layout property margin-bottom is not transferred"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 187,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 187,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "No equivalent Live Preview selector; Reading mapping retained"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 188,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 197,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview h1 layout property margin-bottom is not transferred"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 191,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 197,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview h2 layout property margin-bottom is not transferred"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 192,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 197,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview h3 layout property margin-bottom is not transferred"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 193,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 197,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview h4 layout property margin-bottom is not transferred"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 194,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 197,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview h5 layout property margin-bottom is not transferred"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 195,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 197,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview h6 layout property margin-bottom is not transferred"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 196,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 204,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview blockquote layout property margin-left is not transferred"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 205,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview blockquote layout property padding-left is not transferred"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 201,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 201,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 211,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "List geometry or marker removal rejected: margin"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 211,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "List geometry or marker removal rejected: margin"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 214,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .md-meta"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 214,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .md-before"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 214,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .md-after"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 218,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 218,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 224,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 224,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 225,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 225,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 229,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 229,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 232,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 232,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 237,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 237,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 238,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 243,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview code layout property padding-left is not transferred"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 244,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview code layout property padding-right is not transferred"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 242,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 247,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 254,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 254,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 255,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 255,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 256,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 256,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "No equivalent Live Preview selector; Reading mapping retained"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 265,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview h1 layout property margin-bottom is not transferred"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 262,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 262,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 270,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "List geometry or marker removal rejected: margin-top"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 270,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "List geometry or marker removal rejected: margin-top"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 281,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "List geometry or marker removal rejected: margin-top"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 281,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "List geometry or marker removal rejected: margin-top"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 281,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "List geometry or marker removal rejected: margin-top"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 281,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "List geometry or marker removal rejected: margin-top"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 281,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "List geometry or marker removal rejected: margin-top"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 281,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "List geometry or marker removal rejected: margin-top"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 281,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "List geometry or marker removal rejected: margin-top"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 281,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "List geometry or marker removal rejected: margin-top"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 286,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "List geometry or marker removal rejected: margin-top"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 287,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "List geometry or marker removal rejected: margin-bottom"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 286,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "List geometry or marker removal rejected: margin-top"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 287,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "List geometry or marker removal rejected: margin-bottom"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 291,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "List geometry or marker removal rejected: list-style-type"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 295,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "List geometry or marker removal rejected: list-style-type"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 300,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview h2 layout property margin-bottom is not transferred"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 298,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 300,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview h3 layout property margin-bottom is not transferred"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 299,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 302,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 302,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 308,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 308,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 311,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 311,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 318,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "List geometry or marker removal rejected: margin-left"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 318,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "List geometry or marker removal rejected: margin-left"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 321,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .ty-table-edit"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 324,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 324,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 327,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 327,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 330,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 330,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 333,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .task-list"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 337,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .md-task-list-item"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 342,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .md-task-list-item>input:before"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 353,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .md-task-list-item>input:checked:before"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 354,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .md-task-list-item>input[checked]:before"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 359,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Metadata container paint and layout are outside the font-only mapping"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 360,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Metadata container paint and layout are outside the font-only mapping"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 361,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Metadata container paint and layout are outside the font-only mapping"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 362,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Metadata container paint and layout are outside the font-only mapping"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 363,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Metadata container paint and layout are outside the font-only mapping"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 364,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Metadata container paint and layout are outside the font-only mapping"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 365,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Metadata container paint and layout are outside the font-only mapping"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 368,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .md-image>.md-meta"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 372,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .md-image>.md-meta"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 377,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #write>h3.md-focus:before"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 382,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #write>h4.md-focus:before"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 388,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #write>h5.md-focus:before"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 394,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #write>h6.md-focus:before"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 401,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .md-toc:focus .md-toc-content"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 405,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .md-toc-content:empty:before"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 408,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .md-toc-item"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 411,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #write div.md-toc-tooltip"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 415,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #typora-sidebar"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 421,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .pin-outline #typora-sidebar"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 427,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .pin-outline #typora-sidebar:hover .outline-title-wrapper"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 431,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .outline-item:hover"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 437,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .typora-node .outline-item:hover"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 441,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .outline-expander:before"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 448,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .outline-expander:hover:before"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 449,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .outline-item-open>.outline-item>.outline-expander:before"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 453,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .modal-content"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 457,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .auto-suggest-container ul li"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 463,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .megamenu-menu"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 464,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #top-titlebar"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 464,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #top-titlebar *"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 465,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .megamenu-content"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 470,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .megamenu-menu-header"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 474,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .megamenu-menu"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 479,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: header"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 479,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .context-menu"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 479,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .megamenu-content"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 479,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: footer"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 484,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #megamenu-back-btn"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 489,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .megamenu-menu-header #megamenu-menu-header-title:before"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 493,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .megamenu-menu-list li a:hover"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 493,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .megamenu-menu-list li a.active"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 498,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .long-btn:hover"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 502,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #recent-file-panel tbody tr:nth-child(2n-1)"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 506,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .megamenu-menu-panel tbody tr:hover td:nth-child(2)"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 510,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .megamenu-menu-panel .btn"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 514,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .btn-default"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 518,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .typora-sourceview-on #toggle-sourceview-btn"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 519,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .ty-show-word-count #footer-word-count"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 523,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #typora-quick-open"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 527,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .md-diagram-panel"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 531,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .file-list-item-file-name"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 535,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .file-list-item-summary"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 539,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .file-list-item"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 543,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .file-list-item.active"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 548,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .ty-side-sort-btn.active"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 552,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .file-list-item.active .file-list-item-file-name"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 556,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .file-list-item"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 560,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .file-library-node.active>.file-node-background"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 565,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .file-tree-node.active>.file-node-content"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 570,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .md-task-list-item>input"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 576,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: input"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 580,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .megamenu-menu-header #megamenu-menu-header-title"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 581,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .megamenu-menu-header:hover"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 582,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .megamenu-menu-header:focus"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 586,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .dropdown-menu .divider"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 592,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .os-windows-7 strong"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 593,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .os-windows-7 strong"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 597,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .ty-preferences .btn-default"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 601,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .ty-preferences .window-header"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 606,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #sidebar-loading-template"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 606,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #sidebar-loading-template.file-list-item"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 610,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .searchpanel-search-option-btn.active"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 615,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .export-detail"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 615,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .light .export-detail"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 616,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .light .export-item.active"
+  },
+  {
+    "file": "newsprint.css",
+    "line": 617,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .light .export-items-list-control"
+  }
+]

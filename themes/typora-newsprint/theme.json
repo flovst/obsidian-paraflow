@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "imported-typora-newsprint",
+  "name": "Typora Newsprint",
+  "origin": "imported",
+  "colorScheme": "light",
+  "converterVersion": "7",
+  "sourceEntry": "newsprint.css",
+  "sourceVersion": "1.9.5"
+}

@@ -1,0 +1,3110 @@
+[
+  {
+    "file": "night/mermaid.dark.css",
+    "line": 1,
+    "surface": "shared",
+    "status": "approximate",
+    "reason": "Content scope normalization preserves rule/declaration order, but removed html/body/#write selector specificity may differ"
+  },
+  {
+    "file": "night/mermaid.dark.css",
+    "line": 1,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night/mermaid.dark.css",
+    "line": 1,
+    "surface": "live-preview",
+    "status": "mapped",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night/mermaid.dark.css",
+    "line": 5,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: [lang=\"mermaid\"] .label"
+  },
+  {
+    "file": "night/codeblock.dark.css",
+    "line": 6,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .cm-s-inner .cm-variable"
+  },
+  {
+    "file": "night/codeblock.dark.css",
+    "line": 7,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .cm-s-inner .cm-operator"
+  },
+  {
+    "file": "night/codeblock.dark.css",
+    "line": 8,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .cm-s-inner .cm-property"
+  },
+  {
+    "file": "night/codeblock.dark.css",
+    "line": 12,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .cm-s-inner .cm-keyword"
+  },
+  {
+    "file": "night/codeblock.dark.css",
+    "line": 16,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .cm-s-inner .cm-tag"
+  },
+  {
+    "file": "night/codeblock.dark.css",
+    "line": 20,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .cm-s-inner .cm-attribute"
+  },
+  {
+    "file": "night/codeblock.dark.css",
+    "line": 24,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .CodeMirror div.CodeMirror-cursor"
+  },
+  {
+    "file": "night/codeblock.dark.css",
+    "line": 29,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .cm-s-inner .cm-string"
+  },
+  {
+    "file": "night/codeblock.dark.css",
+    "line": 33,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .cm-s-inner .cm-comment"
+  },
+  {
+    "file": "night/codeblock.dark.css",
+    "line": 34,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .cm-s-inner.cm-comment"
+  },
+  {
+    "file": "night/codeblock.dark.css",
+    "line": 38,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .cm-s-inner .cm-header"
+  },
+  {
+    "file": "night/codeblock.dark.css",
+    "line": 39,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .cm-s-inner .cm-def"
+  },
+  {
+    "file": "night/codeblock.dark.css",
+    "line": 40,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .cm-s-inner.cm-header"
+  },
+  {
+    "file": "night/codeblock.dark.css",
+    "line": 41,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .cm-s-inner.cm-def"
+  },
+  {
+    "file": "night/codeblock.dark.css",
+    "line": 45,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .cm-s-inner .cm-quote"
+  },
+  {
+    "file": "night/codeblock.dark.css",
+    "line": 46,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .cm-s-inner.cm-quote"
+  },
+  {
+    "file": "night/codeblock.dark.css",
+    "line": 50,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .cm-s-inner .cm-hr"
+  },
+  {
+    "file": "night/codeblock.dark.css",
+    "line": 54,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .cm-s-inner .cm-link"
+  },
+  {
+    "file": "night/codeblock.dark.css",
+    "line": 58,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .cm-s-inner .cm-negative"
+  },
+  {
+    "file": "night/codeblock.dark.css",
+    "line": 62,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .cm-s-inner .cm-positive"
+  },
+  {
+    "file": "night/codeblock.dark.css",
+    "line": 66,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .cm-s-inner .cm-string-2"
+  },
+  {
+    "file": "night/codeblock.dark.css",
+    "line": 70,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .cm-s-inner .cm-meta"
+  },
+  {
+    "file": "night/codeblock.dark.css",
+    "line": 71,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .cm-s-inner .cm-qualifier"
+  },
+  {
+    "file": "night/codeblock.dark.css",
+    "line": 75,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .cm-s-inner .cm-builtin"
+  },
+  {
+    "file": "night/codeblock.dark.css",
+    "line": 79,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .cm-s-inner .cm-bracket"
+  },
+  {
+    "file": "night/codeblock.dark.css",
+    "line": 83,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .cm-s-inner .cm-atom"
+  },
+  {
+    "file": "night/codeblock.dark.css",
+    "line": 84,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .cm-s-inner.cm-atom"
+  },
+  {
+    "file": "night/codeblock.dark.css",
+    "line": 88,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .cm-s-inner .cm-number"
+  },
+  {
+    "file": "night/codeblock.dark.css",
+    "line": 92,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .cm-s-inner .cm-variable"
+  },
+  {
+    "file": "night/codeblock.dark.css",
+    "line": 96,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .cm-s-inner .cm-variable-2"
+  },
+  {
+    "file": "night/codeblock.dark.css",
+    "line": 100,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .cm-s-inner .cm-variable-3"
+  },
+  {
+    "file": "night/codeblock.dark.css",
+    "line": 104,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .CodeMirror-selectedtext"
+  },
+  {
+    "file": "night/codeblock.dark.css",
+    "line": 105,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .CodeMirror-selected"
+  },
+  {
+    "file": "night/codeblock.dark.css",
+    "line": 111,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .CodeMirror-gutters"
+  },
+  {
+    "file": "night/sourcemode.dark.css",
+    "line": 5,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .cm-s-typora-default .cm-header"
+  },
+  {
+    "file": "night/sourcemode.dark.css",
+    "line": 6,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .cm-s-typora-default .cm-property"
+  },
+  {
+    "file": "night/sourcemode.dark.css",
+    "line": 11,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .CodeMirror.cm-s-typora-default div.CodeMirror-cursor"
+  },
+  {
+    "file": "night/sourcemode.dark.css",
+    "line": 15,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .cm-s-typora-default .cm-comment"
+  },
+  {
+    "file": "night/sourcemode.dark.css",
+    "line": 19,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .cm-s-typora-default .cm-string"
+  },
+  {
+    "file": "night/sourcemode.dark.css",
+    "line": 23,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .cm-s-typora-default .cm-atom"
+  },
+  {
+    "file": "night/sourcemode.dark.css",
+    "line": 23,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .cm-s-typora-default .cm-number"
+  },
+  {
+    "file": "night/sourcemode.dark.css",
+    "line": 28,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .cm-s-typora-default .cm-link"
+  },
+  {
+    "file": "night/sourcemode.dark.css",
+    "line": 32,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .cm-s-typora-default .CodeMirror-activeline-background"
+  },
+  {
+    "file": "night/sourcemode.dark.css",
+    "line": 36,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .cm-s-typora-default .cm-comment"
+  },
+  {
+    "file": "night/sourcemode.dark.css",
+    "line": 36,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .cm-s-typora-default .cm-code"
+  },
+  {
+    "file": "night.css",
+    "line": 5,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 5,
+    "surface": "live-preview",
+    "status": "mapped",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 34,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported property -webkit-font-smoothing"
+  },
+  {
+    "file": "night.css",
+    "line": 39,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported property -webkit-text-size-adjust"
+  },
+  {
+    "file": "night.css",
+    "line": 40,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported property -ms-text-size-adjust"
+  },
+  {
+    "file": "night.css",
+    "line": 43,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported property fill"
+  },
+  {
+    "file": "night.css",
+    "line": 37,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 37,
+    "surface": "live-preview",
+    "status": "mapped",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 39,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported property -webkit-text-size-adjust"
+  },
+  {
+    "file": "night.css",
+    "line": 40,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported property -ms-text-size-adjust"
+  },
+  {
+    "file": "night.css",
+    "line": 43,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported property fill"
+  },
+  {
+    "file": "night.css",
+    "line": 38,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 38,
+    "surface": "live-preview",
+    "status": "mapped",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 72,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Root layout property border-color does not map to editor geometry"
+  },
+  {
+    "file": "night.css",
+    "line": 64,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 64,
+    "surface": "live-preview",
+    "status": "mapped",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 72,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Root layout property border-color does not map to editor geometry"
+  },
+  {
+    "file": "night.css",
+    "line": 65,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 65,
+    "surface": "live-preview",
+    "status": "mapped",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 66,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: button"
+  },
+  {
+    "file": "night.css",
+    "line": 67,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: input"
+  },
+  {
+    "file": "night.css",
+    "line": 68,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: select"
+  },
+  {
+    "file": "night.css",
+    "line": 69,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: textarea"
+  },
+  {
+    "file": "night.css",
+    "line": 70,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: div.code-tooltip-content"
+  },
+  {
+    "file": "night.css",
+    "line": 75,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: div.code-tooltip"
+  },
+  {
+    "file": "night.css",
+    "line": 76,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .md-hover-tip .md-arrow:after"
+  },
+  {
+    "file": "night.css",
+    "line": 80,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .native-window #md-notification"
+  },
+  {
+    "file": "night.css",
+    "line": 84,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .popover.bottom>.arrow:after"
+  },
+  {
+    "file": "night.css",
+    "line": 88,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 88,
+    "surface": "live-preview",
+    "status": "mapped",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 89,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 89,
+    "surface": "live-preview",
+    "status": "mapped",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 90,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: button"
+  },
+  {
+    "file": "night.css",
+    "line": 91,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: input"
+  },
+  {
+    "file": "night.css",
+    "line": 92,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: select"
+  },
+  {
+    "file": "night.css",
+    "line": 93,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: textarea"
+  },
+  {
+    "file": "night.css",
+    "line": 97,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 97,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 111,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported property clear"
+  },
+  {
+    "file": "night.css",
+    "line": 112,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported property -ms-word-wrap"
+  },
+  {
+    "file": "night.css",
+    "line": 113,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported property word-wrap"
+  },
+  {
+    "file": "night.css",
+    "line": 114,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview h1 layout property margin is not transferred"
+  },
+  {
+    "file": "night.css",
+    "line": 115,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview h1 layout property padding is not transferred"
+  },
+  {
+    "file": "night.css",
+    "line": 103,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 103,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 111,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported property clear"
+  },
+  {
+    "file": "night.css",
+    "line": 112,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported property -ms-word-wrap"
+  },
+  {
+    "file": "night.css",
+    "line": 113,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported property word-wrap"
+  },
+  {
+    "file": "night.css",
+    "line": 114,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview h2 layout property margin is not transferred"
+  },
+  {
+    "file": "night.css",
+    "line": 115,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview h2 layout property padding is not transferred"
+  },
+  {
+    "file": "night.css",
+    "line": 104,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 104,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 111,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported property clear"
+  },
+  {
+    "file": "night.css",
+    "line": 112,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported property -ms-word-wrap"
+  },
+  {
+    "file": "night.css",
+    "line": 113,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported property word-wrap"
+  },
+  {
+    "file": "night.css",
+    "line": 114,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview h3 layout property margin is not transferred"
+  },
+  {
+    "file": "night.css",
+    "line": 115,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview h3 layout property padding is not transferred"
+  },
+  {
+    "file": "night.css",
+    "line": 105,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 105,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 111,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported property clear"
+  },
+  {
+    "file": "night.css",
+    "line": 112,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported property -ms-word-wrap"
+  },
+  {
+    "file": "night.css",
+    "line": 113,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported property word-wrap"
+  },
+  {
+    "file": "night.css",
+    "line": 114,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview h4 layout property margin is not transferred"
+  },
+  {
+    "file": "night.css",
+    "line": 115,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview h4 layout property padding is not transferred"
+  },
+  {
+    "file": "night.css",
+    "line": 106,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 106,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 111,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported property clear"
+  },
+  {
+    "file": "night.css",
+    "line": 112,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported property -ms-word-wrap"
+  },
+  {
+    "file": "night.css",
+    "line": 113,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported property word-wrap"
+  },
+  {
+    "file": "night.css",
+    "line": 114,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview h5 layout property margin is not transferred"
+  },
+  {
+    "file": "night.css",
+    "line": 115,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview h5 layout property padding is not transferred"
+  },
+  {
+    "file": "night.css",
+    "line": 107,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 107,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 111,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported property clear"
+  },
+  {
+    "file": "night.css",
+    "line": 112,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported property -ms-word-wrap"
+  },
+  {
+    "file": "night.css",
+    "line": 113,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported property word-wrap"
+  },
+  {
+    "file": "night.css",
+    "line": 114,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview h6 layout property margin is not transferred"
+  },
+  {
+    "file": "night.css",
+    "line": 115,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview h6 layout property padding is not transferred"
+  },
+  {
+    "file": "night.css",
+    "line": 108,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 108,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 124,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview h1 layout property margin-bottom is not transferred"
+  },
+  {
+    "file": "night.css",
+    "line": 119,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 119,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 134,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview h2 layout property margin-bottom is not transferred"
+  },
+  {
+    "file": "night.css",
+    "line": 129,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 129,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 145,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview h3 layout property margin-bottom is not transferred"
+  },
+  {
+    "file": "night.css",
+    "line": 140,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 140,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 156,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview h4 layout property margin-bottom is not transferred"
+  },
+  {
+    "file": "night.css",
+    "line": 151,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 151,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 166,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview h5 layout property margin-bottom is not transferred"
+  },
+  {
+    "file": "night.css",
+    "line": 161,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 161,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 176,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview h6 layout property margin-bottom is not transferred"
+  },
+  {
+    "file": "night.css",
+    "line": 171,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 171,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 181,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: h3.md-focus:before"
+  },
+  {
+    "file": "night.css",
+    "line": 182,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: h4.md-focus:before"
+  },
+  {
+    "file": "night.css",
+    "line": 183,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: h5.md-focus:before"
+  },
+  {
+    "file": "night.css",
+    "line": 184,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: h6.md-focus:before"
+  },
+  {
+    "file": "night.css",
+    "line": 200,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: h3.md-focus:before"
+  },
+  {
+    "file": "night.css",
+    "line": 204,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: h4.md-focus:before"
+  },
+  {
+    "file": "night.css",
+    "line": 208,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: h5.md-focus:before"
+  },
+  {
+    "file": "night.css",
+    "line": 213,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: h6.md-focus:before"
+  },
+  {
+    "file": "night.css",
+    "line": 221,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported property outline"
+  },
+  {
+    "file": "night.css",
+    "line": 219,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 219,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 225,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported property outline"
+  },
+  {
+    "file": "night.css",
+    "line": 229,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported property outline"
+  },
+  {
+    "file": "night.css",
+    "line": 232,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: sup.md-footnote"
+  },
+  {
+    "file": "night.css",
+    "line": 238,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported property -ms-word-wrap"
+  },
+  {
+    "file": "night.css",
+    "line": 239,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported property word-wrap"
+  },
+  {
+    "file": "night.css",
+    "line": 242,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 254,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "List geometry or marker removal rejected: margin-top"
+  },
+  {
+    "file": "night.css",
+    "line": 255,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "List geometry or marker removal rejected: margin-bottom"
+  },
+  {
+    "file": "night.css",
+    "line": 244,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 244,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "No equivalent Live Preview selector; Reading mapping retained"
+  },
+  {
+    "file": "night.css",
+    "line": 254,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "List geometry or marker removal rejected: margin-top"
+  },
+  {
+    "file": "night.css",
+    "line": 255,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "List geometry or marker removal rejected: margin-bottom"
+  },
+  {
+    "file": "night.css",
+    "line": 246,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 246,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 247,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: address"
+  },
+  {
+    "file": "night.css",
+    "line": 248,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 249,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 249,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 250,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: iframe"
+  },
+  {
+    "file": "night.css",
+    "line": 251,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .wp-caption"
+  },
+  {
+    "file": "night.css",
+    "line": 252,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .wp-audio-shortcode"
+  },
+  {
+    "file": "night.css",
+    "line": 253,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .wp-video-shortcode"
+  },
+  {
+    "file": "night.css",
+    "line": 259,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: audio:not([controls])"
+  },
+  {
+    "file": "night.css",
+    "line": 263,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: [hidden]"
+  },
+  {
+    "file": "night.css",
+    "line": 267,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: ::-moz-selection"
+  },
+  {
+    "file": "night.css",
+    "line": 273,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: *.in-text-selection"
+  },
+  {
+    "file": "night.css",
+    "line": 274,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: ::selection"
+  },
+  {
+    "file": "night.css",
+    "line": 282,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "List geometry or marker removal rejected: padding"
+  },
+  {
+    "file": "night.css",
+    "line": 282,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "List geometry or marker removal rejected: padding"
+  },
+  {
+    "file": "night.css",
+    "line": 286,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 286,
+    "surface": "shared",
+    "status": "approximate",
+    "reason": "Marker appearance applied through the shared ParaFlow marker interface"
+  },
+  {
+    "file": "night.css",
+    "line": 291,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "List geometry or marker removal rejected: list-style"
+  },
+  {
+    "file": "night.css",
+    "line": 298,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "List geometry or marker removal rejected: margin"
+  },
+  {
+    "file": "night.css",
+    "line": 298,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "List geometry or marker removal rejected: margin"
+  },
+  {
+    "file": "night.css",
+    "line": 298,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "List geometry or marker removal rejected: margin"
+  },
+  {
+    "file": "night.css",
+    "line": 298,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "List geometry or marker removal rejected: margin"
+  },
+  {
+    "file": "night.css",
+    "line": 301,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 301,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 302,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 302,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 303,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 303,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "No equivalent Live Preview selector; Reading mapping retained"
+  },
+  {
+    "file": "night.css",
+    "line": 304,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 304,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 308,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 308,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 309,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 309,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 310,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: dfn"
+  },
+  {
+    "file": "night.css",
+    "line": 311,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: cite"
+  },
+  {
+    "file": "night.css",
+    "line": 316,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview blockquote layout property padding-left is not transferred"
+  },
+  {
+    "file": "night.css",
+    "line": 317,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview blockquote layout property margin is not transferred"
+  },
+  {
+    "file": "night.css",
+    "line": 319,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview blockquote layout property padding-left is not transferred"
+  },
+  {
+    "file": "night.css",
+    "line": 320,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview blockquote layout property margin-top is not transferred"
+  },
+  {
+    "file": "night.css",
+    "line": 315,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 315,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 323,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 323,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 324,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 324,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 325,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: kbd"
+  },
+  {
+    "file": "night.css",
+    "line": 326,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 326,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "No equivalent Live Preview selector; Reading mapping retained"
+  },
+  {
+    "file": "night.css",
+    "line": 327,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: var"
+  },
+  {
+    "file": "night.css",
+    "line": 332,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 332,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 333,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 333,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "No equivalent Live Preview selector; Reading mapping retained"
+  },
+  {
+    "file": "night.css",
+    "line": 334,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: var"
+  },
+  {
+    "file": "night.css",
+    "line": 338,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: kbd"
+  },
+  {
+    "file": "night.css",
+    "line": 347,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 353,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .CodeMirror-gutters"
+  },
+  {
+    "file": "night.css",
+    "line": 358,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .enable-diagrams pre.md-fences[lang=\"sequence\"] .code-tooltip"
+  },
+  {
+    "file": "night.css",
+    "line": 359,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .enable-diagrams pre.md-fences[lang=\"flow\"] .code-tooltip"
+  },
+  {
+    "file": "night.css",
+    "line": 360,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .enable-diagrams pre.md-fences[lang=\"mermaid\"] .code-tooltip"
+  },
+  {
+    "file": "night.css",
+    "line": 369,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview code layout property padding is not transferred"
+  },
+  {
+    "file": "night.css",
+    "line": 365,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 366,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: kbd"
+  },
+  {
+    "file": "night.css",
+    "line": 367,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 367,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "No equivalent Live Preview selector; Reading mapping retained"
+  },
+  {
+    "file": "night.css",
+    "line": 368,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: var"
+  },
+  {
+    "file": "night.css",
+    "line": 372,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 372,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 379,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 379,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 380,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 380,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 386,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported property -webkit-transition"
+  },
+  {
+    "file": "night.css",
+    "line": 387,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported property transition"
+  },
+  {
+    "file": "night.css",
+    "line": 390,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 390,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 396,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "Live Preview h1 layout property margin-top is not transferred"
+  },
+  {
+    "file": "night.css",
+    "line": 395,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 399,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 399,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 404,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 404,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 408,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .md-inline-math script"
+  },
+  {
+    "file": "night.css",
+    "line": 412,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 412,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 413,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 413,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 414,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 414,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "No equivalent Live Preview selector; Reading mapping retained"
+  },
+  {
+    "file": "night.css",
+    "line": 415,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 415,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 420,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 420,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 424,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 424,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 428,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 428,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "No equivalent Live Preview selector; Reading mapping retained"
+  },
+  {
+    "file": "night.css",
+    "line": 433,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 433,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 434,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 434,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "night.css",
+    "line": 439,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .task-list"
+  },
+  {
+    "file": "night.css",
+    "line": 443,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .md-task-list-item"
+  },
+  {
+    "file": "night.css",
+    "line": 447,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .md-task-list-item>input"
+  },
+  {
+    "file": "night.css",
+    "line": 451,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .md-task-list-item>input:before"
+  },
+  {
+    "file": "night.css",
+    "line": 463,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .md-task-list-item>input:checked:before"
+  },
+  {
+    "file": "night.css",
+    "line": 464,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .md-task-list-item>input[checked]:before"
+  },
+  {
+    "file": "night.css",
+    "line": 473,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .auto-suggest-container"
+  },
+  {
+    "file": "night.css",
+    "line": 478,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #typora-quick-open"
+  },
+  {
+    "file": "night.css",
+    "line": 482,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #typora-quick-open input"
+  },
+  {
+    "file": "night.css",
+    "line": 488,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .typora-quick-open-item"
+  },
+  {
+    "file": "night.css",
+    "line": 493,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .typora-quick-open-item.active"
+  },
+  {
+    "file": "night.css",
+    "line": 494,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .typora-quick-open-item:hover"
+  },
+  {
+    "file": "night.css",
+    "line": 499,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .typora-quick-open-item:hover"
+  },
+  {
+    "file": "night.css",
+    "line": 503,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .typora-search-spinner>div"
+  },
+  {
+    "file": "night.css",
+    "line": 508,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Metadata container paint and layout are outside the font-only mapping"
+  },
+  {
+    "file": "night.css",
+    "line": 509,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Metadata container paint and layout are outside the font-only mapping"
+  },
+  {
+    "file": "night.css",
+    "line": 510,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Metadata container paint and layout are outside the font-only mapping"
+  },
+  {
+    "file": "night.css",
+    "line": 511,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Metadata container paint and layout are outside the font-only mapping"
+  },
+  {
+    "file": "night.css",
+    "line": 514,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .btn"
+  },
+  {
+    "file": "night.css",
+    "line": 515,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .btn .btn-default"
+  },
+  {
+    "file": "night.css",
+    "line": 520,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .ty-table-edit"
+  },
+  {
+    "file": "night.css",
+    "line": 525,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .popover-title"
+  },
+  {
+    "file": "night.css",
+    "line": 529,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .md-image>.md-meta"
+  },
+  {
+    "file": "night.css",
+    "line": 534,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .md-expand.md-image>.md-meta"
+  },
+  {
+    "file": "night.css",
+    "line": 538,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #write>h3:before"
+  },
+  {
+    "file": "night.css",
+    "line": 539,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #write>h4:before"
+  },
+  {
+    "file": "night.css",
+    "line": 540,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #write>h5:before"
+  },
+  {
+    "file": "night.css",
+    "line": 541,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #write>h6:before"
+  },
+  {
+    "file": "night.css",
+    "line": 550,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #write>h3.md-focus:before"
+  },
+  {
+    "file": "night.css",
+    "line": 554,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #write>h4.md-focus:before"
+  },
+  {
+    "file": "night.css",
+    "line": 558,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .md-toc-item"
+  },
+  {
+    "file": "night.css",
+    "line": 562,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #write div.md-toc-tooltip"
+  },
+  {
+    "file": "night.css",
+    "line": 566,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .dropdown-menu .btn:hover"
+  },
+  {
+    "file": "night.css",
+    "line": 567,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .dropdown-menu .btn:focus"
+  },
+  {
+    "file": "night.css",
+    "line": 568,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .md-toc .btn:hover"
+  },
+  {
+    "file": "night.css",
+    "line": 569,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .md-toc .btn:focus"
+  },
+  {
+    "file": "night.css",
+    "line": 574,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #toc-dropmenu"
+  },
+  {
+    "file": "night.css",
+    "line": 579,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #toc-dropmenu .divider"
+  },
+  {
+    "file": "night.css",
+    "line": 583,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .outline-expander:before"
+  },
+  {
+    "file": "night.css",
+    "line": 587,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #typora-sidebar"
+  },
+  {
+    "file": "night.css",
+    "line": 593,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .sidebar-tabs"
+  },
+  {
+    "file": "night.css",
+    "line": 597,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #typora-sidebar:hover .outline-title-wrapper"
+  },
+  {
+    "file": "night.css",
+    "line": 601,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .outline-title-wrapper .btn"
+  },
+  {
+    "file": "night.css",
+    "line": 605,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .outline-item:hover"
+  },
+  {
+    "file": "night.css",
+    "line": 611,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: h1.md-focus .md-attr"
+  },
+  {
+    "file": "night.css",
+    "line": 612,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: h2.md-focus .md-attr"
+  },
+  {
+    "file": "night.css",
+    "line": 613,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: h3.md-focus .md-attr"
+  },
+  {
+    "file": "night.css",
+    "line": 614,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: h4.md-focus .md-attr"
+  },
+  {
+    "file": "night.css",
+    "line": 615,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: h5.md-focus .md-attr"
+  },
+  {
+    "file": "night.css",
+    "line": 616,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: h6.md-focus .md-attr"
+  },
+  {
+    "file": "night.css",
+    "line": 617,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .md-header-span .md-attr"
+  },
+  {
+    "file": "night.css",
+    "line": 622,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .md-comment"
+  },
+  {
+    "file": "night.css",
+    "line": 627,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .md-inline-math svg"
+  },
+  {
+    "file": "night.css",
+    "line": 631,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #math-inline-preview .md-arrow:after"
+  },
+  {
+    "file": "night.css",
+    "line": 635,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .modal-content"
+  },
+  {
+    "file": "night.css",
+    "line": 640,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .modal-title"
+  },
+  {
+    "file": "night.css",
+    "line": 644,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .modal-content input"
+  },
+  {
+    "file": "night.css",
+    "line": 649,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .modal-content .input-group-addon"
+  },
+  {
+    "file": "night.css",
+    "line": 653,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .modal-backdrop"
+  },
+  {
+    "file": "night.css",
+    "line": 657,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .modal-content .btn-primary"
+  },
+  {
+    "file": "night.css",
+    "line": 661,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .md-table-resize-popover"
+  },
+  {
+    "file": "night.css",
+    "line": 665,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .form-inline .input-group .input-group-addon"
+  },
+  {
+    "file": "night.css",
+    "line": 669,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #md-searchpanel"
+  },
+  {
+    "file": "night.css",
+    "line": 675,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .context-menu"
+  },
+  {
+    "file": "night.css",
+    "line": 676,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #spell-check-panel"
+  },
+  {
+    "file": "night.css",
+    "line": 677,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #footer-word-count-info"
+  },
+  {
+    "file": "night.css",
+    "line": 681,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .context-menu.dropdown-menu .divider"
+  },
+  {
+    "file": "night.css",
+    "line": 682,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .dropdown-menu .divider"
+  },
+  {
+    "file": "night.css",
+    "line": 687,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: footer"
+  },
+  {
+    "file": "night.css",
+    "line": 692,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: footer"
+  },
+  {
+    "file": "night.css",
+    "line": 695,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: footer:hover"
+  },
+  {
+    "file": "night.css",
+    "line": 700,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #file-info-file-path .file-info-field-value:hover"
+  },
+  {
+    "file": "night.css",
+    "line": 705,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .megamenu-content"
+  },
+  {
+    "file": "night.css",
+    "line": 706,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .megamenu-opened header"
+  },
+  {
+    "file": "night.css",
+    "line": 710,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .megamenu-menu-panel h2"
+  },
+  {
+    "file": "night.css",
+    "line": 711,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .megamenu-menu-panel h1"
+  },
+  {
+    "file": "night.css",
+    "line": 712,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .long-btn"
+  },
+  {
+    "file": "night.css",
+    "line": 716,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .megamenu-menu-panel input[type=\"text\"]"
+  },
+  {
+    "file": "night.css",
+    "line": 722,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #recent-file-panel-action-btn"
+  },
+  {
+    "file": "night.css",
+    "line": 727,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .megamenu-menu-panel .dropdown-menu>li>a"
+  },
+  {
+    "file": "night.css",
+    "line": 733,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .megamenu-menu-panel table td:nth-child(1)"
+  },
+  {
+    "file": "night.css",
+    "line": 738,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .megamenu-menu-panel tbody tr:hover td:nth-child(1)"
+  },
+  {
+    "file": "night.css",
+    "line": 742,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .modal-footer .btn-default"
+  },
+  {
+    "file": "night.css",
+    "line": 743,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .modal-footer .btn-primary"
+  },
+  {
+    "file": "night.css",
+    "line": 744,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .modal-footer .btn-default:not(:hover)"
+  },
+  {
+    "file": "night.css",
+    "line": 749,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .btn-primary"
+  },
+  {
+    "file": "night.css",
+    "line": 753,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .btn-default:hover"
+  },
+  {
+    "file": "night.css",
+    "line": 753,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .btn-default:focus"
+  },
+  {
+    "file": "night.css",
+    "line": 753,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .btn-default.focus"
+  },
+  {
+    "file": "night.css",
+    "line": 753,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .btn-default:active"
+  },
+  {
+    "file": "night.css",
+    "line": 753,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .btn-default.active"
+  },
+  {
+    "file": "night.css",
+    "line": 753,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .open>.dropdown-toggle.btn-default"
+  },
+  {
+    "file": "night.css",
+    "line": 759,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .modal-header"
+  },
+  {
+    "file": "night.css",
+    "line": 763,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .modal-footer"
+  },
+  {
+    "file": "night.css",
+    "line": 767,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #recent-file-panel tbody tr:nth-child(2n-1)"
+  },
+  {
+    "file": "night.css",
+    "line": 771,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .megamenu-menu-panel tbody tr:hover td:nth-child(2)"
+  },
+  {
+    "file": "night.css",
+    "line": 775,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .megamenu-menu-panel .btn"
+  },
+  {
+    "file": "night.css",
+    "line": 780,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .mouse-hover .toolbar-icon.btn:hover"
+  },
+  {
+    "file": "night.css",
+    "line": 781,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #w-full.mouse-hover"
+  },
+  {
+    "file": "night.css",
+    "line": 782,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #w-pin.mouse-hover"
+  },
+  {
+    "file": "night.css",
+    "line": 786,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .typora-node::-webkit-scrollbar"
+  },
+  {
+    "file": "night.css",
+    "line": 790,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .typora-node::-webkit-scrollbar-thumb:vertical"
+  },
+  {
+    "file": "night.css",
+    "line": 794,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .typora-node::-webkit-scrollbar-thumb:vertical:active"
+  },
+  {
+    "file": "night.css",
+    "line": 798,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #w-unpin"
+  },
+  {
+    "file": "night.css",
+    "line": 802,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #top-titlebar"
+  },
+  {
+    "file": "night.css",
+    "line": 802,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #top-titlebar *"
+  },
+  {
+    "file": "night.css",
+    "line": 806,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .typora-sourceview-on #toggle-sourceview-btn"
+  },
+  {
+    "file": "night.css",
+    "line": 807,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #footer-word-count:hover"
+  },
+  {
+    "file": "night.css",
+    "line": 808,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .ty-show-word-count #footer-word-count"
+  },
+  {
+    "file": "night.css",
+    "line": 812,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #toggle-sourceview-btn:hover"
+  },
+  {
+    "file": "night.css",
+    "line": 818,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .on-focus-mode .md-end-block:not(.md-focus):not(.md-focus-container) *"
+  },
+  {
+    "file": "night.css",
+    "line": 822,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .on-focus-mode .md-end-block:not(.md-focus) img"
+  },
+  {
+    "file": "night.css",
+    "line": 823,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .on-focus-mode .md-task-list-item:not(.md-focus-container)>input"
+  },
+  {
+    "file": "night.css",
+    "line": 827,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .on-focus-mode li[cid]:not(.md-focus-container)"
+  },
+  {
+    "file": "night.css",
+    "line": 831,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .on-focus-mode .md-fences.md-focus .CodeMirror-code>*:not(.CodeMirror-activeline) *"
+  },
+  {
+    "file": "night.css",
+    "line": 832,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .on-focus-mode .CodeMirror.cm-s-inner:not(.CodeMirror-focused) *"
+  },
+  {
+    "file": "night.css",
+    "line": 836,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .on-focus-mode .md-focus"
+  },
+  {
+    "file": "night.css",
+    "line": 837,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .on-focus-mode .md-focus-container"
+  },
+  {
+    "file": "night.css",
+    "line": 841,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .on-focus-mode #typora-source .CodeMirror-code>*:not(.CodeMirror-activeline) *"
+  },
+  {
+    "file": "night.css",
+    "line": 847,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #write .md-focus .md-diagram-panel"
+  },
+  {
+    "file": "night.css",
+    "line": 854,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #write .md-focus.md-fences-with-lineno .md-diagram-panel"
+  },
+  {
+    "file": "night.css",
+    "line": 858,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .md-diagram-panel-error"
+  },
+  {
+    "file": "night.css",
+    "line": 862,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .active-tab-files #info-panel-tab-file"
+  },
+  {
+    "file": "night.css",
+    "line": 863,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .active-tab-files #info-panel-tab-file:hover"
+  },
+  {
+    "file": "night.css",
+    "line": 864,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .active-tab-outline #info-panel-tab-outline"
+  },
+  {
+    "file": "night.css",
+    "line": 865,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .active-tab-outline #info-panel-tab-outline:hover"
+  },
+  {
+    "file": "night.css",
+    "line": 869,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .sidebar-footer-item:hover"
+  },
+  {
+    "file": "night.css",
+    "line": 870,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .footer-item:hover"
+  },
+  {
+    "file": "night.css",
+    "line": 875,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .ty-side-sort-btn.active"
+  },
+  {
+    "file": "night.css",
+    "line": 876,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .ty-side-sort-btn:hover"
+  },
+  {
+    "file": "night.css",
+    "line": 877,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .selected-folder-menu-item a:after"
+  },
+  {
+    "file": "night.css",
+    "line": 881,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #sidebar-files-menu"
+  },
+  {
+    "file": "night.css",
+    "line": 887,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .file-list-item"
+  },
+  {
+    "file": "night.css",
+    "line": 891,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .file-list-item-summary"
+  },
+  {
+    "file": "night.css",
+    "line": 895,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .file-list-item.active:first-child"
+  },
+  {
+    "file": "night.css",
+    "line": 899,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .file-node-background"
+  },
+  {
+    "file": "night.css",
+    "line": 903,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .file-library-node.active>.file-node-content"
+  },
+  {
+    "file": "night.css",
+    "line": 904,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .file-list-item.active"
+  },
+  {
+    "file": "night.css",
+    "line": 909,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .file-library-node.active>.file-node-background"
+  },
+  {
+    "file": "night.css",
+    "line": 913,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .file-list-item.active"
+  },
+  {
+    "file": "night.css",
+    "line": 918,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #ty-tooltip"
+  },
+  {
+    "file": "night.css",
+    "line": 923,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .md-task-list-item>input"
+  },
+  {
+    "file": "night.css",
+    "line": 929,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .md-mathjax-midline"
+  },
+  {
+    "file": "night.css",
+    "line": 934,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: footer.ty-footer"
+  },
+  {
+    "file": "night.css",
+    "line": 938,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .ty-preferences .btn-default"
+  },
+  {
+    "file": "night.css",
+    "line": 941,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .ty-preferences .btn-default:hover"
+  },
+  {
+    "file": "night.css",
+    "line": 945,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .ty-preferences select"
+  },
+  {
+    "file": "night.css",
+    "line": 950,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .ty-preferences .nav-group-item.active"
+  },
+  {
+    "file": "night.css",
+    "line": 951,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .export-item.active"
+  },
+  {
+    "file": "night.css",
+    "line": 952,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .export-items-list-control"
+  },
+  {
+    "file": "night.css",
+    "line": 953,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .export-detail"
+  },
+  {
+    "file": "night.css",
+    "line": 957,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .ty-preferences input[type=\"search\"]"
+  },
+  {
+    "file": "night.css",
+    "line": 965,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .ty-preferences input[type=\"search\"]:focus"
+  },
+  {
+    "file": "night.css",
+    "line": 969,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: [data-is-directory=\"true\"] .file-node-content"
+  },
+  {
+    "file": "night.css",
+    "line": 973,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .file-node-title"
+  },
+  {
+    "file": "night.css",
+    "line": 977,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .html-for-mac .file-node-open-state"
+  },
+  {
+    "file": "night.css",
+    "line": 977,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .html-for-mac .file-node-icon"
+  },
+  {
+    "file": "night.css",
+    "line": 981,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: ::-webkit-scrollbar-thumb"
+  },
+  {
+    "file": "night.css",
+    "line": 985,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: ::-webkit-scrollbar-thumb:active"
+  },
+  {
+    "file": "night.css",
+    "line": 989,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #typora-sidebar:hover div.sidebar-content-content::-webkit-scrollbar-thumb:horizontal"
+  },
+  {
+    "file": "night.css",
+    "line": 993,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .nav-group-item:active"
+  },
+  {
+    "file": "night.css",
+    "line": 997,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .md-search-hit"
+  },
+  {
+    "file": "night.css",
+    "line": 1002,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .md-search-hit *"
+  },
+  {
+    "file": "night.css",
+    "line": 1006,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #md-searchpanel input"
+  },
+  {
+    "file": "night.css",
+    "line": 1010,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .modal-backdrop.in"
+  },
+  {
+    "file": "night.css",
+    "line": 1015,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .clear-btn-icon"
+  },
+  {
+    "file": "night.css",
+    "line": 1020,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .file-node-expanded>.file-node-children"
+  },
+  {
+    "file": "night.css",
+    "line": 1024,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .md-alert-text-note"
+  },
+  {
+    "file": "night.css",
+    "line": 1027,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .md-alert-text-important"
+  },
+  {
+    "file": "night.css",
+    "line": 1030,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .md-alert-text-warning"
+  }
+]

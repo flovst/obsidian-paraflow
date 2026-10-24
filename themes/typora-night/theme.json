@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "imported-typora-night",
+  "name": "Typora Night",
+  "origin": "imported",
+  "colorScheme": "dark",
+  "converterVersion": "7",
+  "sourceEntry": "night.css",
+  "sourceVersion": "1.9.5"
+}

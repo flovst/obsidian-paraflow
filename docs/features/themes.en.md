@@ -19,6 +19,8 @@ Metadata can align with the body or use Obsidian's layout, with controls for hor
 
 Themes apply to Live Preview and Reading view. Source view shares some text and layout styles; see [Views](views-and-clipboard.en.md).
 
+The bundle also includes Typora Newsprint, Night, Pixyll, and Whitey, available from the same theme menu.
+
 ## Importing a Typora theme
 
 1. Click “Import theme” and choose a CSS file, ZIP archive, or theme folder. Keep the complete resources when a theme includes fonts, images, and `@import` files.

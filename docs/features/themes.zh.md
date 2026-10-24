@@ -19,6 +19,8 @@ Metadata 可以与正文对齐或使用 Obsidian 原生布局，并调整水平�
 
 主题应用于实时预览和阅读视图；源码视图共享部分文字与布局样式，详见[视图说明](views-and-clipboard.zh.md)。
 
+随包还提供 Typora Newsprint、Night、Pixyll 和 Whitey，可在同一主题菜单中选择。
+
 ## 导入 Typora 主题
 
 1. 点击“导入主题”，选择 CSS 文件、ZIP 包或主题文件夹。包含字体、图片和 `@import` 文件的主题应保留完整资源。
