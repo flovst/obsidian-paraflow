@@ -322,3 +322,16 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
+
+========================================================================
+Bundled Typora content themes
+========================================================================
+
+Themes selected in themes/bundled.json include adapted CSS and resources
+from Typora 1.9.5. Source project:
+https://github.com/typora/typora-default-themes
+
+The third-party CSS and font resources are not covered by ParaFlow's MIT
+license. See each theme directory's THIRD-PARTY-NOTICE.txt for its source.
+Redistribution permission for these exact resource versions remains to be
+confirmed before publication.

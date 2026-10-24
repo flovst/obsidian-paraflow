@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "imported-typora-github",
+  "name": "Typora GitHub",
+  "origin": "imported",
+  "colorScheme": "light",
+  "converterVersion": "7",
+  "sourceEntry": "github.css",
+  "sourceVersion": "1.9.5"
+}

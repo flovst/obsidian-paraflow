@@ -8,6 +8,7 @@ ParaFlow content themes adjust note typography, colors, and layout, and support 
 
 - **Follow Obsidian:** use Obsidian's fonts and colors with ParaFlow's basic markers and layout.
 - **ParaFlow Classic:** use the body styles supplied by the plugin.
+- **Typora GitHub:** use the bundled GitHub content theme. Its source files and fonts are installed with the theme.
 - **Imported themes:** use converted Typora content styles, with one theme selected at a time.
 
 Text font, size, content width, line height, and accent color can use theme defaults, follow Obsidian, or use custom values. Adjustments are saved separately for each theme and retained when switching themes. “Reset theme adjustments” clears local adjustments for the current theme.

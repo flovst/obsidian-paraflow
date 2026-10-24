@@ -3,7 +3,7 @@ import type { EditorView } from '@codemirror/view';
 import { Component, editorEditorField, editorInfoField, editorLivePreviewField, finishRenderMath, getIcon, loadMathJax, loadPrism, MarkdownRenderChild, MarkdownRenderer, MarkdownView, Notice, normalizePath, Platform, Plugin, sanitizeHTMLToDom, TFile } from 'obsidian';
 import { createReadingMathRanges } from './reading/math-ranges';
 import { createSvgMathRenderer, type NativeMathJax } from './display/math.js';
-import { classicCss, classicManifest } from './themes/builtin.js';
+import { installBundledThemes } from './themes/builtin.js';
 import { ThemeStore } from './themes/store.js';
 import { ThemeManager } from './themes/manager.js';
 import { contentTokenBridge, resolveThemeUrls, scopeOverrides } from './themes/runtime-css.js';
@@ -192,7 +192,7 @@ export default class ParaFlowPlugin extends Plugin {
 
 	private async initializeThemes(): Promise<void> {
 		this.themeStore = new ThemeStore(this.app.vault.adapter, normalizePath((this.manifest.dir ?? this.app.vault.configDir + '/plugins/' + this.manifest.id) + '/themes'));
-		await this.themeStore.ensureBuiltin(classicManifest, classicCss());
+		await installBundledThemes(this.themeStore);
 		const listing = await this.themeStore.list(); this.contentThemes = listing.themes;
 		if (listing.warnings.length) new Notice('Some ParaFlow themes could not be loaded: ' + listing.warnings.join('; '));
 		try {

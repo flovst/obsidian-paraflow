@@ -1,0 +1,11 @@
+:root { --paraflow-content-background: #fff; --background-primary: #fff; background-color: #fff; }
+/* Measured Typora number slot; separate from CodeMirror-lines' inner padding. */
+:root {
+  /* Typora's li p margin collapses to .5rem between sibling items. */
+  --paraflow-list-row-padding: calc(.25 * var(--paraflow-root-font-size, 16px));
+  --paraflow-list-sibling-gap: calc(.5 * var(--paraflow-root-font-size, 16px));
+  --paraflow-code-number-padding-left: 10px;
+  --paraflow-code-inner-padding-left: 4px;
+  --paraflow-code-number-text-gap: 4px;
+  --paraflow-code-numbered-inset: 0px;
+}

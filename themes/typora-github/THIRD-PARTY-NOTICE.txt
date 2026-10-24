@@ -1,0 +1,9 @@
+Typora GitHub theme
+
+Source: Typora 1.9.5 bundled github.css and associated resources.
+Project: https://github.com/typora/typora-default-themes
+Converted for ParaFlow with converter 7.
+
+Third-party CSS and font resources retain their original owners' rights.
+They are not covered by ParaFlow's MIT license. Redistribution permission
+for this exact CSS and resource version remains to be confirmed before publication.
