@@ -8,7 +8,6 @@ export default defineConfig(
 		'.local/**',
 		'dist',
 		'esbuild.config.mjs',
-		'.github/package-showcase.mjs',
 		'version-bump.mjs',
 		'versions.json',
 		'main.js',

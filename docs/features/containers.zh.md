@@ -20,5 +20,5 @@ HTML 预览支持 `<div>`、`<details>` 等 HTML 块的源码编辑与预览。H
 
 ## 示例
 
-- [列表、引用与 Callout 展示](../../showcase/features/Lists%20quotes%20and%20callouts.zh.md)：引用中的段落和列表、普通与折叠 Callout。
-- [Markdown 语法展示](../../showcase/Markdown%20syntax%20showcase.zh.md)：与正文、其它 Markdown 内容的组合。
+- [列表、引用与 Callout 展示](../../dist/showcase/features/Lists%20quotes%20and%20callouts.zh.md)：引用中的段落和列表、普通与折叠 Callout。
+- [Markdown 语法展示](../../dist/showcase/Markdown%20syntax%20showcase.zh.md)：与正文、其它 Markdown 内容的组合。

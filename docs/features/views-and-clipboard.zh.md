@@ -33,4 +33,4 @@ ParaFlow 在实时预览中提供编辑增强，在阅读视图中显示内容�
 
 **鼠标 & 选区** 提供禁止拖动选区文字、选区时隐藏光标。切换模式时的源码整理见[列表与任务](lists.zh.md)。
 
-使用 [Markdown 语法展示](../../showcase/Markdown%20syntax%20showcase.zh.md) 对比三个视图，并尝试复制带格式的文本、列表和代码。
+使用 [Markdown 语法展示](../../dist/showcase/Markdown%20syntax%20showcase.zh.md) 对比三个视图，并尝试复制带格式的文本、列表和代码。

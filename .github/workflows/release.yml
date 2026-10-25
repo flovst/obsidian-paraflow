@@ -1,6 +1,12 @@
 name: Release Obsidian plugin
 
 on:
+    workflow_dispatch:
+        inputs:
+            tag:
+                description: Existing release tag matching manifest.json
+                required: true
+                type: string
     push:
         tags:
             - '*'
@@ -14,6 +20,8 @@ jobs:
             attestations: write
         steps:
             - uses: actions/checkout@v6
+              with:
+                  ref: ${{ inputs.tag || github.ref }}
 
             - name: Use Node.js
               uses: actions/setup-node@v6
@@ -22,9 +30,11 @@ jobs:
                   cache: 'npm'
 
             - name: Validate release tag
+              env:
+                  RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
               shell: bash
               run: |
-                  tag="${GITHUB_REF#refs/tags/}"
+                  tag="$RELEASE_TAG"
                   version="$(node -p "JSON.parse(require('fs').readFileSync('manifest.json', 'utf8')).version")"
 
                   if [[ "$tag" != "$version" ]]; then
@@ -41,19 +51,16 @@ jobs:
             - name: Build plugin
               run: npm run build
 
-            - name: Package showcase vault
-              run: node .github/package-showcase.mjs
-
             - name: Attest required plugin assets
+              if: ${{ !github.event.repository.private }}
               uses: actions/attest@v4
               with:
                   subject-path: |
                       main.js
                       manifest.json
-                      dist/showcase-paraflow-*.zip
 
             - name: Attest optional styles
-              if: ${{ hashFiles('styles.css') != '' }}
+              if: ${{ !github.event.repository.private && hashFiles('styles.css') != '' }}
               uses: actions/attest@v4
               with:
                   subject-path: styles.css
@@ -61,16 +68,18 @@ jobs:
             - name: Create draft release
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
               shell: bash
               run: |
-                  tag="${GITHUB_REF#refs/tags/}"
-                  assets=(main.js manifest.json "dist/showcase-paraflow-$tag.zip")
+                  tag="$RELEASE_TAG"
+                  assets=(main.js manifest.json)
 
                   if [[ -f styles.css ]]; then
                     assets+=(styles.css)
                   fi
 
                   gh release create "$tag" \
+                    --verify-tag \
                     --title="$tag" \
                     --draft \
                     "${assets[@]}"

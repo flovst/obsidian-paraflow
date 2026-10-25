@@ -29,4 +29,4 @@ First-line indentation, paragraph spacing, and tab display affect layout while p
 
 ## Examples
 
-Open the [Markdown syntax showcase](../../showcase/Markdown%20syntax%20showcase.en.md) to compare paragraphs, headings, blank lines, and line breaks. For continuation lines and paragraphs inside lists, see [Lists and tasks](lists.en.md).
+Open the [Markdown syntax showcase](../../dist/showcase/Markdown%20syntax%20showcase.en.md) to compare paragraphs, headings, blank lines, and line breaks. For continuation lines and paragraphs inside lists, see [Lists and tasks](lists.en.md).

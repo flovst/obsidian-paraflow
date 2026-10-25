@@ -36,4 +36,4 @@ Automatic source cleanup controls additional cleanup triggers; normal editing st
 
 ## Examples
 
-The [Lists, quotes, and callouts showcase](../../showcase/features/Lists%20quotes%20and%20callouts.en.md) contains unordered, ordered, task, and nested lists, plus continuation lines and additional paragraphs within items.
+The [Lists, quotes, and callouts showcase](../../dist/showcase/features/Lists%20quotes%20and%20callouts.en.md) contains unordered, ordered, task, and nested lists, plus continuation lines and additional paragraphs within items.

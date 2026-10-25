@@ -62,4 +62,4 @@ Check the result in both Reading view and Live Preview. Theme management scopes 
 
 ## Examples
 
-Open the [showcase index](../../showcase/README.md), switch between Follow Obsidian and ParaFlow Classic, then compare an imported theme across body text, lists, tables, math, and code.
+Open the [showcase index](../../dist/showcase/README.md), switch between Follow Obsidian and ParaFlow Classic, then compare an imported theme across body text, lists, tables, math, and code.

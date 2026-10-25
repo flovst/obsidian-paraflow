@@ -2,7 +2,7 @@
 
 [项目 README](../README.zh.md) · [English](README.md)
 
-这里介绍 ParaFlow 的编辑功能、设置与内容主题。可以配合[展示库](../showcase/README.md)，在 Obsidian 中直接尝试示例。
+这里介绍 ParaFlow 的编辑功能、设置与内容主题。可以配合[展示库](../dist/showcase/README.md)，在 Obsidian 中直接尝试示例。
 
 ## 功能指南
 

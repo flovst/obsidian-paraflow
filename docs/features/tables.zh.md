@@ -29,4 +29,4 @@ HTML 单元格内使用 `<strong>`、`<em>`、`<code>`、`<br>` 等 HTML 标签�
 
 ## 示例
 
-[Markdown 与 HTML 表格展示](../../showcase/features/Markdown%20and%20HTML%20tables.zh.md) 包含水平和垂直对齐、长文本、跨行跨列及 HTML 单元格格式。
+[Markdown 与 HTML 表格展示](../../dist/showcase/features/Markdown%20and%20HTML%20tables.zh.md) 包含水平和垂直对齐、长文本、跨行跨列及 HTML 单元格格式。

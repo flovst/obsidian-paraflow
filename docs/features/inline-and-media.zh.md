@@ -25,4 +25,4 @@ Obsidian 注释可以始终显示，或仅在编辑时显示。需要核对链�
 
 ## 示例
 
-[Markdown 语法展示](../../showcase/Markdown%20syntax%20showcase.zh.md) 提供行内格式、链接、图片和脚注示例。示例图片使用随展示文件提供的资源，复制笔记时应一并保留资源及相对路径。
+[Markdown 语法展示](../../dist/showcase/Markdown%20syntax%20showcase.zh.md) 提供行内格式、链接、图片和脚注示例。示例图片使用随展示文件提供的资源，复制笔记时应一并保留资源及相对路径。

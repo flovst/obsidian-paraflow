@@ -29,4 +29,4 @@ ParaFlow 在实时预览中将段落间的单个空行显示为段间距，并�
 
 ## 示例
 
-打开 [Markdown 语法展示](../../showcase/Markdown%20syntax%20showcase.zh.md)，比较正文、标题、空行与换行的显示。列表中的续行和段落见[列表与任务](lists.zh.md)。
+打开 [Markdown 语法展示](../../dist/showcase/Markdown%20syntax%20showcase.zh.md)，比较正文、标题、空行与换行的显示。列表中的续行和段落见[列表与任务](lists.zh.md)。

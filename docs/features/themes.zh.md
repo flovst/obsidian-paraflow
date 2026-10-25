@@ -62,4 +62,4 @@ h1 { color: #225588; }
 
 ## 示例
 
-打开[展示索引](../../showcase/README.md)，切换“跟随 Obsidian”和“ParaFlow Classic”，再对比导入主题在正文、列表、表格、公式和代码上的显示。
+打开[展示索引](../../dist/showcase/README.md)，切换“跟随 Obsidian”和“ParaFlow Classic”，再对比导入主题在正文、列表、表格、公式和代码上的显示。

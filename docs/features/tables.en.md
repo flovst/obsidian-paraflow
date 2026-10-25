@@ -29,4 +29,4 @@ Enhanced display and editing can be enabled independently. The [content theme](t
 
 ## Examples
 
-The [Markdown and HTML tables showcase](../../showcase/features/Markdown%20and%20HTML%20tables.en.md) includes horizontal and vertical alignment, long text, spanning cells, and HTML cell formatting.
+The [Markdown and HTML tables showcase](../../dist/showcase/features/Markdown%20and%20HTML%20tables.en.md) includes horizontal and vertical alignment, long text, spanning cells, and HTML cell formatting.

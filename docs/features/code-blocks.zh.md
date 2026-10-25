@@ -22,5 +22,5 @@ Mermaid 图表提供独立的源码编辑与预览开关。使用 `mermaid` 围�
 
 ## 示例
 
-- [公式与代码块展示](../../showcase/features/Math%20and%20code%20blocks.zh.md)：语法高亮、长行、空行、缩进与复制。
-- [Markdown 语法展示](../../showcase/Markdown%20syntax%20showcase.zh.md)：代码与其它语法的组合。
+- [公式与代码块展示](../../dist/showcase/features/Math%20and%20code%20blocks.zh.md)：语法高亮、长行、空行、缩进与复制。
+- [Markdown 语法展示](../../dist/showcase/Markdown%20syntax%20showcase.zh.md)：代码与其它语法的组合。

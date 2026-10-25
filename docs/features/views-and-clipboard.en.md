@@ -33,4 +33,4 @@ Other plugins may also handle clipboard operations. If results differ, try the t
 
 **Mouse and selection** offers controls to prevent dragging selected text and hide the caret while drag-selecting. For source cleanup when changing modes, see [Lists and tasks](lists.en.md).
 
-Use the [Markdown syntax showcase](../../showcase/Markdown%20syntax%20showcase.en.md) to compare the three views and try copying formatted text, lists, and code.
+Use the [Markdown syntax showcase](../../dist/showcase/Markdown%20syntax%20showcase.en.md) to compare the three views and try copying formatted text, lists, and code.

@@ -7,6 +7,7 @@ import { createVirtualTailExtension } from './virtual-tail.js';
 import { containerBodyLine } from './container-body-boundaries.js';
 import { renderedSourceClickPosition } from './rendered-source-click.js';
 import { getParagraphProjectionState } from '../paragraph/projection.js';
+import { getStructuredListProjectionState } from '../structured-list/projection.js';
 
 export type VisualAssociation = -1 | 0 | 1;
 
@@ -200,7 +201,8 @@ export function createVisualNavigationAdapter(view: EditorView): VisualNavigatio
 			return point(view.moveByChar(cursor(position), forward));
 		},
 		moveVertically(position, forward, goalX) {
-			let candidate = point(view.moveVertically(cursor(visibleGeometry(position).position, goalX), forward));
+			const origin = visibleGeometry(position);
+			let candidate = point(view.moveVertically(cursor(origin.position, goalX), forward));
 			const direction = forward ? 1 : -1;
 			const lastLine = view.state.doc.lineAt(candidate.position).number;
 			// Native atomic skipping may cross an empty body's prefix and its preceding gap together.
@@ -215,27 +217,35 @@ export function createVisualNavigationAdapter(view: EditorView): VisualNavigatio
 			let coordinates = view.coordsAtPos(candidate.position, candidate.assoc < 0 ? -1 : 1);
 			let crossedHiddenCarrier = false;
 			const atomicBoundary = (point: VisualPosition) => {
-				let touches = false, inside = false;
+				let touches = false, inside = false, starts = false, ends = false;
 				for (const read of view.state.facet(EditorView.atomicRanges)) {
 					read(view).between(point.position, point.position, (from, to) => {
 						if (from === to) return;
 						touches = true;
-						// A prefix's outer endpoint can be the visible editable body start.
+						starts ||= from === point.position;
+						ends ||= to === point.position;
 						if (from < point.position && point.position < to) inside = true;
 					});
 				}
-				return {touches, inside};
+				const body = containerBodyLine(view.state, point.position);
+				const hiddenPrefix = (body !== null && point.position < body.bodyFrom) ||
+					getStructuredListProjectionState(view.state)?.rangeIndex.protectedRanges.some(range =>
+						range.from <= point.position && point.position < range.to);
+				return { touches, inside: inside || hiddenPrefix || (starts && ends), side: ends ? 1 as const : -1 as const };
 			};
 			// Prefix widgets may expose their block box instead of the adjacent text row.
 			for (;;) {
 				const boundary = atomicBoundary(candidate);
-				if (boundary.touches && !boundary.inside) {
-					candidate = {...candidate, assoc: forward ? 1 : -1};
-					coordinates = view.coordsAtPos(candidate.position, forward ? 1 : -1);
+				const endpoint = boundary.touches && !boundary.inside;
+				if (endpoint) {
+					candidate = {...candidate, assoc: boundary.side};
+					coordinates = view.coordsAtPos(candidate.position, boundary.side);
 					crossedHiddenCarrier = true;
-					if (coordinates && coordinates.top < coordinates.bottom) break;
+					// The prefix's widget can occupy a row before its first editable glyph.
+					if (coordinates && coordinates.top < coordinates.bottom && (!origin.coordinates ||
+						(forward ? coordinates.top >= origin.coordinates.bottom : coordinates.bottom <= origin.coordinates.top))) break;
 				}
-				if (!coordinates || (coordinates.top < coordinates.bottom && !boundary.inside)) break;
+				if (!endpoint && (!coordinates || (coordinates.top < coordinates.bottom && !boundary.inside))) break;
 				const next = point(view.moveByChar(cursor(candidate), forward));
 				if (next.position === candidate.position) break;
 				candidate = next;

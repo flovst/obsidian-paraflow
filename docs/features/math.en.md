@@ -18,4 +18,4 @@ When adjusting the content theme, observe the baseline and spacing of inline mat
 
 ## Examples
 
-The [Math and code blocks showcase](../../showcase/features/Math%20and%20code%20blocks.en.md) includes inline formulas, fractions, sums, multiline alignment, and matrices.
+The [Math and code blocks showcase](../../dist/showcase/features/Math%20and%20code%20blocks.en.md) includes inline formulas, fractions, sums, multiline alignment, and matrices.

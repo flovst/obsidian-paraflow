@@ -2,7 +2,7 @@
 
 [Project README](../README.md) · [中文](README.zh.md)
 
-These guides explain ParaFlow's editing features, settings, and content themes. Use the [showcase](../showcase/README.md) to try the examples in Obsidian.
+These guides explain ParaFlow's editing features, settings, and content themes. Use the [showcase](../dist/showcase/README.md) to try the examples in Obsidian.
 
 ## Feature guides
 

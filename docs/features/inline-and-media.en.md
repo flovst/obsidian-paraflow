@@ -25,4 +25,4 @@ Obsidian comments can remain visible or appear only while editing. Switch to Sou
 
 ## Examples
 
-The [Markdown syntax showcase](../../showcase/Markdown%20syntax%20showcase.en.md) includes inline formatting, links, images, and footnotes. Its images use assets supplied with the showcase; preserve those assets and relative paths when copying the note.
+The [Markdown syntax showcase](../../dist/showcase/Markdown%20syntax%20showcase.en.md) includes inline formatting, links, images, and footnotes. Its images use assets supplied with the showcase; preserve those assets and relative paths when copying the note.

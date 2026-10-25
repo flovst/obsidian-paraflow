@@ -18,4 +18,4 @@ ParaFlow 提供行内公式和公式块的预览、源码编辑与块内导航�
 
 ## 示例
 
-[公式与代码块展示](../../showcase/features/Math%20and%20code%20blocks.zh.md) 包含行内公式、分式、求和、多行对齐和矩阵示例。
+[公式与代码块展示](../../dist/showcase/features/Math%20and%20code%20blocks.zh.md) 包含行内公式、分式、求和、多行对齐和矩阵示例。

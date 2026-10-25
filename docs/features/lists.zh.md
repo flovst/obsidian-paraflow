@@ -36,4 +36,4 @@ ParaFlow 为无序列表、有序列表和 Markdown 任务列表提供条目创�
 
 ## 示例
 
-[列表、引用与 Callout 展示](../../showcase/features/Lists%20quotes%20and%20callouts.zh.md) 包含无序、有序、任务、嵌套列表，以及条目中的续行和额外段落。
+[列表、引用与 Callout 展示](../../dist/showcase/features/Lists%20quotes%20and%20callouts.zh.md) 包含无序、有序、任务、嵌套列表，以及条目中的续行和额外段落。

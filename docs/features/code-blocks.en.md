@@ -22,5 +22,5 @@ The language control can appear at the top right, bottom right, or be turned off
 
 ## Examples
 
-- [Math and code blocks showcase](../../showcase/features/Math%20and%20code%20blocks.en.md): syntax highlighting, long lines, blank lines, indentation, and copying.
-- [Markdown syntax showcase](../../showcase/Markdown%20syntax%20showcase.en.md): code alongside other syntax.
+- [Math and code blocks showcase](../../dist/showcase/features/Math%20and%20code%20blocks.en.md): syntax highlighting, long lines, blank lines, indentation, and copying.
+- [Markdown syntax showcase](../../dist/showcase/Markdown%20syntax%20showcase.en.md): code alongside other syntax.

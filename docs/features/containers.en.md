@@ -20,5 +20,5 @@ To inspect structure, switch to Source view and check quote prefixes, callout ty
 
 ## Examples
 
-- [Lists, quotes, and callouts showcase](../../showcase/features/Lists%20quotes%20and%20callouts.en.md): paragraphs and lists within quotes, plus ordinary and collapsible callouts.
-- [Markdown syntax showcase](../../showcase/Markdown%20syntax%20showcase.en.md): combinations with body text and other Markdown content.
+- [Lists, quotes, and callouts showcase](../../dist/showcase/features/Lists%20quotes%20and%20callouts.en.md): paragraphs and lists within quotes, plus ordinary and collapsible callouts.
+- [Markdown syntax showcase](../../dist/showcase/Markdown%20syntax%20showcase.en.md): combinations with body text and other Markdown content.

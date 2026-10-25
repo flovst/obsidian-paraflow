@@ -5,9 +5,5 @@ main.js
 .env
 .env.*
 *.log
-dist/
-showcase-paraflow/.obsidian/workspace*.json
-showcase-paraflow/.obsidian/plugins/paraflow/main.js
-showcase-paraflow/.obsidian/plugins/paraflow/manifest.json
-showcase-paraflow/.obsidian/plugins/paraflow/styles.css
-showcase-paraflow/.obsidian/plugins/paraflow/themes/
+dist/*
+!dist/showcase/
