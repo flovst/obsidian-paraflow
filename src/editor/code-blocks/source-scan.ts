@@ -18,10 +18,12 @@ export function isRenderedCodeLanguage(language: string): boolean {
 }
 
 const discovered = new WeakMap<Text, CodeBlock[]>();
+const authoring = new WeakMap<Text, CodeBlock[]>();
 
-export function codeBlocksIn(doc: Text): CodeBlock[] {
+export function codeBlocksIn(doc: Text, includeMermaid = false): CodeBlock[] {
 	const state = { doc };
-	const cached = discovered.get(state.doc);
+	const cache = includeMermaid ? authoring : discovered;
+	const cached = cache.get(state.doc);
 	if (cached) return cached;
 	const source=state.doc.toString();
 	const blocks: CodeBlock[]=[];
@@ -38,7 +40,7 @@ export function codeBlocksIn(doc: Text): CodeBlock[] {
 		}
 		const info=node.node.getChild('CodeInfo');
 		const language=info ? source.slice(info.from,info.to).trim().split(/\s/u)[0]! : '';
-		if(isRenderedCodeLanguage(language))return false;
+		if(isRenderedCodeLanguage(language) && !(includeMermaid && language.toLowerCase() === 'mermaid'))return false;
 		const marks=node.node.getChildren('CodeMark');
 		const opening=state.doc.lineAt(contentFrom);
 		const closing=marks.length>1 ? state.doc.lineAt(marks[marks.length-1]!.from) : null;
@@ -64,6 +66,6 @@ export function codeBlocksIn(doc: Text): CodeBlock[] {
 			...(!fenced || listDepth ? {listDepth, listTask, ...(listOrderedTask ? {listOrderedTask} : {})} : {})});
 		return false;
 	}});
-	discovered.set(state.doc, blocks);
+	cache.set(state.doc, blocks);
 	return blocks;
 }

@@ -50,6 +50,6 @@ export function nativeSourceMenu(view:EditorView,source:TableSource,cell:HTMLEle
 		const menu=new CollectedMenu(check,options,()=>view.state.readOnly);native.makeSortMenu(menu,nativeCell);tableItems.push(...menu.items);
 	}
 	const reason='当前 Markdown 单元格语法不能无损转换为增强表格模型；原生编辑功能仍可使用。';
-	const enhancements=tableEnhancementItems(options,[{label:'合并单元格',icon:'combine',disabled:true,disabledReason:reason},{label:'取消合并',icon:'split',disabled:true,disabledReason:reason}],sourceActions,()=>{}).map(item=>item.label==='表格操作与格式…'?{...item,disabled:true,disabledReason:reason}:item);
+	const enhancements=tableEnhancementItems(options,[{label:'合并单元格',icon:'combine',disabled:true,disabledReason:reason},{label:'取消合并',icon:'split',disabled:true,disabledReason:reason}],sourceActions,[]).map(item=>item.label==='表格操作与格式'?{...item,disabled:true,disabledReason:reason}:item);
 	return [...nativeTableTextActions(view,cell,options,check),...enhancements,...tableItems];
 }

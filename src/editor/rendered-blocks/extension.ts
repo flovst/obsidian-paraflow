@@ -1,9 +1,11 @@
 import { containerBlockFrame, wrapContainerBlock, type ContainerFrame } from '../callout/container-surface.js';
+import { isolateHistory } from '@codemirror/commands';
 import { EditorState, Prec, StateEffect, StateField, type Extension, type Range } from '@codemirror/state';
 import { Decoration, EditorView, ViewPlugin, WidgetType, keymap, type DecorationSet } from '@codemirror/view';
-import { createNativeDecorationOwnership, isNativeReplacement, nativeBlockOwnership } from '../runtime/native-decoration-ownership.js';
+import { createNativeDecorationOwnership, isNativeReplacement, nativeBlockOwnership, restoreNativeSourceLines } from '../runtime/native-decoration-ownership.js';
 import { selectionPointerPressed } from '../runtime/selection-session.js';
 import { codeEditableSelection } from '../code-blocks/editable-boundaries.js';
+import { openCodeLanguagePopup, type CodeLanguagePopup } from '../code-blocks/language-popup.js';
 import type { CodeBlock } from '../code-blocks/source-scan.js';
 import { discoverRenderedBlocks, htmlSourceTokens, type RenderedBlock } from './model.js';
 import { destroyMermaidPreviews, mermaidThemeStylesChanged, mountMermaidPreview, refreshMermaidPreviews } from './mermaid-preview.js';
@@ -14,6 +16,8 @@ export interface RenderedBlockEditingOptions {
 	isActive: (view: EditorView) => boolean;
 	isViewSupported: (view: EditorView) => boolean;
 	sourcePath?: (view: EditorView) => string;
+	subscribeMarkdownChanges?: (listener: () => void) => () => void;
+	getCodeLanguagePosition?: () => 'off' | 'top-right' | 'bottom-right';
 	renderMarkdown: (source: string, target: HTMLElement, view: EditorView, kind: 'html' | 'mermaid') => { ready: Promise<void>; destroy(): void };
 }
 const interactive = 'summary,a,button,input,textarea,select,audio,video,[contenteditable="true"],[role="button"]';
@@ -60,13 +64,14 @@ class FenceWidget extends WidgetType {
 	ignoreEvent(event: Event): boolean { return (event.target as Element).closest('button') !== null; }
 }
 class PreviewWidget extends WidgetType {
+	readonly languagePosition: 'off' | 'top-right' | 'bottom-right';
 	constructor(readonly block: RenderedBlock, readonly editing: boolean, readonly options: RenderedBlockEditingOptions, readonly frame: ContainerFrame | null,
-		readonly revision: number) { super(); }
+		readonly revision: number) { super(); this.languagePosition = options.getCodeLanguagePosition?.() ?? 'bottom-right'; }
 	eq(other: PreviewWidget): boolean {
 		return this.revision === other.revision && this.sameContent(other);
 	}
 	private sameContent(other: PreviewWidget): boolean {
-		return this.block.from === other.block.from && this.block.source === other.block.source && this.block.kind === other.block.kind && this.editing === other.editing && this.options === other.options && this.frame?.key === other.frame?.key;
+		return this.languagePosition === other.languagePosition && this.block.from === other.block.from && this.block.source === other.block.source && this.block.kind === other.block.kind && this.editing === other.editing && this.options === other.options && this.frame?.key === other.frame?.key;
 	}
 	toDOM(view: EditorView): HTMLElement {
 		const owner = view.dom.ownerDocument;
@@ -76,12 +81,19 @@ class PreviewWidget extends WidgetType {
 		element.setAttribute('contenteditable', 'false');
 		if (!this.editing) element.append(badge(view, this.block));
 		const content = owner.createElement('div'); content.className = 'paraflow-rendered-block-content markdown-rendered'; element.append(content);
+		if (this.editing && this.block.kind === 'mermaid' && this.languagePosition !== 'off') {
+			const language = owner.createElement('div'); language.className = 'paraflow-rendered-language-anchor';
+			language.dataset.position = this.languagePosition;
+			language.setAttribute('aria-hidden', 'true');
+			language.dataset.paraflowRenderedFrom = String(this.block.from); element.append(language);
+		}
 		this.render(element, view);
 		return wrapContainerBlock(view, element, this.frame);
 	}
 	updateDOM(root: HTMLElement, view: EditorView): boolean {
 		if (root.dataset.paraflowContainerFrame !== this.frame?.key) return false;
 		const element = root.classList.contains('paraflow-container-block') ? root.lastElementChild as HTMLElement : root;
+		if (previewWidgets.get(element)?.languagePosition !== this.languagePosition) return false;
 		if (!element.classList.contains(`paraflow-rendered-block-${this.block.kind}`) ||
 			element.classList.contains('is-editing') !== this.editing || Number(element.dataset.paraflowRenderedFrom) !== this.block.from) return false;
 		if (this.sameContent(previewWidgets.get(element)!) && (this.block.kind !== 'mermaid' || mermaidCurrent.get(element)!())) {
@@ -140,6 +152,7 @@ interface Projection {
 }
 interface BlockOutput {
 	block: RenderedBlock; active: boolean; frameKey: string | undefined; revision: number; ranges: readonly Range<Decoration>[];
+	languagePosition: 'off' | 'top-right' | 'bottom-right';
 }
 function same(blocks: readonly RenderedBlock[], block: RenderedBlock | null): RenderedBlock | null {
 	return block ? blocks.find(candidate => candidate.from === block.from && candidate.kind === block.kind) ?? null : null;
@@ -160,13 +173,14 @@ function project(state: EditorState, options: RenderedBlockEditingOptions, previ
 	const selected = old && state.selection.ranges.some(range => !range.empty && range.from < old.to && range.to > old.from) ? old : null;
 	const active = !focused ? null : pressed ? same(blocks, frozen) : selected ?? caret;
 	const outputs: BlockOutput[] = [];
+	const languagePosition = options.getCodeLanguagePosition?.() ?? 'bottom-right';
 	for (const [index, block] of blocks.entries()) {
 		const frame = containerBlockFrame(state, block.from, block.to), was = previous?.outputs[index];
-		if (was?.block === block && was.active === (block === active) && was.frameKey === frame?.key && was.revision === previewRevision) {
+		if (was?.block === block && was.active === (block === active) && was.frameKey === frame?.key && was.revision === previewRevision && was.languagePosition === languagePosition) {
 			outputs.push(was); continue;
 		}
 		const ranges: Range<Decoration>[] = [];
-		outputs.push({ block, active: block === active, frameKey: frame?.key, revision: previewRevision, ranges });
+		outputs.push({ block, active: block === active, frameKey: frame?.key, revision: previewRevision, ranges, languagePosition });
 		if (block !== active) {
 			ranges.push(Decoration.replace({ widget: new PreviewWidget(block, false, options, frame, previewRevision), block: true, inclusiveEnd: true }).range(block.from, block.to));
 			continue;
@@ -214,7 +228,9 @@ export function createRenderedBlockEditing(options: RenderedBlockEditingOptions)
 		provide: field => Prec.highest(EditorView.decorations.from(field, value => value.decorations)),
 	});
 	const events = ViewPlugin.define(view => {
-		let alive = true, queued = false, themeChanged = false, stylesheetChanged = false;
+		let alive = true, queued = false, themeChanged = false, stylesheetChanged = false, markdownChanged = false;
+		let languagePopup: CodeLanguagePopup | null = null;
+		let languageAnchor: HTMLElement | null = null;
 		let gesture: { from: number; x: number; y: number; dragged: boolean } | null = null;
 		const sync = (): void => {
 			if (queued) return; queued = true;
@@ -225,8 +241,21 @@ export function createRenderedBlockEditing(options: RenderedBlockEditingOptions)
 					contextObserver.disconnect(); owner = view.dom.ownerDocument; observeContext();
 				}
 				const value = view.state.field(projection), enabled = options.isActive(view) && options.isViewSupported(view);
-				const contextChanged = refreshMermaidPreviews(view, themeChanged, stylesheetChanged); themeChanged = false; stylesheetChanged = false;
-				if (value.enabled !== enabled || value.focused !== view.hasFocus || contextChanged) view.dispatch({ effects: [activate.of(enabled), focus.of(view.hasFocus), ...(contextChanged ? [refreshPreview.of(null)] : [])] });
+				if (markdownChanged) destroyMermaidPreviews(view);
+				const contextChanged = refreshMermaidPreviews(view, themeChanged, stylesheetChanged) || markdownChanged;
+				themeChanged = false; stylesheetChanged = false; markdownChanged = false;
+				const focused = view.hasFocus || !!languagePopup?.containsFocus();
+				if (!enabled) languagePopup?.close();
+				if (value.enabled !== enabled || value.focused !== focused || contextChanged) view.dispatch({ effects: [activate.of(enabled), focus.of(focused), ...(contextChanged ? [refreshPreview.of(null)] : [])] });
+				const current = view.state.field(projection), block = current.active;
+				const position = options.getCodeLanguagePosition?.() ?? 'bottom-right';
+				const anchor = block?.kind === 'mermaid' && position !== 'off'
+					? view.contentDOM.querySelector<HTMLElement>(`.paraflow-rendered-language-anchor[data-paraflow-rendered-from="${block.from}"]`) : null;
+				if (languagePopup && anchor !== languageAnchor) languagePopup.close();
+				if (!anchor || languagePopup) return;
+				languageAnchor = anchor;
+				languagePopup = openCodeLanguagePopup(view, block!.from, anchor, { position: position as 'top-right' | 'bottom-right', focus: false, dismissOnPointerLeave: false,
+					onClose: () => { languagePopup = null; languageAnchor = null; sync(); } });
 			});
 		};
 		const targetBlock = (event: MouseEvent): { element: HTMLElement; from: number } | null => {
@@ -255,6 +284,7 @@ export function createRenderedBlockEditing(options: RenderedBlockEditingOptions)
 			view.focus(); view.dispatch({ selection: { anchor: block.bodyFrom }, effects: focus.of(true), userEvent: 'select', scrollIntoView: true });
 		};
 		view.dom.addEventListener('mousedown', down, true); view.dom.addEventListener('click', click, true);
+		view.dom.addEventListener('focusout', sync);
 		let owner = view.dom.ownerDocument;
 		const contextObserver = new owner.defaultView!.MutationObserver(records => {
 			const changedStyles = mermaidThemeStylesChanged(records, owner);
@@ -269,9 +299,16 @@ export function createRenderedBlockEditing(options: RenderedBlockEditingOptions)
 			contextObserver.observe(owner.head, { childList: true, subtree: true, characterData: true, attributes: true });
 			owner.defaultView!.addEventListener('unload', unload); owner.addEventListener('mousemove', move, true);
 		};
+		const unsubscribeMarkdownChanges = options.subscribeMarkdownChanges?.(() => { markdownChanged = true; sync(); });
 		observeContext(); sync();
-		return { update: sync, destroy() {
+		return { update(update) {
+			if (update.startState.field(projection).outputs.length && !options.isStateActive(update.state)) restoreNativeSourceLines(view);
+			if (update.docChanged) languagePopup?.close();
+			sync();
+		}, destroy() {
 			alive = false; view.dom.removeEventListener('mousedown', down, true); view.dom.removeEventListener('click', click, true);
+			languagePopup?.close(); view.dom.removeEventListener('focusout', sync);
+			unsubscribeMarkdownChanges?.();
 			owner.removeEventListener('mousemove', move, true);
 			destroyMermaidPreviews(view);
 			contextObserver.disconnect(); owner.defaultView!.removeEventListener('unload', unload);
@@ -283,10 +320,20 @@ export function createRenderedBlockEditing(options: RenderedBlockEditingOptions)
 		return selection ? [transaction, { selection, sequential: true }] : transaction;
 	});
 	const protectDelete = (view: EditorView, back: boolean): boolean => {
-		if (!options.isActive(view) || view.composing || view.state.selection.ranges.length !== 1 || !view.state.selection.main.empty) return false;
+		if (!options.isActive(view) || view.state.readOnly || view.composing || view.state.selection.ranges.length !== 1 || !view.state.selection.main.empty) return false;
 		const head = view.state.selection.main.head;
 		for (const block of enabledBlocks(view.state, options)) {
 			if (block.kind !== 'mermaid' || !block.fence) continue;
+			const first = block.lines[0];
+			const atEmptyBody = first ? first.contentFrom <= head && head <= first.to &&
+				block.lines.every(line => /^[ \t]*$/u.test(view.state.sliceDoc(line.contentFrom, line.to))) : head === block.bodyFrom;
+			if (back && atEmptyBody) {
+				const prefix = block.fence.continuation;
+				view.dispatch({ changes: { from: block.from, to: block.to, insert: prefix },
+					selection: { anchor: block.from + prefix.length }, userEvent: 'delete.code-block', annotations: isolateHistory.of('full') });
+				return true;
+			}
+			if (!first && head === block.bodyFrom) return true;
 			const index = block.lines.findIndex(line => head === (back ? line.contentFrom : line.to));
 			if (index < 0) continue;
 			if (back && index === 0 || !back && index === block.lines.length - 1) return true;
@@ -304,7 +351,7 @@ export function createRenderedBlockEditing(options: RenderedBlockEditingOptions)
 			...['Backspace', 'Mod-Backspace', 'Alt-Backspace'].map(key => ({ key, run: (view: EditorView) => protectDelete(view, true) })),
 			...['Delete', 'Mod-Delete', 'Alt-Delete'].map(key => ({ key, run: (view: EditorView) => protectDelete(view, false) })),
 		])),
-		EditorView.focusChangeEffect.of((_state, focused) => focus.of(focused)),
+		EditorView.focusChangeEffect.of((_state, focused) => focused ? focus.of(true) : null),
 		nativeBlockOwnership.of((state, view) => {
 			if (!options.isViewSupported(view) || !options.isStateActive(state)) return null;
 			const blocks = enabledBlocks(state, options);

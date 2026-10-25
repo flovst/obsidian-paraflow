@@ -27,7 +27,7 @@ export interface TableEditingOptions {
 	isSourceMode?: (view: EditorView) => boolean;
 	/** Captured before native cells stop bubbling; augments their existing menu. */
 	onNativeContextMenu?: (view: EditorView, event: MouseEvent) => void;
-	/** Public host scope must see Mod+Enter before the global shortcut stops DOM propagation. */
+	/** Public host scope owns table structural shortcuts before global handlers stop DOM propagation. */
 	registerKeyScope?: (view: EditorView, handler: (event: KeyboardEvent) => void) => () => void;
 	isActive: (view: EditorView) => boolean;
 	notify: (message: string) => void;

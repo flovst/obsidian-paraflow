@@ -13,6 +13,7 @@ import { mathDraftRanges } from '../math/native-ownership.js';
 import { deleteAdjacentMath } from '../math/operations.js';
 import { deleteAdjacentCode } from '../code-blocks/operations.js';
 import { discoverCodeBlocks } from '../code-blocks/model.js';
+import { codeDraft } from '../code-blocks/draft-state.js';
 import { discoverSetextHeadings } from '../paragraph/setext.js';
 import { discoverAtxHeadings, discoverParagraphAuthority } from '../paragraph/syntax.js';
 import { moveAcrossCalloutGap } from './gaps.js';
@@ -78,6 +79,7 @@ export function createCalloutExtension(isActive: (view: EditorView) => boolean, 
 		if ((key === 'Backspace' || key === 'Delete') && isActive(view) && view.state.facet(mathCandidatesActive) &&
 			deleteAdjacentMath(view, key === 'Delete', () => true)) return true;
 		if (!eligible(view)) return false;
+		if (key === 'Enter' && view.state.selection.main.empty && view.state.facet(codeDraft)?.to === view.state.selection.main.head) return false;
 		if (key === 'Tab' && (options.paragraphEditing?.(view) ?? true) && insertBodyTab(view)) return true;
 		if (key === 'Enter' && view.state.facet(mathCandidatesActive) && view.state.selection.ranges.length === 1 &&
 			view.state.selection.main.empty && mathDraftRanges(view.state).some(range => range.to === view.state.selection.main.head && range.to - range.from === 2)) return false;

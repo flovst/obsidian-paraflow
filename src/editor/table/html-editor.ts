@@ -371,11 +371,12 @@ export class HtmlTableController implements TableActionTarget {
 		if(nextSource===this.session.target.source)return;
 		const transaction=this.view.state.update(this.session.replace(this.view.state,nextSource??'',change));
 		if(nextSource!==null&&focused){const cell=selectedCell??this.cellElement(this.current)!;requestTableFocus(this.view,transaction,this.session.target.from,focus??{...captureTableFocus(cell,this.current,cell.innerHTML),rectangle:this.selecting?this.rectangle:undefined});}
-		if(nextSource!==null)this.session=new TableEditSession(findEditableTableSources(transaction.state).find(target=>target.from===this.session.target.from)!);
-		const replacementSession=this.session;
+		const previousSession=this.session;
+		const replacementSession=nextSource===null?null:new TableEditSession(findEditableTableSources(transaction.state).find(target=>target.from===previousSession.target.from)!);
 		this.view.dispatch(transaction);
 		// The host can reuse this widget for another table during representation changes.
-		if(this.destroyed||this.session!==replacementSession)return;
+		if(this.destroyed||this.session!==previousSession&&(!replacementSession||this.session.target.from!==replacementSession.target.from||this.session.target.source!==replacementSession.target.source))return;
+		if(replacementSession)this.session=replacementSession;
 		clearTableFocus(this.view);
 		if(nextSource!==null){const table=this.session.table;if(focus)this.current=focus.cell;if(structural){this.current={row:Math.min(this.current.row,table.rows-1),column:Math.min(this.current.column,table.columns-1)};this.rectangle=focus?.rectangle??closeSelection(table,this.current,this.current);this.trackRectangle={...this.rectangle};}this.render();if(focused){const offsets=focus??caret;this.focusCell(this.current,offsets?.to);if(offsets&&offsets.from!==offsets.to)this.restoreTextSelection({cell:this.current,from:offsets.from,to:offsets.to});}}
 	}
@@ -517,7 +518,7 @@ export class HtmlTableController implements TableActionTarget {
 		if(!this.options.openWikiLink){this.options.notify('内部链接导航未连接到宿主。');return;}
 		try{const link=readWikiAnchor(anchor);void Promise.resolve(this.options.openWikiLink(this.view,link.target,true)).catch(error=>this.options.notify(error instanceof Error?error.message:String(error)));}catch(error){this.options.notify(error instanceof Error?error.message:String(error));}
 	};
-	showContextMenu(point:{x:number;y:number}):void {this.menu?.close();this.frozenText=this.textBookmark;this.menu=showTableContextMenu(this,this.options,point,bookmark=>{this.frozenText=bookmark;this.menu=showTableActions(this,this.options,point,()=>{this.frozenText=null;});},()=>{this.frozenText=null;});}
+	showContextMenu(point:{x:number;y:number}):void {this.menu?.close();this.frozenText=this.textBookmark;this.menu=showTableContextMenu(this,this.options,point,()=>{this.frozenText=null;});}
 	showMenu(point:{x:number;y:number}):void {this.menu?.close();this.frozenText=this.textBookmark;this.menu=showTableActions(this,this.options,point,()=>{this.frozenText=null;});}
 	clearPreview():void {this.previewRestore?.();this.previewRestore=undefined;}
 	preview(table:TableModel):()=>void {

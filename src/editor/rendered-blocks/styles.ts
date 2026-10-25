@@ -19,7 +19,16 @@ export const renderedBlockEditorStyles = `
   border: 1px solid var(--paraflow-border-color, var(--background-modifier-border));
   border-block-end-color: var(--background-modifier-border-hover, var(--text-faint));
 }
-.paraflow-rendered-block-mermaid { padding: 0; }
+.paraflow-rendered-block-mermaid { padding: 0; flex-direction: column; }
+/* Native direct-child widget rules must preserve this control's flex placement. */
+.paraflow-rendered-block-mermaid,
+.markdown-source-view.mod-cm6 .cm-editor .cm-content .paraflow-rendered-block-mermaid { display: flex; }
+.paraflow-rendered-language-anchor {
+  display: block; order: 1; align-self: flex-end; height: 0; margin: .25em .5em 2.0625em;
+  box-sizing: border-box; inline-size: calc(var(--font-text-size, 1rem) * 10.625); max-inline-size: calc(100% - 1em);
+  font-family: var(--font-monospace);
+}
+.paraflow-rendered-language-anchor[data-position="top-right"] { order: -1; height: 1.625em; margin-block-end: .25em; }
 .paraflow-rendered-block-mermaid .paraflow-rendered-block-content { text-align: center; overflow-x: auto; }
 .markdown-reading-view .mermaid.paraflow-reading-mermaid { text-align: center; overflow-x: auto; }
 .paraflow-rendered-block-mermaid .mermaid > svg,
@@ -78,6 +87,7 @@ export const renderedBlockEditorStyles = `
   contain: none !important;
 }
 .cm-editor .cm-content > .cm-line.paraflow-rendered-source-line.is-first { margin-block-start: 1.25em !important; padding-block-start: .3em !important; }
+.cm-editor .cm-content > .cm-line.paraflow-rendered-source-mermaid.is-first:not(.paraflow-callout-line) { border-block-start: var(--paraflow-block-code-border, 1px solid var(--paraflow-border-color, var(--background-modifier-border))) !important; }
 .cm-editor .cm-content > .cm-line.paraflow-rendered-source-line.is-last { padding-block-end: .3em !important; }
 .cm-editor .cm-content > .cm-line.paraflow-rendered-source-line::before {
   content: attr(data-paraflow-rendered-line) !important;

@@ -338,6 +338,16 @@ function orderedIndentStart(analysis: SourceAnalysis, previous: AnalyzedItem | n
 	return sequence.renderedValue + 1;
 }
 
+export function precedingParagraphChild(
+	analysis: SourceAnalysis, item: AnalyzedItem, blocks: readonly OwnedBlock[], first: number,
+): ListBlockRef | null {
+	const preceding = blocks[first - 1];
+	if (!preceding || preceding.relativeDepth === 0) return null;
+	const index = topologyIndex(analysis);
+	const children = index.children.get(index.positions.get(item)!);
+	return children?.filter(child => child.line.from <= preceding.range.from).at(-1)?.block ?? null;
+}
+
 export function buildListTopology(
 	analysis: SourceAnalysis,
 	item: AnalyzedItem,

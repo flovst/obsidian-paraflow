@@ -8,6 +8,7 @@ import { createNavigationDestinationResolver } from './navigation-adapter.js';
 import { planSelectionIndent } from './selection-indent.js';
 import { projectedQuoteMarkerOffset } from './projection.js';
 import { headingBodyLineAt } from '../paragraph/heading-projection.js';
+import { hasMathCreationDraft } from '../math/native-ownership.js';
 import type { ContextRuntime } from './model.js';
 import {
 	executeRegisteredOperation,
@@ -91,6 +92,7 @@ function dispatchStructural<K extends StructuralOperationId>(
 	runtime: ContextRuntime,
 	services: StructuredListRuntimeServices,
 ): boolean {
+	if (intent.operation.startsWith('enter-') && hasMathCreationDraft(view.state)) return false;
 	if (intent.operation === 'tab' || intent.operation === 'shift-tab') {
 		const selection = planSelectionIndent(view.state, intent.operation, runtime, services.structural.prefixPolicy);
 		if (selection) return applyOperationResult(view, intent.operation, selection.scope, selection.result, services.result);

@@ -122,6 +122,27 @@ export const CODE_BLOCK_CSS = LIST_BLOCK_GEOMETRY_CSS + `
   box-shadow: none;
 }
 .paraflow-code-language-popup input[aria-invalid="true"] { border-color: var(--text-error); }
+.paraflow-code-language-suggestions {
+  position: absolute; inset: 100% 0 auto; max-height: 15em; overflow-y: auto;
+  background: var(--background-primary); border: 1px solid var(--background-modifier-border);
+  border-radius: 4px; box-shadow: var(--shadow-s);
+}
+.paraflow-code-language-suggestions.is-above { inset: auto 0 100%; }
+.paraflow-code-language-suggestions button {
+  display: flex; align-items: center; gap: .6em; width: 100%; border: 0; border-radius: 0; box-shadow: none;
+  text-align: left; background: transparent; padding: .3em .6em; font-size: .85em;
+}
+.paraflow-code-language-icon {
+  flex: none; width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 1.5;
+  stroke-linecap: round; stroke-linejoin: round; color: var(--color-green, #699b35);
+}
+.paraflow-code-language-icon[data-category="script"] { color: var(--color-purple, #9470c4); }
+.paraflow-code-language-icon[data-category="terminal"] { color: var(--color-cyan, #289c9c); }
+.paraflow-code-language-icon[data-category="markup"] { color: var(--color-orange, #bc7a36); }
+.paraflow-code-language-icon[data-category="data"] { color: var(--color-blue, #538ac5); }
+.paraflow-code-language-icon[data-category="diagram"] { color: var(--color-pink, #b8689a); }
+.paraflow-code-language-icon[data-category="text"] { color: var(--text-muted); }
+.paraflow-code-language-suggestions button:is(:hover,[aria-selected="true"]) { background: var(--background-modifier-hover); }
 .paraflow-code-language-popup[data-position="bottom-right"] input[type="text"] {
   border-bottom-color: var(--background-modifier-border-hover, var(--text-faint));
 }

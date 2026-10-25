@@ -12,6 +12,7 @@ import {admittedFragment} from './admitted-dom';
 import {enterFollowingTable,lastTableCell} from './keyboard-entry';
 import {enterVirtualTail} from '../runtime/virtual-tail';
 import {tableExitSelection} from './vertical-exit';
+import type {TableAxis} from './model';
 
 const emptyTableHistory=StateEffect.define<{from:number;restore:boolean}>({map:(value,changes)=>({...value,from:changes.mapPos(value.from)})});
 
@@ -55,20 +56,22 @@ function emptyTableDeletion(view:EditorView,source:TableSource):TransactionSpec|
 }
 
 /** A cell editor owns text movement; the outer table owns only its external boundaries. */
-export function createTableKeyboardBoundaries(options:TableEditingOptions,deleteCaretRow:(view:EditorView,cell:HTMLTableCellElement)=>boolean,insertCaretRow?:(view:EditorView,cell:HTMLTableCellElement)=>boolean):Extension {
+export function createTableKeyboardBoundaries(options:TableEditingOptions,deleteCaretRow:(view:EditorView,cell:HTMLTableCellElement)=>boolean,insertCaretRow?:(view:EditorView,cell:HTMLTableCellElement)=>boolean,moveCaretTracks?:(view:EditorView,cell:HTMLTableCellElement,axis:TableAxis,direction:-1|1)=>boolean):Extension {
  return [invertedEffects.of(transaction=>transaction.effects.filter(effect=>effect.is(emptyTableHistory))
   .map(effect=>emptyTableHistory.of({from:transaction.changes.invertedDesc.mapPos(effect.value.from),restore:!effect.value.restore}))),ViewPlugin.define(view=>{
   let destroyed=false;
   const capture=(event:KeyboardEvent)=>{
+   const move=event.altKey&&!event.shiftKey&&!event.ctrlKey&&!event.metaKey&&['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(event.key);
    const rowDelete=event.key==='Backspace'&&event.shiftKey&&(event.ctrlKey||event.metaKey)&&!event.altKey;
    const enter=event.key==='Enter'&&!event.shiftKey&&!event.altKey;
-   if(!['ArrowLeft','ArrowRight','ArrowUp','Backspace','Enter'].includes(event.key)||event.defaultPrevented||view.state.readOnly||
-    (!rowDelete&&!enter&&(event.shiftKey||event.altKey||event.ctrlKey||event.metaKey))||event.isComposing||view.composing||
+   if(!move&&!['ArrowLeft','ArrowRight','ArrowUp','Backspace','Enter'].includes(event.key)||event.defaultPrevented||view.state.readOnly||
+    (!rowDelete&&!enter&&!move&&(event.shiftKey||event.altKey||event.ctrlKey||event.metaKey))||event.isComposing||view.composing||
     !options.isActive(view)||options.isActiveView?.(view)===false||requireCompositionState(view.state)||
-    (!rowDelete&&!enter&&!view.dom.classList.contains('paraflow-paragraph-editing-active')))return;
+    (!rowDelete&&!enter&&!move&&!view.dom.classList.contains('paraflow-paragraph-editing-active')))return;
    const cell=(event.target as Element).closest<HTMLTableCellElement>('td,th');
    const wrapper=cell?.closest<HTMLElement>('.cm-table-widget,.paraflow-html-table-editor');
    if(!cell||!wrapper||!view.dom.contains(wrapper))return;
+   if(move){const content=cell.querySelector<HTMLElement>('.cm-content'),nested=content?EditorView.findFromDOM(content):null;if(nested&&(nested.composing||nested.state.readOnly))return;if(moveCaretTracks?.(view,cell,event.key==='ArrowUp'||event.key==='ArrowDown'?'row':'column',event.key==='ArrowUp'||event.key==='ArrowLeft'?-1:1)){event.preventDefault();event.stopPropagation();}return;}
    const table=cell.closest('table')!,cells=Array.from(table.querySelectorAll<HTMLTableCellElement>('td,th')).filter(item=>item.closest('table')===table);
    if(enter&&cells.filter(cell=>cell.classList.contains('is-selected')||cell.getAttribute('aria-selected')==='true').length>1)return;
    const caret=cellCaret(view,cell,event.key==='ArrowUp',enter);if(!caret)return;
@@ -111,7 +114,7 @@ export function createTableKeyboardBoundaries(options:TableEditingOptions,delete
   };
   view.dom.addEventListener('keydown',capture,true);
   const releaseScope=options.registerKeyScope?.(view,event=>{
-   if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)&&!event.shiftKey&&!event.altKey)capture(event);
+   if(event.altKey&&!event.ctrlKey&&!event.metaKey&&!event.shiftKey&&event.key.startsWith('Arrow')||(event.ctrlKey||event.metaKey)&&!event.altKey&&(event.key==='Enter'&&!event.shiftKey||event.key==='Backspace'&&event.shiftKey))capture(event);
   });
   return {update(update){
    for(const transaction of update.transactions){

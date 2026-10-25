@@ -1,5 +1,5 @@
 import { Language, language, ParseContext } from '@codemirror/language';
-import { Compartment, Prec, type Extension, type Range } from '@codemirror/state';
+import { Compartment, Prec, type EditorState, type Extension, type Range } from '@codemirror/state';
 import { Decoration, ViewPlugin, type DecorationSet, type EditorView, type ViewUpdate } from '@codemirror/view';
 import { Parser, TreeFragment, type Input, type PartialParse, type Tree } from '@lezer/common';
 import { mathCandidatesActive, pendingMath, type PendingMathRange } from './candidate-ranges.js';
@@ -44,25 +44,42 @@ function sharedParser(): Extension {
 		private install(): void {
 			const native = this.view.state.facet(language);
 			if (!native) return;
-			let previous: { masks: readonly PendingMathRange[]; expressions: readonly MathExpression[]; code: CodeParserSource; quotes: readonly PendingMathRange[]; language: Language } | null = null;
+			let previous: { state: EditorState; masks: readonly PendingMathRange[]; expressions: readonly MathExpression[]; code: CodeParserSource; quotes: readonly PendingMathRange[]; language: Language } | null = null;
 			this.view.dispatch({ effects: compartment.reconfigure([
 				baseMathLanguage.of(native),
 				Prec.highest(language.computeN(['doc', pendingMath, acceptedMath, mathCandidatesActive, codeParserSource, quoteDraftMasks], state => {
 					// Only draft acceptance differs between editor modes; dollar grammar is shared.
 					const pending = state.facet(mathCandidatesActive) ? state.facet(pendingMath) : [];
 					const expressions = acceptedParserMath(state, pending), masks = mathParserMasks(state, pending, expressions), code = state.facet(codeParserSource), quotes = state.facet(quoteDraftMasks);
-					if (previous && sameMasks(previous.quotes, quotes) && sameMasks(previous.code.masks, code.masks) && sameMasks(previous.code.opaque, code.opaque) && sameMasks(previous.masks, masks) && sameMasks(previous.expressions, expressions) &&
-						previous.expressions.every((math, index) => math.display === expressions[index]!.display)) return [previous.language];
+					// Document transactions carry native fragments forward. A mode-only change
+					// needs a new language because CM otherwise does not restart its parser.
+					if (previous && (previous.state.doc !== state.doc || (sameMasks(previous.quotes, quotes) && sameMasks(previous.code.masks, code.masks) && sameMasks(previous.code.opaque, code.opaque) && sameMasks(previous.masks, masks) && sameMasks(previous.expressions, expressions) &&
+						previous.expressions.every((math, index) => math.display === expressions[index]!.display)))) {
+						previous = { state, masks, expressions, code, quotes, language: previous.language };
+						return [previous.language];
+					}
 					const parser = new class extends Parser {
-						private readonly nativeTrees = new WeakMap<Tree, Tree>();
+						private readonly nativeTrees = new WeakMap<Tree, { tree: Tree; source: string }>();
 						createParse(input: Input, fragments: readonly TreeFragment[], ranges: readonly { from: number; to: number }[]) {
+							const context = ParseContext.get();
+							if (!context) throw new Error('Shared editor parser requires a ParseContext');
+							const parseState = context.state;
+							const pending = parseState.facet(mathCandidatesActive) ? parseState.facet(pendingMath) : [];
+							const expressions = acceptedParserMath(parseState, pending), masks = mathParserMasks(parseState, pending, expressions);
+							const code = parseState.facet(codeParserSource), quotes = parseState.facet(quoteDraftMasks);
 							const source = maskQuoteDraftSource(maskCodeSource(maskMathSource(input.read(0, input.length), masks), code.masks), quotes);
 							const nativeTrees = this.nativeTrees;
 							const nativeFragments = fragments.flatMap(fragment => {
-								const tree = nativeTrees.get(fragment.tree);
-								return tree ? [new TreeFragment(fragment.from, fragment.to, tree, fragment.offset, fragment.openStart, fragment.openEnd)] : [];
+								const saved = nativeTrees.get(fragment.tree);
+								if (!saved) return [];
+								const nativeFragment = new TreeFragment(fragment.from, fragment.to, saved.tree, fragment.offset, fragment.openStart, fragment.openEnd);
+								// Acceptance can change masked bytes outside the literal document edit.
+								let from = fragment.from, to = fragment.to;
+								while (from < to && source.charCodeAt(from) === saved.source.charCodeAt(from + fragment.offset)) from++;
+								while (to > from && source.charCodeAt(to - 1) === saved.source.charCodeAt(to - 1 + fragment.offset)) to--;
+								return from === to ? [nativeFragment] : TreeFragment.applyChanges([nativeFragment], [{ fromA: from, toA: to, fromB: from, toB: to }]);
 							});
-							const context = ParseContext.get(), viewport = context?.viewport;
+							const viewport = context.viewport;
 							let parsing: PartialParse;
 							try {
 								// A far viewport must not restart stream state inside a fence. Keep
@@ -75,10 +92,19 @@ function sharedParser(): Extension {
 							}
 							return {
 								advance() {
-									const tree = parsing.advance();
+									const activeContext = ParseContext.get(), activeViewport = activeContext?.viewport;
+									let tree: Tree | null;
+									try {
+										// CM may request the previous parsed prefix beyond a smaller viewport.
+										if (activeContext && activeViewport && parsing.stoppedAt !== null)
+											activeContext.viewport = { from: activeViewport.from, to: Math.max(activeViewport.to, parsing.stoppedAt) };
+										tree = parsing.advance();
+									} finally {
+										if (activeContext && activeViewport) activeContext.viewport = activeViewport;
+									}
 									if (!tree) return null;
 									const projected = projectMathTree(tree, expressions.filter(math => math.to <= tree.length), code.opaque.filter(range => range.to <= tree.length));
-									nativeTrees.set(projected, tree);
+									nativeTrees.set(projected, { tree, source });
 									return projected;
 								},
 								get parsedPos() { return parsing.parsedPos; },
@@ -88,7 +114,7 @@ function sharedParser(): Extension {
 						}
 					}();
 					const adapted = new class extends Language { get allowsNesting(): boolean { return native.allowsNesting; } }(native.data, parser, [], native.name);
-					previous = { masks, expressions, code, quotes, language: adapted };
+					previous = { state, masks, expressions, code, quotes, language: adapted };
 					return [adapted];
 				})),
 			]) });

@@ -13,7 +13,7 @@ export const codeDraft = Facet.define<CodeDraft|null,CodeDraft|null>({combine:va
 export const codeDraftStart = Facet.define<number|null,number|null>({combine:values=>values[0]??null});
 
 function candidate(state:EditorState,from:number,typed:boolean):CodeDraft|null {
-	const block=codeBlocksIn(state.doc).find(block=>block.from===from&&!block.indented&&(typed||!block.closed));
+	const block=codeBlocksIn(state.doc, true).find(block=>block.from===from&&!block.indented&&(typed||!block.closed));
 	return block ? {from,to:state.doc.lineAt(from).to,end:typed?state.doc.length:block.to,typed} : null;
 }
 
@@ -33,7 +33,7 @@ function sourceClosingCandidate(previous:number|null,tr:Transaction):number|null
 /** Source parsing keeps draft identity independent of the presentation/paragraph authority graph. */
 export const codeDraftState = StateField.define<{active:boolean;draft:CodeDraft|null;sourceClose:number|null}>({
 	create(state) {
-		const head=state.selection.main.head,block=codeBlocksIn(state.doc).find(block=>!block.closed&&!block.indented&&!block.lines.length&&head>=block.from&&head<=block.to);
+		const head=state.selection.main.head,block=codeBlocksIn(state.doc, true).find(block=>!block.closed&&!block.indented&&!block.lines.length&&head>=block.from&&head<=block.to);
 		return {active:false,draft:block?candidate(state,block.from,false):null,sourceClose:null};
 	},
 	update(value,tr) {
@@ -57,7 +57,7 @@ export const codeDraftState = StateField.define<{active:boolean;draft:CodeDraft|
 			let local=false;
 			tr.changes.iterChangedRanges((from,to,fromB,toB)=>{if(fromB>=line.from&&toB<=line.to&&tr.startState.doc.lineAt(from).number===tr.startState.doc.lineAt(to).number)local=true;});
 			const oldLine=tr.startState.doc.lineAt(tr.changes.invertedDesc.mapPos(line.from));
-			if(next&&local&&!codeBlocksIn(tr.startState.doc).some(block=>!block.indented&&block.from===oldLine.from))draft=next;
+			if(next&&local&&!codeBlocksIn(tr.startState.doc, true).some(block=>!block.indented&&block.from===oldLine.from))draft=next;
 		}
 		return {active,draft,sourceClose:null};
 	},

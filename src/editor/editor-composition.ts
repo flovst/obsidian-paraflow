@@ -47,6 +47,7 @@ export interface EditorCompositionDependencies {
 	renderInlineHtml: ParagraphExtensionOptions['renderInlineHtml'];
 	openReferenceLink: ParagraphExtensionOptions['openReferenceLink'];
 	renderMarkdown: RenderedBlockEditingOptions['renderMarkdown'];
+	subscribeMarkdownChanges?: RenderedBlockEditingOptions['subscribeMarkdownChanges'];
 	sourcePath: RenderedBlockEditingOptions['sourcePath'];
 	renderCalloutHeader: CalloutPresentationOptions['renderHeader'];
 	loadPrism?: Parameters<typeof createCodeBlockExtension>[0]['loadPrism'];
@@ -64,7 +65,8 @@ export function createEditorComposition(host: EditorExtensionLifecycleHost, depe
 	const renderedBlocks = createRenderedBlockEditing({
 		isStateActive: isLivePreview, isActive, isViewSupported: isPrimarySourceEditor,
 		isKindEnabled: kind => kind === 'html' ? getSettings().enhancements.htmlBlocks : getSettings().enhancements.mermaid,
-		sourcePath: dependencies.sourcePath, renderMarkdown: dependencies.renderMarkdown,
+		getCodeLanguagePosition: () => getSettings().enhancements.codeLanguagePosition,
+		sourcePath: dependencies.sourcePath, renderMarkdown: dependencies.renderMarkdown, subscribeMarkdownChanges: dependencies.subscribeMarkdownChanges,
 	});
 	const services = createStructuredListRuntimeServiceFactory({ clipboard: dependencies.clipboard });
 	moduleHost.registerEditorExtension(createMathTabExtension(view =>

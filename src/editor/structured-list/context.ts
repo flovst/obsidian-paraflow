@@ -15,7 +15,7 @@ import {
 	selectionGate,
 	selectionSnapshot,
 } from './context-selection.js';
-import { buildListTopology, buildProjectionContext } from './context-topology.js';
+import { buildListTopology, buildProjectionContext, precedingParagraphChild } from './context-topology.js';
 import type {
 	ContextRuntime,
 	ListContext,
@@ -77,14 +77,17 @@ function buildAnalyzedListContext(
 	const ownedBlockIndex = topology.ownedBlocks.findIndex((block) =>
 		block.kind !== 'descendant' && block.kind !== 'code-leaf' && block.range.from <= position && position <= block.range.to);
 	const owned = topology.ownedBlocks[ownedBlockIndex];
+	const subtreeBlockIndexes = owned ? paragraphSubtreeIndexes(topology.ownedBlocks, ownedBlockIndex) : [];
 	const caretContent: ListContext['caretContent'] = owned && owned.kind !== 'descendant' && owned.kind !== 'code-leaf'
 		? {
 			kind: owned.kind,
 			ownedBlockIndex,
-			subtreeBlockIndexes: paragraphSubtreeIndexes(topology.ownedBlocks, ownedBlockIndex),
+			subtreeBlockIndexes,
+			paragraphIndentParent: owned.kind === 'additional-paragraph'
+				? precedingParagraphChild(analysis, item, topology.ownedBlocks, subtreeBlockIndexes[0]!) : null,
 			range: { from: ownedBodyStart(containingLine(analysis.lines, owned.range.from)), to: owned.range.to },
 		}
-		: { kind: 'marker-line', ownedBlockIndex: null, subtreeBlockIndexes: [], range: item.block.content };
+		: { kind: 'marker-line', ownedBlockIndex: null, subtreeBlockIndexes: [], paragraphIndentParent: null, range: item.block.content };
 	return {
 		caret: position,
 		caretContent,

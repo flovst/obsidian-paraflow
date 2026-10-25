@@ -3,6 +3,8 @@ import { parser } from '@lezer/markdown';
 import { findTableSources } from '../table/edit-session.js';
 import { metadataGrammar, nativeInlineGrammarFor, standaloneBreakGrammar } from '../markdown-grammar.js';
 import { mathRangeIndex } from '../math/syntax.js';
+import { codeDraft, type CodeDraft } from '../code-blocks/draft-state.js';
+import { codeDraftMask, maskCodeSource } from '../code-blocks/parser-source.js';
 export interface RenderedBlock {
 	kind: 'html' | 'mermaid'; from: number; to: number; bodyFrom: number; bodyTo: number;
 	lines: { from: number; to: number; contentFrom: number; number: number }[];
@@ -10,14 +12,16 @@ export interface RenderedBlock {
 	source: string;
 	fence: { openingTo: number; closingFrom: number; continuation: string } | null;
 }
-const cache = new WeakMap<Text, RenderedBlock[]>();
+const cache = new WeakMap<Text, { draft: CodeDraft | null; blocks: RenderedBlock[] }>();
 const grammar = parser.configure([metadataGrammar, standaloneBreakGrammar]);
 const tagPattern = /<!--[\s\S]*?(?:-->|$)|<\/?[A-Za-z][\w:-]*(?:[^<>"']|"[^"]*"|'[^']*')*>/gu;
 
 export function discoverRenderedBlocks(state: EditorState): RenderedBlock[] {
 	const cached = cache.get(state.doc);
-	if (cached) return cached;
-	const source = state.doc.toString();
+	const draft = state.facet(codeDraft);
+	if (cached?.draft === draft) return cached.blocks;
+	const rawSource = state.doc.toString();
+	const source = maskCodeSource(rawSource, codeDraftMask(rawSource, draft));
 	const blocks: RenderedBlock[] = [];
 	const tables = findTableSources(source);
 	let consumedTo = 0, tableIndex = 0;
@@ -28,7 +32,7 @@ export function discoverRenderedBlocks(state: EditorState): RenderedBlock[] {
 		if (node.name !== 'HTMLBlock' && node.name !== 'FencedCode') return;
 		const mermaid = node.name === 'FencedCode';
 		const info = node.node.getChild('CodeInfo');
-		if (mermaid && (!info || source.slice(info.from, info.to).trim().toLowerCase() !== 'mermaid')) return false;
+		if (mermaid && (!info || source.slice(info.from, info.to).trim().split(/\s/u)[0]!.toLowerCase() !== 'mermaid')) return false;
 		if (!mermaid && /^<\/?table(?:\s|>)/iu.test(source.slice(node.from))) return false;
 		const opening = state.doc.lineAt(node.from);
 		const prefix = source.slice(opening.from, node.from);
@@ -60,7 +64,7 @@ export function discoverRenderedBlocks(state: EditorState): RenderedBlock[] {
 		consumedTo = to;
 		return false;
 	} });
-	cache.set(state.doc, blocks);
+	cache.set(state.doc, { draft, blocks });
 	return blocks;
 }
 

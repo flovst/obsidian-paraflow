@@ -2,6 +2,8 @@ export const TABLE_EDITING_CSS=`
 .paraflow-table-break-hints { position:fixed; overflow:hidden; pointer-events:none; z-index:1; }
 .paraflow-table-break-hint { position:absolute; color:var(--paraflow-source-color,var(--text-faint)); white-space:nowrap; overflow:hidden; user-select:none; }
 .paraflow-table-break-hint-rich { box-sizing:border-box; padding-inline-start:.12em; }
+.paraflow-table-break-spacer { display:inline; user-select:none; pointer-events:none; }
+.paraflow-table-break-spacer::before { content:'<br>'; visibility:hidden; white-space:nowrap; }
 .paraflow-html-table-editor { --no-tooltip:true; max-width:100%; overflow-x:auto; margin-block:0.8em; }
 .paraflow-html-table-editor table { width:100%; max-width:100%; border-collapse:collapse; table-layout:auto; }
 .markdown-source-view.mod-cm6.is-live-preview :is(.cm-editor.paraflow-paragraph-editing-active,.cm-editor.paraflow-callout-active .paraflow-container-block) :is(.cm-table-widget.paraflow-table-controls,.paraflow-html-table-editor) { margin-block:0; }

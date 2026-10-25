@@ -154,6 +154,8 @@ export interface ListContext {
 		readonly range: SourceRange;
 		readonly ownedBlockIndex: number | null;
 		readonly subtreeBlockIndexes: readonly number[];
+		/** Last direct child of the immediately preceding child list, for paragraph Tab. */
+		readonly paragraphIndentParent: ListBlockRef | null;
 	};
 	readonly source: SourceSnapshot;
 	readonly caret: number;

@@ -26,6 +26,23 @@ interface NativeInline {
 	decorations: DecorationSet;
 	buildDeco: (view: EditorView) => DecorationSet;
 }
+interface NativeLineHighlighter {
+	lineCache: object;
+	tokenCache: object;
+	decorations: DecorationSet;
+	buildDeco: (view: EditorView) => DecorationSet;
+}
+
+function lineHighlighter(view: EditorView): NativeLineHighlighter | null {
+	const plugins = (view as unknown as { plugins?: { value?: unknown }[] }).plugins;
+	const matches = plugins?.map(plugin => plugin.value).filter((value): value is NativeLineHighlighter => {
+		if (!value || typeof value !== 'object') return false;
+		const item = value as Partial<NativeLineHighlighter>;
+		return !!item.lineCache && !!item.tokenCache && typeof item.buildDeco === 'function' &&
+			typeof item.decorations?.between === 'function';
+	}) ?? [];
+	return matches.length === 1 ? matches[0]! : null;
+}
 interface InlineBinding {
 	owner: NativeInline;
 	get: () => DecorationSet;
@@ -121,6 +138,7 @@ const ownership = ViewPlugin.fromClass(class {
 	private inlineBinding: InlineBinding | null = null;
 	private inlineCheckPending = false;
 	private disposed = false;
+	private lineRefreshPending = false;
 	private cache = new Map<typeof nativeBlockOwnership, FilterCache>();
 	constructor(readonly view: EditorView) {
 		this.install();
@@ -135,6 +153,20 @@ const ownership = ViewPlugin.fromClass(class {
 		queueMicrotask(() => {
 			this.inlineCheckPending = false;
 			if (!this.disposed && this.installInline()) this.view.dispatch({});
+		});
+	}
+	restoreSourceLines(): void {
+		if (this.lineRefreshPending) return;
+		this.lineRefreshPending = true;
+		queueMicrotask(() => {
+			this.lineRefreshPending = false;
+			if (this.disposed) return;
+			const native = lineHighlighter(this.view);
+			if (!native) return;
+			// The host caches lineBlockAt-based decoration positions across mode changes.
+			// Rebuild after replacement widgets have released the source line geometry.
+			native.decorations = native.buildDeco(this.view);
+			this.view.dispatch({});
 		});
 	}
 	readBindingStatus(): NativeDecorationBindingStatus {
@@ -237,6 +269,9 @@ const ownership = ViewPlugin.fromClass(class {
 
 /** Shared singleton: no wrapper chains when several semantic owners participate. */
 export function createNativeDecorationOwnership(): Extension { return ownership; }
+
+/** A semantic projection explicitly hands its source rows back to the host. */
+export function restoreNativeSourceLines(view: EditorView): void { view.plugin(ownership)!.restoreSourceLines(); }
 
 function inactiveBindingStatus(lifecycle: 'inactive' | 'disposed'): NativeDecorationBindingStatus {
 	return { lifecycle, block: { status: lifecycle, matches: 0 }, inline: { status: lifecycle, matches: 0 } };

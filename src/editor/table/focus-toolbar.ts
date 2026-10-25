@@ -56,26 +56,44 @@ export class TableFocusToolbar {
 	private popup:ReturnType<typeof showTableSizePopup>|null=null;
 	private sourceMenu:{close:()=>void}|null=null;
 	private queued=false;
+	private queuedContext:HTMLElement|null=null;
+	private pointerCell:HTMLElement|null=null;
 	private destroyed=false;
 	private resizeObserver:ResizeObserver|null=null;
 	private observed:HTMLElement[]=[];
 	private positioningFrame:number|null=null;
 	constructor(private readonly view:EditorView,private readonly options:TableEditingOptions,private readonly resolve:(context:HTMLElement|null)=>TableToolbarTarget|null){
 		toolbars.add(this);
-		view.dom.addEventListener('focusin',this.focus,true);view.dom.addEventListener('pointerup',this.focus,true);
+		view.dom.addEventListener('focusin',this.focus,true);view.dom.addEventListener('pointerdown',this.pointerDown,true);
+		view.dom.ownerDocument.addEventListener('pointerup',this.pointerEnd,true);view.dom.ownerDocument.addEventListener('pointercancel',this.pointerEnd,true);
 		view.dom.ownerDocument.addEventListener('focusin',this.outside,true);view.dom.ownerDocument.addEventListener('pointerdown',this.outside,true);
 		view.dom.ownerDocument.addEventListener('scroll',this.position,true);view.dom.ownerDocument.defaultView!.addEventListener('resize',this.position);
 	}
 	private focus=(event:Event)=>{const context=event.target as HTMLElement;this.schedule(context);};
+	private pointerDown=(event:PointerEvent)=>{
+		if(event.button!==0)return;
+		this.pointerCell=(event.target as HTMLElement).closest<HTMLElement>('td,th');
+		if(this.pointerCell)this.schedule(this.pointerCell);
+	};
+	private pointerEnd=(event:PointerEvent)=>{
+		const cell=this.pointerCell;this.pointerCell=null;
+		const target=event.target as HTMLElement;
+		if(event.type==='pointercancel'){if(cell)this.hide();return;}
+		if(this.view.dom.contains(target))this.schedule(target);else if(cell)this.hide();
+	};
 	private outside=(event:Event)=>{const node=event.target as Node;if(!isTableMenuTarget(node)&&!this.view.dom.contains(node)&&!this.dom?.contains(node)&&!this.popup?.dom.contains(node)&&!(node as HTMLElement).closest?.('.paraflow-table-menu,.modal-container')){clearTableActions(this.view);this.hide();}};
 	schedule(context:HTMLElement|null=null):void {
-		if(this.queued||this.destroyed)return;this.queued=true;queueMicrotask(()=>{this.queued=false;if(!this.destroyed)this.refresh(context);});
+		if(this.destroyed)return;
+		// Native tables focus TABLE between pointerdown and pointerup; retain the hit cell.
+		if(this.pointerCell)this.queuedContext=this.pointerCell;
+		else if(context?.closest('td,th')||!this.queuedContext)this.queuedContext=context;
+		if(this.queued)return;this.queued=true;queueMicrotask(()=>{if(!this.queued)return;const latest=this.queuedContext;this.queued=false;this.queuedContext=null;if(!this.destroyed)this.refresh(latest);});
 	}
 	refresh(context:HTMLElement|null=null):void {
 		if(!this.refreshOwnership())return;
 		if(this.popup)return;
 		if(!this.options.isActive(this.view)){this.hide();return;}
-		const target=this.resolve(context);if(!target){this.hide();return;}this.target=target;
+		const target=this.resolve(this.pointerCell??context);if(!target){this.hide();return;}this.target=target;
 		if(!this.dom)this.create();
 		this.observeGeometry(target.element);
 		this.dom!.querySelector<HTMLButtonElement>('[data-pf-table-size]')!.setAttribute('aria-label',`调整表格行列数（${target.rows} 行 × ${target.columns} 列）`);
@@ -196,10 +214,11 @@ export class TableFocusToolbar {
 		this.dom.style.top=`${table.top-box.height}px`;
 		this.dom.hidden=table.top-box.height<viewport.top;
 	};
-	hide():void {this.sourceMenu?.close();this.sourceMenu=null;this.popup?.close();this.popup=null;this.resizeObserver?.disconnect();this.observed=[];if(this.positioningFrame!==null)this.view.dom.ownerDocument.defaultView!.cancelAnimationFrame(this.positioningFrame);this.positioningFrame=null;this.dom?.remove();this.dom=null;this.target=null;}
+	hide():void {this.pointerCell=null;this.queued=false;this.queuedContext=null;this.sourceMenu?.close();this.sourceMenu=null;this.popup?.close();this.popup=null;this.resizeObserver?.disconnect();this.observed=[];if(this.positioningFrame!==null)this.view.dom.ownerDocument.defaultView!.cancelAnimationFrame(this.positioningFrame);this.positioningFrame=null;this.dom?.remove();this.dom=null;this.target=null;}
 	destroy():void {
 		this.destroyed=true;toolbars.delete(this);this.hide();const doc=this.view.dom.ownerDocument;
-		this.view.dom.removeEventListener('focusin',this.focus,true);this.view.dom.removeEventListener('pointerup',this.focus,true);
+		this.view.dom.removeEventListener('focusin',this.focus,true);this.view.dom.removeEventListener('pointerdown',this.pointerDown,true);
+		doc.removeEventListener('pointerup',this.pointerEnd,true);doc.removeEventListener('pointercancel',this.pointerEnd,true);
 		doc.removeEventListener('focusin',this.outside,true);doc.removeEventListener('pointerdown',this.outside,true);doc.removeEventListener('scroll',this.position,true);doc.defaultView!.removeEventListener('resize',this.position);
 	}
 }

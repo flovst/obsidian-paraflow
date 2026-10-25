@@ -8,7 +8,7 @@ export function reconcileRowGroups(original:HtmlTable,table:TableModel,change?:R
 	const origins=Array.from({length:original.table.rows},(_,row)=>row);
 	if(change?.kind==='insert')origins.splice(change.index,0,Math.min(change.index,original.table.rows-1));
 	else if(change?.kind==='delete')origins.splice(change.index,change.count);
-	else if(change?.kind==='move'){const moved=origins.splice(change.first,change.last-change.first+1);origins.splice(change.first+change.direction,0,...moved);}
+	// Moving contents retains header/body/footer positions.
 	else if(change?.kind==='resize'){origins.splice(change.rows);while(origins.length<change.rows)origins.push(original.table.rows-1);}
 	else if(change?.kind==='sort')origins.splice(0,origins.length,...change.origins);
 	else if(change?.kind==='duplicate')origins.splice(change.last+1,0,...origins.slice(change.first,change.last+1));
@@ -21,6 +21,7 @@ export function reconcileRowGroups(original:HtmlTable,table:TableModel,change?:R
 	for(let index=1;index<groups.length;){
 		const boundary=groups[index]!.startRow;
 		if(table.cells.some(cell=>cell.row<boundary&&cell.row+cell.rowSpan>boundary)){
+			if(change?.kind==='move')throw new Error('移动后的合并单元格会跨越行分组。请先取消合并。');
 			const before=groups[index-1]!,after=groups[index]!;groups.splice(index-1,2,{id:-1,kind:'tbody',startRow:before.startRow,rowCount:before.rowCount+after.rowCount});
 		}else index++;
 	}

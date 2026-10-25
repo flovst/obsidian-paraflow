@@ -5,7 +5,7 @@ import { contentSyntaxTree } from '../callout/projection.js';
 import { codeDraft } from '../code-blocks/draft-state.js';
 import { discoverCodeBlocks } from '../code-blocks/model.js';
 import { isNativeReplacement } from '../runtime/native-decoration-ownership.js';
-import { pendingMathRanges } from './candidate-ranges.js';
+import { mathCandidatesActive, pendingMathRanges } from './candidate-ranges.js';
 import { acceptedMath, discoverMath, isLiteralDollarRun, type MathExpression } from './syntax.js';
 import { createRangeQuery } from './range-query.js';
 
@@ -68,4 +68,9 @@ function analysisFor(state: EditorState): Analysis {
 
 /** Parsing/candidate dependencies own this analysis; cursor and measurement updates do not. */
 export function mathDraftRanges(state: EditorState): readonly Range[] { return analysisFor(state).drafts; }
+/** Structural Enter owners defer only a complete standalone math opener. */
+export function hasMathCreationDraft(state: EditorState): boolean {
+	return state.facet(mathCandidatesActive) && state.selection.ranges.length === 1 && state.selection.main.empty &&
+		mathDraftRanges(state).some(range => range.to === state.selection.main.head && range.to - range.from === 2);
+}
 export function mathNativeOwnership(state: EditorState): NativeFilter { return analysisFor(state).filter; }

@@ -23,7 +23,15 @@ export function moveTracksTo(table:TableModel,axis:TableAxis,first:number,last:n
 	const cells=table.cells.map(cell=>{
 		const mapped=Array.from({length:cell[span]},(_,offset)=>positions.get(cell[axis]+offset)!).sort((a,b)=>a-b);
 		if(mapped[mapped.length-1]!-mapped[0]!+1!==cell[span])throw new Error('移动会分开已有合并单元格。请选择完整合并范围，或先取消合并。');
-		return {...cell,[axis]:mapped[0]!};
+		const moved={...cell,[axis]:mapped[0]!};
+		if(axis==='row'){
+			// Header roles belong to table positions; authored content formatting moves with the cell.
+			const destinations=table.cells.filter(slot=>slot.row<moved.row+moved.rowSpan&&slot.row+slot.rowSpan>moved.row&&slot.column<moved.column+moved.columnSpan&&slot.column+slot.columnSpan>moved.column);
+			const role=destinations[0]!.role;
+			if(destinations.some(slot=>slot.role!==role))throw new Error('移动后的合并单元格会跨越表头与正文。请先取消合并。');
+			moved.role=role;
+		}
+		return moved;
 	}).sort((a,b)=>a.row-b.row||a.column-b.column);
 	const result={...table,cells};validateTable(result);return result;
 }

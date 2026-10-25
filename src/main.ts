@@ -1,6 +1,6 @@
 import type { EditorState } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
-import { Component, editorEditorField, editorInfoField, editorLivePreviewField, finishRenderMath, getIcon, loadMathJax, loadPrism, MarkdownRenderChild, MarkdownRenderer, MarkdownView, Notice, normalizePath, Platform, Plugin, sanitizeHTMLToDom, TFile } from 'obsidian';
+import { Component, editorEditorField, editorInfoField, editorLivePreviewField, finishRenderMath, getIcon, loadMathJax, loadPrism, MarkdownRenderChild, MarkdownRenderer, MarkdownView, Notice, normalizePath, Platform, Plugin, sanitizeHTMLToDom, TFile, type Events } from 'obsidian';
 import { createReadingMathRanges } from './reading/math-ranges';
 import { createSvgMathRenderer, type NativeMathJax } from './display/math.js';
 import { installBundledThemes } from './themes/builtin.js';
@@ -387,6 +387,11 @@ export default class ParaFlowPlugin extends Plugin {
 				return () => { disposed = true; component.unload(); };
 			},
 			sourcePath: view => view.state.field(editorInfoField).file?.path ?? '',
+			subscribeMarkdownChanges: listener => {
+				const events: Events = this.app.workspace;
+				const event = events.on('post-processor-change', listener);
+				return () => events.offref(event);
+			},
 			renderMarkdown: (source, target, view) => {
 				const component = new Component(); component.load();
 				return {

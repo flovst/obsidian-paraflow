@@ -29,6 +29,7 @@ import {admittedFragment} from './admitted-dom';
 import {virtualTailState} from '../runtime/virtual-tail';
 import {renderedSourcePointerPosition} from '../runtime/rendered-source-click';
 import {selectionPointerPressed} from '../runtime/selection-session';
+import {moveTableTracks} from './track-movement';
 
 const controllers=new WeakMap<EditorView,Set<HtmlTableController>>();
 const domControllers=new WeakMap<HTMLElement,HtmlTableController>();
@@ -46,7 +47,7 @@ function toolbarTarget(view:EditorView,context:HTMLElement|null):TableToolbarTar
 	const position=view.posAtDOM(widget);const source=findEditableTableSources(view.state).find(source=>source.kind==='markdown'&&!source.container&&source.from<=position&&position<=source.to);if(!source)return null;
 	const cell=hit?.closest<HTMLTableCellElement>('td,th')??table.querySelector<HTMLTableCellElement>('td,th');
 	const selected=Array.from(table.querySelectorAll<HTMLTableCellElement>('.is-selected')).filter(element=>element.matches('td,th'));
-	const columns=(selected.length?selected:cell?[cell]:[]).map(element=>element.cellIndex);
+	const columns=(selected.length&&(!cell||selected.includes(cell))?selected:cell?[cell]:[]).map(element=>element.cellIndex);
 	return {source,element:table,cell,...markdownDimensions(source.source),firstColumn:columns.length?Math.min(...columns):0,lastColumn:columns.length?Math.max(...columns):0};
 }
 
@@ -130,8 +131,12 @@ export function createTableEditingExtension(options:TableEditingOptions):Extensi
 			// Native activation pads new cells; emit that layout in the isolated row edit.
 			const next=formatMarkdownTable(insertMarkdownTrack(view.state.doc.sliceString(target.source.from,to),'row',row));
 			NativeTableTarget.replaceMarkdownSource(view,target.source,cell,next,{cell:{row,column:0},from:0,to:0,text:''},to);return true;
-		}),createTableKeyboardEntry(options),field,ViewPlugin.define(view=>{
-		let destroyed=false;let pending=false;
+		},(view,cell,axis,direction)=>{
+   try{const target=Array.from(controllers.get(view)??[]).find(candidate=>candidate.dom.contains(cell))??NativeTableTarget.fromView(view,cell);if(!target)return false;moveTableTracks(target,axis,direction);}
+   catch(error){options.notify(error instanceof Error?error.message:String(error));}
+   return true;
+  }),createTableKeyboardEntry(options),field,ViewPlugin.define(view=>{
+		let destroyed=false;let pending=false;let surface:HTMLElement|null=null;
 		let lifecycle=Symbol();actionLifecycles.set(view,lifecycle);
 		const nativeControls=new NativeTableControls(view.dom,()=>options.getHideAddControls?.()??true,()=>options.isActive(view)&&options.isActiveView?.(view)!==false);
 		const nativeDragPreview=new NativeTableDragPreview(view,()=>options.isActive(view)&&options.isActiveView?.(view)!==false);
@@ -164,6 +169,7 @@ export function createTableEditingExtension(options:TableEditingOptions):Extensi
 			if(pending||destroyed)return;pending=true;
 			queueMicrotask(()=>{
 				pending=false;if(destroyed)return;
+				if(surface!==view.dom.parentElement){surface=view.dom.parentElement;observer.disconnect();observer.observe(view.contentDOM,{childList:true,subtree:true});if(surface?.matches('.markdown-source-view.mod-cm6'))observer.observe(surface,{attributes:true,attributeFilter:['class']});}
 				const active=options.isActive(view),containers=view.state.facet(containerPresentation).some(owner=>owner.isActive(view)&&owner.isActiveState?.(view.state)!==false);
 				nativeControls.update(active);for(const controller of controllers.get(view)??[])controller.refreshOptions();
 				const previous=view.state.field(field);if(active!==previous.active||containers!==previous.containers)view.dispatch({effects:activation.of({active,containers})});

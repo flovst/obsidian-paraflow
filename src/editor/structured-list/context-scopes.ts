@@ -289,6 +289,7 @@ function emptyBodyEnterLayout(operation: HandledOperationId, current: ListBlockR
 
 function ownedBodyContentLayout(operation: HandledOperationId, current: ListBlockRef,
 	topology: ListTopology, caretContent: ListContext['caretContent'], position: number): readonly ContextEditRegion[] | null {
+	if (operation === 'tab') return ownedBodyTabLayout(current, topology, caretContent);
 	if (operation === 'backspace-delete-inside-content') return ownedContentDeleteLayout(current, topology, caretContent);
 	if (ownedContinuationEnter(operation, caretContent.kind)) {
 		const content = position === caretContent.range.from
@@ -296,10 +297,21 @@ function ownedBodyContentLayout(operation: HandledOperationId, current: ListBloc
 			: region('current-content', null, caretContent.range);
 		return [content, ...orderedRegions(current, topology)];
 	}
-	if (operation === 'tab' || nonEmptyEnterOperations.has(operation) || emptyEnterOperations.has(operation)) {
+	if (nonEmptyEnterOperations.has(operation) || emptyEnterOperations.has(operation)) {
 		return [region('current-content', null, caretContent.range)];
 	}
 	return null;
+}
+
+function ownedBodyTabLayout(current: ListBlockRef, topology: ListTopology,
+	caretContent: ListContext['caretContent']): readonly ContextEditRegion[] {
+	if (caretContent.kind === 'continuation' && tabMovesMarker(current, topology)) return markerLineLayout(current, topology);
+	if (caretContent.paragraphIndentParent) return [
+		...whitespaceRegions(topology).map(boundary => ({ ...boundary, protection: 'protected-prefix' as const })),
+		...caretContent.subtreeBlockIndexes.map(index =>
+			region('owned-block', index, topology.ownedBlocks[index]!.range, 'protected-prefix')),
+	];
+	return [region('current-content', null, caretContent.range)];
 }
 
 function ownedContinuationEnter(operation: HandledOperationId, kind: ListContext['caretContent']['kind']): boolean {
@@ -345,7 +357,7 @@ export function buildListScope(
 		return createEditScope(runtime.operation, 'selection-only', [], analysis.source.length);
 	}
 	const layout = structuralLayoutAtCaret(runtime.operation, current, topology, caretContent, position);
-	const joins = runtime.operation === 'tab' && caretContent.kind === 'marker-line'
+	const joins = runtime.operation === 'tab' && caretContent.kind !== 'additional-paragraph'
 		? indentBoundaryChanges(analysis.source, current, topology) : [];
 	const regions = sortRegions([...layout, ...joins.map((change, index) =>
 		region('whitespace-boundary', topology.whitespaceBoundaries.length + index, change))]);

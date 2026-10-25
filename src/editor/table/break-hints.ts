@@ -3,17 +3,30 @@ import type {Text} from '@codemirror/state';
 import {findEditableTableSources} from './edit-session.js';
 import {markdownCellContents} from './toolbar-source.js';
 
-/** Paint-only hints leave native cell DOM, HTML source maps and clipboard content untouched. */
+/** Native preview spacers reserve hint width; authored text and HTML editing stay unchanged. */
 export class TableBreakHints {
  private readonly layer:HTMLElement;
  private readonly nativeCells=new WeakMap<HTMLTableElement,{doc:Text;cells:readonly (readonly string[])[]}>();
  private readonly terminalBodies=new Set<HTMLElement>();
+ private readonly nativeSpacers=new Map<HTMLElement,HTMLSpanElement>();
  constructor(private readonly view:EditorView){
   this.layer=view.dom.ownerDocument.createElement('div');
   this.layer.className='paraflow-table-break-hints';this.layer.setAttribute('aria-hidden','true');this.layer.setAttribute('contenteditable','false');
   view.dom.ownerDocument.body.append(this.layer);
  }
  update(enabled:boolean,layoutEnabled=enabled):void {
+  const nativeBreaks=new Set<HTMLElement>();
+  if(enabled)for(const br of this.view.contentDOM.querySelectorAll<HTMLElement>('.cm-table-widget table.table-editor .table-cell-wrapper br')){
+   const body=br.closest<HTMLElement>('.table-cell-wrapper')!;
+   if(body.querySelector('.cm-editor')||this.nativeEmptyCell(br))continue;
+   nativeBreaks.add(br);
+   const existing=this.nativeSpacers.get(br);
+   if(existing?.nextSibling===br)continue;
+   existing?.remove();
+   const spacer=br.ownerDocument.createElement('span');spacer.className='paraflow-table-break-spacer';spacer.setAttribute('aria-hidden','true');spacer.setAttribute('contenteditable','false');
+   br.before(spacer);this.nativeSpacers.set(br,spacer);
+  }
+  for(const [br,spacer] of this.nativeSpacers)if(!nativeBreaks.has(br)){spacer.remove();this.nativeSpacers.delete(br);}
   const terminalBodies=new Set<HTMLElement>();
   if(layoutEnabled)for(const br of this.view.contentDOM.querySelectorAll<HTMLElement>('.cm-table-widget table.table-editor .table-cell-wrapper br')){
    const body=br.closest<HTMLElement>('.table-cell-wrapper')!;
@@ -32,7 +45,7 @@ export class TableBreakHints {
   for(const br of this.view.contentDOM.querySelectorAll<HTMLElement>(':is(.cm-table-widget,.paraflow-html-table-editor, .cm-html-embed table) :is(td,th) br:not([data-paraflow-cell-placeholder])')){
    // Nested CM owns both source hints and visual breaks, including its caret carriers.
    if(br.closest('.cm-editor')!==this.view.dom||this.nativeEmptyCell(br))continue;
-   const box=br.getBoundingClientRect(),cell=br.closest('td,th')!.getBoundingClientRect();
+   const box=(this.nativeSpacers.get(br)??br).getBoundingClientRect(),cell=br.closest('td,th')!.getBoundingClientRect();
    if(!box.height||box.bottom<=viewport.top||box.top>=viewport.bottom||box.left>=viewport.right)continue;
    let left=viewport.left,right=Math.min(cell.right,viewport.right);
    const win=br.ownerDocument.defaultView!;
@@ -64,5 +77,5 @@ export class TableBreakHints {
   }
   return !(cached.cells[(cell.parentElement as HTMLTableRowElement).rowIndex]?.[cell.cellIndex]??'').trim();
  }
- destroy():void {for(const body of this.terminalBodies)body.classList.remove('paraflow-table-terminal-break');this.terminalBodies.clear();this.layer.remove();}
+ destroy():void {for(const spacer of this.nativeSpacers.values())spacer.remove();this.nativeSpacers.clear();for(const body of this.terminalBodies)body.classList.remove('paraflow-table-terminal-break');this.terminalBodies.clear();this.layer.remove();}
 }

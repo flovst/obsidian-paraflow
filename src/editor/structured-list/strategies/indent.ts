@@ -5,6 +5,7 @@ import type { ExecutionFor, OperationResult } from '../operations.js';
 import { literalBodyTab } from '../../literal-tab.js';
 import { markdownColumns } from '../prefix.js';
 import { indentBoundaryChanges } from '../indent-boundaries.js';
+import { indentOwnedParagraph } from '../paragraph-indent.js';
 import { ChangeSet } from '@codemirror/state';
 import {
 	composeEditPlan,
@@ -37,6 +38,9 @@ function ownedIds(context: ListContext): readonly EditRegionId[] {
 }
 
 function tabMovementIds(context: ListContext): readonly EditRegionId[] {
+	if (context.caretContent.kind === 'continuation') return [currentItemId,
+		...context.caretContent.subtreeBlockIndexes.filter(index => context.topology.ownedBlocks[index]!.kind === 'continuation')
+			.map(index => ({ index, kind: 'owned-block' as const }))];
 	const first = context.topology.ownedBlocks[0];
 	return first?.kind === 'continuation'
 		? [currentItemId, { index: 0, kind: 'owned-block' }]
@@ -140,11 +144,12 @@ function orderedContinuationFragments(
 	execution: ExecutionFor<'tab'>,
 	delta: number,
 ): readonly EditPlanFragment[] {
-	if (execution.context.topology.ownedBlocks[0]?.kind !== 'continuation') return [];
+	const ids = tabMovementIds(execution.context).filter(id => id.kind === 'owned-block');
+	if (ids.length === 0) return [];
 	return [remapIndentation(
 		execution.context.source,
 		execution.context.editScope,
-		[{ index: 0, kind: 'owned-block' }],
+		ids,
 		delta,
 	)];
 }
@@ -386,7 +391,8 @@ function topLevelShiftTabPlan(execution: ExecutionFor<'shift-tab'>): EditPlan {
 
 export function tab(execution: ExecutionFor<'tab'>): OperationResult {
 	if (!validOperation(execution, 'tab')) return { kind: 'pass-through' };
-	if (execution.context.caretContent.kind !== 'marker-line') return editResult(fallbackPlan(execution));
+	if (execution.context.caretContent.paragraphIndentParent) return editResult(indentOwnedParagraph(execution.context));
+	if (execution.context.caretContent.kind === 'additional-paragraph') return editResult(fallbackPlan(execution));
 	const delta = tabDelta(execution);
 	if (delta === 0) return editResult(fallbackPlan(execution));
 	const exceptionId = execution.context.topology.ownedBlocks.length > 0
