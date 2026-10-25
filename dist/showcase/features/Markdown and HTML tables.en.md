@@ -58,7 +58,7 @@ This table contains one cell spanning two rows and another spanning two columns.
 
 These cells use HTML tags for bold text, italic text, and line breaks.
 
-<table><thead><tr><th>Format</th><th>Content</th></tr></thead><tbody><tr><td><strong>Bold text</strong></td><td>First line<br>Second line</td></tr><tr><td><em>Italic text</em></td><td>Regular text</td></tr><tr><td><code>inline code</code></td><td>Regular text</td></tr></tbody></table>
+<table><thead><tr><th>Format</th><th>Content</th></tr></thead><tbody><tr><td><strong>Bold textz</strong></td><td>First line<br>Second line</td></tr><tr><td><em>Italic text</em></td><td>Regular text</td></tr><tr><td><code>inline code</code></td><td>Regular text</td></tr></tbody></table>
 
 ## Closing paragraph
 

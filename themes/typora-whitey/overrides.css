@@ -1,0 +1,10 @@
+:root {
+  --paraflow-list-row-padding: calc(.25 * var(--paraflow-root-font-size, 16px));
+  --paraflow-list-sibling-gap: calc(.5 * var(--paraflow-root-font-size, 16px));
+  --paraflow-table-base-background: #fefefe;
+  --paraflow-table-header-background: #fefefe;
+  --paraflow-table-stripe-background: #fefefe;
+}
+table.paraflow-display-table > :is(thead, tbody, tfoot) > tr > :is(th, td) {
+  border-inline: 0;
+}

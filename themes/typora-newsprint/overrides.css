@@ -1,0 +1,8 @@
+/* Preserve the source header and stripe colors; remove only vertical rules. */
+:root {
+  --paraflow-list-row-padding: calc(.25 * var(--paraflow-root-font-size, 16px));
+  --paraflow-list-sibling-gap: calc(.5 * var(--paraflow-root-font-size, 16px));
+}
+table.paraflow-display-table > :is(thead, tbody, tfoot) > tr > :is(th, td) {
+  border-inline: 0;
+}

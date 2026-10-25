@@ -51,6 +51,20 @@ export function themeEntries(files: ReadonlyMap<string, Uint8Array>): string[] {
 	return [...files.keys()].filter((path) => /\.css$/iu.test(path) && !/\.user\.css$/iu.test(path)).sort();
 }
 
+export function nextTyporaThemeId(name: string, entry: string, existingIds: Iterable<string>): string {
+	const slug = (value: string): string => value.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase()
+		.replace(/[^a-z0-9]+/gu, '-').replace(/^-+|-+$/gu, '').replace(/^(?:(?:typora|imported|import)-)+/u, '');
+	const entryName = entry.split('/').at(-1)?.replace(/\.css$/iu, '') ?? '';
+	const stem = `typora-${slug(name) || slug(entryName) || 'theme'}`;
+	const taken = new Set([...existingIds].map(id => id.toLowerCase()));
+	let suffix = '';
+	for (let number = 2; ; number++) {
+		const id = stem.slice(0, 80 - suffix.length).replace(/-+$/u, '') + suffix;
+		if (!taken.has(id)) return id;
+		suffix = `-${number}`;
+	}
+}
+
 export function createThemeArchive(files: ReadonlyMap<string, Uint8Array>): Uint8Array {
 	validatePackage(files); return zipSync(Object.fromEntries(files));
 }

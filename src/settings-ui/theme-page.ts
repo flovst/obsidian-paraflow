@@ -87,7 +87,7 @@ export function renderThemePage(panel: HTMLElement, host: ThemePageHost): void {
 				const counts = { mapped: 0, approximate: 0, skipped: 0 };
 				for (const item of theme.diagnostics) if (item.status !== 'error') counts[item.status]++;
 				imports.set(plugin, counts); host.refresh();
-			}).open();
+			}, () => plugin.contentThemes.map(theme => theme.id)).open();
 		}));
 	});
 	host.row('themeFiles', setting => setting

@@ -8,7 +8,7 @@ ParaFlow content themes adjust note typography, colors, and layout, and support 
 
 - **Follow Obsidian:** use Obsidian's fonts and colors with ParaFlow's basic markers and layout.
 - **ParaFlow Classic:** use the body styles supplied by the plugin.
-- **Typora GitHub:** use the bundled GitHub content theme. Its source files and fonts are installed with the theme.
+- **Typora GitHub, Newsprint, Night, Pixyll, and Whitey:** use the bundled content themes. Their source files and fonts are installed with each theme.
 - **Imported themes:** use converted Typora content styles, with one theme selected at a time.
 
 Text font, size, content width, line height, and accent color can use theme defaults, follow Obsidian, or use custom values. Adjustments are saved separately for each theme and retained when switching themes. “Reset theme adjustments” clears local adjustments for the current theme.
@@ -25,6 +25,8 @@ Themes apply to Live Preview and Reading view. Source view shares some text and 
 2. If several entries are available, choose the CSS entry to convert and enter a theme name.
 3. Click “Preview conversion” to review mapped, approximate, and skipped rules.
 4. Click “Save theme,” then select it in the theme menu to apply it.
+
+Import directories use the theme name, such as `typora-github`. Repeated imports use `typora-github-2`, `typora-github-3`, and so on, preserving existing themes. Display names support any language; when a directory name cannot be derived from the display name, the CSS filename is used.
 
 Import processes local CSS and assets; remote resources are not downloaded. Conversion primarily covers fonts, colors, headings, links, code, quotes, tables, and content width. Rules tied to Typora-specific interface or DOM structures may be skipped.
 

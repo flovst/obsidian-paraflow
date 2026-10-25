@@ -1,6 +1,6 @@
 import { Modal, Notice, Setting, type App } from 'obsidian';
 import { convertTyporaTheme } from './converter.js';
-import { prepareThemeImport, readImportFiles, themeEntries } from './import-files.js';
+import { nextTyporaThemeId, prepareThemeImport, readImportFiles, themeEntries } from './import-files.js';
 import type { ConvertedTheme } from './model.js';
 import { translate as t } from '../settings-ui/i18n.js';
 
@@ -17,7 +17,8 @@ export class ImportTyporaThemeModal extends Modal {
 	private converted: ConvertedTheme | null = null;
 	private overrides = '';
 	private exportedAssets = new Map<string, Uint8Array>();
-	constructor(app: App, private readonly save: (theme: ConvertedTheme, overrides?: string) => Promise<void>) { super(app); }
+	constructor(app: App, private readonly save: (theme: ConvertedTheme, overrides?: string) => Promise<void>,
+		private readonly existingIds: () => Iterable<string>) { super(app); }
 
 	onOpen(): void { this.render(); }
 	onClose(): void { this.contentEl.empty(); }
@@ -43,7 +44,7 @@ export class ImportTyporaThemeModal extends Modal {
 		new Setting(this.contentEl).setName(t('themeName')).addText(text => text.setValue(this.themeName).onChange(value => { this.themeName = value; this.converted = null; }));
 		new Setting(this.contentEl).addButton(button => button.setButtonText(t('previewConversion')).onClick(() => {
 			try {
-				const id = `imported-${crypto.randomUUID()}`;
+				const id = nextTyporaThemeId(this.themeName, this.entry, this.existingIds());
 				const converted = convertTyporaTheme({ entry: this.entry, files: this.files }, { id, name: this.themeName.trim() || t('importedTheme') });
 				this.converted = { ...converted, assets: new Map([...this.exportedAssets, ...converted.assets]) };
 				this.render();

@@ -28,7 +28,7 @@ Explore the overall appearance of lists, paragraphs, tables, math, and themes in
    + 切换源码模式：`Toggle Live Preview/Source mode` -> `Ctrl + /`
    + 使用默认软件打开：`Open in default app` -> `Ctrl + Shift + O`
 1. 关闭 `设置 > 编辑器 > 显示/限制行宽`
-2. 添加了一些 CSS Snippets
+2. 关闭 `设置 > 编辑器 > 显示/页面内标题`
 
 ---
 
@@ -39,4 +39,4 @@ This vault also includes the following settings:
    - Switch between Live Preview and Source mode: `Toggle Live Preview/Source mode` → `Ctrl + /`
    - Open in the default application: `Open in default app` → `Ctrl + Shift + O`
 2. **Settings → Editor → Display → Readable line length** is turned off.
-3. A few CSS snippets have been added.
+3. **Settings → Editor → Display → Inline title** is turned off.

@@ -1,0 +1,20 @@
+/* Typora Night: content remains dark even in a light Obsidian application. */
+:root {
+  --paraflow-list-row-padding: calc(.25 * var(--paraflow-root-font-size, 16px));
+  --paraflow-list-sibling-gap: calc(.5 * var(--paraflow-root-font-size, 16px));
+  --paraflow-table-base-background: #363b40;
+  --paraflow-table-header-background: #363b40;
+  --paraflow-table-stripe-background: #363b40;
+  --paraflow-table-color: #b8bfc6;
+  --paraflow-border-color: #474d54;
+  --interactive-accent: #81b1db;
+}
+table.paraflow-display-table :is(th, td) {
+  color: var(--paraflow-table-color);
+}
+.cm-table-widget table.paraflow-display-table .cm-content,
+.cm-table-widget table.paraflow-display-table .cm-line,
+.paraflow-html-table-editor table.paraflow-display-table .cm-content,
+.paraflow-html-table-editor table.paraflow-display-table .cm-line {
+  color: inherit;
+}
