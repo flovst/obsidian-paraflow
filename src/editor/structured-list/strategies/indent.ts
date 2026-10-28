@@ -200,7 +200,7 @@ function orderedTabPlan(execution: ExecutionFor<'tab'>, delta: number): EditPlan
 		sequence,
 		-1,
 	));
-	return { ...composeEditPlan('tab', context.editScope, fragments, 'SLX-002'), ownsOrderedNumbering: true };
+	return composeEditPlan('tab', context.editScope, fragments, 'SLX-002');
 }
 
 function rewriteBoundary(
@@ -264,10 +264,10 @@ function nestedOrderedShiftTabPlan(execution: ExecutionFor<'shift-tab'>): EditPl
 		));
 	}
 	const boundaries = orderedOwnedBoundaryFragments(execution, originalFollowingIds.length > 0);
-	return { ...composeEditPlan('shift-tab', context.editScope, [
+	return composeEditPlan('shift-tab', context.editScope, [
 		...boundaries.before, target, ...owned, ...boundaries.after, ...renumber,
 	],
-		'SLX-002'), ownsOrderedNumbering: true };
+		'SLX-002');
 }
 
 function orderedOwnedBoundaryFragments(execution: ExecutionFor<'shift-tab'>, following: boolean): {

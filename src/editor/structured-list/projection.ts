@@ -22,6 +22,7 @@ import { structuralEditAnnotation } from './edit-plan.js';
 import { listBlankRuns, mapListBlankRuns, type ListBlankRun } from './blank-runs.js';
 import { createListEmptyBodyState } from './empty-body-state.js';
 import { emptyBodyState, createdBodyOwnershipState } from '../runtime/empty-body-state.js';
+import { emptyVisualLineAnchor } from '../runtime/navigation-core.js';
 import {
 	markerForProjection,
 	StructuredListMarkerWidget,
@@ -1181,6 +1182,12 @@ export function getStructuredListProjectionState(state: EditorState): Structured
 	return combinedProjection(state);
 }
 
+/** Source prefixes whose ordered numbering is owned by the active list projection. */
+export function getStructuredListNumberedPrefixes(state: EditorState): readonly SourceRange[] {
+	const projection = combinedProjection(state);
+	return projection?.active ? projection.entries.filter(entry => entry.marker.label !== null).map(entry => entry.prefix) : [];
+}
+
 /** Source offset of a proven marker inside an active quote projection. */
 export function projectedQuoteMarkerOffset(state: EditorState, position: number): number | null {
 	const projection = combinedProjection(state);
@@ -1228,6 +1235,13 @@ export function createStructuredListProjection(
 		livePreviewPredicates.of(options.isLivePreview),
 		createListEmptyBodyState(),
 		structuredListProjectionField,
+		emptyVisualLineAnchor.of((state, position) => {
+			if (!options.isLivePreview(state)) return null;
+			const line = state.doc.lineAt(position);
+			const entry = combinedProjection(state)?.entries.find(entry =>
+				entry.prefix.from === line.from && entry.prefix.to === line.to);
+			return entry ? line.to : null;
+		}),
 		EditorView.decorations.of((view) => isActive(view)
 			? view.state.field(structuredListProjectionField).decorations
 			: Decoration.none),

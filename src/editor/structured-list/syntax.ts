@@ -7,6 +7,7 @@ import { listGroupBoundary } from './group-boundary.js';
 import { emptyBodies, createdBodyOwnership } from '../runtime/empty-body-state.js';
 import type { ListItemSyntax, SourceRange } from './model.js';
 import { isSeparatorlessListMarkerLine, markdownColumns, prefixPolicy } from './prefix.js';
+import { detailsMarkdownSource } from '../rendered-blocks/details-source.js';
 
 interface SyntaxNodeFact extends SourceRange {
 	readonly name: string;
@@ -27,7 +28,7 @@ const sourceTrees = new WeakMap<Text, Tree>();
 export function sourceListTree(state: EditorState): Tree {
 	let tree = sourceTrees.get(state.doc);
 	if (!tree) {
-		tree = sourceGrammar.parse(state.doc.toString());
+		tree = sourceGrammar.parse(detailsMarkdownSource(state.doc.toString()));
 		sourceTrees.set(state.doc, tree);
 	}
 	return tree;

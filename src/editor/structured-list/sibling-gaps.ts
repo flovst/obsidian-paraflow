@@ -29,21 +29,30 @@ function trailingGapRows(state: EditorState, from: number, to: number): readonly
 	return gaps;
 }
 
-/** Only gaps between direct siblings of one Markdown list receive its internal rhythm. */
+/** Adjacent marker rows in one list tree share its rhythm across nesting levels. */
 export function listSiblingGapRows(state: EditorState): ReadonlySet<number> {
 	const cached = cache.get(state.doc);
 	if (cached) return cached;
 	const rows = new Set<number>();
+	const items: SyntaxNode[] = [];
 	sourceListTree(state).iterate({ enter(node) {
-		if (node.name !== 'ListItem') return;
-		let next = node.node.nextSibling;
-		while (next?.name === 'QuoteMark') next = next.nextSibling;
-		if (next?.name !== 'ListItem') return;
-		if (listGroupBoundary(state.doc, node.from, next.from) !== null) return;
-		const gaps = trailingGapRows(state, node.from, next.from);
-		if (projectedGroupBoundary(state, gaps, node.node)) return;
-		gaps.forEach(at => rows.add(at));
+		if (node.name === 'ListItem') items.push(node.node);
 	} });
+	const listRoot = (item: SyntaxNode): number => {
+		let root = item.parent!;
+		for (let parent = root.parent; parent; parent = parent.parent) {
+			if (parent.name === 'BulletList' || parent.name === 'OrderedList') root = parent;
+		}
+		return root.from;
+	};
+	for (let index = 1; index < items.length; index++) {
+		const previous = items[index - 1]!, next = items[index]!;
+		if (listRoot(previous) !== listRoot(next)) continue;
+		const gaps = trailingGapRows(state, previous.from, next.from);
+		if (!gaps.length || state.doc.lineAt(gaps[0]!).number !== state.doc.lineAt(previous.from).number + 1) continue;
+		if (listGroupBoundary(state.doc, previous.from, next.from) !== null || projectedGroupBoundary(state, gaps, previous)) continue;
+		gaps.forEach(at => rows.add(at));
+	}
 	cache.set(state.doc, rows);
 	return rows;
 }

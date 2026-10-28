@@ -8,7 +8,9 @@ import { createNavigationDestinationResolver } from './navigation-adapter.js';
 import { planSelectionIndent } from './selection-indent.js';
 import { projectedQuoteMarkerOffset } from './projection.js';
 import { headingBodyLineAt } from '../paragraph/heading-projection.js';
+import { normalizeParagraphSelectionEndpoint } from '../paragraph/selection-protection.js';
 import { hasMathCreationDraft } from '../math/native-ownership.js';
+import { calloutTitleEnd, collapsedCalloutRange } from '../callout/presentation.js';
 import type { ContextRuntime } from './model.js';
 import {
 	executeRegisteredOperation,
@@ -68,6 +70,7 @@ function dispatchNavigation<K extends NavigationOperationId>(
 	const context = buildNavigationContext(view.state, view.state.selection.main.head, runtime);
 	if (!context) return false;
 	const executionServices = navigationServices(view, runtime, services);
+	if (exitCollapsedCallout(view, intent, executionServices)) return true;
 	const result = executeRegisteredOperation({ context, intent, services: executionServices });
 	if (result.kind === 'selection') {
 		const operation: ParagraphNavigationOperationId = intent.operation === 'left-content-start'
@@ -84,6 +87,22 @@ function dispatchNavigation<K extends NavigationOperationId>(
 		result,
 		services.result,
 	);
+}
+
+function exitCollapsedCallout(view: EditorView, intent: NavigationIntent<NavigationOperationId>, services: ReturnType<typeof navigationServices>): boolean {
+	if (intent.operation !== 'right' || intent.extend) return false;
+	const current = view.state.selection.main;
+	if (!current.empty) return false;
+	const folded = collapsedCalloutRange(view.state, current.head);
+	if (!folded || current.head !== folded.from) return false;
+	if (folded.to === view.state.doc.length) return true;
+	const position = normalizeParagraphSelectionEndpoint(view.state, folded.to + 1, 1);
+	const destination = services.resolveDestination({ position, assoc: 1 }, 1);
+	if (!destination) return false;
+	dispatchParagraphSelection(view, 'right', EditorSelection.create([
+		EditorSelection.cursor(destination.position, destination.assoc),
+	]));
+	return true;
 }
 
 function dispatchStructural<K extends StructuralOperationId>(
@@ -173,6 +192,7 @@ function boundaryHead(view: EditorView, range: EditorSelection['main'], forward:
 }
 
 function dispatchBoundaryNavigation(view: EditorView, options: StructuredListExtensionOptions, operation: 'home' | 'end'): boolean {
+	if (operation === 'end' && calloutTitleEnd(view.state, view.state.selection.main.head) !== null) return false;
 	if (headingBodyLineAt(view.state, view.state.selection.main.head)) return false;
 	if (classifyCurrentSelectionMode(view.state) === 'continuous') return dispatchNativeShiftBoundary(view, options, operation, false);
 	return dispatchOperation(view, { family: 'navigation', operation, direction: null, extend: false }, options) ||
@@ -200,8 +220,13 @@ function boundaryContext(view: EditorView, options: StructuredListExtensionOptio
 	return projectedQuoteMarkerOffset(view.state, range.head);
 }
 
+function ownsBoundarySurface(view: EditorView, options: StructuredListExtensionOptions, operation: 'home' | 'end'): boolean {
+	return options.isLivePreview(view.state) && options.isSurface?.(view) !== false &&
+		(operation !== 'end' || calloutTitleEnd(view.state, view.state.selection.main.head) === null);
+}
+
 function dispatchNativeShiftBoundary(view: EditorView, options: StructuredListExtensionOptions, operation: 'home' | 'end', extend: boolean): boolean {
-	if (!options.isLivePreview(view.state) || options.isSurface?.(view) === false) return false;
+	if (!ownsBoundarySurface(view, options, operation)) return false;
 	const mode = classifyCurrentSelectionMode(view.state);
 	if (!normalKeyboardSelection(view, mode)) return false;
 	const context = boundaryContext(view, options, operation, mode);

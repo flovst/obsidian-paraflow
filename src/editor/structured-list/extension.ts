@@ -44,6 +44,7 @@ import {
 import { createSelectionProtection, normalizeStructuredListCaretEndpoint } from './selection-protection.js';
 import { discoverListItem } from './syntax.js';
 import { createListBodyPrefixMaintenance } from './body-prefix.js';
+import { createNumberingOwnership } from './numbering-ownership.js';
 
 export { exceptionSinkStateField } from './edit-plan.js';
 
@@ -451,6 +452,7 @@ export function createStructuredListExtension(
 		createClipboardExtension(options),
 		createSelectionProtection({ isLivePreview: isActiveState }),
 		createListBodyPrefixMaintenance(isActiveState),
+		createNumberingOwnership(isActiveState),
 		exceptionSinkStateField,
 	];
 }

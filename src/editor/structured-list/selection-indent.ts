@@ -206,7 +206,7 @@ function movementPlan(
 	const orderedFragments = [...fragments, ...joinFragments].sort((left, right) =>
 		scope.region(left.regionIds[0]!)!.range.from - scope.region(right.regionIds[0]!)!.range.from);
 	const plan = composeEditPlan(operation, scope, orderedFragments);
-	return { scope, plan: numbers.size > 0 ? { ...plan, ownsOrderedNumbering: true as const } : plan };
+	return { scope, plan };
 }
 
 function selectionMovements(analysis: SourceAnalysis, roots: readonly AnalyzedItem[], operation: IndentOperation) {
