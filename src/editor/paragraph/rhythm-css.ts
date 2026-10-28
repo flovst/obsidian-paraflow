@@ -67,6 +67,9 @@ export function readingBlockRhythmCss(scope: string): string {
 		['thematic-break', 'hr'],
 	] as const;
 	const containerBlock = `:is(${containerKinds.map(([, selector]) => selector).join(',')})`;
+	// Follow the sibling's child directly: :has() cannot contain another :has().
+	const followingTable = '+table,+.paraflow-display-table-viewport>table';
+	const followingBlock = containerKinds.map(([tag, selector]) => tag === 'table' ? followingTable : `+${selector}`).join(',');
 	const codeFrame = '.paraflow-code-display-frame';
 	const codeNeighbors = ':is(p,.math-block,.paraflow-code-display-frame)';
 	return `
@@ -80,7 +83,7 @@ ${lists.map(selector => `${selector}>li:last-child>p:last-child`).join(',')}{mar
 ${lists.map(selector => `${selector}>li:first-child`).join(',')}{--paraflow-list-row-top-padding:0px;padding-block-start:var(--paraflow-list-row-top-padding)}
 /* A scroll viewport owns the table's outer gap after display enhancement. */
 ${container}>.paraflow-display-table-viewport>table{margin-block:0!important}
-${container}>${containerBlock}:has(+${table}),${container}>${table}:has(+${containerBlock}),${container}>${codeNeighbors}:has(+${codeFrame}),${container}>${codeFrame}:has(+${codeNeighbors}){margin-block-end:0!important}
+${container}>${containerBlock}:has(${followingTable}),${container}>${table}:has(${followingBlock}),${container}>${codeNeighbors}:has(+${codeFrame}),${container}>${codeFrame}:has(+${codeNeighbors}){margin-block-end:0!important}
 ${containerKinds.map(([tag,selector]) => `${container}>${selector}+${containerBlock}{--paraflow-container-gap-before:${edge(tag,'bottom')}}
 ${container}>${tag === 'table' ? containerBlock : table}+${selector}{margin-block-start:max(var(--paraflow-container-gap-before),${edge(tag,'top')})!important}`).join('\n')}
 ${container}>${codeNeighbors}+${codeFrame}{margin-block-start:max(var(--paraflow-container-gap-before),${edge('code-block','top')})!important}

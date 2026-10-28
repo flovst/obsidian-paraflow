@@ -87,7 +87,7 @@ export const FOOTNOTE_CSS = `
 }
 .paraflow-footnote-backlinks { margin-inline-start: .4em; }
 .paraflow-footnote-backlinks .paraflow-footnote-backlink {
-  font-family: ui-monospace, sans-serif;
+  font-family: var(--font-monospace), monospace;
   font-size: .75em; padding: 0 .2em; height: auto; border: 0;
   background: transparent; box-shadow: none; color: var(--link-color);
   cursor: pointer;
