@@ -24,13 +24,13 @@ ParaFlow is an Obsidian plugin that tries to bring some of Typora's features and
 
 > Each feature can be toggled individually in settings—or at least that's the idea. (There may still be issues for now)
 >
-> There is a [showcase vault](../../releases/tag/0.1.2) with ParaFlow installed, for your convenience.
+> There is a [showcase vault](../../releases/tag/0.1.3) with ParaFlow installed, for your convenience.
 
 ## Installation
 
 #### Try the showcase vault
 
-Download `showcase-paraflow-0.1.2.zip` from the [release](../../releases/tag/0.1.2), extract it, and open the `showcase-paraflow` folder as a vault in Obsidian. It includes the matching ParaFlow build, example notes, and preset settings. The six included CSS snippets are disabled by default.
+Download `showcase-paraflow-0.1.3.zip` from the [release](../../releases/tag/0.1.3), extract it, and open the `showcase-paraflow` folder as a vault in Obsidian. It includes the matching ParaFlow build, example notes, and preset settings. The six included CSS snippets are disabled by default.
 
 #### Manual installation
 
