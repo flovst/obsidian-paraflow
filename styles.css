@@ -1509,17 +1509,20 @@ body .mermaid.paraflow-mermaid-themed > svg {
 .markdown-reading-view :is(ul, ol) > li:not(.markdown-embed *):has(> ul, > ol) {
 	padding-block-end: 0;
 }
-.markdown-reading-view ul > li:not(.task-list-item):not(.markdown-embed *) {
+.markdown-reading-view ul > li:has(> .list-bullet):not(.task-list-item):not(.markdown-embed *),
+.markdown-reading-view .paraflow-details-body ul > li:not(.task-list-item):not(.markdown-embed *) {
 	position: relative;
 	list-style: none !important;
 }
 .markdown-reading-view ul > li:not(.task-list-item):not(.markdown-embed *) > .list-bullet {
 	display: none !important;
 }
-.markdown-reading-view ul > li:not(.task-list-item):not(.markdown-embed *)::marker {
+.markdown-reading-view ul > li:has(> .list-bullet):not(.task-list-item):not(.markdown-embed *)::marker,
+.markdown-reading-view .paraflow-details-body ul > li:not(.task-list-item):not(.markdown-embed *)::marker {
 	content: '';
 }
-.markdown-reading-view ul > li:not(.task-list-item):not(.markdown-embed *)::before {
+.markdown-reading-view ul > li:has(> .list-bullet):not(.task-list-item):not(.markdown-embed *)::before,
+.markdown-reading-view .paraflow-details-body ul > li:not(.task-list-item):not(.markdown-embed *)::before {
 	--paraflow-live-marker-size: .375em;
 	--paraflow-live-marker-radius: 50%;
 	--paraflow-live-marker-background: var(--paraflow-marker-color, var(--text-normal));
@@ -1536,12 +1539,14 @@ body .mermaid.paraflow-mermaid-themed > svg {
 	top: calc(var(--paraflow-list-row-top-padding, .3em) + .5lh - var(--paraflow-marker-size, var(--paraflow-live-marker-size)) / 2);
 	pointer-events: none;
 }
-.markdown-reading-view :is(ul, ol) > li > ul > li:not(.task-list-item):not(.markdown-embed *)::before {
+.markdown-reading-view :is(ul, ol) > li > ul > li:has(> .list-bullet):not(.task-list-item):not(.markdown-embed *)::before,
+.markdown-reading-view .paraflow-details-body :is(ul, ol) > li > ul > li:not(.task-list-item):not(.markdown-embed *)::before {
 	--paraflow-live-marker-size: .4375em;
 	--paraflow-live-marker-background: transparent;
 	--paraflow-live-marker-border: 1px solid var(--paraflow-marker-color, var(--text-normal));
 }
-.markdown-reading-view :is(ul, ol) > li > :is(ul, ol) ul > li:not(.task-list-item):not(.markdown-embed *)::before {
+.markdown-reading-view :is(ul, ol) > li > :is(ul, ol) ul > li:has(> .list-bullet):not(.task-list-item):not(.markdown-embed *)::before,
+.markdown-reading-view .paraflow-details-body :is(ul, ol) > li > :is(ul, ol) ul > li:not(.task-list-item):not(.markdown-embed *)::before {
 	--paraflow-live-marker-size: .375em;
 	--paraflow-live-marker-radius: 0;
 	--paraflow-live-marker-background: var(--paraflow-marker-color, var(--text-normal));
