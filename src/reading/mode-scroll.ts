@@ -179,6 +179,14 @@ export function createModeScrollAlignment() {
 			// show() transfers the shared title/metadata only when the mode commits.
 			this.measureSection(this.header);
 			this.topSpace = this.pusherEl.offsetTop;
+			// Metadata can own source line zero without a rendered body or section offset.
+			if (value.anchor.top) {
+				this.scrolling = true;
+				value.restored = true;
+				this.updateVirtualDisplay(0);
+				view.syncScroll();
+				return true;
+			}
 			const targetBlock = readingTarget(value.anchor.line);
 			if (!targetBlock) return false;
 			const { native, bodyOffset } = targetBlock;
@@ -191,7 +199,7 @@ export function createModeScrollAlignment() {
 			if (bodyOffset === undefined) throw new Error('Computed Reading section has no measured body offset');
 			this.scrolling = true;
 			value.restored = true;
-			const target = value.anchor.top ? 0 : Math.max(0, this.topSpace + this.getSectionTop(native) + bodyOffset - offset);
+			const target = Math.max(0, this.topSpace + this.getSectionTop(native) + bodyOffset - offset);
 			this.updateVirtualDisplay(target);
 			view.syncScroll();
 			return true;
@@ -247,13 +255,13 @@ export function createModeScrollAlignment() {
 					container.ownerDocument.defaultView!.queueMicrotask(() => {
 						scheduled = false;
 						if (cleaned || reading.text !== reading.lastText) return;
-						const targetBlock = readingTarget(anchor.line);
-						if (!targetBlock) return;
-						let height = 0, required: number | null = null;
+						const targetBlock = anchor.top ? null : readingTarget(anchor.line);
+						if (!anchor.top && !targetBlock) return;
+						let height = 0, required: number | null = anchor.top ? container.clientHeight : null;
 						for (const native of reading.sections) {
 							if (native.el.classList.contains('paraflow-details-continuation')) continue;
 							if (!native.computed || reading.asyncSections.includes(native)) return;
-							if (native === targetBlock.native) {
+							if (targetBlock && native === targetBlock.native) {
 								const { bodyOffset } = targetBlock;
 								const offset = anchor.offset(targetBlock.line);
 								if (offset === undefined || bodyOffset === undefined) return;
