@@ -4,7 +4,7 @@
 
 ParaFlow 是一个尝试将 Typora 中的部分功能/体验迁移到 Obsidian 中的插件，比如段落控制、list 编辑、公式编辑等。
 
-![ParaFlow 与 Typora 的显示效果对比](assets/images/paraflow-typora-comparison.png)
+![ParaFlow 与 Typora 的显示效果对比](assets/images/paraflow-typora-comparison-zh.png)
 
 > 我太喜欢 Typora 那种无干扰的体验了，但 Obsidian 的 wiki link 也很香，所以我想实现一个”内置 typora 的 obsidian“。
 >

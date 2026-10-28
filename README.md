@@ -4,7 +4,7 @@ English | [中文](README.zh.md)
 
 ParaFlow is an Obsidian plugin that tries to bring some of Typora's features and editing experience to Obsidian, including paragraph handling, list editing, math preview, table editing, etc.
 
-![ParaFlow and Typora side by side](assets/images/paraflow-typora-comparison.png)
+![ParaFlow and Typora side by side](assets/images/paraflow-typora-comparison-en.png)
 
 > I love Typora's distraction-free experience and Obsidian's wiki links. So I wanted to build an "Obsidian with Typora inside."
 >
