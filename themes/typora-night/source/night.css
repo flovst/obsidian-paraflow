@@ -1,3 +1,4 @@
+/* ParaFlow-adapted Typora 1.9.5 source. See README.paraflow.md. */
 @import "night/mermaid.dark.css";
 @import "night/codeblock.dark.css";
 @import "night/sourcemode.dark.css";
@@ -38,7 +39,7 @@ html,
 body {
     -webkit-text-size-adjust: 100%;
     -ms-text-size-adjust: 100%;
-    background: #363B40;
+
     background: var(--bg-color);
     fill: currentColor;
     line-height: 1.625rem;
@@ -313,7 +314,7 @@ cite {
 }
 
 blockquote {
-    padding-left: 1.875rem;
+
     margin: 0 0 1.875rem 1.875rem;
     border-left: solid 2px #474d54;
     padding-left: 30px;
@@ -586,7 +587,7 @@ td {
 
 #typora-sidebar {
     box-shadow: none;
-    border-right: 1px dashed;
+
     border-right: none;
 }
 
@@ -902,16 +903,16 @@ footer {
 
 .file-library-node.active>.file-node-content,
 .file-list-item.active {
-    color: white;
+
     color: var(--active-file-text-color);
 }
 
 .file-library-node.active>.file-node-background{
-    background-color: rgb(34, 34, 34);
+
     background-color: var(--active-file-bg-color);
 }
 .file-list-item.active {
-    background-color: rgb(34, 34, 34);
+
     background-color: var(--active-file-bg-color);
 }
 

@@ -1,3 +1,4 @@
+/* ParaFlow-adapted Typora 1.9.5 source. See README.paraflow.md. */
 html {
 	font-size: 19px;
 }
@@ -222,7 +223,6 @@ table tbody+tbody {
 	padding-top: 26px;
 	padding-bottom: 10px;
 	line-height: 1.8em;
-	font-size: 0.9em;
 	font-size: 0.76em;
 	padding-left: 0;
 }

@@ -1,9 +1,10 @@
+/* ParaFlow-adapted Typora 1.9.5 source. See README.paraflow.md. */
 :root {
     --side-bar-bg-color: #fafafa;
     --control-text-color: #777;
 }
 
-@include-when-export url(https://fonts.googleapis.com/css?family=Open+Sans:400italic,700italic,700,400&subset=latin,latin-ext);
+
 
 /* open-sans-regular - latin-ext_latin */
 @font-face {
@@ -257,7 +258,7 @@ tt {
     border: 1px solid #e7eaed;
     background-color: #f8f8f8;
     border-radius: 3px;
-    padding: 0;
+
     padding: 2px 4px 0px 4px;
     font-size: 0.9em;
 }
@@ -376,7 +377,7 @@ header, .context-menu, .megamenu-content, footer{
 }
 
 .mac-seamless-mode #typora-sidebar {
-    background-color: #fafafa;
+
     background-color: var(--side-bar-bg-color);
 }
 

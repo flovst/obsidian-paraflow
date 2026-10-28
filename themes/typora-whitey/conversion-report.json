@@ -1,224 +1,210 @@
 [
   {
     "file": "whitey.css",
-    "line": 31,
+    "line": 32,
     "surface": "shared",
     "status": "skipped",
     "reason": "Print media is outside content theme scope"
   },
   {
     "file": "whitey.css",
-    "line": 95,
+    "line": 96,
     "surface": "shared",
     "status": "skipped",
     "reason": "Print media is outside content theme scope"
   },
   {
     "file": "whitey.css",
-    "line": 1,
+    "line": 2,
     "surface": "shared",
     "status": "approximate",
     "reason": "Content scope normalization preserves rule/declaration order, but removed html/body/#write selector specificity may differ"
   },
   {
     "file": "whitey.css",
-    "line": 6,
+    "line": 7,
     "surface": "shared",
     "status": "skipped",
     "reason": "Root layout property margin does not map to editor geometry"
   },
   {
     "file": "whitey.css",
-    "line": 8,
+    "line": 9,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported property -webkit-font-smoothing"
   },
   {
     "file": "whitey.css",
-    "line": 5,
+    "line": 6,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "whitey.css",
-    "line": 5,
+    "line": 6,
     "surface": "live-preview",
     "status": "mapped",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "whitey.css",
-    "line": 6,
+    "line": 7,
     "surface": "shared",
     "status": "skipped",
     "reason": "Root layout property margin does not map to editor geometry"
   },
   {
     "file": "whitey.css",
-    "line": 8,
+    "line": 9,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported property -webkit-font-smoothing"
   },
   {
     "file": "whitey.css",
-    "line": 5,
+    "line": 6,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "whitey.css",
-    "line": 5,
+    "line": 6,
     "surface": "live-preview",
     "status": "mapped",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "whitey.css",
-    "line": 10,
+    "line": 11,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "whitey.css",
-    "line": 10,
+    "line": 11,
     "surface": "live-preview",
     "status": "mapped",
     "reason": "Live Preview uses Obsidian semantic classes"
-  },
-  {
-    "file": "whitey.css",
-    "line": 19,
-    "surface": "shared",
-    "status": "skipped",
-    "reason": "Root layout property margin does not map to editor geometry"
   },
   {
     "file": "whitey.css",
     "line": 20,
     "surface": "shared",
     "status": "skipped",
+    "reason": "Root layout property margin does not map to editor geometry"
+  },
+  {
+    "file": "whitey.css",
+    "line": 21,
+    "surface": "shared",
+    "status": "skipped",
     "reason": "Root layout property margin-bottom does not map to editor geometry"
   },
   {
     "file": "whitey.css",
-    "line": 22,
+    "line": 23,
     "surface": "shared",
     "status": "skipped",
     "reason": "Root layout property padding-top does not map to editor geometry"
   },
   {
     "file": "whitey.css",
-    "line": 17,
+    "line": 18,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "whitey.css",
-    "line": 17,
+    "line": 18,
     "surface": "live-preview",
     "status": "mapped",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "whitey.css",
-    "line": 40,
+    "line": 41,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: #write>h1:first-child"
   },
   {
     "file": "whitey.css",
-    "line": 42,
+    "line": 43,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "Live Preview h1 layout property margin-top is not transferred"
   },
   {
     "file": "whitey.css",
-    "line": 41,
+    "line": 42,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "whitey.css",
-    "line": 41,
+    "line": 42,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "whitey.css",
-    "line": 46,
+    "line": 47,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "whitey.css",
-    "line": 46,
+    "line": 47,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "whitey.css",
-    "line": 51,
+    "line": 52,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "Live Preview h2 layout property margin-top is not transferred"
   },
   {
     "file": "whitey.css",
-    "line": 50,
+    "line": 51,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "whitey.css",
-    "line": 50,
+    "line": 51,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "whitey.css",
-    "line": 58,
+    "line": 59,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "Live Preview h3 layout property margin-top is not transferred"
   },
   {
     "file": "whitey.css",
-    "line": 55,
+    "line": 56,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "whitey.css",
-    "line": 55,
-    "surface": "live-preview",
-    "status": "approximate",
-    "reason": "Live Preview uses Obsidian semantic classes"
-  },
-  {
-    "file": "whitey.css",
-    "line": 61,
-    "surface": "reading",
-    "status": "mapped",
-    "reason": "Reading content rule mapped"
-  },
-  {
-    "file": "whitey.css",
-    "line": 61,
+    "line": 56,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
@@ -253,140 +239,140 @@
   },
   {
     "file": "whitey.css",
-    "line": 67,
+    "line": 64,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "whitey.css",
+    "line": 64,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "whitey.css",
+    "line": 68,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: h2:after"
   },
   {
     "file": "whitey.css",
-    "line": 76,
+    "line": 77,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "whitey.css",
-    "line": 76,
+    "line": 77,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "No equivalent Live Preview selector; Reading mapping retained"
   },
   {
     "file": "whitey.css",
-    "line": 76,
+    "line": 77,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "whitey.css",
-    "line": 76,
+    "line": 77,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "No equivalent Live Preview selector; Reading mapping retained"
-  },
-  {
-    "file": "whitey.css",
-    "line": 83,
-    "surface": "shared",
-    "status": "skipped",
-    "reason": "Unsupported property -webkit-hypens"
   },
   {
     "file": "whitey.css",
     "line": 84,
     "surface": "shared",
     "status": "skipped",
-    "reason": "Unsupported property -moz-hypens"
+    "reason": "Unsupported property -webkit-hypens"
   },
   {
     "file": "whitey.css",
     "line": 85,
     "surface": "shared",
     "status": "skipped",
+    "reason": "Unsupported property -moz-hypens"
+  },
+  {
+    "file": "whitey.css",
+    "line": 86,
+    "surface": "shared",
+    "status": "skipped",
     "reason": "Unsupported property hyphens"
   },
   {
     "file": "whitey.css",
-    "line": 80,
+    "line": 81,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "whitey.css",
-    "line": 81,
+    "line": 82,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .mathjax-block"
   },
   {
     "file": "whitey.css",
-    "line": 89,
+    "line": 90,
     "surface": "shared",
     "status": "skipped",
     "reason": "List geometry or marker removal rejected: padding-left"
   },
   {
     "file": "whitey.css",
-    "line": 87,
+    "line": 88,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "whitey.css",
-    "line": 87,
+    "line": 88,
     "surface": "shared",
     "status": "approximate",
     "reason": "Marker appearance applied through the shared ParaFlow marker interface"
   },
   {
     "file": "whitey.css",
-    "line": 92,
+    "line": 93,
     "surface": "shared",
     "status": "skipped",
     "reason": "List geometry or marker removal rejected: padding-left"
   },
   {
     "file": "whitey.css",
-    "line": 102,
+    "line": 103,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "Live Preview blockquote layout property margin-left is not transferred"
   },
   {
     "file": "whitey.css",
-    "line": 103,
+    "line": 104,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "Live Preview blockquote layout property padding-left is not transferred"
   },
   {
     "file": "whitey.css",
-    "line": 101,
+    "line": 102,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "whitey.css",
-    "line": 101,
-    "surface": "live-preview",
-    "status": "approximate",
-    "reason": "Live Preview uses Obsidian semantic classes"
-  },
-  {
-    "file": "whitey.css",
-    "line": 106,
-    "surface": "reading",
-    "status": "mapped",
-    "reason": "Reading content rule mapped"
-  },
-  {
-    "file": "whitey.css",
-    "line": 106,
+    "line": 102,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
@@ -407,63 +393,63 @@
   },
   {
     "file": "whitey.css",
-    "line": 112,
+    "line": 108,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "whitey.css",
-    "line": 121,
-    "surface": "reading",
-    "status": "mapped",
-    "reason": "Reading content rule mapped"
-  },
-  {
-    "file": "whitey.css",
-    "line": 121,
+    "line": 108,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "whitey.css",
-    "line": 125,
+    "line": 113,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "whitey.css",
-    "line": 125,
+    "line": 122,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "whitey.css",
+    "line": 122,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "whitey.css",
-    "line": 128,
+    "line": 126,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "whitey.css",
-    "line": 128,
+    "line": 126,
     "surface": "live-preview",
-    "status": "skipped",
-    "reason": "No equivalent Live Preview selector; Reading mapping retained"
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "whitey.css",
-    "line": 131,
+    "line": 129,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "whitey.css",
-    "line": 131,
+    "line": 129,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "No equivalent Live Preview selector; Reading mapping retained"
@@ -484,49 +470,49 @@
   },
   {
     "file": "whitey.css",
-    "line": 136,
+    "line": 133,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "whitey.css",
-    "line": 136,
+    "line": 133,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "No equivalent Live Preview selector; Reading mapping retained"
+  },
+  {
+    "file": "whitey.css",
+    "line": 137,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "whitey.css",
+    "line": 137,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "whitey.css",
-    "line": 145,
+    "line": 146,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .ty-table-edit"
   },
   {
     "file": "whitey.css",
-    "line": 149,
+    "line": 150,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "whitey.css",
-    "line": 149,
-    "surface": "live-preview",
-    "status": "approximate",
-    "reason": "Live Preview uses Obsidian semantic classes"
-  },
-  {
-    "file": "whitey.css",
-    "line": 152,
-    "surface": "reading",
-    "status": "mapped",
-    "reason": "Reading content rule mapped"
-  },
-  {
-    "file": "whitey.css",
-    "line": 152,
+    "line": 150,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
@@ -547,42 +533,42 @@
   },
   {
     "file": "whitey.css",
-    "line": 159,
+    "line": 154,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "whitey.css",
-    "line": 159,
+    "line": 154,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "whitey.css",
-    "line": 162,
+    "line": 160,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "whitey.css",
-    "line": 162,
+    "line": 160,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "whitey.css",
-    "line": 165,
+    "line": 163,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "whitey.css",
-    "line": 165,
+    "line": 163,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
@@ -659,66 +645,73 @@
   },
   {
     "file": "whitey.css",
-    "line": 173,
+    "line": 171,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "whitey.css",
-    "line": 173,
+    "line": 171,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "whitey.css",
-    "line": 177,
+    "line": 174,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "whitey.css",
+    "line": 174,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "whitey.css",
+    "line": 178,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .task-list"
   },
   {
     "file": "whitey.css",
-    "line": 181,
+    "line": 182,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .md-task-list-item"
   },
   {
     "file": "whitey.css",
-    "line": 185,
+    "line": 186,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .md-task-list-item>input:before"
   },
   {
     "file": "whitey.css",
-    "line": 196,
+    "line": 197,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .md-task-list-item>input:checked:before"
   },
   {
     "file": "whitey.css",
-    "line": 197,
+    "line": 198,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .md-task-list-item>input[checked]:before"
   },
   {
     "file": "whitey.css",
-    "line": 200,
+    "line": 201,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .md-tag"
-  },
-  {
-    "file": "whitey.css",
-    "line": 205,
-    "surface": "shared",
-    "status": "skipped",
-    "reason": "Metadata container paint and layout are outside the font-only mapping"
   },
   {
     "file": "whitey.css",
@@ -729,7 +722,7 @@
   },
   {
     "file": "whitey.css",
-    "line": 209,
+    "line": 207,
     "surface": "shared",
     "status": "skipped",
     "reason": "Metadata container paint and layout are outside the font-only mapping"
@@ -757,7 +750,7 @@
   },
   {
     "file": "whitey.css",
-    "line": 214,
+    "line": 213,
     "surface": "shared",
     "status": "skipped",
     "reason": "Metadata container paint and layout are outside the font-only mapping"
@@ -792,7 +785,7 @@
   },
   {
     "file": "whitey.css",
-    "line": 220,
+    "line": 219,
     "surface": "shared",
     "status": "skipped",
     "reason": "Metadata container paint and layout are outside the font-only mapping"
@@ -821,6 +814,13 @@
   {
     "file": "whitey.css",
     "line": 224,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Metadata container paint and layout are outside the font-only mapping"
+  },
+  {
+    "file": "whitey.css",
+    "line": 225,
     "surface": "shared",
     "status": "skipped",
     "reason": "Metadata container paint and layout are outside the font-only mapping"

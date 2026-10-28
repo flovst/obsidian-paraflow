@@ -1,6 +1,7 @@
+/* ParaFlow-adapted Typora 1.9.5 source. See README.paraflow.md. */
 /* meyer reset -- http://meyerweb.com/eric/tools/css/reset/ , v2.0 | 20110126 | License: none (public domain) */
 
-@include-when-export url(https://fonts.googleapis.com/css?family=PT+Serif:400,400italic,700,700italic&subset=latin,cyrillic-ext,cyrillic,latin-ext);
+
 
 /* =========== */
 
@@ -113,7 +114,7 @@ blockquote:before,
 blockquote:after,
 q:before,
 q:after {
-	content: '';
+
 	content: none;
 }
 table {
@@ -360,7 +361,7 @@ hr {
 	color: #555;
 	border: 0px;
 	background: transparent;
-	margin-top: -4px;
+
 	margin-left: 1em;
 	margin-top: 1em;
 }
@@ -558,12 +559,12 @@ header, .context-menu, .megamenu-content, footer {
 }
 
 .file-library-node.active>.file-node-background{
-	background-color: rgba(32, 43, 51, 0.63);
+
 	background-color: var(--active-file-bg-color);
 }
 
 .file-tree-node.active>.file-node-content{
-	color: white;
+
 	color: var(--active-file-text-color);
 }
 

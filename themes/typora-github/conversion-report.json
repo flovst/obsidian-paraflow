@@ -1,447 +1,419 @@
 [
   {
     "file": "github.css",
-    "line": 6,
-    "surface": "shared",
-    "status": "skipped",
-    "reason": "Unsupported @include-when-export; no global rule emitted"
-  },
-  {
-    "file": "github.css",
-    "line": 282,
+    "line": 283,
     "surface": "shared",
     "status": "skipped",
     "reason": "Print media is outside content theme scope"
   },
   {
     "file": "github.css",
-    "line": 260,
-    "surface": "shared",
-    "status": "mapped",
-    "reason": "Redundant padding declaration omitted; a later basic length declaration takes precedence"
-  },
-  {
-    "file": "github.css",
-    "line": 1,
+    "line": 2,
     "surface": "shared",
     "status": "approximate",
     "reason": "Content scope normalization preserves rule/declaration order, but removed html/body/#write selector specificity may differ"
   },
   {
     "file": "github.css",
-    "line": 1,
+    "line": 2,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "github.css",
-    "line": 1,
+    "line": 2,
     "surface": "live-preview",
     "status": "mapped",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "github.css",
-    "line": 9,
+    "line": 10,
     "surface": "shared",
     "status": "mapped",
     "reason": "Font registration namespaced to this theme"
   },
   {
     "file": "github.css",
-    "line": 17,
+    "line": 18,
     "surface": "shared",
     "status": "mapped",
     "reason": "Font registration namespaced to this theme"
   },
   {
     "file": "github.css",
-    "line": 25,
+    "line": 26,
     "surface": "shared",
     "status": "mapped",
     "reason": "Font registration namespaced to this theme"
   },
   {
     "file": "github.css",
-    "line": 33,
+    "line": 34,
     "surface": "shared",
     "status": "mapped",
     "reason": "Font registration namespaced to this theme"
   },
   {
     "file": "github.css",
-    "line": 43,
+    "line": 44,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported property -webkit-font-smoothing"
   },
   {
     "file": "github.css",
-    "line": 46,
+    "line": 47,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "github.css",
-    "line": 46,
+    "line": 47,
     "surface": "live-preview",
     "status": "mapped",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "github.css",
-    "line": 54,
+    "line": 55,
     "surface": "shared",
     "status": "skipped",
     "reason": "Root layout property margin does not map to editor geometry"
   },
   {
     "file": "github.css",
-    "line": 56,
+    "line": 57,
     "surface": "shared",
     "status": "skipped",
     "reason": "Root layout property padding-bottom does not map to editor geometry"
   },
   {
     "file": "github.css",
-    "line": 71,
+    "line": 72,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: #write>ul:first-child"
   },
   {
     "file": "github.css",
-    "line": 72,
+    "line": 73,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: #write>ol:first-child"
   },
   {
     "file": "github.css",
-    "line": 76,
+    "line": 77,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "github.css",
-    "line": 76,
+    "line": 77,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "github.css",
-    "line": 85,
+    "line": 86,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported property position"
   },
   {
     "file": "github.css",
-    "line": 86,
+    "line": 87,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "Live Preview h1 layout property margin-top is not transferred"
   },
   {
     "file": "github.css",
-    "line": 87,
+    "line": 88,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "Live Preview h1 layout property margin-bottom is not transferred"
   },
   {
     "file": "github.css",
-    "line": 90,
+    "line": 91,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported property cursor"
   },
   {
     "file": "github.css",
-    "line": 79,
+    "line": 80,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "github.css",
-    "line": 79,
+    "line": 80,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "github.css",
-    "line": 85,
+    "line": 86,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported property position"
   },
   {
     "file": "github.css",
-    "line": 86,
+    "line": 87,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "Live Preview h2 layout property margin-top is not transferred"
   },
   {
     "file": "github.css",
-    "line": 87,
+    "line": 88,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "Live Preview h2 layout property margin-bottom is not transferred"
   },
   {
     "file": "github.css",
-    "line": 90,
+    "line": 91,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported property cursor"
   },
   {
     "file": "github.css",
-    "line": 80,
+    "line": 81,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "github.css",
-    "line": 80,
+    "line": 81,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "github.css",
-    "line": 85,
+    "line": 86,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported property position"
   },
   {
     "file": "github.css",
-    "line": 86,
+    "line": 87,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "Live Preview h3 layout property margin-top is not transferred"
   },
   {
     "file": "github.css",
-    "line": 87,
+    "line": 88,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "Live Preview h3 layout property margin-bottom is not transferred"
   },
   {
     "file": "github.css",
-    "line": 90,
+    "line": 91,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported property cursor"
   },
   {
     "file": "github.css",
-    "line": 81,
+    "line": 82,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "github.css",
-    "line": 81,
+    "line": 82,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "github.css",
-    "line": 85,
+    "line": 86,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported property position"
   },
   {
     "file": "github.css",
-    "line": 86,
+    "line": 87,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "Live Preview h4 layout property margin-top is not transferred"
   },
   {
     "file": "github.css",
-    "line": 87,
+    "line": 88,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "Live Preview h4 layout property margin-bottom is not transferred"
   },
   {
     "file": "github.css",
-    "line": 90,
+    "line": 91,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported property cursor"
   },
   {
     "file": "github.css",
-    "line": 82,
+    "line": 83,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "github.css",
-    "line": 82,
+    "line": 83,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "github.css",
-    "line": 85,
+    "line": 86,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported property position"
   },
   {
     "file": "github.css",
-    "line": 86,
+    "line": 87,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "Live Preview h5 layout property margin-top is not transferred"
   },
   {
     "file": "github.css",
-    "line": 87,
+    "line": 88,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "Live Preview h5 layout property margin-bottom is not transferred"
   },
   {
     "file": "github.css",
-    "line": 90,
+    "line": 91,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported property cursor"
   },
   {
     "file": "github.css",
-    "line": 83,
+    "line": 84,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "github.css",
-    "line": 83,
+    "line": 84,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "github.css",
-    "line": 85,
+    "line": 86,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported property position"
   },
   {
     "file": "github.css",
-    "line": 86,
+    "line": 87,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "Live Preview h6 layout property margin-top is not transferred"
   },
   {
     "file": "github.css",
-    "line": 87,
+    "line": 88,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "Live Preview h6 layout property margin-bottom is not transferred"
   },
   {
     "file": "github.css",
-    "line": 90,
+    "line": 91,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported property cursor"
   },
   {
     "file": "github.css",
-    "line": 84,
+    "line": 85,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "github.css",
-    "line": 84,
+    "line": 85,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
-  },
-  {
-    "file": "github.css",
-    "line": 92,
-    "surface": "shared",
-    "status": "skipped",
-    "reason": "Unsupported or Typora UI selector: h1:hover a.anchor"
   },
   {
     "file": "github.css",
     "line": 93,
     "surface": "shared",
     "status": "skipped",
-    "reason": "Unsupported or Typora UI selector: h2:hover a.anchor"
+    "reason": "Unsupported or Typora UI selector: h1:hover a.anchor"
   },
   {
     "file": "github.css",
     "line": 94,
     "surface": "shared",
     "status": "skipped",
-    "reason": "Unsupported or Typora UI selector: h3:hover a.anchor"
+    "reason": "Unsupported or Typora UI selector: h2:hover a.anchor"
   },
   {
     "file": "github.css",
     "line": 95,
     "surface": "shared",
     "status": "skipped",
-    "reason": "Unsupported or Typora UI selector: h4:hover a.anchor"
+    "reason": "Unsupported or Typora UI selector: h3:hover a.anchor"
   },
   {
     "file": "github.css",
     "line": 96,
     "surface": "shared",
     "status": "skipped",
-    "reason": "Unsupported or Typora UI selector: h5:hover a.anchor"
+    "reason": "Unsupported or Typora UI selector: h4:hover a.anchor"
   },
   {
     "file": "github.css",
     "line": 97,
     "surface": "shared",
     "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: h5:hover a.anchor"
+  },
+  {
+    "file": "github.css",
+    "line": 98,
+    "surface": "shared",
+    "status": "skipped",
     "reason": "Unsupported or Typora UI selector: h6:hover a.anchor"
   },
   {
     "file": "github.css",
-    "line": 100,
-    "surface": "reading",
-    "status": "mapped",
-    "reason": "Reading content rule mapped"
-  },
-  {
-    "file": "github.css",
-    "line": 100,
-    "surface": "live-preview",
-    "status": "skipped",
-    "reason": "No equivalent Live Preview selector; Reading mapping retained"
-  },
-  {
-    "file": "github.css",
     "line": 101,
     "surface": "reading",
     "status": "mapped",
@@ -456,14 +428,14 @@
   },
   {
     "file": "github.css",
-    "line": 104,
+    "line": 102,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "github.css",
-    "line": 104,
+    "line": 102,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "No equivalent Live Preview selector; Reading mapping retained"
@@ -484,14 +456,14 @@
   },
   {
     "file": "github.css",
-    "line": 108,
+    "line": 106,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "github.css",
-    "line": 108,
+    "line": 106,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "No equivalent Live Preview selector; Reading mapping retained"
@@ -512,14 +484,14 @@
   },
   {
     "file": "github.css",
-    "line": 112,
+    "line": 110,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "github.css",
-    "line": 112,
+    "line": 110,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "No equivalent Live Preview selector; Reading mapping retained"
@@ -540,14 +512,14 @@
   },
   {
     "file": "github.css",
-    "line": 116,
+    "line": 114,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "github.css",
-    "line": 116,
+    "line": 114,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "No equivalent Live Preview selector; Reading mapping retained"
@@ -568,14 +540,14 @@
   },
   {
     "file": "github.css",
-    "line": 120,
+    "line": 118,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "github.css",
-    "line": 120,
+    "line": 118,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "No equivalent Live Preview selector; Reading mapping retained"
@@ -596,143 +568,143 @@
   },
   {
     "file": "github.css",
-    "line": 124,
+    "line": 122,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "github.css",
-    "line": 124,
+    "line": 122,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "No equivalent Live Preview selector; Reading mapping retained"
+  },
+  {
+    "file": "github.css",
+    "line": 125,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "github.css",
+    "line": 125,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "github.css",
-    "line": 129,
+    "line": 130,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "github.css",
-    "line": 129,
+    "line": 130,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "github.css",
-    "line": 152,
+    "line": 153,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "github.css",
-    "line": 152,
+    "line": 153,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "github.css",
-    "line": 156,
+    "line": 157,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "github.css",
-    "line": 156,
+    "line": 157,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "github.css",
-    "line": 159,
+    "line": 160,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "github.css",
-    "line": 159,
+    "line": 160,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "github.css",
-    "line": 162,
+    "line": 163,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "github.css",
-    "line": 162,
+    "line": 163,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "github.css",
-    "line": 166,
+    "line": 167,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "github.css",
-    "line": 172,
+    "line": 173,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "Live Preview blockquote layout property margin is not transferred"
   },
   {
     "file": "github.css",
-    "line": 167,
+    "line": 168,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "github.css",
-    "line": 167,
+    "line": 168,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "No equivalent Live Preview selector; Reading mapping retained"
   },
   {
     "file": "github.css",
-    "line": 172,
+    "line": 173,
     "surface": "shared",
     "status": "skipped",
     "reason": "List geometry or marker removal rejected: margin"
   },
   {
     "file": "github.css",
-    "line": 172,
+    "line": 173,
     "surface": "shared",
     "status": "skipped",
     "reason": "List geometry or marker removal rejected: margin"
-  },
-  {
-    "file": "github.css",
-    "line": 170,
-    "surface": "reading",
-    "status": "mapped",
-    "reason": "Reading content rule mapped"
-  },
-  {
-    "file": "github.css",
-    "line": 170,
-    "surface": "live-preview",
-    "status": "skipped",
-    "reason": "No equivalent Live Preview selector; Reading mapping retained"
   },
   {
     "file": "github.css",
@@ -744,167 +716,167 @@
   {
     "file": "github.css",
     "line": 171,
+    "surface": "live-preview",
+    "status": "skipped",
+    "reason": "No equivalent Live Preview selector; Reading mapping retained"
+  },
+  {
+    "file": "github.css",
+    "line": 172,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "github.css",
+    "line": 172,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "github.css",
-    "line": 176,
+    "line": 177,
     "surface": "shared",
     "status": "skipped",
     "reason": "List geometry or marker removal rejected: margin"
   },
   {
     "file": "github.css",
-    "line": 176,
+    "line": 177,
     "surface": "shared",
     "status": "skipped",
     "reason": "List geometry or marker removal rejected: margin"
   },
   {
     "file": "github.css",
-    "line": 185,
+    "line": 186,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported property box-sizing"
   },
   {
     "file": "github.css",
-    "line": 178,
+    "line": 179,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "github.css",
-    "line": 178,
+    "line": 179,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "github.css",
-    "line": 188,
+    "line": 189,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: li p.first"
   },
   {
     "file": "github.css",
-    "line": 193,
+    "line": 194,
     "surface": "shared",
     "status": "skipped",
     "reason": "List geometry or marker removal rejected: padding-left"
   },
   {
     "file": "github.css",
-    "line": 193,
+    "line": 194,
     "surface": "shared",
     "status": "skipped",
     "reason": "List geometry or marker removal rejected: padding-left"
   },
   {
     "file": "github.css",
-    "line": 197,
+    "line": 198,
     "surface": "shared",
     "status": "skipped",
     "reason": "List geometry or marker removal rejected: margin-top"
   },
   {
     "file": "github.css",
-    "line": 197,
+    "line": 198,
     "surface": "shared",
     "status": "skipped",
     "reason": "List geometry or marker removal rejected: margin-top"
   },
   {
     "file": "github.css",
-    "line": 201,
+    "line": 202,
     "surface": "shared",
     "status": "skipped",
     "reason": "List geometry or marker removal rejected: margin-bottom"
   },
   {
     "file": "github.css",
-    "line": 201,
+    "line": 202,
     "surface": "shared",
     "status": "skipped",
     "reason": "List geometry or marker removal rejected: margin-bottom"
   },
   {
     "file": "github.css",
-    "line": 205,
+    "line": 206,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "Live Preview blockquote layout property padding is not transferred"
   },
   {
     "file": "github.css",
-    "line": 203,
+    "line": 204,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "github.css",
-    "line": 203,
+    "line": 204,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "github.css",
-    "line": 208,
+    "line": 209,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "github.css",
-    "line": 208,
+    "line": 209,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "No equivalent Live Preview selector; Reading mapping retained"
   },
   {
     "file": "github.css",
-    "line": 211,
+    "line": 212,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "github.css",
-    "line": 211,
+    "line": 212,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "github.css",
-    "line": 215,
+    "line": 216,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "github.css",
-    "line": 215,
-    "surface": "live-preview",
-    "status": "approximate",
-    "reason": "Live Preview uses Obsidian semantic classes"
-  },
-  {
-    "file": "github.css",
-    "line": 220,
-    "surface": "reading",
-    "status": "mapped",
-    "reason": "Reading content rule mapped"
-  },
-  {
-    "file": "github.css",
-    "line": 220,
+    "line": 216,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
@@ -925,42 +897,42 @@
   },
   {
     "file": "github.css",
-    "line": 224,
+    "line": 222,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "github.css",
-    "line": 224,
+    "line": 222,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "github.css",
-    "line": 231,
+    "line": 225,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "github.css",
-    "line": 231,
+    "line": 225,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "github.css",
-    "line": 236,
+    "line": 232,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "github.css",
-    "line": 236,
+    "line": 232,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
@@ -981,14 +953,14 @@
   },
   {
     "file": "github.css",
-    "line": 240,
+    "line": 238,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "github.css",
-    "line": 240,
+    "line": 238,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
@@ -1009,119 +981,126 @@
   },
   {
     "file": "github.css",
-    "line": 245,
+    "line": 242,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "github.css",
+    "line": 242,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "github.css",
+    "line": 246,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .CodeMirror-lines"
   },
   {
     "file": "github.css",
-    "line": 249,
+    "line": 250,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .code-tooltip"
   },
   {
     "file": "github.css",
-    "line": 254,
+    "line": 255,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "github.css",
-    "line": 254,
+    "line": 255,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "github.css",
-    "line": 261,
+    "line": 262,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "Live Preview code layout property padding is not transferred"
   },
   {
     "file": "github.css",
-    "line": 255,
+    "line": 256,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "github.css",
-    "line": 255,
+    "line": 256,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "github.css",
-    "line": 256,
+    "line": 257,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "github.css",
-    "line": 256,
+    "line": 257,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "No equivalent Live Preview selector; Reading mapping retained"
   },
   {
     "file": "github.css",
-    "line": 267,
+    "line": 268,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "Live Preview code layout property padding is not transferred"
   },
   {
     "file": "github.css",
-    "line": 265,
+    "line": 266,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "github.css",
-    "line": 265,
+    "line": 266,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "github.css",
-    "line": 270,
+    "line": 271,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "github.css",
-    "line": 278,
+    "line": 279,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .md-task-list-item>input"
   },
   {
     "file": "github.css",
-    "line": 292,
+    "line": 293,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "github.css",
-    "line": 296,
-    "surface": "shared",
-    "status": "skipped",
-    "reason": "Metadata container paint and layout are outside the font-only mapping"
-  },
-  {
-    "file": "github.css",
-    "line": 298,
+    "line": 297,
     "surface": "shared",
     "status": "skipped",
     "reason": "Metadata container paint and layout are outside the font-only mapping"
@@ -1163,189 +1142,196 @@
   },
   {
     "file": "github.css",
-    "line": 306,
+    "line": 304,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Metadata container paint and layout are outside the font-only mapping"
+  },
+  {
+    "file": "github.css",
+    "line": 307,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .mathjax-block>.code-tooltip"
   },
   {
     "file": "github.css",
-    "line": 310,
+    "line": 311,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .md-mathjax-midline"
   },
   {
     "file": "github.css",
-    "line": 314,
+    "line": 315,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: #write>h3.md-focus:before"
   },
   {
     "file": "github.css",
-    "line": 318,
+    "line": 319,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: #write>h4.md-focus:before"
   },
   {
     "file": "github.css",
-    "line": 322,
+    "line": 323,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: #write>h5.md-focus:before"
   },
   {
     "file": "github.css",
-    "line": 326,
+    "line": 327,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: #write>h6.md-focus:before"
   },
   {
     "file": "github.css",
-    "line": 330,
+    "line": 331,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .md-image>.md-meta"
   },
   {
     "file": "github.css",
-    "line": 338,
+    "line": 339,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .md-tag"
   },
   {
     "file": "github.css",
-    "line": 343,
+    "line": 344,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .md-toc"
   },
   {
     "file": "github.css",
-    "line": 348,
+    "line": 349,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .sidebar-tabs"
   },
   {
     "file": "github.css",
-    "line": 352,
+    "line": 353,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: #typora-quick-open"
   },
   {
     "file": "github.css",
-    "line": 357,
+    "line": 358,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: #typora-quick-open-item"
   },
   {
     "file": "github.css",
-    "line": 365,
+    "line": 366,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .on-focus-mode blockquote"
   },
   {
     "file": "github.css",
-    "line": 369,
+    "line": 370,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: header"
   },
   {
     "file": "github.css",
-    "line": 369,
+    "line": 370,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .context-menu"
   },
   {
     "file": "github.css",
-    "line": 369,
+    "line": 370,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .megamenu-content"
   },
   {
     "file": "github.css",
-    "line": 369,
+    "line": 370,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: footer"
   },
   {
     "file": "github.css",
-    "line": 373,
+    "line": 374,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .file-node-content:hover .file-node-icon"
   },
   {
     "file": "github.css",
-    "line": 374,
+    "line": 375,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .file-node-content:hover .file-node-open-state"
   },
   {
     "file": "github.css",
-    "line": 378,
+    "line": 379,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .mac-seamless-mode #typora-sidebar"
   },
   {
     "file": "github.css",
-    "line": 383,
+    "line": 384,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .mac-os #write"
   },
   {
     "file": "github.css",
-    "line": 387,
+    "line": 388,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .md-lang"
   },
   {
     "file": "github.css",
-    "line": 395,
+    "line": 396,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: #md-notification .btn"
   },
   {
     "file": "github.css",
-    "line": 399,
+    "line": 400,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .dropdown-menu .divider"
   },
   {
     "file": "github.css",
-    "line": 404,
+    "line": 405,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .ty-preferences .window-content"
   },
   {
     "file": "github.css",
-    "line": 408,
+    "line": 409,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .ty-preferences .nav-group-item.active"
   },
   {
     "file": "github.css",
-    "line": 413,
+    "line": 414,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .menu-item-container a.menu-style-btn"

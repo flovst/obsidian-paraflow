@@ -1,216 +1,188 @@
 [
   {
     "file": "pixyll.css",
-    "line": 1,
-    "surface": "shared",
-    "status": "skipped",
-    "reason": "Unsupported @include-when-export; no global rule emitted"
-  },
-  {
-    "file": "pixyll.css",
-    "line": 2,
-    "surface": "shared",
-    "status": "skipped",
-    "reason": "Unsupported @include-when-export; no global rule emitted"
-  },
-  {
-    "file": "pixyll.css",
-    "line": 4,
+    "line": 5,
     "surface": "shared",
     "status": "approximate",
     "reason": "Content scope normalization preserves rule/declaration order, but removed html/body/#write selector specificity may differ"
   },
   {
     "file": "pixyll.css",
-    "line": 4,
+    "line": 5,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "pixyll.css",
-    "line": 4,
+    "line": 5,
     "surface": "live-preview",
     "status": "mapped",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "pixyll.css",
-    "line": 13,
+    "line": 14,
     "surface": "shared",
     "status": "mapped",
     "reason": "Font registration namespaced to this theme"
   },
   {
     "file": "pixyll.css",
-    "line": 20,
+    "line": 21,
     "surface": "shared",
     "status": "mapped",
     "reason": "Font registration namespaced to this theme"
   },
   {
     "file": "pixyll.css",
-    "line": 27,
+    "line": 28,
     "surface": "shared",
     "status": "mapped",
     "reason": "Font registration namespaced to this theme"
   },
   {
     "file": "pixyll.css",
-    "line": 34,
+    "line": 35,
     "surface": "shared",
     "status": "mapped",
     "reason": "Font registration namespaced to this theme"
   },
   {
     "file": "pixyll.css",
-    "line": 42,
+    "line": 43,
     "surface": "shared",
     "status": "mapped",
     "reason": "Font registration namespaced to this theme"
   },
   {
     "file": "pixyll.css",
-    "line": 49,
+    "line": 50,
     "surface": "shared",
     "status": "mapped",
     "reason": "Font registration namespaced to this theme"
   },
   {
     "file": "pixyll.css",
-    "line": 56,
+    "line": 57,
     "surface": "shared",
     "status": "mapped",
     "reason": "Font registration namespaced to this theme"
   },
   {
     "file": "pixyll.css",
-    "line": 63,
+    "line": 64,
     "surface": "shared",
     "status": "mapped",
     "reason": "Font registration namespaced to this theme"
-  },
-  {
-    "file": "pixyll.css",
-    "line": 71,
-    "surface": "reading",
-    "status": "mapped",
-    "reason": "Reading content rule mapped"
-  },
-  {
-    "file": "pixyll.css",
-    "line": 71,
-    "surface": "live-preview",
-    "status": "approximate",
-    "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "pixyll.css",
     "line": 72,
-    "surface": "shared",
-    "status": "skipped",
-    "reason": "Unsupported or Typora UI selector: .h1"
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "pixyll.css",
+    "line": 72,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "pixyll.css",
     "line": 73,
     "surface": "shared",
     "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .h1"
+  },
+  {
+    "file": "pixyll.css",
+    "line": 74,
+    "surface": "shared",
+    "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .f1"
   },
   {
     "file": "pixyll.css",
-    "line": 77,
+    "line": 78,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "pixyll.css",
-    "line": 77,
+    "line": 78,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
-  },
-  {
-    "file": "pixyll.css",
-    "line": 78,
-    "surface": "shared",
-    "status": "skipped",
-    "reason": "Unsupported or Typora UI selector: .h2"
   },
   {
     "file": "pixyll.css",
     "line": 79,
     "surface": "shared",
     "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .h2"
+  },
+  {
+    "file": "pixyll.css",
+    "line": 80,
+    "surface": "shared",
+    "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .f2"
   },
   {
     "file": "pixyll.css",
-    "line": 83,
+    "line": 84,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "pixyll.css",
-    "line": 83,
+    "line": 84,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
-  },
-  {
-    "file": "pixyll.css",
-    "line": 84,
-    "surface": "shared",
-    "status": "skipped",
-    "reason": "Unsupported or Typora UI selector: .h3"
   },
   {
     "file": "pixyll.css",
     "line": 85,
     "surface": "shared",
     "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .h3"
+  },
+  {
+    "file": "pixyll.css",
+    "line": 86,
+    "surface": "shared",
+    "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .f3"
   },
   {
     "file": "pixyll.css",
-    "line": 89,
+    "line": 90,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
-  },
-  {
-    "file": "pixyll.css",
-    "line": 90,
-    "surface": "shared",
-    "status": "skipped",
-    "reason": "Unsupported or Typora UI selector: .p"
   },
   {
     "file": "pixyll.css",
     "line": 91,
     "surface": "shared",
     "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: .p"
+  },
+  {
+    "file": "pixyll.css",
+    "line": 92,
+    "surface": "shared",
+    "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .f4"
   },
   {
     "file": "pixyll.css",
-    "line": 92,
-    "surface": "reading",
-    "status": "mapped",
-    "reason": "Reading content rule mapped"
-  },
-  {
-    "file": "pixyll.css",
-    "line": 92,
-    "surface": "live-preview",
-    "status": "approximate",
-    "reason": "Live Preview uses Obsidian semantic classes"
-  },
-  {
-    "file": "pixyll.css",
     "line": 93,
     "surface": "reading",
     "status": "mapped",
@@ -248,8 +220,8 @@
     "file": "pixyll.css",
     "line": 95,
     "surface": "live-preview",
-    "status": "skipped",
-    "reason": "No equivalent Live Preview selector; Reading mapping retained"
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "pixyll.css",
@@ -282,146 +254,146 @@
   {
     "file": "pixyll.css",
     "line": 98,
-    "surface": "shared",
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "pixyll.css",
+    "line": 98,
+    "surface": "live-preview",
     "status": "skipped",
-    "reason": "Unsupported or Typora UI selector: pre[cid]"
+    "reason": "No equivalent Live Preview selector; Reading mapping retained"
   },
   {
     "file": "pixyll.css",
     "line": 99,
     "surface": "shared",
     "status": "skipped",
-    "reason": "Unsupported or Typora UI selector: div[cid]"
+    "reason": "Unsupported or Typora UI selector: pre[cid]"
   },
   {
     "file": "pixyll.css",
     "line": 100,
     "surface": "shared",
     "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: div[cid]"
+  },
+  {
+    "file": "pixyll.css",
+    "line": 101,
+    "surface": "shared",
+    "status": "skipped",
     "reason": "Unsupported or Typora UI selector: #typora-source"
   },
   {
     "file": "pixyll.css",
-    "line": 105,
+    "line": 106,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "pixyll.css",
-    "line": 105,
+    "line": 106,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "pixyll.css",
-    "line": 116,
+    "line": 117,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "pixyll.css",
-    "line": 116,
+    "line": 117,
     "surface": "live-preview",
     "status": "mapped",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "pixyll.css",
-    "line": 122,
+    "line": 123,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "pixyll.css",
-    "line": 122,
+    "line": 123,
     "surface": "live-preview",
     "status": "mapped",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "pixyll.css",
-    "line": 139,
+    "line": 140,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "pixyll.css",
-    "line": 139,
+    "line": 140,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
-  },
-  {
-    "file": "pixyll.css",
-    "line": 145,
-    "surface": "shared",
-    "status": "skipped",
-    "reason": "Unsupported property box-sizing"
   },
   {
     "file": "pixyll.css",
     "line": 146,
     "surface": "shared",
     "status": "skipped",
-    "reason": "Unsupported property -moz-box-sizing"
+    "reason": "Unsupported property box-sizing"
   },
   {
     "file": "pixyll.css",
     "line": 147,
     "surface": "shared",
     "status": "skipped",
+    "reason": "Unsupported property -moz-box-sizing"
+  },
+  {
+    "file": "pixyll.css",
+    "line": 148,
+    "surface": "shared",
+    "status": "skipped",
     "reason": "Unsupported property -webkit-box-sizing"
   },
   {
     "file": "pixyll.css",
-    "line": 143,
+    "line": 144,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "pixyll.css",
-    "line": 143,
+    "line": 144,
     "surface": "live-preview",
     "status": "mapped",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "pixyll.css",
-    "line": 150,
+    "line": 151,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .ty-table-edit"
   },
   {
     "file": "pixyll.css",
-    "line": 154,
+    "line": 155,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "pixyll.css",
-    "line": 154,
-    "surface": "live-preview",
-    "status": "approximate",
-    "reason": "Live Preview uses Obsidian semantic classes"
-  },
-  {
-    "file": "pixyll.css",
-    "line": 158,
-    "surface": "reading",
-    "status": "mapped",
-    "reason": "Reading content rule mapped"
-  },
-  {
-    "file": "pixyll.css",
-    "line": 158,
+    "line": 155,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
@@ -498,28 +470,28 @@
   },
   {
     "file": "pixyll.css",
-    "line": 169,
+    "line": 164,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "pixyll.css",
-    "line": 169,
+    "line": 164,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "pixyll.css",
-    "line": 173,
+    "line": 170,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "pixyll.css",
-    "line": 173,
+    "line": 170,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
@@ -596,62 +568,62 @@
   },
   {
     "file": "pixyll.css",
-    "line": 181,
+    "line": 179,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "pixyll.css",
-    "line": 181,
+    "line": 179,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "pixyll.css",
-    "line": 184,
+    "line": 182,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "pixyll.css",
-    "line": 190,
+    "line": 182,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "pixyll.css",
+    "line": 185,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "pixyll.css",
+    "line": 191,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported property cursor"
   },
   {
     "file": "pixyll.css",
-    "line": 188,
+    "line": 189,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "pixyll.css",
-    "line": 188,
+    "line": 189,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "No equivalent Live Preview selector; Reading mapping retained"
   },
   {
     "file": "pixyll.css",
-    "line": 192,
-    "surface": "reading",
-    "status": "mapped",
-    "reason": "Reading content rule mapped"
-  },
-  {
-    "file": "pixyll.css",
-    "line": 192,
-    "surface": "live-preview",
-    "status": "approximate",
-    "reason": "Live Preview uses Obsidian semantic classes"
-  },
-  {
-    "file": "pixyll.css",
     "line": 193,
     "surface": "reading",
     "status": "mapped",
@@ -666,14 +638,14 @@
   },
   {
     "file": "pixyll.css",
-    "line": 197,
+    "line": 194,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "pixyll.css",
-    "line": 197,
+    "line": 194,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
@@ -694,349 +666,356 @@
   },
   {
     "file": "pixyll.css",
-    "line": 202,
+    "line": 199,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "pixyll.css",
-    "line": 202,
+    "line": 199,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "pixyll.css",
-    "line": 212,
+    "line": 203,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "pixyll.css",
+    "line": 203,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
+  },
+  {
+    "file": "pixyll.css",
+    "line": 213,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "Live Preview blockquote layout property padding is not transferred"
   },
   {
     "file": "pixyll.css",
-    "line": 211,
+    "line": 212,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "pixyll.css",
-    "line": 211,
+    "line": 212,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "pixyll.css",
-    "line": 217,
+    "line": 218,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "pixyll.css",
-    "line": 217,
+    "line": 218,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "No equivalent Live Preview selector; Reading mapping retained"
   },
   {
     "file": "pixyll.css",
-    "line": 220,
+    "line": 221,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: blockquote footer"
   },
   {
     "file": "pixyll.css",
-    "line": 242,
+    "line": 243,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "Live Preview h1 layout property margin is not transferred"
   },
   {
     "file": "pixyll.css",
-    "line": 227,
+    "line": 228,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "pixyll.css",
-    "line": 227,
+    "line": 228,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "pixyll.css",
-    "line": 228,
+    "line": 229,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .h1"
   },
   {
     "file": "pixyll.css",
-    "line": 242,
+    "line": 243,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "Live Preview h2 layout property margin is not transferred"
   },
   {
     "file": "pixyll.css",
-    "line": 229,
+    "line": 230,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "pixyll.css",
-    "line": 229,
+    "line": 230,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "pixyll.css",
-    "line": 230,
+    "line": 231,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .h2"
   },
   {
     "file": "pixyll.css",
-    "line": 242,
+    "line": 243,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "Live Preview h3 layout property margin is not transferred"
   },
   {
     "file": "pixyll.css",
-    "line": 231,
+    "line": 232,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "pixyll.css",
-    "line": 231,
+    "line": 232,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "pixyll.css",
-    "line": 232,
+    "line": 233,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .h3"
   },
   {
     "file": "pixyll.css",
-    "line": 242,
+    "line": 243,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "Live Preview h4 layout property margin is not transferred"
   },
   {
     "file": "pixyll.css",
-    "line": 233,
+    "line": 234,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "pixyll.css",
-    "line": 233,
+    "line": 234,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "pixyll.css",
-    "line": 234,
+    "line": 235,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .h4"
   },
   {
     "file": "pixyll.css",
-    "line": 242,
+    "line": 243,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "Live Preview h5 layout property margin is not transferred"
   },
   {
     "file": "pixyll.css",
-    "line": 235,
+    "line": 236,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "pixyll.css",
-    "line": 235,
+    "line": 236,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "pixyll.css",
-    "line": 236,
+    "line": 237,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .h5"
   },
   {
     "file": "pixyll.css",
-    "line": 242,
+    "line": 243,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "Live Preview h6 layout property margin is not transferred"
   },
   {
     "file": "pixyll.css",
-    "line": 237,
+    "line": 238,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "pixyll.css",
-    "line": 237,
+    "line": 238,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "pixyll.css",
-    "line": 238,
+    "line": 239,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .h6"
   },
   {
     "file": "pixyll.css",
-    "line": 245,
+    "line": 246,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .h1"
   },
   {
     "file": "pixyll.css",
-    "line": 246,
+    "line": 247,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "pixyll.css",
-    "line": 246,
+    "line": 247,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "pixyll.css",
-    "line": 249,
+    "line": 250,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .h2"
   },
   {
     "file": "pixyll.css",
-    "line": 250,
+    "line": 251,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "pixyll.css",
-    "line": 250,
+    "line": 251,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "pixyll.css",
-    "line": 253,
+    "line": 254,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .h3"
   },
   {
     "file": "pixyll.css",
-    "line": 254,
+    "line": 255,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "pixyll.css",
-    "line": 254,
+    "line": 255,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "pixyll.css",
-    "line": 257,
+    "line": 258,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .h4"
   },
   {
     "file": "pixyll.css",
-    "line": 258,
+    "line": 259,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "pixyll.css",
-    "line": 258,
+    "line": 259,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
-  },
-  {
-    "file": "pixyll.css",
-    "line": 261,
-    "surface": "shared",
-    "status": "skipped",
-    "reason": "Unsupported or Typora UI selector: #write>h4.md-focus:before"
   },
   {
     "file": "pixyll.css",
     "line": 262,
     "surface": "shared",
     "status": "skipped",
-    "reason": "Unsupported or Typora UI selector: #write>h5.md-focus:before"
+    "reason": "Unsupported or Typora UI selector: #write>h4.md-focus:before"
   },
   {
     "file": "pixyll.css",
     "line": 263,
     "surface": "shared",
     "status": "skipped",
+    "reason": "Unsupported or Typora UI selector: #write>h5.md-focus:before"
+  },
+  {
+    "file": "pixyll.css",
+    "line": 264,
+    "surface": "shared",
+    "status": "skipped",
     "reason": "Unsupported or Typora UI selector: #write>h6.md-focus:before"
   },
   {
     "file": "pixyll.css",
-    "line": 266,
+    "line": 267,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .p"
   },
   {
     "file": "pixyll.css",
-    "line": 267,
-    "surface": "reading",
-    "status": "mapped",
-    "reason": "Reading content rule mapped"
-  },
-  {
-    "file": "pixyll.css",
     "line": 268,
     "surface": "reading",
     "status": "mapped",
@@ -1044,262 +1023,262 @@
   },
   {
     "file": "pixyll.css",
-    "line": 268,
+    "line": 269,
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "pixyll.css",
+    "line": 269,
     "surface": "shared",
     "status": "approximate",
     "reason": "Marker appearance applied through the shared ParaFlow marker interface"
   },
   {
     "file": "pixyll.css",
-    "line": 272,
+    "line": 273,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "pixyll.css",
-    "line": 272,
+    "line": 273,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
-  },
-  {
-    "file": "pixyll.css",
-    "line": 278,
-    "surface": "live-preview",
-    "status": "skipped",
-    "reason": "Live Preview blockquote layout property margin-left is not transferred"
   },
   {
     "file": "pixyll.css",
     "line": 279,
     "surface": "live-preview",
     "status": "skipped",
-    "reason": "Live Preview blockquote layout property margin-right is not transferred"
+    "reason": "Live Preview blockquote layout property margin-left is not transferred"
   },
   {
     "file": "pixyll.css",
     "line": 280,
     "surface": "live-preview",
     "status": "skipped",
+    "reason": "Live Preview blockquote layout property margin-right is not transferred"
+  },
+  {
+    "file": "pixyll.css",
+    "line": 281,
+    "surface": "live-preview",
+    "status": "skipped",
     "reason": "Live Preview blockquote layout property padding is not transferred"
   },
   {
     "file": "pixyll.css",
-    "line": 277,
+    "line": 278,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "pixyll.css",
-    "line": 277,
+    "line": 278,
     "surface": "live-preview",
     "status": "skipped",
     "reason": "No equivalent Live Preview selector; Reading mapping retained"
   },
   {
     "file": "pixyll.css",
-    "line": 282,
+    "line": 283,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .h1"
   },
   {
     "file": "pixyll.css",
-    "line": 283,
+    "line": 284,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "pixyll.css",
-    "line": 283,
+    "line": 284,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "pixyll.css",
-    "line": 286,
+    "line": 287,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .h2"
   },
   {
     "file": "pixyll.css",
-    "line": 287,
+    "line": 288,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "pixyll.css",
-    "line": 287,
+    "line": 288,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "pixyll.css",
-    "line": 290,
+    "line": 291,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .h3"
   },
   {
     "file": "pixyll.css",
-    "line": 291,
+    "line": 292,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "pixyll.css",
-    "line": 291,
+    "line": 292,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "pixyll.css",
-    "line": 294,
+    "line": 295,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .h4"
   },
   {
     "file": "pixyll.css",
-    "line": 295,
+    "line": 296,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "pixyll.css",
-    "line": 295,
+    "line": 296,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "pixyll.css",
-    "line": 300,
+    "line": 301,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .h1"
   },
   {
     "file": "pixyll.css",
-    "line": 301,
+    "line": 302,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "pixyll.css",
-    "line": 301,
+    "line": 302,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "pixyll.css",
-    "line": 304,
+    "line": 305,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .h2"
   },
   {
     "file": "pixyll.css",
-    "line": 305,
+    "line": 306,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "pixyll.css",
-    "line": 305,
+    "line": 306,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "pixyll.css",
-    "line": 308,
+    "line": 309,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .h3"
   },
   {
     "file": "pixyll.css",
-    "line": 309,
+    "line": 310,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "pixyll.css",
-    "line": 309,
+    "line": 310,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "pixyll.css",
-    "line": 312,
+    "line": 313,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .h4"
   },
   {
     "file": "pixyll.css",
-    "line": 313,
+    "line": 314,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "pixyll.css",
-    "line": 313,
+    "line": 314,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "pixyll.css",
-    "line": 316,
+    "line": 317,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: #write>h4.md-focus:before"
   },
   {
     "file": "pixyll.css",
-    "line": 320,
+    "line": 321,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "pixyll.css",
-    "line": 320,
+    "line": 321,
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "pixyll.css",
-    "line": 326,
+    "line": 327,
     "surface": "shared",
     "status": "skipped",
     "reason": "Root layout property padding-top does not map to editor geometry"
-  },
-  {
-    "file": "pixyll.css",
-    "line": 330,
-    "surface": "shared",
-    "status": "skipped",
-    "reason": "Metadata container paint and layout are outside the font-only mapping"
   },
   {
     "file": "pixyll.css",
@@ -1324,7 +1303,7 @@
   },
   {
     "file": "pixyll.css",
-    "line": 335,
+    "line": 334,
     "surface": "shared",
     "status": "skipped",
     "reason": "Metadata container paint and layout are outside the font-only mapping"
@@ -1352,7 +1331,7 @@
   },
   {
     "file": "pixyll.css",
-    "line": 340,
+    "line": 339,
     "surface": "shared",
     "status": "skipped",
     "reason": "Metadata container paint and layout are outside the font-only mapping"
@@ -1408,7 +1387,7 @@
   },
   {
     "file": "pixyll.css",
-    "line": 350,
+    "line": 348,
     "surface": "shared",
     "status": "skipped",
     "reason": "Metadata container paint and layout are outside the font-only mapping"
@@ -1422,287 +1401,294 @@
   },
   {
     "file": "pixyll.css",
-    "line": 354,
+    "line": 352,
+    "surface": "shared",
+    "status": "skipped",
+    "reason": "Metadata container paint and layout are outside the font-only mapping"
+  },
+  {
+    "file": "pixyll.css",
+    "line": 355,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .md-image>.md-meta"
   },
   {
     "file": "pixyll.css",
-    "line": 357,
+    "line": 358,
     "surface": "reading",
     "status": "mapped",
     "reason": "Reading content rule mapped"
   },
   {
     "file": "pixyll.css",
-    "line": 360,
+    "line": 361,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .md-tag"
   },
   {
     "file": "pixyll.css",
-    "line": 363,
+    "line": 364,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .code-tooltip"
   },
   {
     "file": "pixyll.css",
-    "line": 366,
+    "line": 367,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .code-tooltip-content"
   },
   {
     "file": "pixyll.css",
-    "line": 370,
+    "line": 371,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .task-list"
   },
   {
     "file": "pixyll.css",
-    "line": 374,
+    "line": 375,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .md-task-list-item"
   },
   {
     "file": "pixyll.css",
-    "line": 378,
+    "line": 379,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .md-task-list-item>input"
   },
   {
     "file": "pixyll.css",
-    "line": 389,
+    "line": 390,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .md-task-list-item>input:focus"
   },
   {
     "file": "pixyll.css",
-    "line": 394,
+    "line": 395,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .md-task-list-item>input:before"
   },
   {
     "file": "pixyll.css",
-    "line": 405,
+    "line": 406,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .md-task-list-item>input:checked:before"
   },
   {
     "file": "pixyll.css",
-    "line": 406,
+    "line": 407,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .md-task-list-item>input[checked]:before"
   },
   {
     "file": "pixyll.css",
-    "line": 413,
+    "line": 414,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .md-task-list-item>input:checked:after"
   },
   {
     "file": "pixyll.css",
-    "line": 414,
+    "line": 415,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .md-task-list-item>input[checked]:after"
   },
   {
     "file": "pixyll.css",
-    "line": 418,
+    "line": 419,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .md-task-list-item>input:after"
   },
   {
     "file": "pixyll.css",
-    "line": 438,
+    "line": 439,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .md-tag"
   },
   {
     "file": "pixyll.css",
-    "line": 442,
+    "line": 443,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .md-toc:focus .md-toc-content"
   },
   {
     "file": "pixyll.css",
-    "line": 446,
+    "line": 447,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: #typora-sidebar"
   },
   {
     "file": "pixyll.css",
-    "line": 450,
+    "line": 451,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .html-for-mac #typora-sidebar"
   },
   {
     "file": "pixyll.css",
-    "line": 454,
+    "line": 455,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .outline-content li"
   },
   {
     "file": "pixyll.css",
-    "line": 454,
+    "line": 455,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .outline-content ul"
   },
   {
     "file": "pixyll.css",
-    "line": 458,
+    "line": 459,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .outline-title"
   },
   {
     "file": "pixyll.css",
-    "line": 463,
+    "line": 464,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .outline-expander"
   },
   {
     "file": "pixyll.css",
-    "line": 467,
+    "line": 468,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .outline-expander:before"
   },
   {
     "file": "pixyll.css",
-    "line": 475,
+    "line": 476,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .outline-expander:hover:before"
   },
   {
     "file": "pixyll.css",
-    "line": 479,
+    "line": 480,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .outline-item-open>.outline-item>.outline-expander:before"
   },
   {
     "file": "pixyll.css",
-    "line": 484,
+    "line": 485,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: #typora-source"
   },
   {
     "file": "pixyll.css",
-    "line": 489,
+    "line": 490,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .os-windows #typora-source"
   },
   {
     "file": "pixyll.css",
-    "line": 493,
+    "line": 494,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .cm-s-typora-default .cm-header"
   },
   {
     "file": "pixyll.css",
-    "line": 494,
+    "line": 495,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .cm-s-typora-default .cm-property"
   },
   {
     "file": "pixyll.css",
-    "line": 495,
+    "line": 496,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .CodeMirror.cm-s-typora-default div.CodeMirror-cursor"
   },
   {
     "file": "pixyll.css",
-    "line": 499,
+    "line": 500,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .cm-s-typora-default .cm-atom"
   },
   {
     "file": "pixyll.css",
-    "line": 499,
+    "line": 500,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .cm-s-typora-default .cm-number"
   },
   {
     "file": "pixyll.css",
-    "line": 503,
+    "line": 504,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .md-diagram-panel"
   },
   {
     "file": "pixyll.css",
-    "line": 508,
+    "line": 509,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .md-mathjax-midline"
   },
   {
     "file": "pixyll.css",
-    "line": 512,
+    "line": 513,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .enable-diagrams pre.md-fences[lang=\"sequence\"] .code-tooltip"
   },
   {
     "file": "pixyll.css",
-    "line": 513,
+    "line": 514,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .enable-diagrams pre.md-fences[lang=\"flow\"] .code-tooltip"
   },
   {
     "file": "pixyll.css",
-    "line": 514,
+    "line": 515,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .enable-diagrams pre.md-fences[lang=\"mermaid\"] .code-tooltip"
   },
   {
     "file": "pixyll.css",
-    "line": 518,
+    "line": 519,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .dropdown-menu .divider"
   },
   {
     "file": "pixyll.css",
-    "line": 523,
+    "line": 524,
     "surface": "shared",
     "status": "skipped",
     "reason": "List geometry or marker removal rejected: margin"
   },
   {
     "file": "pixyll.css",
-    "line": 526,
+    "line": 527,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: li>*:last-child"
