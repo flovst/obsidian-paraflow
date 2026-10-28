@@ -21,7 +21,7 @@ export function createNativeTableKeyboardExit(options: TableEditingOptions): Ext
 			transaction.changes.iterChanges((from,to,_fromB,_toB,text)=>{count++;onlyExitLine=from===exit.to&&to===from&&text.toString()==='\n';});
 			// The host's addNewLine is a separate transaction after its cell commit.
 			// Replace only that proven navigation append, retaining all committed cell text.
-			if(count===1&&onlyExitLine){exit.active=false;return enterVirtualTail(transaction.startState,{goalColumn:transaction.newSelection.main.goalColumn});}
+			if(count===1&&onlyExitLine){exit.active=false;return enterVirtualTail(transaction.startState,{goalColumn:transaction.newSelection.main.goalColumn,input:'keyboard'});}
 		}
 		if (transaction.docChanged) {
 			let inside = true;

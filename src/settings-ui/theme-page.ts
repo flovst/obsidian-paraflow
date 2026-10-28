@@ -149,9 +149,34 @@ export function renderThemePage(panel: HTMLElement, host: ThemePageHost): void {
 	range(host, 'lineHeight', 1, 2.5, 0.05, 1.6);
 	range(host, 'width', 320, 1600, 10, 800);
 	host.section(panel, 'properties');
+	host.row('metadataGap', setting => {
+		setting.controlEl.classList.add('paraflow-setting-custom');
+		let slider: SliderComponent;
+		let text: TextComponent;
+		const currentGap = plugin.metadataGap ?? -6;
+		setting.addSlider(control => {
+			slider = control;
+			control.setLimits(-150, 200, 1).setValue(currentGap);
+			control.sliderEl.addEventListener('input', () => { text.setValue(control.sliderEl.value); });
+			control.onChange(value => { text.setValue(String(value)); void host.save(() => plugin.setMetadataGap(value)); });
+		});
+		setting.addText(control => {
+			text = control;
+			control.inputEl.classList.add('paraflow-setting-number');
+			control.inputEl.type = 'number'; control.inputEl.min = '-150'; control.inputEl.max = '200'; control.inputEl.step = '1';
+			control.setPlaceholder('-6').setValue(String(currentGap));
+			control.inputEl.addEventListener('change', () => {
+				const parsed = Number(control.inputEl.value);
+				const valid = control.inputEl.value.trim() !== '' && Number.isFinite(parsed) && parsed >= -150 && parsed <= 200;
+				const value = valid ? parsed : -6;
+				control.setValue(String(value)); slider.setValue(value);
+				void host.save(() => plugin.setMetadataGap(value));
+			});
+		});
+	});
 	host.row('metadataLayout', setting => setting.addDropdown(dropdown => dropdown.addOptions(choices([['content', 'content'], ['native', 'native']]))
 		.setValue(current.metadataLayout ?? 'content').onChange(value => saveOverride(host, 'metadataLayout', value))));
-	for (const [key, max] of [['metadataPadding', 100], ['metadataGap', 300]] as const) {
+	for (const [key, max] of [['metadataPadding', 100]] as const) {
 		host.row(key, setting => {
 			setting.controlEl.classList.add('paraflow-setting-custom');
 			let slider: SliderComponent;
@@ -187,7 +212,10 @@ export function renderThemePage(panel: HTMLElement, host: ThemePageHost): void {
 	const footer = panel.ownerDocument.createElement('div'); footer.className = 'paraflow-settings-footer'; panel.appendChild(footer);
 	const reset = new Setting(footer)
 		.addButton(button => button.setButtonText(t('reset'))
-			.onClick(() => host.save(() => plugin.setContentThemeOverrides(resetThemeValues(plugin.contentThemeOverrides)), true)))
+			.onClick(() => host.save(async () => {
+				await plugin.setContentThemeOverrides(resetThemeValues(plugin.contentThemeOverrides));
+				await plugin.setMetadataGap(-6);
+			}, true)))
 		.addButton(button => button.setButtonText(t('followObsidianAll'))
 			.onClick(() => host.save(() => plugin.setContentThemeOverrides({
 				...(plugin.contentThemeOverrides.marker ? { marker: plugin.contentThemeOverrides.marker } : {}),
@@ -213,6 +241,5 @@ function resetThemeValues(current: ThemeOverrides): ThemeOverrides {
 	if (current.colorScheme !== 'host') delete next.colorScheme;
 	delete next.metadataLayout;
 	delete next.metadataPadding;
-	delete next.metadataGap;
 	return next;
 }

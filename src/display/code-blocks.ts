@@ -51,7 +51,7 @@ export function createCodeBlockDisplay(root: HTMLElement, options: CodeBlockOpti
 	const pres=[...(root.matches('pre') ? [root] : []),...root.querySelectorAll<HTMLElement>('pre')];
 	for(const pre of pres) {
 		const code=pre.querySelector<HTMLElement>(':scope > code');
-		if(!code || pre.classList.contains('paraflow-code-display') || pre.closest('.mermaid,.math,.block-language-mermaid,.block-language-math'))continue;
+		if(!code || pre.classList.contains('paraflow-code-display') || pre.closest('.frontmatter,.mod-frontmatter,.mermaid,.math,.block-language-mermaid,.block-language-math'))continue;
 		const language=[...code.classList].find(name=>name.startsWith('language-'))?.slice(9) ?? '';
 		if(isRenderedCodeLanguage(language))continue;
 		const hadClass=pre.hasAttribute('class');

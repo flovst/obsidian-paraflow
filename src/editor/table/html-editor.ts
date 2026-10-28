@@ -9,7 +9,6 @@ import {gridToHtml} from './serialization';
 import {findEditableTableSources,TableEditSession} from './edit-session';
 import type {TableEditingOptions} from './editing-types';
 import {bookmarkRange,rangeFromBookmark,type TableActionTarget,type TextBookmark} from './action-target';
-import {showTableActions} from './table-actions';
 import {showTableContextMenu} from './html-context-menu';
 import {isTableMenuTarget} from './native-menu';
 import {admittedFragment} from './admitted-dom';
@@ -51,6 +50,7 @@ export class HtmlTableController implements TableActionTarget {
 	private compositionSnapshot:{cell:HTMLElement;content:string;breaks:Set<Element>}|null=null;
 	private deletionBreaks:Set<Element>|null=null;
 	private restoringFocus=false;
+	private writingSource:TableEditSession|null=null;
 	private frozenText:TextBookmark|null=null;
 	private sourceSelection:{session:TableEditSession;map:HtmlTableSourceSelection}|null=null;
 	private readonly linkPresentation=new TableLinkPresentation();
@@ -147,6 +147,9 @@ export class HtmlTableController implements TableActionTarget {
 		this.dom.replaceChildren(fragment);this.paintSelection();
 	}
 	update(session:TableEditSession):void {
+		// The originating edit renders once with its destination cell after dispatch.
+		const replacement=this.writingSource?.target;
+		if(replacement&&session.target.from===replacement.from&&session.target.source===replacement.source&&session.target.kind===replacement.kind){this.session=session;this.dom.dataset.pfTableFrom=String(session.target.from);return;}
 		if(session.target.source===this.session.target.source&&session.target.kind===this.session.target.kind){
 			this.session=session;this.dom.dataset.pfTableFrom=String(session.target.from);
 			const selection=this.view.state.selection.main,active=this.dom.ownerDocument.activeElement;
@@ -373,7 +376,8 @@ export class HtmlTableController implements TableActionTarget {
 		if(nextSource!==null&&focused){const cell=selectedCell??this.cellElement(this.current)!;requestTableFocus(this.view,transaction,this.session.target.from,focus??{...captureTableFocus(cell,this.current,cell.innerHTML),rectangle:this.selecting?this.rectangle:undefined});}
 		const previousSession=this.session;
 		const replacementSession=nextSource===null?null:new TableEditSession(findEditableTableSources(transaction.state).find(target=>target.from===previousSession.target.from)!);
-		this.view.dispatch(transaction);
+		this.writingSource=replacementSession;
+		try{this.view.dispatch(transaction);}finally{this.writingSource=null;}
 		// The host can reuse this widget for another table during representation changes.
 		if(this.destroyed||this.session!==previousSession&&(!replacementSession||this.session.target.from!==replacementSession.target.from||this.session.target.source!==replacementSession.target.source))return;
 		if(replacementSession)this.session=replacementSession;
@@ -519,7 +523,7 @@ export class HtmlTableController implements TableActionTarget {
 		try{const link=readWikiAnchor(anchor);void Promise.resolve(this.options.openWikiLink(this.view,link.target,true)).catch(error=>this.options.notify(error instanceof Error?error.message:String(error)));}catch(error){this.options.notify(error instanceof Error?error.message:String(error));}
 	};
 	showContextMenu(point:{x:number;y:number}):void {this.menu?.close();this.frozenText=this.textBookmark;this.menu=showTableContextMenu(this,this.options,point,()=>{this.frozenText=null;});}
-	showMenu(point:{x:number;y:number}):void {this.menu?.close();this.frozenText=this.textBookmark;this.menu=showTableActions(this,this.options,point,()=>{this.frozenText=null;});}
+	showMenu(point:{x:number;y:number}):void {this.showContextMenu(point);}
 	clearPreview():void {this.previewRestore?.();this.previewRestore=undefined;}
 	preview(table:TableModel):()=>void {
 		this.clearPreview();const restore:Array<()=>void>=[];

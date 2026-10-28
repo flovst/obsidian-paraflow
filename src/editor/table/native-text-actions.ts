@@ -48,9 +48,11 @@ export function nativeTableTextActions(view:EditorView,cell:HTMLElement,options:
 		}catch(error){options.notify(error instanceof Error?error.message:String(error));}
 	};
 	return tableTextMenu(command=>{
+		const commands:Partial<Record<TableTextCommand,string>>={wiki:'insert-wikilink',link:'insert-link',bold:'toggle-bold',italic:'toggle-italics',strikethrough:'toggle-strikethrough',code:'toggle-code',math:'toggle-inline-math',comment:'toggle-comments',clear:'clear-formatting'};
+		const id=command.startsWith('highlight:')?'toggle-highlight'+(command.slice(10)?'-'+command.slice(10):''):commands[command];
 		const clipboard=['cut','copy','paste','pastePlain'].includes(command);
 		const unavailable=!options.getNativeCellEditor||clipboard&&!options.nativeClipboard;
 		const disabled=unavailable||view.state.readOnly&&command!=='copy'&&command!=='selectAll'||['cut','copy','clear'].includes(command)&&!hasSelection;
-		return {disabled,disabledReason:unavailable?'宿主原生单元格命令不可用':disabled?view.state.readOnly?'文档只读':'请先选择文字':undefined,run:run(command)};
+		return {commandId:id?'editor:'+id:undefined,disabled,disabledReason:unavailable?'宿主原生单元格命令不可用':disabled?view.state.readOnly?'文档只读':'请先选择文字':undefined,run:run(command)};
 	});
 }

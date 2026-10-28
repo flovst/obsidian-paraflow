@@ -7,6 +7,7 @@ import { enhanceReadingQuotes } from '../editor/callout/reading.js';
 import { createReadingTabDisplay } from './tabs.js';
 import { createReadingLineBreakDisplay } from './line-breaks.js';
 import { enhanceReadingMermaid } from './mermaid.js';
+import type { MermaidThemeRenderer } from '../display/mermaid-theme.js';
 import { createReadingSectionRhythm, type ReadingSectionSource } from './section-rhythm.js';
 
 export interface ReadingEnhancements {
@@ -20,7 +21,7 @@ const PARAGRAPH_WRAPPER = 'div.el-p, div.markdown-preview-section, div.markdown-
 /** The section adapter replaces native children with independently rendered owners. */
 function delegatesToNestedRenderer(root:HTMLElement):boolean {
 	return root.childNodes.length>0&&[...root.childNodes].every(node=>node.nodeType===1&&
-		(node as Element).classList.contains('paraflow-reading-math-section'));
+		(node as Element).matches('.paraflow-reading-math-section,.paraflow-reading-blank-paragraphs'));
 }
 
 function isTopLevelParagraph(paragraph: HTMLElement, root: HTMLElement): boolean {
@@ -32,24 +33,27 @@ function isTopLevelParagraph(paragraph: HTMLElement, root: HTMLElement): boolean
 	return false;
 }
 
-export function createReadingEnhancements(getSettings: () => Readonly<EnhancementSettings>): ReadingEnhancements {
+export function createReadingEnhancements(getSettings: () => Readonly<EnhancementSettings>, renderMermaid?: MermaidThemeRenderer): ReadingEnhancements {
 	const displayTabs = createReadingTabDisplay();
 	const displayLineBreaks = createReadingLineBreakDisplay();
 	const roots = new Map<HTMLElement, { refresh(): void; destroy(): void }>();
 	const sectionRhythm = createReadingSectionRhythm();
 	function apply(root: HTMLElement, getSource: () => string | null, getSectionSource: () => string | null, getSection: () => ReadingSectionSource | null): () => void {
 		const sourceSection = getSection();
-		const releaseRhythm = sectionRhythm(root, sourceSection);
-		if (delegatesToNestedRenderer(root) && sourceSection === null) return releaseRhythm;
+		if (delegatesToNestedRenderer(root) && sourceSection === null) return () => {};
 		const settings = getSettings();
+		const releaseRhythm = sectionRhythm(root, sourceSection);
 		const restore: Array<() => void> = [releaseRhythm];
 		if (settings.bodyLayout && settings.paragraphSpacingEm !== null && root.hasAttribute('data-paraflow-reading-before')) {
 			style(root, '--paraflow-body-paragraph-gap', `${settings.paragraphSpacingEm}em`);
 		}
-		if(delegatesToNestedRenderer(root))return () => { for (const undo of restore.reverse()) undo(); };
+		if(delegatesToNestedRenderer(root)) {
+			if (settings.bodyLayout && settings.readingBlankParagraphs) restore.push(sectionRhythm(root, sourceSection, true));
+			return () => { for (const undo of restore.reverse()) undo(); };
+		}
 		if (settings.bodyLayout) restore.push(displayLineBreaks(root, getSectionSource()));
-		if (settings.callout) restore.push(enhanceReadingQuotes(root));
-		if (settings.mermaid) restore.push(enhanceReadingMermaid(root));
+		if (settings.callout) restore.push(enhanceReadingQuotes(root, settings.calloutStyle));
+		if (settings.mermaid) restore.push(enhanceReadingMermaid(root, getSectionSource(), renderMermaid));
 		if (settings.inline && (settings.subscript || settings.superscript)) restore.push(enhanceReadingShorthand(root, settings, getSectionSource()));
 		const media=new MediaTableDisplayController(root, true);
 		media.update({ ...settings, tableDisplay: settings.table && settings.tableDisplay, tableEditing: settings.table && settings.tableEditing });restore.push(()=>media.destroy());
@@ -80,6 +84,8 @@ export function createReadingEnhancements(getSettings: () => Readonly<Enhancemen
 				}
 			}
 		}
+		// Project gaps after code/table display has established the final block owners.
+		if (settings.bodyLayout && settings.readingBlankParagraphs) restore.push(sectionRhythm(root, sourceSection, true));
 		return () => { for (const undo of restore.reverse()) undo(); };
 	}
 	return {

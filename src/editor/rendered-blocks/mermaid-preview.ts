@@ -1,5 +1,6 @@
 import type { EditorView } from '@codemirror/view';
 import type { RenderedBlockEditingOptions } from './extension.js';
+import { hasMermaidContentTheme, mermaidMarkdownTheme } from '../../display/mermaid-theme.js';
 
 interface MermaidHost {
 	mermaidAPI?: { getConfig(): unknown };
@@ -116,6 +117,7 @@ export class MermaidPreviews {
 	private create(source: string, from: number): Entry {
 		const content = this.document.createElement('div');
 		content.className = 'paraflow-rendered-block-content markdown-rendered';
+		content.classList.toggle('paraflow-mermaid-themed', hasMermaidContentTheme(this.view.dom));
 		const entry: Entry = { source, from, content, state: 'loading', destroy: () => {}, lease: null,
 			observer: new this.document.defaultView!.MutationObserver(() => {
 				if (content.querySelector('.mermaid svg')) entry.state = 'ready';
@@ -131,7 +133,7 @@ export class MermaidPreviews {
 			entry.lease?.changed();
 		};
 		try {
-			const render = this.options.renderMarkdown(source, content, this.view, 'mermaid');
+			const render = this.options.renderMarkdown(mermaidMarkdownTheme(source, this.view.dom), content, this.view, 'mermaid');
 			entry.destroy = () => render.destroy();
 			void render.ready.then(() => {
 				if (!this.entries.includes(entry)) return;

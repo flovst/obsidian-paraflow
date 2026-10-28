@@ -3,7 +3,7 @@ import {EditorView} from '@codemirror/view';
 import {mapRenderedTextSelection} from './markdown-selection';
 import type {CellPosition,CellRectangle,TableModel} from './model';
 import {closeSelection} from './grid';
-import {findTableSources,TableEditSession,type TableSource} from './edit-session';
+import {findEditableTableSources,TableEditSession,type TableSource} from './edit-session';
 import {replaceTableSource} from './toolbar-source';
 import {bookmarkRange,rangeFromBookmark,type TableActionTarget,type TextBookmark} from './action-target';
 import {showTextPreview} from './text-preview';
@@ -40,7 +40,7 @@ export class NativeTableTarget implements TableActionTarget {
 			return {cell:{row,column},text:content.textContent??'',...offsets,rectangle:nativeFocusRectangle(cell)};
 	}
 	static fromView(view:EditorView,context:HTMLElement|null,includeTextSelection=true):NativeTableTarget|null {
-		const tables=findTableSources(view.state.doc.toString());let position=view.state.selection.main.head;
+		const tables=findEditableTableSources(view.state).filter(table=>!table.container);let position=view.state.selection.main.head;
 		if(context&&view.dom.contains(context)){try{position=view.posAtDOM(context);}catch{/* Native table widgets map through the source selection. */}}
 		const source=tables.find(table=>table.from<=position&&position<=table.to)??tables.find(table=>table.from<=view.state.selection.main.head&&view.state.selection.main.head<=table.to);
 		if(!source)return null;

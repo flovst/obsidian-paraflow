@@ -362,6 +362,7 @@ pre.paraflow-code-display.paraflow-code-wrap > code {
   color: var(--text-muted);
   font-size: .75em;
   user-select: none;
+  pointer-events: none;
 }
 @media print {
   .cm-line.paraflow-code-line[data-paraflow-line] {

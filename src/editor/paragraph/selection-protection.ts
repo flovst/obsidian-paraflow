@@ -27,7 +27,7 @@ import { normalizeHeadingSelectionEndpoint } from './heading-projection.js';
 import { editableEndpoint, codeMarkersActive } from '../code-blocks/editable-boundaries.js';
 import { discoverCodeBlocks } from '../code-blocks/model.js';
 import { creationHistory } from '../runtime/creation-history.js';
-import {documentContentStart,isVirtualEdgeActive} from '../runtime/virtual-tail.js';
+import {documentBodyStart,documentContentStart,isVirtualEdgeActive} from '../runtime/virtual-tail.js';
 import {discoverMath} from '../math/syntax.js';
 import { mathEditingActivation } from '../math/activation.js';
 import {clampMathBody, projectMathSource} from '../math/source.js';
@@ -75,12 +75,13 @@ function pointerEndpoint(
 	position: number,
 	index: ParagraphRangeIndex,
 	listGaps: readonly { readonly from: number; readonly to: number }[],
+	bodyStart: number,
 ): {
 	readonly assoc: -1 | 1;
 	readonly position: number;
 } {
-	const leadingGap = position === 0 && !index.editableAnchors.includes(0)
-		? index.gaps.find((gap) => gap.from === 0)
+	const leadingGap = position === bodyStart && !index.editableAnchors.includes(bodyStart)
+		? index.gaps.find((gap) => gap.from === bodyStart)
 		: undefined;
 	if (leadingGap) return { assoc: 1, position: leadingGap.to };
 	const gap = index.containingGap(position) ?? listGaps.find((candidate) =>
@@ -203,12 +204,13 @@ function normalizedSelection(transaction: Transaction): EditorSelection | null {
 			leaveHeadingPrefix,
 			moveContainerBody,
 		);
-		const onLeadingGapHead = pointer && range.head === 0 && !index.editableAnchors.includes(0) &&
-			index.gaps.some((candidate) => candidate.from === 0);
+		const bodyStart = documentBodyStart(transaction.state);
+		const onLeadingGapHead = pointer && range.head === bodyStart && !index.editableAnchors.includes(bodyStart) &&
+			index.gaps.some((candidate) => candidate.from === bodyStart);
 		if (!gap && !onLeadingGapHead && directBlock.position === range.head) return null;
 		const bias = endpointBias(transaction, range);
 		const mapped = pointer
-			? pointerEndpoint(range.head, index, listGaps)
+			? pointerEndpoint(range.head, index, listGaps, bodyStart)
 			: {
 				assoc: bias,
 				position: index.normalize(range.head, bias),
@@ -269,8 +271,8 @@ function filterSelection(
 	if (excludedSelectionModeForTransaction(transaction) !== null) return transaction;
 	if (!recognizedParagraphSelectionTransaction(transaction)) return transaction;
 	// The root edge extender owns a selected leading separator endpoint too.
-	if (!transaction.newSelection.main.empty && transaction.newSelection.main.head === 0 &&
-		documentContentStart(transaction.state) > 0) return transaction;
+	if (!transaction.newSelection.main.empty && transaction.newSelection.main.head === documentBodyStart(transaction.state) &&
+		documentContentStart(transaction.state) > documentBodyStart(transaction.state)) return transaction;
 	requireParagraphProjectionState(transaction.startState);
 	const selection = normalizedSelection(transaction);
 	return selection ? [transaction, { selection, sequential: true }] : transaction;

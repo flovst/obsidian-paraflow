@@ -8,6 +8,7 @@ import {quoteDraftMasks,maskQuoteDraftSource} from './quote-draft.js';
 import {codeDraft} from '../code-blocks/draft-state.js';
 import {codeDraftMask,maskCodeSource} from '../code-blocks/parser-source.js';
 import { containerSourceContext, sameContainerSource } from './source-context.js';
+import { detailsMarkdownSource } from '../rendered-blocks/details-source.js';
 
 export interface CalloutTextBlock {
 	readonly tag: string;
@@ -124,7 +125,7 @@ export function quoteContainers(state: EditorState): readonly CalloutCard[] {
 	}
 	source ??= state.doc.toString();
 	const cards: CalloutCard[] = [];
-	const tree = grammar.configure(nativeInlineGrammarFor(mathRangeIndex(state).expressions)).parse(maskQuoteDraftSource(maskCodeSource(source,codeDraftMask(source,state.facet(codeDraft))),state.facet(quoteDraftMasks)));
+	const tree = grammar.configure(nativeInlineGrammarFor(mathRangeIndex(state).expressions)).parse(detailsMarkdownSource(maskQuoteDraftSource(maskCodeSource(source,codeDraftMask(source,state.facet(codeDraft))),state.facet(quoteDraftMasks))));
 	tree.iterate({ enter(ref) {
 		if (ref.name !== 'Blockquote') return;
 		let depth = 0, listDepth = 0, listTask = false, listOrderedTask = false;

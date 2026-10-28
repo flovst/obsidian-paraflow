@@ -1,6 +1,16 @@
 import type { en } from './en.js';
 
 export const zhCN: Record<keyof typeof en, string> = {
+	other: '其它', resetOther: '恢复默认',
+	calloutStyle: 'Callout 样式',
+	virtualLineKeyboard: '方向键创建临时新行',
+	virtualLineKeyboardHelp: '在正文首尾使用方向键进入临时行。',
+	virtualLinePointer: '鼠标创建临时新行',
+	virtualLinePointerHelp: '点击或拖动到正文首尾边界时进入临时行。',
+	sourceScrollLimit: '源码视图滚动止于文末',
+	sourceScrollLimitHelp: '最后一行到达可视区域底部后停止滚动，保留正常边缘内距。',
+	readingBlankParagraphs: '阅读视图显示空白段落',
+	readingBlankParagraphsHelp: '按实时预览的源码间距规则显示额外空白段落。',
 	misc: "其它",
 	editLink: "编辑链接",
 	openLink: "打开链接",
@@ -35,7 +45,8 @@ export const zhCN: Record<keyof typeof en, string> = {
 	marker: "无序列表符号", layered: '按嵌套层级', disc: '实心圆', circle: '空心圆', square: '方形',
 	metadataLayout: 'Metadata 布局', metadataLayoutHelp: '',
 	content: '与正文对齐', native: 'Obsidian 原生布局', metadataPadding: '水平内边距', metadataPaddingHelp: '',
-	metadataGap: '下方间距', metadataGapHelp: 'Metadata 与正文的间距。',
+	metadataGap: 'Metadata 下方间距', metadataGapHelp: '同时调整 LP 和阅读视图中笔记属性与正文的间距（−150～200 px，默认 −6）。负值缩小间距。',
+	detailsHoverBackground: 'Details 悬浮背景', detailsHoverBackgroundHelp: '鼠标移入 Details 时，整个折叠区域同步渐显半透明背景。',
 	resetAdjustments: '重置主题调整', resetAdjustmentsHelp: '移除此主题的本地调整，不改变主题文件和编辑行为。', reset: '重置',
 	paragraphEditingEnabled: "段落 & 换行", paragraphEditingEnabledHelp: "将段落间的单个空行显示为段间距，保留可编辑的空段落。",
 	editLinksOnPlainClick: "单击链接时", editLinksOnPlainClickHelp: "单击时编辑 Markdown 链接源码（而不是打开链接）；按住 Ctrl/Cmd 单击打开链接。",

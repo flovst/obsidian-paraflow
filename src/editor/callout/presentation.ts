@@ -1,5 +1,5 @@
 import { codeFolding, foldEffect, foldedRanges, unfoldEffect } from '@codemirror/language';
-import { EditorState, Prec, RangeSet, StateEffect, StateField, type Extension, type Range as CMRange } from '@codemirror/state';
+import { EditorSelection, EditorState, Prec, RangeSet, StateEffect, StateField, type Extension, type Range as CMRange } from '@codemirror/state';
 import { Decoration, EditorView, ViewPlugin, WidgetType, keymap, type DecorationSet, type ViewUpdate } from '@codemirror/view';
 import { calloutCards, quoteContainers, decodeCalloutBlock, calloutTitleBlock, calloutTitleFrom as titleFrom, type CalloutCard } from './presentation-model.js';
 import { quotePrefix } from './projection.js';
@@ -22,14 +22,20 @@ import {activateQuoteDraft,createQuoteDraftState} from './quote-draft.js';
 import {createEmptyBodies,registerEmptyBody} from '../runtime/empty-body-state.js';
 import { containerBodyLineProviders } from '../runtime/container-body-boundaries.js';
 import { calloutBodyLine } from './body-boundaries.js';
+import { emptyVisualLineAnchor } from '../runtime/navigation-core.js';
 
 export interface CalloutPresentationOptions {
 	readonly isActive: (view: EditorView) => boolean;
 	readonly isActiveState?: (state: EditorState) => boolean;
 	readonly isViewSupported?: (view: EditorView) => boolean;
+	readonly getStyle?: () => 'default' | 'obsidian';
 	readonly renderHeader: (source: string, element: HTMLElement, view: EditorView) => (() => void) & { refresh?: () => void };
 }
 const editMetadata = StateEffect.define<number | null>();
+export function editCalloutMetadata(view: EditorView, card: CalloutCard): void {
+	view.dispatch({ effects: editMetadata.of(card.from), selection: { anchor: card.from + quotePrefix(view.state.doc.lineAt(card.from).text, card.depth)!.length } });
+	view.focus();
+}
 const initializeFolds = StateEffect.define<readonly number[]>();
 const initializedFolds = StateField.define<ReadonlySet<number>>({
 	create: () => new Set(),
@@ -69,6 +75,22 @@ export function calloutHeaderStart(state: EditorState, titleStartOnly = false): 
 	return card ? headerBoundary(state, card) : null;
 }
 
+export function calloutTitleEnd(state: EditorState, position: number): number | null {
+	if (state.field(metadataField, false) === undefined) return null;
+	return calloutCards(state).find(card => !isCalloutMetadataEditing(state, card.from) &&
+		titleFrom(card) <= position && position <= card.headerTo)?.headerTo ?? null;
+}
+
+export function collapsedCalloutRange(state: EditorState, position: number): { from: number; to: number } | null {
+	if (state.field(metadataField, false) === undefined) return null;
+	let range: { from: number; to: number } | null = null;
+	foldedRanges(state).between(position, position, (from, to) => {
+		if (calloutCards(state).some(card => card.headerTo === from && !isCalloutMetadataEditing(state, card.from)) &&
+			(range === null || from < range.from)) range = { from, to };
+	});
+	return range;
+}
+
 class HeaderIcon {
 	node: HTMLElement | undefined;
 	private dispose: ((() => void) & { refresh?: () => void }) | undefined;
@@ -86,13 +108,13 @@ class HeaderIcon {
 }
 
 class Header extends WidgetType {
-	constructor(readonly card: CalloutCard, readonly icon: HeaderIcon) { super(); }
-	eq(other: Header): boolean { return this.card.type === other.card.type && this.card.metadata === other.card.metadata && this.card.from === other.card.from && (titleFrom(this.card) === this.card.headerTo) === (titleFrom(other.card) === other.card.headerTo); }
+	constructor(readonly card: CalloutCard, readonly icon: HeaderIcon, readonly titleFocused: boolean) { super(); }
+	eq(other: Header): boolean { return this.titleFocused === other.titleFocused && this.card.type === other.card.type && this.card.metadata === other.card.metadata && this.card.from === other.card.from && (titleFrom(this.card) === this.card.headerTo) === (titleFrom(other.card) === other.card.headerTo); }
 	toDOM(view: EditorView): HTMLElement {
 		const container = view.dom.ownerDocument.createElement('span');
 		container.className = 'paraflow-callout-title';
 		container.append(this.icon.attach(view));
-		if (titleFrom(this.card) === this.card.headerTo) {
+		if (titleFrom(this.card) === this.card.headerTo && !this.titleFocused) {
 			const placeholder = view.dom.ownerDocument.createElement('span');
 			placeholder.className = 'paraflow-callout-default-title';
 			placeholder.textContent = this.card.type.charAt(0).toUpperCase() + this.card.type.slice(1);
@@ -174,11 +196,29 @@ function createTitleEditing(options: CalloutPresentationOptions): Extension {
 			selection: { anchor: selection.from + insert.length }, effects:registerEmptyBody.of(selection.from + insert.length), userEvent: 'input' });
 		return true;
 	}
+	function titleEnd(view: EditorView, extend: boolean): boolean {
+		const selection = view.state.selection.main, card = titleAt(view, selection.head);
+		if (!card || view.state.selection.ranges.length !== 1) return false;
+		view.dispatch({ selection: extend ? EditorSelection.range(selection.anchor, card.headerTo) : EditorSelection.cursor(card.headerTo, -1),
+			userEvent: 'select', scrollIntoView: true });
+		return true;
+	}
 	return [ViewPlugin.fromClass(class {
 		constructor(readonly view: EditorView) { views.add(view); }
 		destroy(): void { views.delete(this.view); }
 	}), EditorState.transactionFilter.of(transaction => {
 		const selection = transaction.startState.selection;
+		if (!transaction.docChanged && transaction.isUserEvent('move.character') && transaction.newSelection.ranges.length === 1 && transaction.newSelection.main.empty) {
+			const view = [...views].find(candidate => candidate.state === transaction.startState);
+			if (!view || !options.isActive(view) || view.composing) return transaction;
+			const head = transaction.newSelection.main.head;
+			const folded = collapsedCalloutRange(transaction.startState, head);
+			const nextCard = head > selection.main.head && calloutCards(transaction.startState).find(card => !isCalloutMetadataEditing(transaction.startState, card.from) &&
+				card.from <= head && head < titleFrom(card));
+			const position = folded ? folded.from : nextCard ? titleFrom(nextCard) : head;
+			if (position !== head) return [transaction, { selection: EditorSelection.cursor(position, folded ? -1 : 1) }];
+			return transaction;
+		}
 		if (!transaction.docChanged || !transaction.isUserEvent('delete') || selection.ranges.length !== 1 || !selection.main.empty) return transaction;
 		const view = [...views].find(candidate => candidate.state === transaction.startState);
 		if (!view || !options.isActive(view) || view.composing) return transaction;
@@ -192,6 +232,8 @@ function createTitleEditing(options: CalloutPresentationOptions): Extension {
 		});
 		return crossesPrefix ? [] : transaction;
 	}), Prec.highest(keymap.of([
+		{ key: 'End', mac: 'Ctrl-e', run: view => titleEnd(view, false), shift: view => titleEnd(view, true) },
+		{ key: 'End', run: view => titleEnd(view, false), shift: view => titleEnd(view, true) },
 		{ key: 'Backspace', run: view => {
 			const selection = view.state.selection.main;
 			const card = titleAt(view, selection.head);
@@ -280,16 +322,18 @@ function project(view: EditorView, options: CalloutPresentationOptions, icons: M
 				icon = new HeaderIcon(card.type, card.metadata, options);
 				icons.set(card.from, icon);
 			}
-			ranges.push(Decoration.replace({ widget: new Header(card, icon), paraflowCalloutPrefix: true }).range(card.from, from));
+			const selection = view.state.selection.main;
+			const titleFocused = view.hasFocus && selection.head >= from && selection.head <= card.headerTo;
+			ranges.push(Decoration.replace({ widget: new Header(card, icon, titleFocused), paraflowCalloutPrefix: true }).range(card.from, from));
 			if (from < card.headerTo) ranges.push(Decoration.mark({ class: 'paraflow-callout-title-text' }).range(from, card.headerTo));
-			if (card.fold) ranges.push(Decoration.widget({ widget: new FoldControl(card.from, collapsed), side: -1 }).range(card.headerTo));
+			if (card.fold) ranges.push(Decoration.widget({ widget: new FoldControl(card.from, collapsed), side: 1 }).range(card.headerTo));
 		}
 	}
 	for (const [number, ancestors] of rows) {
 		const card = ancestors[ancestors.length - 1]!;
 		const line = view.state.doc.line(number);
 		ranges.push(Decoration.widget({ widget: new Rails(ancestors,
-			containerRailTails(ancestors, line.to)), side: -1 }).range(line.from));
+			containerRailTails(ancestors, line.to), line), side: -1 }).range(line.from));
 		const owner = listLines.get(line.from);
 		const header = card.kind === 'callout' && line.from === card.from;
 		const prefix = mathQuotePrefix(view.state, line.from, card.depth);
@@ -425,6 +469,12 @@ export function createCalloutPresentation(options: CalloutPresentationOptions): 
 		}) ?? Decoration.none) });
 	return [createEmptyBodies(),createQuoteDraftState(state=>options.isActiveState?.(state)!==false),containerPresentation.of(options), createCalloutNativeOwnership(options), codeFolding(), metadataField, initializedFolds, boundaries, createTitleEditing(options), createRenderedSourceClickExtension(),
 		containerBodyLineProviders.of((state, position) => options.isActiveState?.(state) === false ? null : calloutBodyLine(state, position)),
+		emptyVisualLineAnchor.of((state, position) => {
+			if (options.isActiveState?.(state) === false) return null;
+			const card = calloutCards(state).find(card => card.from <= position && position <= card.headerTo &&
+				titleFrom(card) === card.headerTo && !isCalloutMetadataEditing(state, card.from));
+			return card?.headerTo ?? null;
+		}),
 		containerHeadingBodyLines.of(state => options.isActiveState?.(state) === false ? [] : calloutHeadingBodyLines(state)),
 		containerThematicBreaks.of(state => options.isActiveState?.(state) === false ? [] : calloutThematicBreaks(state)),
 		containerListProjections.of(state => options.isActiveState?.(state) === false ? [] : calloutListEntries(state)),
@@ -433,7 +483,7 @@ export function createCalloutPresentation(options: CalloutPresentationOptions): 
 		EditorView.atomicRanges.of(view => options.isActive(view)
 			? getStructuredListProjectionState(view.state)!.atomicRanges : RangeSet.empty),
 		plugin, createCalloutGapProtection(options.isActive),
-		EditorView.editorAttributes.of(view => options.isActive(view) ? { class: 'paraflow-callout-active' } : null), EditorView.theme({
+		EditorView.editorAttributes.of(view => options.isActive(view) ? { class: 'paraflow-callout-active', 'data-paraflow-callout-style': options.getStyle?.() ?? 'default' } : null), EditorView.theme({
 		'.cm-content > .callout.paraflow-callout-icon-probe': { position: 'absolute !important', visibility: 'hidden !important', pointerEvents: 'none !important', inset: '0' },
 		'.cm-content > .cm-line.paraflow-callout-line:not(.paraflow-code-line):not(.paraflow-rendered-source-line):not(.paraflow-math-source-block)': { margin: '0 !important',
 			paddingInlineEnd: 'calc(var(--paraflow-container-callouts) * var(--paraflow-callout-padding, 12px)) !important',
@@ -464,6 +514,7 @@ export function createCalloutPresentation(options: CalloutPresentationOptions): 
 		'.cm-content > .cm-line.paraflow-callout-first.paraflow-callout-collapsed': { paddingBottom: 'var(--paraflow-callout-padding, 12px) !important' },
 		'.cm-content > .cm-line.paraflow-callout-header-projected': { lineHeight: 'var(--paraflow-callout-title-leading, 1.3) !important' },
 		'.cm-content > .cm-line.paraflow-callout-header-projected > .cm-widgetBuffer': { height: '0 !important', verticalAlign: 'baseline !important' },
+		'.cm-content > .cm-line.paraflow-callout-header-projected > .cm-foldPlaceholder': { display: 'none' },
 		'.cm-content > .cm-line.paraflow-callout-last:not(.paraflow-heading-line):not(.paraflow-callout-list-row):not(.paraflow-code-line):not(.paraflow-rendered-source-line):not(.paraflow-math-source-block)': { paddingBottom: 'calc(var(--paraflow-callout-ends) * var(--paraflow-callout-padding, 12px)) !important', borderRadius: '0 0 var(--callout-radius, 4px) var(--callout-radius, 4px)' },
 		'.cm-content > .cm-line.paraflow-callout-last:not(.paraflow-callout-first):not(.paraflow-callout-list-row):not(.paraflow-code-line):not(.paraflow-rendered-source-line):not(.paraflow-math-source-block)': { paddingBottom: 'calc(var(--paraflow-container-row-padding, 0px) + var(--paraflow-callout-ends) * var(--paraflow-callout-padding, 12px)) !important' },
 		'.cm-content > .cm-line.paraflow-callout-last.paraflow-callout-list-row:not(.paraflow-code-line):not(.paraflow-rendered-source-line):not(.paraflow-math-source-block)': { paddingBottom: 'var(--paraflow-container-row-padding, 0px) !important', borderRadius: '0 0 var(--callout-radius, 4px) var(--callout-radius, 4px)' },
@@ -471,14 +522,15 @@ export function createCalloutPresentation(options: CalloutPresentationOptions): 
 		'.cm-content > :is(.paraflow-container-boundary-gap, .cm-line.paraflow-callout-gap):is([data-paraflow-before="code-block"], [data-paraflow-after="code-block"], [data-paraflow-before="table"], [data-paraflow-after="table"]):not(.paraflow-code-line):not(.paraflow-rendered-source-line):not(.paraflow-math-source-block)': { height: `${semanticBlockGapHeight} !important`, minHeight: `${semanticBlockGapHeight} !important` },
 		'.cm-content > .cm-line.paraflow-callout-gap:not(.paraflow-code-line):not(.paraflow-rendered-source-line):not(.paraflow-math-source-block) > .cm-widgetBuffer': { height: '0 !important' },
 		'.cm-content > .cm-line.paraflow-callout-gap-tail:not(.paraflow-code-line):not(.paraflow-rendered-source-line):not(.paraflow-math-source-block)': { height: '0 !important', minHeight: '0 !important' },
-		'.paraflow-callout-title': { display: 'inline-flex', verticalAlign: 'top', alignItems: 'center', gap: '.25em', marginInlineEnd: 'var(--paraflow-callout-title-gap, .375em)', height: 'calc(var(--paraflow-callout-title-leading, 1.3) * 1em)', lineHeight: '1', userSelect: 'none' },
+		'.paraflow-callout-title': { display: 'inline-flex', verticalAlign: 'top', alignItems: 'center', gap: '.25em', paddingInlineEnd: 'var(--paraflow-callout-title-gap, .375em)', height: 'calc(var(--paraflow-callout-title-leading, 1.3) * 1em)', lineHeight: '1', userSelect: 'none' },
 		'.paraflow-callout-title-text, .paraflow-callout-default-title': { fontWeight: 'var(--callout-title-weight, 600)', color: 'var(--callout-color)' },
 		'.paraflow-callout-icon': { color: 'var(--callout-color)', display: 'inline-block', width: '1em', height: '1em', overflow: 'hidden' },
 		'.paraflow-callout-icon .callout': { margin: '0 !important', padding: '0 !important', border: '0 !important', background: 'none !important' },
 		'.paraflow-callout-icon .callout-title': { padding: '0', gap: '0', lineHeight: '1' },
 		'.paraflow-callout-icon .callout-content, .paraflow-callout-icon .callout-title-inner, .paraflow-callout-icon .callout-fold': { display: 'none' },
 		'.paraflow-callout-icon .callout-icon, .paraflow-callout-icon svg': { width: '1em', height: '1em', flex: 'none' },
-		'.paraflow-callout-fold': { display: 'inline-flex', verticalAlign: 'middle', marginInlineStart: '.25em', padding: '0', width: '1em', height: '1em', border: '0', background: 'none', boxShadow: 'none', color: 'var(--callout-color)' },
+		'.paraflow-callout-fold': { display: 'inline-flex', position: 'relative', verticalAlign: 'middle', marginInlineStart: '.25em', padding: '0', width: '1em', height: '1em', border: '0', background: 'none', boxShadow: 'none', color: 'var(--callout-color)' },
+		'.paraflow-callout-fold[data-collapsed="true"]::after': { content: '"…"', position: 'absolute', insetInlineStart: 'calc(100% + .375em)', color: 'var(--text-muted)', pointerEvents: 'none', userSelect: 'none' },
 		'.paraflow-callout-fold > svg': { width: '1em', height: '1em' },
 		'.paraflow-callout-edit': { position: 'absolute', right: '0', top: '0', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: 'calc(var(--paraflow-callout-title-leading, 1.3) * 1em)', padding: '0 4px', fontSize: 'inherit', color: 'var(--paraflow-source-control-color, #333333)', border: '0', background: 'transparent', boxShadow: 'none', cursor: 'pointer' },
 		'.paraflow-callout-edit > svg': { display: 'block', width: '1em', height: '1em', flex: 'none' },

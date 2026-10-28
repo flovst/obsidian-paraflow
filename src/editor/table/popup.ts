@@ -4,6 +4,8 @@ export interface TableMenuItem {
 	disabled?: boolean;
 	disabledReason?: string;
 	shortcut?: string;
+	commandId?: string;
+	systemShortcut?: 'cut' | 'copy' | 'paste' | 'selectAll';
 	separatorBefore?: boolean;
 	icon?: string;
 	children?: readonly TableMenuItem[];

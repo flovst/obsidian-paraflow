@@ -99,7 +99,7 @@ export function createTableKeyboardBoundaries(options:TableEditingOptions,delete
    let plan:TransactionSpec;
    if(forward||enter)plan=blockExitPlan(view.state,source.to,source.container?.prefixes[0]??'');
    else {
-    if(!source.container&&!view.state.sliceDoc(0,source.from).trim())plan=enterVirtualTail(view.state,{side:'before',returnTo:source.from,goalColumn:goal});
+    if(!source.container&&!view.state.sliceDoc(0,source.from).trim())plan=enterVirtualTail(view.state,{side:'before',returnTo:source.from,goalColumn:goal,input:'keyboard'});
     else {
      if(source.from===0){event.preventDefault();event.stopPropagation();return;}
      const head=normalizeParagraphSelectionEndpoint(view.state,source.from-1,-1);

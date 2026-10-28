@@ -6,7 +6,7 @@ import { projectContentThemeSelectors } from './content-selectors.js';
 import { projectQuoteThemeTokens } from './quote-selectors.js';
 import { cssName, themeResource } from './resource-policy.js';
 
-export const CONVERTER_VERSION = '7';
+export const CONVERTER_VERSION = '8';
 interface SourceRule { node: css.Rule | css.Atrule; file: string; media: string[] }
 
 const lengthValue = (value: string): string => /^[+-]?0(?:\.0+)?$/u.test(value) ? '0px' : value;
@@ -364,7 +364,7 @@ export function convertTyporaTheme(input: ThemeInput, options: { id: string; nam
 				}
 				if (mapping.tag === 'pre' && (paintProperties.has(property) || blockProperties.has(property))) {
 					// Whole-block paint is consumed by the runtime boundary rules, not each editor row.
-				} else if (mapping.live.length && (textProperties.has(property) || paintProperties.has(property) || property.startsWith('--') || (heading && ['padding-top','padding-bottom'].includes(property)) || tableTags.has(mapping.tag) || ['img', 'hr'].includes(mapping.tag))) liveDecl.push(pair);
+				} else if (mapping.live.length && (textProperties.has(property) || paintProperties.has(property) || property.startsWith('--') || (heading && ['padding-top','padding-bottom'].includes(property)) || tableTags.has(mapping.tag) || ['img', 'hr', 'kbd'].includes(mapping.tag))) liveDecl.push(pair);
 				else if (mapping.live.length) report(file, declaration, 'skipped', `Live Preview ${mapping.tag} layout property ${property} is not transferred`, 'live-preview');
 				if (!mapping.complex && (mapping.tag === 'p' || mapping.tag === 'li')) {
 					const paragraphToken = ({ 'font-family': 'font', 'font-size': 'size', 'font-weight': 'weight', 'line-height': 'line-height' } as Record<string, string>)[property];

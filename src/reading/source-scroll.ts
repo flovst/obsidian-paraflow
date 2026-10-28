@@ -1,7 +1,7 @@
 import { StateEffect, StateField } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 
-interface SourceBlockAnchor { from: number; offset: number; valid(): boolean; restored(): void; }
+interface SourceBlockAnchor { from: number; offset: number; cursor?: boolean; valid(): boolean; restored(): void; }
 export const restoreSourceBlock = StateEffect.define<SourceBlockAnchor | null>();
 const target = StateField.define<SourceBlockAnchor | null>({
 	create: () => null,
@@ -18,8 +18,18 @@ export const sourceBlockScroll = [target, EditorView.scrollHandler.of((view, ran
 	if (!anchor || consumed.has(anchor) || anchor.from !== range.head) return false;
 	consumed.add(anchor);
 	if (!anchor.valid()) return true;
-	const origin = view.documentTop + view.scrollDOM.scrollTop - view.scrollDOM.getBoundingClientRect().top;
-	view.scrollDOM.scrollTop = origin + view.lineBlockAt(anchor.from).top - anchor.offset;
+	if (anchor.cursor) {
+		// Scroll handlers run in CM's write phase; caret geometry belongs to a measure read.
+		view.requestMeasure({ key: anchor,
+			read: () => anchor.valid() ? view.scrollDOM.scrollTop + view.coordsAtPos(anchor.from)!.top -
+				view.scrollDOM.getBoundingClientRect().top - anchor.offset : null,
+			write: top => { if (top !== null && anchor.valid()) { view.scrollDOM.scrollTop = top; anchor.restored(); } },
+		});
+		return true;
+	}
+	const viewportTop = view.scrollDOM.getBoundingClientRect().top;
+	const top = view.documentTop + view.lineBlockAt(anchor.from).top - viewportTop;
+	view.scrollDOM.scrollTop += top - anchor.offset;
 	anchor.restored();
 	return true;
 })];

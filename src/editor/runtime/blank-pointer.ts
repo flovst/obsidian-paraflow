@@ -1,14 +1,14 @@
-import {type Extension} from '@codemirror/state';
+import {StateEffect,type Extension} from '@codemirror/state';
 import {ViewPlugin,type EditorView} from '@codemirror/view';
 import {getParagraphProjectionState} from '../paragraph/projection.js';
 import {normalizeParagraphSelectionEndpoint} from '../paragraph/selection-protection.js';
 import {createRenderedSourceClickExtension,handoffRenderedSourceGesture} from './rendered-source-click.js';
 import {compositionStateField} from './input-state.js';
-import {isVirtualEdgeActive,setVirtualTail,enterVirtualTail,virtualTailState,setEdgePointer} from './virtual-tail.js';
+import {documentBodyStart,isVirtualEdgeActive,setVirtualTail,enterVirtualTail,virtualTailState,setEdgePointer} from './virtual-tail.js';
 import {clearTableFocus,requestTableFocus,tableActivationDestination} from '../table/focus-handoff.js';
 
 /** Immutable spacing and outside EOF share the ordinary source-pointer gesture. */
-export function createBlankPointerExtension(isActive:(view:EditorView)=>boolean):Extension {
+export function createBlankPointerExtension(isActive:(view:EditorView)=>boolean,edgeEnabled:(view:EditorView)=>boolean=()=>true):Extension {
 	return [createRenderedSourceClickExtension(),ViewPlugin.define(view=>{
 		let forwarding=false;
 		let pressed=false;
@@ -24,7 +24,7 @@ export function createBlankPointerExtension(isActive:(view:EditorView)=>boolean)
 			const tail=view.contentDOM.querySelector<HTMLElement>('.paraflow-virtual-tail');
 			const first=view.contentDOM.querySelector<HTMLElement>('.paraflow-virtual-head');
 			const firstBox=first?.getBoundingClientRect();
-			const before=!!target.closest('.paraflow-virtual-head')||(target===view.contentDOM||target===view.scrollDOM)&&!!firstBox&&event.clientY<=firstBox.bottom+2&&event.clientY>=view.scrollDOM.getBoundingClientRect().top;
+			const before=edgeEnabled(view)&&(!!target.closest('.paraflow-virtual-head')||!!firstBox&&firstBox.width>0&&event.clientY<=firstBox.bottom+2&&event.clientY>=view.scrollDOM.getBoundingClientRect().top&&!target.closest('.metadata-container'));
 			const exactTail=!!target.closest('.paraflow-virtual-tail');
 			let outside=exactTail;
 			if(tail&&(target===view.contentDOM||target===view.scrollDOM)){
@@ -34,7 +34,8 @@ export function createBlankPointerExtension(isActive:(view:EditorView)=>boolean)
 			}
 			const gap=target.closest<HTMLElement>('.paraflow-paragraph-gap-head,.paraflow-paragraph-folded-row,.paraflow-block-boundary-gap');
 			let position:number|null=null;
-			if(before)position=0;
+			outside=outside&&edgeEnabled(view);
+			if(before)position=documentBodyStart(view.state);
 			else if(outside)position=view.state.doc.length;
 			else if(gap&&view.contentDOM.contains(gap)){
 				const projection=getParagraphProjectionState(view.state);
@@ -42,19 +43,21 @@ export function createBlankPointerExtension(isActive:(view:EditorView)=>boolean)
 					const at=view.posAtDOM(gap),box=gap.getBoundingClientRect(),bias=event.clientY<box.top+box.height/2?-1:1;
 					const range=projection.rangeIndex.gaps.find(item=>item.from<=at&&at<item.to);
 					const synthetic=gap.classList.contains('paraflow-block-boundary-gap');
-					if(range)position=bias<0&&range.from===0&&!projection.rangeIndex.editableAnchors.includes(0)?range.to:bias<0?range.from:range.to;
+					if(range)position=bias<0&&range.from===documentBodyStart(view.state)&&!projection.rangeIndex.editableAnchors.includes(range.from)?range.to:bias<0?range.from:range.to;
 					else if(synthetic)position=bias<0?at-1:at;
 					if(position!==null)position=normalizeParagraphSelectionEndpoint(view.state,position,bias,event.shiftKey?'range':'cursor');
 				}
 			}
 			if(position===null){if(isVirtualEdgeActive(view.state))view.dispatch({effects:setVirtualTail.of(null)});return;}
-			const edge=(outside||before)?enterVirtualTail(view.state,{side:before?'before':'after',anchor:event.shiftKey?view.state.selection.main.anchor:undefined}):null;
+			const edge=(outside||before)?enterVirtualTail(view.state,{side:before?'before':'after',input:'pointer',anchor:event.shiftKey?view.state.selection.main.anchor:undefined}):null;
 			if(edge?.selection)position='anchor' in edge.selection?edge.selection.anchor:edge.selection.main.head;
-			const effects=edge?.effects??[setVirtualTail.of(null)];
+			const edgeEffects=edge?.effects instanceof StateEffect?[edge.effects]:edge?.effects??[setVirtualTail.of(null)];
+			pointerSide=edgeEffects.some(effect=>effect.is(setVirtualTail)&&effect.value)?(before?'before':'after'):null;
+			const effects=[...edgeEffects,setEdgePointer.of(pointerSide)];
 			const table=!event.shiftKey&&!edge?tableActivationDestination(view,position):null;
 			forwarding=true;
 			try{
-				handoffRenderedSourceGesture(view,event,position,active,Array.isArray(effects)?effects:[effects],table?()=>{clearTableFocus(view);view.focus();}:undefined);
+				handoffRenderedSourceGesture(view,event,position,active,effects,table?()=>{clearTableFocus(view);view.focus();}:undefined);
 				if(table){
 					const transaction=view.state.update({selection:{anchor:table.position}});
 					requestTableFocus(view,transaction,table.from,table.bookmark,true);
@@ -65,14 +68,14 @@ export function createBlankPointerExtension(isActive:(view:EditorView)=>boolean)
 		// Native CM drag has the same source offset at the final character and at
 		// an outside row when there is no terminal LF. Preserve the actual hit.
 		const move=(event:MouseEvent)=>{
-			if(!pressed||event.buttons!==1||!active()||view.state.selection.ranges.length!==1)return;
+			if(!pressed||event.buttons!==1||!active()||!edgeEnabled(view)||view.state.selection.ranges.length!==1)return;
 			const tail=view.contentDOM.querySelector<HTMLElement>('.paraflow-virtual-tail')?.getBoundingClientRect();
 			const first=view.contentDOM.querySelector<HTMLElement>('.paraflow-virtual-head')?.getBoundingClientRect();
 			const side=tail&&event.clientY>=tail.top?'after':first&&event.clientY<=first.bottom?'before':null;
 			if(side===pointerSide)return;
 			pointerSide=side;
 			const current=view.state.field(virtualTailState);
-			if(side){const entry=enterVirtualTail(view.state,{side,anchor:view.state.selection.main.anchor});view.dispatch(entry,{effects:setEdgePointer.of(side)});}
+			if(side){const entry=enterVirtualTail(view.state,{side,input:'pointer',anchor:view.state.selection.main.anchor});view.dispatch(entry,{effects:setEdgePointer.of(side)});}
 			else view.dispatch({effects:[setEdgePointer.of(null),...(current&&!view.state.selection.main.empty?[setVirtualTail.of(null)]:[])]});
 		};
 		const release=()=>{

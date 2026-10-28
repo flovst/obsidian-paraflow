@@ -23,6 +23,9 @@ import { pendingMathAt, pendingMathRanges, type PendingMathRange } from '../math
 import { codeDraft } from '../code-blocks/draft-state.js';
 import { discoverSetextHeadings } from './setext.js';
 import { standaloneBreakGrammar } from '../markdown-grammar.js';
+import { detailsContainers, detailsMarkdownSource } from '../rendered-blocks/details-source.js';
+import { middleBlankRows as middleRows } from './blank-rows.js';
+import { documentBodyStart } from '../runtime/document-body-start.js';
 
 const newlineRunPattern = /^\n{2,}$/u;
 
@@ -110,7 +113,7 @@ function htmlGrammarBoundaries(state: EditorState): readonly TopLevelBlockBounda
 	const cached = htmlBoundaryCache.get(state.doc);
 	if (cached?.end === end) return cached.blocks;
 	const blocks: TopLevelBlockBoundary[] = [];
-	const source=state.sliceDoc(0, end),tree = htmlBoundaryGrammar.parse(source);
+	const source=detailsMarkdownSource(state.sliceDoc(0, end)),tree = htmlBoundaryGrammar.parse(source);
 	let extents:ReturnType<typeof htmlBlockExtents>|undefined;
 	let consumed=0;
 	for (let node = tree.topNode.firstChild; node; node = node.nextSibling) {
@@ -344,7 +347,11 @@ export function hypermdBlockRangesAround(
 function hypermdParagraphs(state: EditorState): readonly TopLevelBlockBoundary[] {
 	// HyperMD omits syntax nodes for unstyled text. Complete token coverage still
 	// proves ordinary lines by excluding every host-marked block line.
-	const blocked = blockedHypermdLines(state);
+	const blocked = new Set(blockedHypermdLines(state));
+	for (const block of detailsContainers(state.sliceDoc())) {
+		for (let number = state.doc.lineAt(block.from).number; number <= state.doc.lineAt(block.headerTo).number; number++) blocked.add(number);
+		blocked.add(state.doc.lineAt(block.closingFrom).number);
+	}
 	const paragraphs: TopLevelBlockBoundary[] = [];
 	let open: TopLevelBlockBoundary | null = null;
 	const end = confirmedSyntaxEnd(state);
@@ -545,7 +552,7 @@ function hypermdComplexBoundaries(
 			if (containedLines.has(lineNumber)) continue;
 			const existing = lines.get(lineNumber);
 			if (existing && existing !== kind) {
-				throw new Error('Conflicting complete HyperMD block containment');
+				throw new Error(`Conflicting complete HyperMD block containment at line ${lineNumber}: ${existing} / ${kind}`);
 			}
 			lines.set(lineNumber, kind);
 		}
@@ -971,6 +978,24 @@ function boundaryNeighborhood(
 	return [...selected].sort((left, right) => left - right).map((index) => boundaries[index]!);
 }
 
+function withDetailsBoundaries(state: EditorState, blocks: readonly TopLevelBlockBoundary[]): readonly TopLevelBlockBoundary[] {
+	const boundaries: TopLevelBlockBoundary[] = [];
+	let content = [...blocks];
+	for (const details of detailsContainers(state.sliceDoc())) {
+		if (blocks.some(block => block.from <= details.from && details.to <= block.to)) continue;
+		// Masked closing lines can remain in a list node's trailing whitespace.
+		let bodyEnd = details.closingFrom;
+		while (bodyEnd > details.bodyFrom && /\s/u.test(state.sliceDoc(bodyEnd - 1, bodyEnd))) bodyEnd--;
+		content = content.map(block => block.from >= details.bodyFrom && block.from < details.closingFrom && block.to >= details.closingFrom && block.to <= details.to
+			? { ...block, to: bodyEnd } : block);
+		for (const boundary of [{ from: details.from, to: details.headerTo, kind: 'html-block' as const },
+			{ from: details.closingFrom, to: details.to, kind: 'html-block' as const }]) {
+			if (!content.some(block => block.from <= boundary.from && boundary.to <= block.to)) boundaries.push(boundary);
+		}
+	}
+	return [...content, ...boundaries];
+}
+
 function topLevelBoundaries(
 	state: EditorState,
 	within?: readonly ParagraphGap[],
@@ -991,14 +1016,14 @@ function topLevelBoundaries(
 	if (within !== undefined) return boundaryNeighborhood(discoverParagraphAuthority(state).blocks, within);
 	const containers = [...hypermdListBoundaries(state), ...hypermdFootnoteBoundaries(state)];
 	const headings = hypermdHeadingBoundaries(state);
-	const all = admitEmptyBodies(state, confirmedBlocks(state, classifyMediaBlocks(state, splitBoundariesAtSeparatorlessLiterals(state, [
+	const all = admitEmptyBodies(state, confirmedBlocks(state, classifyMediaBlocks(state, splitBoundariesAtSeparatorlessLiterals(state, withDetailsBoundaries(state, [
 		...hypermdParagraphs(state).filter(paragraph => !containers.some(container =>
 			container.from <= paragraph.from && paragraph.to <= container.to) && !headings.some(heading =>
 			heading.from <= paragraph.from && paragraph.to <= heading.to)),
 		...headings,
 		...containers,
 		...hypermdComplexBoundaries(state, containers).filter(block => !headings.some(heading => heading.from <= block.from && block.to <= heading.to)),
-	]))), 0, state.doc.length);
+	])))), 0, state.doc.length);
 	return adjustCodeDraftBoundaries(state, adjustPendingMathBoundaries(state, all), within);
 }
 
@@ -1085,7 +1110,7 @@ function standardBoundariesForNodes(
 ): readonly TopLevelBlockBoundary[] {
 	const blocks = confirmedBlocks(state, classifyMediaBlocks(state, splitBoundariesAtSeparatorlessLiterals(
 		state,
-		standardBoundaryBlocks(state,nodes),
+		withDetailsBoundaries(state, standardBoundaryBlocks(state,nodes)),
 		completeDocument
 			? undefined
 			: nodes.map((node) => ({ from: node.from, to: node.to })),
@@ -1144,17 +1169,6 @@ function gapsBetween(
 		from: start,
 		to: boundaries[index + 1]!,
 	}));
-}
-
-function middleRows(from: number, newlineCount: number): readonly ParagraphPhysicalRow[] {
-	return Array.from({ length: newlineCount - 1 }, (_, index) => {
-		const row = index + 1;
-		const folded = newlineCount % 2 === 1 && row === newlineCount - 1;
-		return {
-			at: from + row,
-			kind: folded ? 'folded' : row % 2 === 1 ? 'gap-head' : 'editable',
-		};
-	});
 }
 
 function paragraphRun(
@@ -1217,7 +1231,7 @@ function discoverRuns(
 	const runs: ParagraphRun[] = [];
 	const firstParagraph = boundaries[0];
 	const leading = firstParagraph
-		? eligibleRun(state, 'leading', 0, firstParagraph.from)
+		? eligibleRun(state, 'leading', documentBodyStart(state), firstParagraph.from)
 		: null;
 	if (leading) runs.push(leading);
 	for (let index = 1; index < boundaries.length; index += 1) {

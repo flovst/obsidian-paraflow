@@ -1,5 +1,6 @@
 import type { Text } from '@codemirror/state';
 import { parser } from '@lezer/markdown';
+import { detailsMarkdownSource } from '../rendered-blocks/details-source.js';
 
 export interface CodeBlock {
 	from: number;
@@ -27,7 +28,7 @@ export function codeBlocksIn(doc: Text, includeMermaid = false): CodeBlock[] {
 	if (cached) return cached;
 	const source=state.doc.toString();
 	const blocks: CodeBlock[]=[];
-	parser.parse(source).iterate({enter(node) {
+	parser.parse(detailsMarkdownSource(source)).iterate({enter(node) {
 		const fenced=node.name==='FencedCode';
 		if(!fenced && node.name!=='CodeBlock')return;
 		let contentFrom=node.from;

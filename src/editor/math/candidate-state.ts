@@ -195,7 +195,7 @@ export function createMathCandidateExtension(isActive: (state: EditorState) => b
     }),
         EditorState.transactionFilter.of(tr => {
             const before = tr.startState.field(field);
-            if (!isActive(tr.state) || tr.state.readOnly || before.active || !before.dirty)
+            if (before.active || !before.dirty || !isActive(tr.state) || tr.state.readOnly)
                 return tr;
             const changes = mathConversionChanges(tr.state, discoverParsedMath(tr.state));
             return [tr, { changes, effects: confirmMath.of(null), annotations: isolateHistory.of('full'), sequential: true }];

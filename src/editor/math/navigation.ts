@@ -32,7 +32,7 @@ export function createMathKeyboardEntry(isActive: (state: EditorState) => boolea
 				const end = event.key === 'ArrowDown' ? view.coordsAtPos(body.to, -1) : null;
 				if (event.key === 'ArrowRight' ? current.head === body.to : row && current.head >= row.from && caret && end && caret.top >= end.top - 1) {
 					event.preventDefault(); event.stopImmediatePropagation();
-					view.dispatch(enterVirtualTail(view.state, { returnTo: current.head, goalColumn: current.goalColumn }));
+					view.dispatch(enterVirtualTail(view.state, { returnTo: current.head, goalColumn: current.goalColumn, input: 'keyboard' }));
 					return;
 				}
 			}

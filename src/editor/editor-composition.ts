@@ -12,6 +12,7 @@ import { listSiblingGapProjection } from './structured-list/sibling-gaps.js';
 import { createCalloutExtension } from './callout/extension.js';
 import { createCalloutPresentation, type CalloutPresentationOptions } from './callout/presentation.js';
 import { createRenderedBlockEditing, type RenderedBlockEditingOptions } from './rendered-blocks/extension.js';
+import { createDetailsEditing, type DetailsEditingState } from './rendered-blocks/details-extension.js';
 import { createMarkdownPairingPolicy } from './markdown-pairing.js';
 import { mathSourcePaletteExtension } from '../themes/math-palette.js';
 import { codeSourcePaletteExtension } from '../themes/code-palette.js';
@@ -31,6 +32,8 @@ import { createMathEditingExtension, createMathTabExtension } from './math/exten
 import { mathSemanticParseCache } from './math/semantic-tree.js';
 import { createFootnoteExtension } from './footnotes/extension.js';
 import { sourceBlockScroll } from '../reading/source-scroll.js';
+import { createBlockMoveExtension } from './block-move.js';
+import type { RegisterBlockMoveScope } from './block-move-scope.js';
 
 /** Host services only: core extension construction and ordering stay here. */
 export interface EditorCompositionDependencies {
@@ -49,8 +52,10 @@ export interface EditorCompositionDependencies {
 	renderMarkdown: RenderedBlockEditingOptions['renderMarkdown'];
 	subscribeMarkdownChanges?: RenderedBlockEditingOptions['subscribeMarkdownChanges'];
 	sourcePath: RenderedBlockEditingOptions['sourcePath'];
+	detailsState?: DetailsEditingState;
 	renderCalloutHeader: CalloutPresentationOptions['renderHeader'];
 	loadPrism?: Parameters<typeof createCodeBlockExtension>[0]['loadPrism'];
+	registerBlockMoveScope?: RegisterBlockMoveScope;
 	tableEditingExtension: () => Extension | null;
 }
 
@@ -82,7 +87,9 @@ export function createEditorComposition(host: EditorExtensionLifecycleHost, depe
 		hideCaretWhileDragSelecting: () => getSettings().hideCaretWhileDragSelecting,
 		isActive: isPrimarySourceEditor, isLivePreview,
 	}));
-	moduleHost.registerEditorExtension(createVirtualTailExtension({ isActive }));
+	moduleHost.registerEditorExtension(createVirtualTailExtension({ isActive, getOptions: () => ({
+		keyboard: getSettings().enhancements.virtualLineKeyboard, pointer: getSettings().enhancements.virtualLinePointer,
+	}) }));
 	const settings = getSettings();
 	const lifecycle = createEditorExtensionLifecycle(moduleHost, {
 		navigationCore: () => [],
@@ -101,6 +108,7 @@ export function createEditorComposition(host: EditorExtensionLifecycleHost, depe
 	function rebuildSupplementalExtensions(): void {
 		const enhancements = getSettings().enhancements;
 		const extensions: Extension[] = [
+			createBlockMoveExtension(isActive, dependencies.registerBlockMoveScope),
 			createMarkdownPairingPolicy(isPrimarySourceEditor),
 			createSourceViewExtension({
 				isSourceView: view => isPrimarySourceEditor(view) && !isLivePreview(view.state),
@@ -112,6 +120,7 @@ export function createEditorComposition(host: EditorExtensionLifecycleHost, depe
 						lineNumbers: current.sourceLineNumbers, lineNumberStyle: current.sourceLineNumberStyle,
 						lineNumberPosition: current.sourceLineNumberPosition,
 						newlineMarkers: current.sourceNewlineMarkers, tabSize: current.sourceTabSize,
+						scrollLimit: current.sourceScrollLimit,
 					};
 				},
 			}),
@@ -130,6 +139,7 @@ export function createEditorComposition(host: EditorExtensionLifecycleHost, depe
 		if (getSettings().paragraphEditingEnabled || getSettings().structuredListEditingEnabled || enhancements.callout) extensions.push(listSiblingGapProjection);
 		if (enhancements.headings) extensions.push(createHeadingEditing(isActive, isLivePreview));
 		if (enhancements.htmlBlocks || enhancements.mermaid) extensions.push(renderedBlocks);
+		if (enhancements.htmlBlocks) extensions.push(createDetailsEditing(isLivePreview, () => getSettings().enhancements.detailsHoverBackground, dependencies.detailsState));
 		if (enhancements.math) extensions.push(mathSourcePaletteExtension(enhancements.mathSourcePalette),
 			dependencies.mathRendering ? createMathEditingExtension({ ...dependencies.mathRendering, isStateActive: isLivePreview }) : []);
 		if (enhancements.inline) extensions.push(
@@ -148,6 +158,7 @@ export function createEditorComposition(host: EditorExtensionLifecycleHost, depe
 		if (enhancements.footnotes) extensions.push(createFootnoteExtension({ isActive,
 			hideDefinitionMarkers: () => getSettings().enhancements.footnoteHideDefinitionMarkers, notify: dependencies.notify }));
 		if (enhancements.callout) extensions.push(createCalloutPresentation({ isActive,
+			getStyle: () => getSettings().enhancements.calloutStyle,
 			isViewSupported: isPrimarySourceEditor, isActiveState: isLivePreview, renderHeader: dependencies.renderCalloutHeader }));
 		const tableEditing = dependencies.tableEditingExtension();
 		if (enhancements.table && enhancements.tableEditing && tableEditing) extensions.push(tableEditing);

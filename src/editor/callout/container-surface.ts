@@ -14,11 +14,11 @@ export function containerRailTails(cards: readonly CalloutCard[], to: number): r
 }
 
 export class ContainerRails extends WidgetType {
-	constructor(readonly cards: readonly CalloutCard[], readonly tails: readonly number[]) { super(); }
+	constructor(readonly cards: readonly CalloutCard[], readonly tails: readonly number[], readonly row?: { from: number; to: number }) { super(); }
 	eq(other: ContainerRails): boolean {
 		return this.cards.length === other.cards.length && this.cards.every((card, index) => {
 			const candidate = other.cards[index]!;
-			return card.kind === candidate.kind && card.depth === candidate.depth && card.listDepth === candidate.listDepth && card.listTask === candidate.listTask && card.listOrderedTask === candidate.listOrderedTask && card.type === candidate.type && card.metadata === candidate.metadata && this.tails[index] === other.tails[index];
+			return (card.from === this.row?.from) === (candidate.from === other.row?.from) && (card.to === this.row?.to) === (candidate.to === other.row?.to) && card.kind === candidate.kind && card.depth === candidate.depth && card.listDepth === candidate.listDepth && card.listTask === candidate.listTask && card.listOrderedTask === candidate.listOrderedTask && card.type === candidate.type && card.metadata === candidate.metadata && this.tails[index] === other.tails[index];
 		});
 	}
 	toDOM(view: EditorView): HTMLElement {
@@ -28,6 +28,8 @@ export class ContainerRails extends WidgetType {
 			const rail = container.ownerDocument.createElement('span');
 			rail.className = `paraflow-callout-rail${card.kind === 'callout' ? ' callout' : ' paraflow-quote-rail'}`;
 			rail.dataset.callout = card.type; rail.dataset.calloutMetadata = card.metadata;
+			if (card.from === this.row?.from) rail.dataset.paraflowRailStart = 'true';
+			if (card.to === this.row?.to) rail.dataset.paraflowRailEnd = 'true';
 			rail.style.setProperty('--paraflow-callout-rail-depth', String(card.depth - 1));
 			rail.style.setProperty('--paraflow-rail-callouts', String(this.cards.slice(0, index).filter(ancestor => ancestor.kind === 'callout').length));
 			rail.style.setProperty('--paraflow-callout-list-inset', listBlockInset(card.listDepth ?? 0, card.listTask, card.listOrderedTask));
@@ -45,7 +47,7 @@ export function containerBlockFrame(state: EditorState, from: number, to: number
 	const cards = quoteContainers(state).filter(card => card.from <= from && card.to >= to);
 	if (!cards.length) return null;
 	const tails = containerRailTails(cards, to), ends = cards.filter(card => card.kind === 'callout' && card.to === to).length;
-	return { rails: new ContainerRails(cards, tails), ends,
+	return { rails: new ContainerRails(cards, tails, { from, to }), ends,
 		key: JSON.stringify([cards.map(card => [card.kind, card.depth, card.listDepth, card.listTask, card.listOrderedTask, card.type, card.metadata]), tails, ends]) };
 }
 

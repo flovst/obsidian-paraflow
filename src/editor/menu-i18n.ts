@@ -1,0 +1,40 @@
+/** ParaFlow-owned menu labels; unknown host/plugin labels retain their translation. */
+const english: Readonly<Record<string, string>> = {
+	'粘贴为纯文本': 'Paste as plain text', '段落格式': 'Paragraph format',
+	'插入 Wiki 链接': 'Insert Wiki link', '插入链接': 'Insert link', '公式块': 'Math block',
+	'清除文本格式': 'Clear formatting', '行内代码': 'Inline code', '行内公式': 'Inline math',
+	'剪切': 'Cut', '复制': 'Copy', '粘贴': 'Paste', '全选': 'Select all',
+	'文本格式': 'Format', '加粗': 'Bold', '斜体': 'Italic', '删除线': 'Strikethrough', '下划线': 'Underline',
+	'高亮': 'Highlight', '默认': 'Default', '红色': 'Red', '橙色': 'Orange', '黄色': 'Yellow',
+	'绿色': 'Green', '蓝色': 'Blue', '紫色': 'Purple', '注释': 'Comment', '插入': 'Insert',
+	'选中代码块': 'Select code block', '复制代码块': 'Copy code block', '复制代码失败。': 'Failed to copy code.',
+	'编辑 Callout': 'Edit callout', 'Callout 类型': 'Callout type', '其他…': 'Other…',
+	'无（转为普通引用）': 'None (convert to blockquote)', '确定': 'Confirm', '取消': 'Cancel',
+	'请输入类型名称，可使用字母、数字、连字符或下划线。': 'Enter a type name using letters, numbers, hyphens or underscores.',
+	'文档内容已更改，请重新打开菜单。': 'The document has changed. Reopen the menu.',
+	'信息': 'Info', '重要': 'Important', '提示': 'Tip', '完成': 'Success', '问题': 'Question',
+	'警告': 'Warning', '示例': 'Example', '引用': 'Quote',
+	'字体…': 'Font…', '字号…': 'Font size…', '字体颜色…': 'Text color…', '背景颜色…': 'Background color…',
+	'重置单元格样式': 'Reset cell styles', '单元格左对齐': 'Align cells left', '单元格居中': 'Center cells', '单元格右对齐': 'Align cells right',
+	'设为表头行': 'Set as header row', '设为正文行': 'Set as body row', '设为表头列': 'Set as header column', '设为正文列': 'Set as body column',
+	'选择整行': 'Select row', '选择整列': 'Select column', '在上方插入行': 'Insert row above', '在下方插入行': 'Insert row below',
+	'在左侧插入列': 'Insert column left', '在右侧插入列': 'Insert column right', '向上移动行': 'Move row up', '向下移动行': 'Move row down',
+	'向左移动列': 'Move column left', '向右移动列': 'Move column right', '创建行副本': 'Duplicate row', '创建列副本': 'Duplicate column',
+	'删除行': 'Delete row', '删除列': 'Delete column', '整列左对齐': 'Align columns left', '整列居中': 'Center columns', '整列右对齐': 'Align columns right',
+	'按当前列升序（A–Z）': 'Sort by current column (A–Z)', '按当前列降序（Z–A）': 'Sort by current column (Z–A)',
+	'行列操作': 'Rows and columns', '单元格': 'Cells', '排序': 'Sort', '表格自动换行': 'Wrap table text',
+	'复制表格源码': 'Copy table source', '复制为 HTML 源码': 'Copy as HTML source', '格式化表格源码': 'Format table source',
+	'转换为 HTML 表格': 'Convert to HTML table', '转换为 Markdown 表格': 'Convert to Markdown table', '删除表格': 'Delete table',
+	'所选单元格格式': 'Format selected cells', '合并单元格': 'Merge cells', '取消合并': 'Unmerge cells',
+	'请选择文字': 'Select text', '文档只读': 'Document is read-only', '请选择多个单元格': 'Select multiple cells',
+	'所选单元格未合并': 'Selected cells are not merged', '所选单元格为空': 'Selected cells are empty',
+	'请选中完整合并列范围，或先取消合并。': 'Select the full merged column range or unmerge it first.',
+	'合并操作需要支持当前单元格语法的增强表格模型。': 'Merging requires an enhanced table model that supports this cell syntax.',
+	'宿主原生单元格命令不可用': 'Native cell commands are unavailable', '请先选择文字': 'Select text first',
+	'内部链接导航未连接到宿主。': 'Internal link navigation is unavailable.',
+	'此操作使用 Markdown 单元格的原生语法编辑器；HTML 单元格暂不支持相同语义。': 'This action requires the native Markdown cell editor and is unavailable in HTML cells.',
+};
+
+export function translateMenuText(label: string, language: string): string {
+	return /^zh(?:[-_]|$)/iu.test(language) || !Object.prototype.hasOwnProperty.call(english, label) ? label : english[label]!;
+}

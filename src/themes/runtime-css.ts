@@ -33,7 +33,7 @@ export function resolveThemeUrls(source: string, resourcePath: (path: string) =>
 	return css.generate(ast);
 }
 
-export function contentTokenBridge(id: string, overrides: ThemeOverrides = {}, origin?: ThemeManifest['origin']): string {
+export function contentTokenBridge(id: string, overrides: ThemeOverrides = {}, origin?: ThemeManifest['origin'], metadataGap: number | null = -6): string {
  const {body,live,source,reading,roots,widthRoots} = themeRoots(id);
  const exclude = ':not(:is(.callout,.callout *,.markdown-embed,.markdown-embed *))';
  return `
@@ -56,6 +56,14 @@ ${roots},${source}{
  --font-text-size:var(--paraflow-paragraph-size,var(--paraflow-content-font-size,var(--paraflow-host-size)));
  --link-color:var(--paraflow-link-color,var(--paraflow-host-accent));
  --link-external-color:var(--link-color);
+ --paraflow-accent-color:var(--link-color);
+ --interactive-accent:var(--paraflow-accent-color);--interactive-accent-hover:var(--paraflow-accent-color);
+ --text-accent:var(--paraflow-accent-color);--text-accent-hover:var(--paraflow-accent-color);
+ --checkbox-color:var(--paraflow-accent-color);--checkbox-color-hover:var(--paraflow-accent-color);
+ --checkbox-border-color-hover:var(--paraflow-accent-color);--checkbox-marker-color:#fff;
+ --text-selection:color-mix(in srgb,var(--paraflow-accent-color) 22%,transparent);
+ --table-selection:color-mix(in srgb,var(--paraflow-accent-color) 15%,transparent);
+ --table-selection-border-color:var(--paraflow-accent-color);
  --tag-color:var(--link-color);--tag-color-hover:var(--link-color);
  --tag-background:color-mix(in oklch,var(--link-color) 10%,transparent);
  --tag-background-hover:color-mix(in oklch,var(--link-color) 20%,transparent);
@@ -73,6 +81,9 @@ ${source}>.cm-editor>.cm-scroller>.cm-sizer{max-width:none;width:100%}
 ${source}>.cm-editor>.cm-scroller>.cm-sizer>.cm-contentContainer>.cm-content{
  max-width:var(--paraflow-text-width);margin-inline:auto;
 }
+/* The content owner sets the width once for text, widgets and selection paint. */
+${live}>.cm-editor>.cm-scroller>.cm-sizer>.cm-contentContainer>.cm-content>.cm-line,
+${source}>.cm-editor>.cm-scroller>.cm-sizer>.cm-contentContainer>.cm-content>.cm-line{max-width:none}
 ${reading}>.markdown-preview-view,${live}>.cm-editor>.cm-scroller,${source}>.cm-editor>.cm-scroller{
  font-family:var(--font-text);font-size:var(--font-text-size);
  color:var(--paraflow-content-color,var(--text-normal));
@@ -126,6 +137,7 @@ ${reading} :is(ul,ol)>li:has(+li):not(.markdown-embed *)>p:last-child{
 ${reading} .paraflow-code-display-frame > pre.paraflow-code-display{margin-inline:0}
 ${live} :where(a),${reading} :where(a){font-weight:inherit}
 ${live} :where(table),${reading} :where(table){font-weight:var(--paraflow-content-weight,400)}
+${(['left','center','right'] as const).map(alignment => `${live} table :is(th,td)[align="${alignment}"],${reading} table :is(th,td)[align="${alignment}"]{text-align:${alignment}}`).join('\n')}
 ${origin ? `/* Host cell-size variables resolve at body, before a content theme's table size. */
 ${live} :where(table) :where(td,th),${reading} :where(table) :where(td,th){font-size:inherit}
 ${live} .paraflow-rendered-block-html .paraflow-rendered-block-content p{
@@ -144,14 +156,15 @@ ${live} .paraflow-quote-line.HyperMD-task-line:is([data-task="x"],[data-task="X"
 ${live} .paraflow-display-table a.tag${exclude},${reading} .paraflow-display-table a.tag${exclude}{color:var(--tag-color)}
 ${reading} :is(strong,b)${exclude},${live} :is(strong,b,.cm-strong)${exclude}{font-weight:var(--paraflow-strong-weight,var(--paraflow-default-strong-weight,var(--bold-weight,700)))}
 ${reading} .callout.paraflow-display-callout :is(strong,b):not(.markdown-embed *),${live} .callout.paraflow-display-callout :is(strong,b,.cm-strong):not(.markdown-embed *){font-weight:var(--paraflow-strong-weight,var(--paraflow-default-strong-weight,var(--bold-weight,700)))}
-${live} .cm-cursor{border-left-color:var(--paraflow-content-color,var(--text-normal))}
+${live} .cm-cursor,${source} .cm-cursor{border-left-color:var(--paraflow-content-color,var(--text-normal))}
+${live} .cm-content,${source} .cm-content{caret-color:var(--paraflow-content-color,var(--text-normal))}
 ${live} .metadata-container,${reading} .metadata-container{
  --metadata-label-font:var(--paraflow-metadata-font,var(--font-monospace));
  --metadata-input-font:var(--metadata-label-font);
  font-size:var(--paraflow-metadata-size,var(--paraflow-host-size));
  ${overrides.metadataLayout === 'native' ? '' : 'box-sizing:border-box;width:100%;max-width:var(--paraflow-text-width);margin-inline:auto;'}
  ${overrides.metadataPadding === undefined ? '' : `padding-inline:${overrides.metadataPadding}px;`}
- ${overrides.metadataGap === undefined ? '' : `margin-block-end:${overrides.metadataGap}px;`}
+ margin-block-end:${metadataGap ?? -6}px;
 }
 ${semanticBlockRhythmCss(live)}
 ${readingBlockRhythmCss(reading)}
@@ -160,8 +173,11 @@ ${reading} :is(.metadata-property-key,.metadata-property-value,.metadata-propert
  font-family:var(--metadata-label-font);font-size:inherit;
  font-weight:var(--paraflow-metadata-weight,400);
 }
-${live} .metadata-property-value :is(input,textarea,.multi-select-pill-content),
-${reading} .metadata-property-value :is(input,textarea,.multi-select-pill-content){font:inherit}
+${live} .metadata-property-value :is(input,textarea,.multi-select-pill-content):not([type="checkbox"]),
+${reading} .metadata-property-value :is(input,textarea,.multi-select-pill-content):not([type="checkbox"]){
+ font-family:inherit;font-size:inherit;font-weight:inherit;line-height:normal;
+}
+${live} .metadata-property,${reading} .metadata-property{align-items:center}
 ${live} .HyperMD-codeblock:not(.paraflow-code-draft)${exclude}{
  background:var(--paraflow-block-code-background,var(--code-background));
  color:var(--paraflow-block-code-color,var(--code-normal));

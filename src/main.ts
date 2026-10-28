@@ -1,8 +1,9 @@
 import type { EditorState } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
-import { Component, editorEditorField, editorInfoField, editorLivePreviewField, finishRenderMath, getIcon, loadMathJax, loadPrism, MarkdownRenderChild, MarkdownRenderer, MarkdownView, Notice, normalizePath, Platform, Plugin, sanitizeHTMLToDom, TFile, type Events } from 'obsidian';
+import { Component, editorEditorField, editorInfoField, editorLivePreviewField, finishRenderMath, getIcon, loadMathJax, loadMermaid, loadPrism, MarkdownRenderChild, MarkdownRenderer, MarkdownView, Notice, normalizePath, Platform, Plugin, sanitizeHTMLToDom, TFile, type Events } from 'obsidian';
 import { createReadingMathRanges } from './reading/math-ranges';
 import { createSvgMathRenderer, type NativeMathJax } from './display/math.js';
+import { createMermaidThemeRenderer } from './display/mermaid-svg.js';
 import { installBundledThemes } from './themes/builtin.js';
 import { ThemeStore } from './themes/store.js';
 import { ThemeManager } from './themes/manager.js';
@@ -13,18 +14,23 @@ import { normalizeThemeOverrides, supportsThemeColorScheme, themeOverrideCss, th
 import { createBrowserClipboardSink } from './clipboard.js';
 import type { EditorExtensionLifecycle } from './editor/extension-lifecycle.js';
 import { createEditorComposition, type EditorComposition } from './editor/editor-composition.js';
+import { createBlockMoveScopeRegistration } from './editor/block-move-obsidian.js';
 import type { LineBreakKind } from './editor/paragraph/line-break-projection.js';
 import { isPrimaryLivePreviewEditor, isPrimarySourceEditor } from './editor/surface.js';
 import { ParaFlowSettingTab } from './settings-tab.js';
-import { normalizeSettings, resetEditingSettings, type ParaFlowSettings, type SourceMaintenanceMode } from './settings.js';
+import { normalizeMetadataGap, normalizeSettings, resetEditingSettings, type ParaFlowSettings, type SourceMaintenanceMode } from './settings.js';
 import { normalizeEnhancements, type EnhancementSettings } from './enhancement-settings.js';
 import { createReadingEnhancements, type ReadingEnhancements } from './reading/enhancements.js';
+import { renderReadingDetails } from './reading/details.js';
+import { DetailsOpenState } from './display/details-open-state.js';
+import { registerDetailsOpenState } from './display/details-open-state-obsidian.js';
 import { readNativePrintSource } from './reading/source.js';
 import { createReadingMath } from './reading/math.js';
 import { createModeScrollAlignment, type ModeScrollView } from './reading/mode-scroll.js';
 import { EnhancementStyles } from './display/styles.js';
 import { refreshCalloutHeaderIcons, renderCalloutHeaderIcon } from './editor/callout/header-icon.js';
 import { createTableEditingIntegration } from './editor/table/obsidian-adapter.js';
+import { registerContentMenus } from './editor/context-menu.js';
 import { pasteFromClipboard } from './editor/clipboard-paste.js';
 import { createIndentModeMaintenance } from './editor/indent-maintenance-mode.js';
 import { planListIndentMaintenance } from './editor/list-indent-maintenance.js';
@@ -45,6 +51,7 @@ export default class ParaFlowPlugin extends Plugin {
 	private disposed = false;
 	private editorComposition!: EditorComposition;
 	private readingEnhancements: ReadingEnhancements | null = null;
+	private readonly detailsOpenState = new DetailsOpenState();
 	private tableEditing: ReturnType<typeof createTableEditingIntegration> | null = null;
 	private refreshMathMetadata: (() => Promise<void>) | null = null;
 	contentThemes: ThemeManifest[] = [];
@@ -151,6 +158,22 @@ export default class ParaFlowPlugin extends Plugin {
 	}
 
 	get contentThemeOverrides(): ThemeOverrides { return this.settings.themeOverrides[this.contentThemeId ?? 'paraflow-follow'] ?? {}; }
+	get metadataGap(): number | null { return this.settings.metadataGap; }
+
+	async setMetadataGap(value: number | null): Promise<void> {
+		const update = this.settingsUpdate.then(async () => {
+			if (this.disposed) return;
+			const metadataGap = normalizeMetadataGap(value);
+			const theme = await this.prepareTheme(this.contentThemeId, this.contentThemeOverrides, metadataGap);
+			const next = { ...this.settings, metadataGap };
+			await this.saveData(next);
+			if (this.disposed) return;
+			this.settings = next;
+			this.themeManager.setTheme(theme);
+		});
+		this.settingsUpdate = update.catch(() => undefined);
+		await update;
+	}
 
 	private syncThemeDocuments(): void {
 		const documents = new Set([this.app.workspace.containerEl.ownerDocument]);
@@ -165,12 +188,12 @@ export default class ParaFlowPlugin extends Plugin {
 		for (const owner of documents) refreshCalloutHeaderIcons(owner);
 	}
 
-	private async prepareTheme(id: string | null, overrides = this.settings.themeOverrides[id ?? 'paraflow-follow'] ?? {}): Promise<{ id: string; css: string } | null> {
+	private async prepareTheme(id: string | null, overrides = this.settings.themeOverrides[id ?? 'paraflow-follow'] ?? {}, metadataGap = this.settings.metadataGap): Promise<{ id: string; css: string } | null> {
 		const themeId = id ?? 'paraflow-follow';
 		const theme = id === null ? null : await this.themeStore.read(id);
 		const overrideScheme = supportsThemeColorScheme(theme?.manifest) ? overrides.colorScheme : undefined;
 		const scheme = overrideScheme === 'host' ? 'adaptive' : overrideScheme ?? theme?.manifest.colorScheme ?? 'adaptive';
-		const css = themePaletteCss(themeId, scheme) + (theme?.css ?? '') + contentTokenBridge(themeId, overrides, theme?.manifest.origin)
+		const css = themePaletteCss(themeId, scheme) + (theme?.css ?? '') + contentTokenBridge(themeId, overrides, theme?.manifest.origin, metadataGap)
 			+ themeOverrideCss(themeId, overrides) + scopeOverrides(theme?.overrides ?? '', themeId);
 		return { id: themeId, css: resolveThemeUrls(css, path => this.app.vault.adapter.getResourcePath(this.themeStore.path(themeId) + '/' + path)) };
 	}
@@ -186,6 +209,7 @@ export default class ParaFlowPlugin extends Plugin {
 			if (this.disposed) return;
 			this.settings = nextSettings; this.themeManager.setTheme(theme);
 			this.refreshCalloutIcons();
+			this.readingEnhancements?.refresh();
 		});
 		this.settingsUpdate = update.catch(() => undefined); await update;
 	}
@@ -218,6 +242,7 @@ export default class ParaFlowPlugin extends Plugin {
 			if (this.disposed) return;
 			this.themeManager.setTheme(theme); this.settings = nextSettings;
 			this.refreshCalloutIcons();
+			this.readingEnhancements?.refresh();
 		});
 		this.settingsUpdate = update.catch(() => undefined); await update;
 	}
@@ -278,6 +303,8 @@ export default class ParaFlowPlugin extends Plugin {
 	}
 
 	async onload(): Promise<void> {
+		registerContentMenus(this);
+		registerDetailsOpenState(this, this.detailsOpenState);
 		this.register(() => { this.disposed = true; this.themeManager.destroy(); this.enhancementStyles.destroy(); });
 		this.settings = normalizeSettings(await this.loadData());
 		if (this.disposed) return;
@@ -299,7 +326,7 @@ export default class ParaFlowPlugin extends Plugin {
 		this.registerEvent(this.app.workspace.on('layout-change', () => this.syncThemeDocuments()));
 		this.registerEvent(this.app.workspace.on('window-open', () => this.syncThemeDocuments()));
 		this.registerEvent(this.app.workspace.on('window-close', () => this.syncThemeDocuments()));
-		this.registerEvent(this.app.workspace.on('css-change', () => this.refreshCalloutIcons()));
+		this.registerEvent(this.app.workspace.on('css-change', () => { this.refreshCalloutIcons(); this.readingEnhancements?.refresh(); }));
 		try { await this.initializeThemes(); }
 		catch (error) {
 			new Notice('Content theme setup failed. Editor features remain available. ' + String(error));
@@ -373,6 +400,7 @@ export default class ParaFlowPlugin extends Plugin {
 			notify: message => { new Notice(message); },
 			clipboard,
 			loadPrism,
+			registerBlockMoveScope: createBlockMoveScopeRegistration(this.app),
 			mathRendering: { renderMath: mathRenderer.renderMath, getCachedMath: mathRenderer.getCachedMath, isFocused: state => state.field(editorEditorField, false)?.hasFocus === true },
 			openReferenceLink: (destination, view) => {
 				if (/^(?:javascript|data|vbscript):/iu.test(destination.trim())) return;
@@ -387,6 +415,7 @@ export default class ParaFlowPlugin extends Plugin {
 				return () => { disposed = true; component.unload(); };
 			},
 			sourcePath: view => view.state.field(editorInfoField).file?.path ?? '',
+			detailsState: { cache: this.detailsOpenState, sourcePath: state => state.field(editorInfoField).file?.path ?? '' },
 			subscribeMarkdownChanges: listener => {
 				const events: Events = this.app.workspace;
 				const event = events.on('post-processor-change', listener);
@@ -427,7 +456,8 @@ export default class ParaFlowPlugin extends Plugin {
 		for(const command of this.tableEditing.commands)this.addCommand(command);
 		this.register(() => this.tableEditing?.destroy());
 		this.editorComposition.registerSupplementalExtensions();
-		const reading = this.readingEnhancements = createReadingEnhancements(() => this.settings.enhancements);
+		const reading = this.readingEnhancements = createReadingEnhancements(() => this.settings.enhancements,
+			createMermaidThemeRenderer(loadMermaid, this.app.workspace.containerEl.ownerDocument));
 		const modeScroll = createModeScrollAlignment();
 		const syncModeScroll = () => modeScroll.syncViews(this.app.workspace.getLeavesOfType('markdown')
 			.map(leaf => leaf.view).filter(view => view instanceof MarkdownView) as unknown as ModeScrollView[]);
@@ -441,6 +471,14 @@ export default class ParaFlowPlugin extends Plugin {
 				return file instanceof TFile ? this.app.vault.cachedRead(file) : null;
 			});
 			if (this.disposed) return;
+			const detailsComponent = new Component(); detailsComponent.load();
+			const detailsSection = context.getSectionInfo(element);
+			const releaseDetails = this.settings.enhancements.htmlBlocks && detailsSection ? await renderReadingDetails(element, detailsSection,
+				(source, target) => MarkdownRenderer.render(this.app, source, target, context.sourcePath, detailsComponent),
+				(root, source) => reading.register(root, () => source, () => source,
+					() => ({ text: source, lineStart: 0, lineEnd: source.split('\n').length - 1, container: true })),
+				{ cache: this.detailsOpenState, path: context.sourcePath }) : () => {};
+			if (this.disposed) { releaseDetails(); detailsComponent.unload(); return; }
 			const child = new MarkdownRenderChild(element);
 			let cleanup: (() => void) | undefined;
 			child.onload = () => {
@@ -454,7 +492,7 @@ export default class ParaFlowPlugin extends Plugin {
 				}, () => context.getSectionInfo(element));
 				cleanup = () => { releaseScroll(); releaseReading(); };
 			};
-			child.onunload = () => cleanup?.();
+			child.onunload = () => { cleanup?.(); releaseDetails(); detailsComponent.unload(); };
 			context.addChild(child);
 		});
 		this.app.workspace.onLayoutReady(() => {

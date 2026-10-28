@@ -21,6 +21,7 @@ export interface SourceViewOptions {
 	readonly lineNumberPosition?: 'editor-left' | 'body-left';
 	readonly newlineMarkers: boolean;
 	readonly tabSize: number;
+	readonly scrollLimit?: boolean;
 }
 
 export interface SourceViewExtensionOptions {
@@ -34,6 +35,9 @@ const gutters = (suffix: string): string => `:is(${scope}${suffix} > .cm-scrolle
 // The fixed-size head and stop are right-aligned; short tab stops clip only the shaft.
 const tabSymbol = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='12' viewBox='0 0 48 12'%3E%3Cpath d='M0 5.5H45.5M42 3.5L44 5.5L42 7.5M45.5 3V8' fill='none' stroke='black' stroke-width='1'/%3E%3C/svg%3E";
 export const SOURCE_VIEW_CSS = `
+.markdown-source-view.mod-cm6:not(.is-live-preview) > .cm-editor.paraflow-source-scroll-limit > .cm-scroller { padding-bottom:0!important; }
+.markdown-source-view.mod-cm6:not(.is-live-preview) > .cm-editor.paraflow-source-scroll-limit > .cm-scroller :is(.cm-sizer,.cm-contentContainer) { padding-bottom:0!important; }
+.markdown-source-view.mod-cm6:not(.is-live-preview) > .cm-editor.paraflow-source-scroll-limit > .cm-scroller .cm-content { padding-bottom:var(--file-margins,32px)!important; }
 ${scope} > .cm-scroller { font-family:var(--paraflow-source-font,var(--paraflow-font-family,var(--font-text)))!important; font-size:var(--font-text-size,16px); line-height:var(--paraflow-line-height,1.6); }
 ${content} > .cm-line {
  min-height:0!important;height:auto!important;margin-block:0!important;padding-block:0!important;
@@ -324,7 +328,7 @@ export function createSourceViewExtension(options: SourceViewExtensionOptions): 
 			});
 		}
 	});
-	return [features.of([]), lifecycle, sourceKeyboard(options), EditorView.editorAttributes.of(view => {
+	return [features.of([]), lifecycle, sourceKeyboard(options), EditorView.editorAttributes.of(view => ({class: options.isSourceView(view) && options.getOptions().scrollLimit ? 'paraflow-source-scroll-limit' : ''})), EditorView.editorAttributes.of(view => {
 		const current = currentOptions(view);
 		return current ? { class: ['paraflow-source-view',
 			!current.lineNumbers ? 'paraflow-source-line-numbers-off' : '',

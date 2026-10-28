@@ -6,6 +6,7 @@ export type PasteMode = 'exact' | 'smart';
 export interface EnhancementSettings {
 	headings: boolean;
 	htmlBlocks: boolean;
+	detailsHoverBackground: boolean;
 	mermaid: boolean;
 	math: boolean;
 	inline: boolean;
@@ -15,6 +16,11 @@ export interface EnhancementSettings {
 	codeSourcePalette: CodeSourcePalette;
 	bodyLayout: boolean;
 	callout: boolean;
+	calloutStyle: 'default' | 'obsidian';
+	virtualLineKeyboard: boolean;
+	virtualLinePointer: boolean;
+	sourceScrollLimit: boolean;
+	readingBlankParagraphs: boolean;
 	footnotes: boolean;
 	footnoteHideDefinitionMarkers: boolean;
 	commentDisplay: 'always' | 'editing';
@@ -52,11 +58,14 @@ export interface EnhancementSettings {
 	mergeWarning: boolean;
 }
 
-export type EnhancementToggle = Exclude<keyof EnhancementSettings, 'bodyTabMode' | 'bodyTabSize' | 'sourceTabSize' | 'sourceLineNumberStyle' | 'sourceLineNumberPosition' | 'paragraphSpacingEm' | 'commentDisplay' | 'codeLanguagePosition' | 'mathSourcePalette' | 'codeSourcePalette' | 'sourcePasteMode' | 'livePreviewPasteMode'>;
+export type EnhancementToggle = Exclude<keyof EnhancementSettings, 'calloutStyle' | 'bodyTabMode' | 'bodyTabSize' | 'sourceTabSize' | 'sourceLineNumberStyle' | 'sourceLineNumberPosition' | 'paragraphSpacingEm' | 'commentDisplay' | 'codeLanguagePosition' | 'mathSourcePalette' | 'codeSourcePalette' | 'sourcePasteMode' | 'livePreviewPasteMode'>;
+
+export const OTHER_ENHANCEMENTS = ['virtualLineKeyboard', 'virtualLinePointer', 'sourceScrollLimit', 'readingBlankParagraphs'] as const;
 
 export const DEFAULT_ENHANCEMENTS: Readonly<EnhancementSettings> = Object.freeze({
 	headings: true,
 	htmlBlocks: true,
+	detailsHoverBackground: true,
 	mermaid: true,
 	math: true,
 	inline: true,
@@ -66,6 +75,11 @@ export const DEFAULT_ENHANCEMENTS: Readonly<EnhancementSettings> = Object.freeze
 	codeSourcePalette: 'obsidian',
 	bodyLayout: true,
 	callout: true,
+	calloutStyle: 'default',
+	virtualLineKeyboard: true,
+	virtualLinePointer: true,
+	sourceScrollLimit: true,
+	readingBlankParagraphs: true,
 	footnotes: true,
 	footnoteHideDefinitionMarkers: true,
 	commentDisplay: 'always',
@@ -109,7 +123,9 @@ export function normalizeEnhancements(value: unknown): EnhancementSettings {
 	for (const key of Object.keys(settings) as Array<keyof EnhancementSettings>) {
 		if (key === 'footnoteHideDefinitionMarkers' || key === 'tableHideAddControls') continue;
 		const candidate: unknown = Reflect.get(value, key);
-		if (key === 'bodyTabMode') {
+		if (key === 'calloutStyle') {
+			if (candidate === 'default' || candidate === 'obsidian') settings[key] = candidate;
+		} else if (key === 'bodyTabMode') {
 			if (candidate === 'fixed' || candidate === 'tab-stops') settings[key] = candidate;
 		} else if (key === 'bodyTabSize') {
 			if (typeof candidate === 'number' && Number.isInteger(candidate) && candidate >= 1 && candidate <= 32) settings[key] = candidate;

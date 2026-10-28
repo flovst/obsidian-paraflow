@@ -1,5 +1,6 @@
 import { parser, GFM } from '@lezer/markdown';
 import { createRangeQuery } from './range-query.js';
+import { detailsMarkdownSource } from '../rendered-blocks/details-source.js';
 
 export interface MathExpression {
 	readonly from: number;
@@ -33,7 +34,7 @@ export function scanMathRanges(source: string): MathRangeIndex {
 	let opaqueQuery = createRangeQuery(opaque), containerQuery = createRangeQuery(containers);
 	function contexts(input: string): void {
 		opaque.length = containers.length = 0;
-		grammar.parse(input).iterate({ enter(node) {
+		grammar.parse(detailsMarkdownSource(input)).iterate({ enter(node) {
 			if (/^(?:InlineCode|FencedCode|CodeBlock|HTMLBlock|HTMLTag|CommentBlock|Comment)$/u.test(node.name)) opaque.push({ from: node.from, to: node.to });
 			if (node.name === 'ListItem') containers.push({ from: node.from, to: node.to });
 		} });

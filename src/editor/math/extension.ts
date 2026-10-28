@@ -439,11 +439,14 @@ export function createMathEditingExtension(options: MathEditingOptions): Extensi
 	const protectBoundaries = Prec.lowest(EditorState.transactionFilter.of(transaction => {
 		if (!options.isStateActive(transaction.startState)) return transaction;
 		if (transaction.annotation(mathBlockEdit)) return transaction;
-		if (isVirtualTailActive(transaction.state)) return transaction;
 		const selection = transaction.newSelection;
+		// Decide unrelated edits from the transaction before materializing its next state.
+		if (transaction.docChanged && (!transaction.startState.selection.main.empty || !transaction.isUserEvent('delete'))) return transaction;
+		if (!transaction.docChanged && !transaction.selection) return transaction;
 		if (!transaction.docChanged && transaction.selection && selection.ranges.some(range => !range.empty)) {
 			const active = transaction.startState.field(projection).active;
 			if (!active?.display) return transaction;
+			if (isVirtualTailActive(transaction.state)) return transaction;
 			const body = projectMathSource(transaction.startState, active);
 			const ranges = selection.ranges.map(range => {
 				// A document selection entering/leaving the whole block retains its exact source.
@@ -457,7 +460,6 @@ export function createMathEditingExtension(options: MathEditingOptions): Extensi
 		}
 		if (selection.ranges.length !== 1 || !selection.main.empty) return transaction;
 		if (transaction.docChanged) {
-			if (!transaction.startState.selection.main.empty || !transaction.isUserEvent('delete')) return transaction;
 			let boundary = false;
 			for (const math of discoverMath(transaction.startState).filter(item => item.display)) {
 				const body = projectMathSource(transaction.startState, math);
@@ -466,12 +468,13 @@ export function createMathEditingExtension(options: MathEditingOptions): Extensi
 					if (body.bodyLines.some(line => line.prefixTo > line.prefixFrom && from < line.prefixTo && to > line.prefixFrom)) boundary = true;
 				});
 			}
-			return boundary ? [] : transaction;
+			return boundary && !isVirtualTailActive(transaction.state) ? [] : transaction;
 		}
 		if (!transaction.selection) return transaction;
 		const head = selection.main.head;
 		const math = discoverMath(transaction.startState).find(item => item.display && item.from <= head && head <= item.to);
 		if (!math) return transaction;
+		if (isVirtualTailActive(transaction.state)) return transaction;
 		const body = projectMathSource(transaction.startState, math);
 		const next = navigationHead(transaction, body, head);
 		return next === head ? transaction : [transaction, { selection: EditorSelection.create([EditorSelection.cursor(next, selection.main.assoc, selection.main.bidiLevel ?? undefined, selection.main.goalColumn)]) }];

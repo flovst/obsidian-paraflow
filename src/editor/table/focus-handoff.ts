@@ -86,7 +86,9 @@ export function restoreTableFocus(view:EditorView,active:boolean,restoreHtml:(fr
  const text=nested.state.doc.toString(),bookmark=request.bookmark;
  const offsets=text===bookmark.text?bookmark:mapRenderedTextSelection(text,bookmark.from,bookmark.to,bookmark.text);
  if(!offsets){clearTableFocus(view);return false;}
- nested.dispatch({selection:{anchor:offsets.from,head:offsets.to}});nested.focus();
+ const current=nested.state.selection;
+ if(current.ranges.length!==1||current.main.anchor!==offsets.from||current.main.head!==offsets.to)nested.dispatch({selection:{anchor:offsets.from,head:offsets.to}});
+ if(!nested.hasFocus)nested.focus();
  const rectangle=bookmark.rectangle;
  if(rectangle){const opposite=table.rows[position.row===rectangle.top?rectangle.bottom:rectangle.top]?.cells[position.column===rectangle.left?rectangle.right:rectangle.left];if(opposite)activateNativeCell(opposite,true);}
  clearTableFocus(view);return true;

@@ -36,10 +36,10 @@ function followingContent(state:EditorState,to:number,prefix:string):number|null
 
 /** Navigation reuses source-backed content; EOF uses the shared virtual body target. */
 export function blockExitPlan(state:EditorState,to:number,prefix='',goalColumn?:number):TransactionSpec {
-	if(/^[ \t\n]*$/u.test(state.sliceDoc(to)))return enterVirtualTail(state,{goalColumn});
+	if(/^[ \t\n]*$/u.test(state.sliceDoc(to)))return enterVirtualTail(state,{goalColumn,input:'keyboard'});
 	const existing=existingEmptyParagraphs(state,to,prefix)[0]??followingContent(state,to,prefix);
 	if(existing===null){
-		return enterVirtualTail(state,{goalColumn});
+		return enterVirtualTail(state,{goalColumn,input:'keyboard'});
 	}
 	return {selection:EditorSelection.create([EditorSelection.cursor(existing,1,undefined,goalColumn)]),
 		annotations:[selectionModeAnnotation.of('normal'),isolateHistory.of('full')],

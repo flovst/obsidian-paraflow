@@ -18,6 +18,7 @@ import {quotePrefix} from './prefix.js';
 import {quotedTabStarts} from './body-tab-source.js';
 import {bodyTabParser} from './body-tab-parser.js';
 import { containerBodyContext, sameContainerBody } from './source-context.js';
+import { detailsMarkdownSource, detailsSourceMasks } from '../rendered-blocks/details-source.js';
 export {quotePrefix} from './prefix.js';
 
 const languageData = defineLanguageFacet();
@@ -182,7 +183,7 @@ function buildQuoteContent(state: EditorState, from: number, to: number, depth: 
 	let parsed: EditorState;
 	if (candidate && sameBodyInputs(candidate.inputs, inputs)) parsed = candidate.state;
 	else {
-		const masks = [...codeDraftMask(source, draft), ...quotes,...tabMasks].sort((a, b) => a.from - b.from);
+		const masks = [...codeDraftMask(source, draft), ...quotes,...tabMasks, ...detailsSourceMasks(source)].sort((a, b) => a.from - b.from);
 		const normalized = maskCodeSource(source, masks);
 		const projectedLanguage = new Language(languageData, bodyTabParser(codeDraftParser(grammar.configure(nativeInlineGrammarFor(scanMathRanges(normalized).expressions, pending)), masks),inputs.tabs), [], 'paraflow-callout-content');
 		const virtual = EditorState.create({ doc: source, extensions: [projectedLanguage,projectedContent.of(true),pendingMath.of(pending),codeDraft.of(draft),quoteDraftMasks.of(quotes),
@@ -222,7 +223,7 @@ export function contentSyntaxTree(state: EditorState): Tree {
 	const pending = pendingMathRanges(state), draft = state.facet(codeDraft), quotes = state.facet(quoteDraftMasks), cached = trees.get(state.doc);
 	if (cached?.ranges === pending && cached.draft === draft && cached.quotes === quotes) return cached.tree;
 	const source = state.doc.toString();
-	const tree = documentGrammar.configure(nativeInlineGrammarFor(mathRangeIndex(state).expressions, pending)).parse(maskQuoteDraftSource(maskCodeSource(source, codeDraftMask(source, draft)), quotes));
+	const tree = documentGrammar.configure(nativeInlineGrammarFor(mathRangeIndex(state).expressions, pending)).parse(detailsMarkdownSource(maskQuoteDraftSource(maskCodeSource(source, codeDraftMask(source, draft)), quotes)));
 	trees.set(state.doc, { ranges: pending, draft, quotes, tree });
 	return tree;
 }

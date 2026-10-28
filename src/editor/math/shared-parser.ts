@@ -8,6 +8,8 @@ import { baseMathLanguage, mathParserMasks, acceptedParserMath, projectMathTree 
 import { codeParserSource, maskCodeSource, type CodeParserSource } from '../code-blocks/parser-source.js';
 import { quoteDraftMasks, maskQuoteDraftSource } from '../callout/quote-draft.js';
 import { acceptedMath, discoverMath, type MathExpression } from './syntax.js';
+import { detailsMarkdownSource } from '../rendered-blocks/details-source.js';
+import { detailsParsingActive } from '../rendered-blocks/details-state.js';
 
 function sameMasks(left: readonly PendingMathRange[], right: readonly PendingMathRange[]): boolean {
 	return left.length === right.length && left.every((range, index) => range.from === right[index]!.from && range.to === right[index]!.to);
@@ -44,18 +46,19 @@ function sharedParser(): Extension {
 		private install(): void {
 			const native = this.view.state.facet(language);
 			if (!native) return;
-			let previous: { state: EditorState; masks: readonly PendingMathRange[]; expressions: readonly MathExpression[]; code: CodeParserSource; quotes: readonly PendingMathRange[]; language: Language } | null = null;
+			let previous: { state: EditorState; masks: readonly PendingMathRange[]; expressions: readonly MathExpression[]; code: CodeParserSource; quotes: readonly PendingMathRange[]; details: boolean; language: Language } | null = null;
 			this.view.dispatch({ effects: compartment.reconfigure([
 				baseMathLanguage.of(native),
-				Prec.highest(language.computeN(['doc', pendingMath, acceptedMath, mathCandidatesActive, codeParserSource, quoteDraftMasks], state => {
+				Prec.highest(language.computeN(['doc', pendingMath, acceptedMath, mathCandidatesActive, codeParserSource, quoteDraftMasks, detailsParsingActive], state => {
 					// Only draft acceptance differs between editor modes; dollar grammar is shared.
 					const pending = state.facet(mathCandidatesActive) ? state.facet(pendingMath) : [];
 					const expressions = acceptedParserMath(state, pending), masks = mathParserMasks(state, pending, expressions), code = state.facet(codeParserSource), quotes = state.facet(quoteDraftMasks);
+					const details = state.facet(detailsParsingActive);
 					// Document transactions carry native fragments forward. A mode-only change
 					// needs a new language because CM otherwise does not restart its parser.
-					if (previous && (previous.state.doc !== state.doc || (sameMasks(previous.quotes, quotes) && sameMasks(previous.code.masks, code.masks) && sameMasks(previous.code.opaque, code.opaque) && sameMasks(previous.masks, masks) && sameMasks(previous.expressions, expressions) &&
+					if (previous && previous.details === details && (previous.state.doc !== state.doc || (sameMasks(previous.quotes, quotes) && sameMasks(previous.code.masks, code.masks) && sameMasks(previous.code.opaque, code.opaque) && sameMasks(previous.masks, masks) && sameMasks(previous.expressions, expressions) &&
 						previous.expressions.every((math, index) => math.display === expressions[index]!.display)))) {
-						previous = { state, masks, expressions, code, quotes, language: previous.language };
+						previous = { state, masks, expressions, code, quotes, details, language: previous.language };
 						return [previous.language];
 					}
 					const parser = new class extends Parser {
@@ -67,7 +70,8 @@ function sharedParser(): Extension {
 							const pending = parseState.facet(mathCandidatesActive) ? parseState.facet(pendingMath) : [];
 							const expressions = acceptedParserMath(parseState, pending), masks = mathParserMasks(parseState, pending, expressions);
 							const code = parseState.facet(codeParserSource), quotes = parseState.facet(quoteDraftMasks);
-							const source = maskQuoteDraftSource(maskCodeSource(maskMathSource(input.read(0, input.length), masks), code.masks), quotes);
+							const normalized = maskQuoteDraftSource(maskCodeSource(maskMathSource(input.read(0, input.length), masks), code.masks), quotes);
+							const source = parseState.facet(detailsParsingActive) ? detailsMarkdownSource(normalized) : normalized;
 							const nativeTrees = this.nativeTrees;
 							const nativeFragments = fragments.flatMap(fragment => {
 								const saved = nativeTrees.get(fragment.tree);
@@ -114,7 +118,7 @@ function sharedParser(): Extension {
 						}
 					}();
 					const adapted = new class extends Language { get allowsNesting(): boolean { return native.allowsNesting; } }(native.data, parser, [], native.name);
-					previous = { state, masks, expressions, code, quotes, language: adapted };
+					previous = { state, masks, expressions, code, quotes, details, language: adapted };
 					return [adapted];
 				})),
 			]) });

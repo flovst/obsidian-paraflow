@@ -23,7 +23,7 @@ export function tableSourceActions(view:EditorView,source:TableSource,options:Ta
 		}catch(error){options.notify(error instanceof Error?error.message:String(error));}
 	};
 	return [
-		{label:'复制表格',icon:'copy',run:run(()=>options.writeClipboard(view.state.sliceDoc(source.from,to)))},
+		{label:'复制表格源码',icon:'copy',run:run(()=>options.writeClipboard(view.state.sliceDoc(source.from,to)))},
 		{label:'格式化表格源码',icon:'code-xml',disabled:!!formatReason,disabledReason:formatReason,run:run(()=>{
 			if(view.state.readOnly)return;
 			const next=source.kind==='markdown'?formatMarkdownTable(text):formatHtmlTable(text);

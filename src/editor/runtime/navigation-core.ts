@@ -20,6 +20,9 @@ export interface VisualPosition {
 export const renderedSourceHit = Facet.define<
 	(view: EditorView, coordinates: { x: number; y: number }) => VisualPosition | null>();
 
+/** Empty rendered rows expose their editable endpoint independently of editing ownership. */
+export const emptyVisualLineAnchor = Facet.define<(state: EditorState, position: number) => number | null>();
+
 export interface VisualNavigationAdapter {
 	alignGoalOnVisualLine?(
 		position: VisualPosition,
@@ -123,9 +126,14 @@ function resolveRenderedHit(view: EditorView, coordinates: { x: number; y: numbe
 
 export function createVisualNavigationAdapter(view: EditorView): VisualNavigationAdapter {
 	const renderedHit = (coordinates: { x: number; y: number }): VisualPosition | null => resolveRenderedHit(view, coordinates);
-	const emptyBodyAnchor = (position: number): number | null =>
-		containerBodyLine(view.state, position)?.emptyAnchor ??
-		(getParagraphProjectionState(view.state)?.rangeIndex.editableAnchors.includes(position) ? position : null);
+	const emptyBodyAnchor = (position: number): number | null => {
+		for (const resolve of view.state.facet(emptyVisualLineAnchor)) {
+			const anchor = resolve(view.state, position);
+			if (anchor !== null) return anchor;
+		}
+		return containerBodyLine(view.state, position)?.emptyAnchor ??
+			(getParagraphProjectionState(view.state)?.rangeIndex.editableAnchors.includes(position) ? position : null);
+	};
 	const mountedEmptyBody = (position: number): number | null => {
 		const anchor = emptyBodyAnchor(position);
 		if (anchor === null) return null;
@@ -154,7 +162,8 @@ export function createVisualNavigationAdapter(view: EditorView): VisualNavigatio
 	});
 	return {
 		alignGoalOnVisualLine(position, goalX) {
-			if (mountedEmptyBody(position.position) === position.position) return position;
+			const emptyAnchor = mountedEmptyBody(position.position);
+			if (emptyAnchor !== null) return {...position, position: emptyAnchor};
 			const body = containerBodyLine(view.state, position.position);
 			if (body && body.emptyAnchor !== null) {
 				return { ...position, position: body.emptyAnchor };
@@ -212,8 +221,9 @@ export function createVisualNavigationAdapter(view: EditorView): VisualNavigatio
 				if (anchor !== null && (forward ? anchor < candidate.position : anchor > candidate.position)) return { position: anchor, assoc: direction };
 			}
 			// Adjacent gaps share the editable endpoint of an empty body.
-			if (mountedEmptyBody(candidate.position) === candidate.position ||
-				containerBodyLine(view.state, candidate.position)?.emptyAnchor === candidate.position) return candidate;
+			const emptyAnchor = mountedEmptyBody(candidate.position);
+			if (emptyAnchor !== null) return {...candidate, position: emptyAnchor};
+			if (containerBodyLine(view.state, candidate.position)?.emptyAnchor === candidate.position) return candidate;
 			let coordinates = view.coordsAtPos(candidate.position, candidate.assoc < 0 ? -1 : 1);
 			let crossedHiddenCarrier = false;
 			const atomicBoundary = (point: VisualPosition) => {

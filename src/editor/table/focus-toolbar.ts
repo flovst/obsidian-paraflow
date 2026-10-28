@@ -95,6 +95,10 @@ export class TableFocusToolbar {
 		if(!this.options.isActive(this.view)){this.hide();return;}
 		const target=this.resolve(this.pointerCell??context);if(!target){this.hide();return;}this.target=target;
 		if(!this.dom)this.create();
+		const palette=this.view.dom.ownerDocument.defaultView!.getComputedStyle(target.element);
+		for(const token of ['--interactive-accent','--background-modifier-hover','--background-modifier-border','--text-normal','--text-muted']) {
+			this.dom!.style.setProperty(token,palette.getPropertyValue(token));
+		}
 		this.observeGeometry(target.element);
 		this.dom!.querySelector<HTMLButtonElement>('[data-pf-table-size]')!.setAttribute('aria-label',`调整表格行列数（${target.rows} 行 × ${target.columns} 列）`);
 		const sourceButton=this.dom!.querySelector<HTMLButtonElement>('[data-pf-table-source-type]')!,sourceType=target.source.kind==='markdown'?'Markdown':'HTML';

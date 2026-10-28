@@ -48,15 +48,14 @@ export function readingBlockRhythmCss(scope: string): string {
 		['list-item', ':is(.el-ul,.el-ol)'], ['blockquote', '.el-blockquote'],
 		['blockquote', sectionWith('.callout')],
 		['code-block', '.el-pre'], ['table', `:is(.el-table,${sectionWith(':is(table,.paraflow-display-table-viewport)')})`],
-		['thematic-break', '.el-hr'], ['math-block', sectionWith('.math-block')],
+		['thematic-break', '.el-hr'], ['math-block', sectionWith('.math-block')], ['html-block', '.el-details'],
 	];
 	const section = `:is(${kinds.map(([,selector]) => selector).join(',')})`;
 	// Source adapters add one transparent render owner inside the native section.
 	const contentOwner = (selector: string) => `:is(${selector},${selector}>${projection})`;
 	const listSection = ':is(.el-ul,.el-ol)';
-	const container = `${scope} :is(blockquote.paraflow-display-quote,.callout-content):not(.markdown-embed *)`;
-	const listEnd = [`${contentOwner(`${root}>${listSection}[data-paraflow-reading-after="list-item"]`)}>:is(ul,ol)`, `${container}>:is(ul,ol):has(+:is(ul,ol))`];
-	const listStart = [`${contentOwner(`${root}>${listSection}[data-paraflow-reading-before="list-item"]`)}>:is(ul,ol)`, `${container}>:is(ul,ol)+:is(ul,ol)`];
+	const container = `${scope} :is(blockquote.paraflow-display-quote,.callout-content,.paraflow-details-body):not(.markdown-embed *)`;
+	const lists = [`${contentOwner(`${root}>${listSection}`)}>:is(ul,ol)`, `${container}>:is(ul,ol)`];
 	const edge = (tag: string, side: 'top'|'bottom') => tag === 'p'
 		? `var(--paraflow-body-paragraph-gap,var(--paraflow-p-margin-${side},var(--paraflow-block-gap,.8em)))`
 		: `var(--paraflow-${tag}-margin-${side},${tag === 'code-block' ? '.9375em' : tag === 'table' ? side === 'top' ? '1.1em' : '1.2em' : 'var(--paraflow-block-gap,.8em)'})`;
@@ -72,12 +71,13 @@ export function readingBlockRhythmCss(scope: string): string {
 	const codeNeighbors = ':is(p,.math-block,.paraflow-code-display-frame)';
 	return `
 ${root}>${section}{margin-block:0!important;--paraflow-occupied-gap:0px;padding-block-start:0}
-${contentOwner(`${root}>${section}`)}>:is(p,h1,h2,h3,h4,h5,h6,ul,ol,blockquote,pre,table,hr,.callout,.math-block,.paraflow-display-table-viewport){margin-block:0!important}
+${contentOwner(`${root}>${section}`)}>:is(p,h1,h2,h3,h4,h5,h6,ul,ol,blockquote,pre,table,hr,details,.callout,.math-block,.paraflow-display-table-viewport){margin-block:0!important}
 ${contentOwner(`${root}>${section}`)}>.paraflow-display-table-viewport>table{margin-block:0!important}
 ${root}>${section}[data-paraflow-reading-before]:not([data-paraflow-reading-before=""]){padding-block-start:${semanticBlockGapHeight}}
-${listEnd.map(selector => `${selector} li:last-child:not(:is(li:not(:last-child) *))`).join(',')}{padding-block-end:0}
-${listEnd.map(selector => `${selector}>li:last-child>p:last-child`).join(',')}{margin-block-end:0}
-${listStart.map(selector => `${selector}>li:first-child`).join(',')}{--paraflow-list-row-top-padding:0px;padding-block-start:var(--paraflow-list-row-top-padding)}
+${scope} li>p:has(+:is(ul,ol)):not(.markdown-embed *){margin-block-end:0!important}
+${lists.map(selector => `${selector} li:last-child:not(:is(li:not(:last-child) *))`).join(',')}{padding-block-end:0}
+${lists.map(selector => `${selector}>li:last-child>p:last-child`).join(',')}{margin-block-end:0}
+${lists.map(selector => `${selector}>li:first-child`).join(',')}{--paraflow-list-row-top-padding:0px;padding-block-start:var(--paraflow-list-row-top-padding)}
 /* A scroll viewport owns the table's outer gap after display enhancement. */
 ${container}>.paraflow-display-table-viewport>table{margin-block:0!important}
 ${container}>${containerBlock}:has(+${table}),${container}>${table}:has(+${containerBlock}),${container}>${codeNeighbors}:has(+${codeFrame}),${container}>${codeFrame}:has(+${codeNeighbors}){margin-block-end:0!important}

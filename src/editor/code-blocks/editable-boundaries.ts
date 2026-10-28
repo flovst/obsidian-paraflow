@@ -4,7 +4,7 @@ import { containerBlockFrame } from '../callout/container-surface.js';
 import { projectQuoteContent } from '../callout/projection.js';
 import { getParagraphProjectionState } from '../paragraph/projection.js';
 import { discoverCodeBlocks } from './model.js';
-import {documentContentStart,isVirtualEdgeActive} from '../runtime/virtual-tail.js';
+import {documentBodyStart,documentContentStart,isVirtualEdgeActive} from '../runtime/virtual-tail.js';
 import {calloutGaps} from '../callout/gaps.js';
 import {quoteContainers} from '../callout/presentation-model.js';
 
@@ -31,7 +31,7 @@ export function codeBodyStart(state: EditorState, block: CodeBlock): number {
 /** Fences include their adjacent newline positions, but actual body blank rows remain editable. */
 export function editableEndpoint(state: EditorState, blocks: readonly CodeBlock[], position: number, direction: number, range: SelectionRange): number {
 	if(isVirtualEdgeActive(state)&&position===range.head)return position;
-	if(!range.empty&&position===0&&documentContentStart(state)>0)return position;
+	if(!range.empty&&position===documentBodyStart(state)&&documentContentStart(state)>documentBodyStart(state))return position;
 	for (const block of blocks) {
 		if (block.indented || state.facet(codeDraftStart) === block.from) continue;
 		// A range spanning the entire construct must retain its complete Markdown source.

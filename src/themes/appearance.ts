@@ -12,7 +12,6 @@ export interface ThemeOverrides {
  marker?: 'layered' | 'disc' | 'circle' | 'square';
  metadataLayout?: 'content' | 'native';
  metadataPadding?: number;
- metadataGap?: number;
 }
 
 export function supportsThemeColorScheme(theme: ThemeManifest | null | undefined): boolean {
@@ -34,7 +33,7 @@ export function normalizeThemeOverrides(value: unknown): ThemeOverrides {
  if (source.fontWeight === 'host' || (typeof source.fontWeight === 'number' && [300, 400, 500].includes(source.fontWeight))) result.fontWeight = source.fontWeight;
  if (['layered', 'disc', 'circle', 'square'].includes(String(source.marker))) result.marker = source.marker as ThemeOverrides['marker'];
  if (source.metadataLayout === 'content' || source.metadataLayout === 'native') result.metadataLayout = source.metadataLayout;
- for (const [key,max] of [['metadataPadding',100],['metadataGap',300]] as const) {
+ for (const [key,max] of [['metadataPadding',100]] as const) {
   const v=source[key];
   if (typeof v==='number' && Number.isFinite(v) && v>=0 && v<=max) result[key]=v;
  }
@@ -72,7 +71,7 @@ export function themeOverrideCss(id: string, value: ThemeOverrides): string {
  }
  if (value.accentColor) {
   const v = value.accentColor === 'host' ? 'var(--paraflow-host-accent)' : value.accentColor;
-  put('--paraflow-link-color',v); put('--paraflow-link-override',v); put('--interactive-accent',v); put('--text-accent',v);
+  put('--paraflow-link-color',v); put('--paraflow-link-override',v); put('--paraflow-accent-color',v); put('--interactive-accent',v); put('--text-accent',v);
  }
  if (value.marker) {
   const layered = value.marker === 'layered';
@@ -102,6 +101,9 @@ export function themePaletteCss(id: string, scheme: ThemeManifest['colorScheme']
  const {roots,source} = themeRoots(id);
  const dark = scheme === 'dark';
  const colors: Record<string,string> = {
+  '--paraflow-color-scheme':scheme,
+  '--paraflow-surface-color':dark?'#303438':'#f8f8f8',
+  '--paraflow-highlight-color':'#000000',
   '--paraflow-math-rendered-color':dark?'var(--paraflow-content-color,var(--text-normal))':'#4d4d4d',
   '--background-primary':dark?'#363b40':'#ffffff', '--background-secondary':dark?'#2f3338':'#f6f6f6',
   '--text-normal':dark?'#dadada':'#333333', '--text-muted':dark?'#aeb4bb':'#666666',

@@ -1,7 +1,7 @@
 import * as css from 'css-tree';
 
 export const contentExclusion = ':not(:is(.callout,.callout *,.markdown-embed,.markdown-embed *))';
-const tags = new Set('p h1 h2 h3 h4 h5 h6 a strong b em i del s mark code pre blockquote table thead tbody tfoot caption colgroup col tr th td img hr ul ol li span dl dt dd tt q sup sub abbr'.split(' '));
+const tags = new Set('p h1 h2 h3 h4 h5 h6 a strong b em i del s mark code kbd pre blockquote table thead tbody tfoot caption colgroup col tr th td img hr ul ol li span dl dt dd tt q sup sub abbr'.split(' '));
 export const tableTags = new Set('table thead tbody tfoot caption colgroup col tr th td'.split(' '));
 const classes = new Set(['md-fences', 'md-inline-code', 'footnotes']);
 const pseudoClasses = new Set(['hover', 'focus', 'active', 'first-child', 'last-child', 'nth-child', 'nth-of-type']);
@@ -81,7 +81,7 @@ export function mapSelector(selector: css.Selector): SelectorMapping | null {
 		else live = ({
 			p: [], a: ['.cm-link', '.cm-url'], strong: ['.cm-strong'], b: ['.cm-strong'],
 			em: ['.cm-em'], i: ['.cm-em'], del: ['.cm-strikethrough'], s: ['.cm-strikethrough'],
-			mark: ['.cm-highlight'], code: ['.cm-inline-code'], pre: ['.HyperMD-codeblock'],
+			mark: ['.cm-highlight'], code: ['.cm-inline-code'], kbd: ['kbd'], pre: ['.HyperMD-codeblock'],
 			blockquote: ['.HyperMD-quote'], img: ['img'], hr: ['hr'], ul: [], ol: [], li: [], span: [],
 			table: ['table'], thead: ['thead'], tbody: ['tbody'], tr: ['tr'], th: ['th'], td: ['td'],
 		} as Record<string, string[]>)[tag] ?? [];

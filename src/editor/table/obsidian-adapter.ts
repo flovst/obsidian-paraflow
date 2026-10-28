@@ -1,10 +1,11 @@
-import {MarkdownView,Menu,Modal,Scope,editorInfoField,requireApiVersion,setIcon,type App,type Command,type View} from 'obsidian';
+import {MarkdownView,Menu,Modal,Scope,editorInfoField,getLanguage,requireApiVersion,setIcon,type App,type Command,type View} from 'obsidian';
 import type {EditorView} from '@codemirror/view';
 import {canEditCurrentTable,createTableEditingExtension,insertNewTable,showCurrentTableMenu} from './extension';
 import type {TableEditingOptions,TableValueRequest} from './editing-types';
 import {readClipboardData} from '../clipboard-paste';
 import {tableErrorMessage} from './error-messages';
 import {createNativeTableMenuPresenter,type HostTableMenu} from './native-menu';
+import {translateMenuText} from '../menu-i18n';
 import {refreshTableToolbarOwnership} from './focus-toolbar';
 import {refreshTableAddControlOwnership} from './add-controls';
 import {bindTableCellScope} from './cell-key-scope';
@@ -99,7 +100,7 @@ export interface TableEditingHost {
 
 /** One host menu shell for both native Markdown and ParaFlow HTML editors. */
 export function createTableEditingIntegration(app:App,host:TableEditingHost) {
-	const options:TableEditingOptions={...host,showMenu:createNativeTableMenuPresenter(()=>new Menu() as unknown as HostTableMenu),renderMenuIcon:setIcon,notify:message=>{new FailureDialog(app,tableErrorMessage(message)).open();},
+	const options:TableEditingOptions={...host,showMenu:createNativeTableMenuPresenter(()=>new Menu() as unknown as HostTableMenu,app,label=>translateMenuText(label,getLanguage())),renderMenuIcon:setIcon,notify:message=>{new FailureDialog(app,tableErrorMessage(message)).open();},
 		isActiveView:view=>host.getView()===view,
 		isSourceMode:view=>{const markdown=app.workspace.getActiveViewOfType(MarkdownView);return host.getView()===view&&markdown?.getMode()==='source'&&markdown.getState().source===true;},
 		openWikiLink:(view,target,newLeaf)=>app.workspace.openLinkText(target,view.state.field(editorInfoField).file?.path??'',newLeaf),
@@ -132,7 +133,7 @@ export function createTableEditingIntegration(app:App,host:TableEditingHost) {
 	const leafChange=app.workspace.on('active-leaf-change',()=>{refreshTableToolbarOwnership();refreshTableAddControlOwnership();});
 	const report=(error:unknown)=>options.notify(error instanceof Error?error.message:String(error));
 	const commands:Command[]=[
-		{id:'table-actions',name:'表格操作与格式',checkCallback:checking=>{const view=host.getView();if(!view||!canEditCurrentTable(view,options))return false;if(!checking){try{showCurrentTableMenu(view,options);}catch(error){report(error);}}return true;}},
+		{id:'table-actions',name:'表格操作',checkCallback:checking=>{const view=host.getView();if(!view||!canEditCurrentTable(view,options))return false;if(!checking){try{showCurrentTableMenu(view,options,undefined,false,true);}catch(error){report(error);}}return true;}},
 		{id:'insert-html-table',name:'新建可合并表格',checkCallback:checking=>{const view=host.getView();if(!view||!options.isActive(view))return false;if(!checking)void insertNewTable(view,options).catch(report);return true;}},
 	];
 	const cellSources=createNativeCellSourceEditing(view=>host.isActive(view)&&host.getBreakEditingEnabled(),view=>{

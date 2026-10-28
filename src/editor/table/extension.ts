@@ -7,7 +7,7 @@ import {HtmlTableController} from './html-editor';
 import {createTable,gridToHtml,TableSerializationError,type HtmlTable} from './serialization';
 import {isolateHistory} from '@codemirror/commands';
 import {NativeTableTarget} from './native-target';
-import {clearTableActions} from './table-actions';
+import {clearTableActions,showTableActions} from './table-actions';
 import {isTableMenuTarget} from './native-menu';
 import {TableFocusToolbar,type TableToolbarTarget} from './focus-toolbar';
 import {deleteMarkdownTracks,formatMarkdownTable,insertMarkdownTrack,markdownDimensions} from './toolbar-source';
@@ -132,7 +132,10 @@ export function createTableEditingExtension(options:TableEditingOptions):Extensi
 			const next=formatMarkdownTable(insertMarkdownTrack(view.state.doc.sliceString(target.source.from,to),'row',row));
 			NativeTableTarget.replaceMarkdownSource(view,target.source,cell,next,{cell:{row,column:0},from:0,to:0,text:''},to);return true;
 		},(view,cell,axis,direction)=>{
-   try{const target=Array.from(controllers.get(view)??[]).find(candidate=>candidate.dom.contains(cell))??NativeTableTarget.fromView(view,cell);if(!target)return false;moveTableTracks(target,axis,direction);}
+   try{const target=Array.from(controllers.get(view)??[]).find(candidate=>candidate.dom.contains(cell))??NativeTableTarget.fromView(view,cell);if(!target)return false;moveTableTracks(target,axis,direction);
+    // Keep repeated keys in the cell when the host has already mounted its replacement.
+    if(target instanceof NativeTableTarget)restoreTableFocus(view,true,()=>false);
+   }
    catch(error){options.notify(error instanceof Error?error.message:String(error));}
    return true;
   }),createTableKeyboardEntry(options),field,ViewPlugin.define(view=>{
@@ -238,7 +241,7 @@ export function currentTableSourceActions(view:EditorView,options:TableEditingOp
 	return tableSourceActions(view,source,options,context.target.closest('td,th'),controller,()=>{if(actionLifecycles.get(view)!==lifecycle)throw new Error('表格编辑目标已变化，请重新选择。');});
 }
 
-export function showCurrentTableMenu(view:EditorView,options:TableEditingOptions,point?:{x:number;y:number},fromContextMenu=false):boolean {
+export function showCurrentTableMenu(view:EditorView,options:TableEditingOptions,point?:{x:number;y:number},fromContextMenu=false,objectOnly=false):boolean {
 	if(!options.isActive(view))return false;
 	if(fromContextMenu&&!canEditCurrentTable(view,options,true))return false;
 	const position=view.state.selection.main.head;
@@ -246,7 +249,7 @@ export function showCurrentTableMenu(view:EditorView,options:TableEditingOptions
 	const controller=context?Array.from(controllers.get(view)??[]).find(controller=>controller.dom.contains(context.target)):
 		Array.from(controllers.get(view)??[]).find(controller=>controller.dom.contains(view.dom.ownerDocument.activeElement))??Array.from(controllers.get(view)??[]).find(controller=>controller.session.target.from<=position&&position<=controller.session.target.to);
 	const box=view.dom.getBoundingClientRect();const menuPoint=point??context?.point??{x:box.left+24,y:box.top+24};
-	if(controller){controller.showContextMenu(menuPoint);return true;}
+	if(controller){if(objectOnly)showTableActions(controller,options,menuPoint);else controller.showContextMenu(menuPoint);return true;}
 	let target:NativeTableTarget|null;
 	try{target=NativeTableTarget.fromView(view,context?.target??null);}
 	catch(error){
@@ -255,10 +258,10 @@ export function showCurrentTableMenu(view:EditorView,options:TableEditingOptions
 		const anchor=cell?view.posAtDOM(cell.closest('.cm-table-widget')??cell):position;
 		const source=findEditableTableSources(view.state).find(source=>source.from<=anchor&&anchor<=source.to);
 		if(!source)return false;
-		options.showMenu!(view.dom.ownerDocument,menuPoint,nativeSourceMenu(view,source,cell,options));return true;
+		options.showMenu!(view.dom.ownerDocument,menuPoint,nativeSourceMenu(view,source,cell,options,objectOnly));return true;
 	}
 	if(!target)return false;
-	showTableContextMenu(target,options,menuPoint);return true;
+	if(objectOnly)showTableActions(target,options,menuPoint);else showTableContextMenu(target,options,menuPoint);return true;
 }
 
 export async function insertNewTable(view:EditorView,options:TableEditingOptions):Promise<void> {

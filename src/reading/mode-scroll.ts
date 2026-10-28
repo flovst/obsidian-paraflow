@@ -1,6 +1,8 @@
 import { EditorView } from '@codemirror/view';
 import { discoverParagraphAuthority } from '../editor/paragraph/syntax.js';
 import { restoreSourceBlock } from './source-scroll.js';
+import { detailsContainers } from '../editor/rendered-blocks/details-source.js';
+import { readingDetailsTargets, resolveReadingDetailsTarget } from './details-ownership.js';
 
 interface ReadingSection { element: HTMLElement; path: string; from: number; to: number; source: string; }
 interface NativeReadingSection { el: HTMLElement; lines: number; height: number; computed: boolean; shown: boolean; }
@@ -61,6 +63,9 @@ export function createModeScrollAlignment() {
 			// Capture while the editor is visible; hiding it may rebuild its height map.
 			const starts = new Set([block.from, ...discoverParagraphAuthority(cm.state).blocks.map(block => block.from),
 				...readingSections(view).map(section => doc.line(section.from + 1).from)]);
+			for (const details of detailsContainers(doc.toString())) {
+				for (let line = doc.lineAt(details.from).number; line <= doc.lineAt(details.to).number; line++) starts.add(doc.line(line).from);
+			}
 			const offsets = new Map([...starts].map(from => [doc.lineAt(from).number - 1, origin + cm.lineBlockAt(from).top - scroll]));
 			return { line: doc.lineAt(block.from).number - 1, top: scroll === 0,
 				offset: line => offsets.get(line),
@@ -68,14 +73,19 @@ export function createModeScrollAlignment() {
 		}
 		const scroll = view.previewMode.containerEl.querySelector<HTMLElement>('.markdown-preview-view')!;
 		const viewport = scroll.getBoundingClientRect().top;
-		const candidates = readingSections(view);
+		const candidates = readingSections(view).flatMap(section => {
+			if (section.element.classList.contains('paraflow-details-continuation')) return [];
+			const targets = readingDetailsTargets(section.element, section.source);
+			return targets.length ? targets.map(target => ({ from: target.line, element: target.element }))
+				: [{ from: section.from, element: body(section.element) }];
+		});
 		const section = candidates.find(candidate => candidate.element.getBoundingClientRect().bottom > viewport) ?? candidates.at(-1);
 		if (!section) return null;
-		const offset = body(section.element).getBoundingClientRect().top - viewport;
+		const offset = section.element.getBoundingClientRect().top - viewport;
 		return { line: section.from, top: scroll.scrollTop === 0, offset: () => offset, valid: () => cm.state.doc.eq(doc) };
 	}
 	function body(section: HTMLElement): HTMLElement {
-		return section.firstElementChild as HTMLElement ?? section;
+		return section.querySelector<HTMLElement>(':scope > :not(.paraflow-reading-blank-paragraphs)') ?? section;
 	}
 
 	function bind(view: ModeScrollView): { destroy(): void } {
@@ -85,11 +95,15 @@ export function createModeScrollAlignment() {
 		const sourceOwn = Object.getOwnPropertyDescriptor(source, 'applyScroll'), readingOwn = Object.getOwnPropertyDescriptor(reading, 'applyScroll');
 		const measure = reading.measureSection.bind(reading), measureOwn = Object.getOwnPropertyDescriptor(reading, 'measureSection');
 		const bodyOffsets = new WeakMap<NativeReadingSection, number>();
+		const detailsOffsets = new WeakMap<HTMLElement, number>();
 		let preparation: { cancel(): void; check(): void } | null = null;
 		const remember = (section: NativeReadingSection): void => {
 			const bounds = section.el.getBoundingClientRect();
-			if (section.computed && section.el.isConnected && bounds.height > 0) bodyOffsets.set(section,
-				body(section.el).getBoundingClientRect().top - bounds.top);
+			if (section.computed && section.el.isConnected && bounds.height > 0) {
+				bodyOffsets.set(section, body(section.el).getBoundingClientRect().top - bounds.top);
+				for (const target of readingDetailsTargets(section.el, reading.text)) detailsOffsets.set(target.element,
+					target.element.getBoundingClientRect().top - bounds.top);
+			}
 		};
 		const measureSection = function(this: ReadingRenderer, section: NativeReadingSection): void {
 			// Native measurement mounts sections before virtualization can detach them.
@@ -100,13 +114,33 @@ export function createModeScrollAlignment() {
 		for (const section of reading.sections) {
 			remember(section);
 			// One-time initialization for geometry cached before this view was bound.
-			if (section.lines > 0 && section.computed && !bodyOffsets.has(section)) { section.computed = false; needsMeasurement = true; }
+			if (section.lines > 0 && section.computed && !bodyOffsets.has(section) &&
+				!section.el.classList.contains('paraflow-details-continuation')) { section.computed = false; needsMeasurement = true; }
 		}
 		if (needsMeasurement) reading.queueRender();
+		const readingTarget = (line: number) => {
+			for (const native of reading.sections) {
+				const detail = resolveReadingDetailsTarget(native.el, reading.text, line);
+				if (detail) {
+					remember(native);
+					return { native, line: detail.line, bodyOffset: detailsOffsets.get(detail.element) };
+				}
+			}
+			let start = 0;
+			const native = reading.sections.find(section => {
+				if (start + section.lines > line) return true;
+				start += section.lines; return false;
+			});
+			if (!native || native.el.classList.contains('paraflow-details-continuation')) return null;
+			const section = sections.get(native.el);
+			return section && section.source === reading.text && section.path === view.file?.path
+				? { native, line: section.from, bodyOffset: bodyOffsets.get(native) } : null;
+		};
 		let current: { anchor: Anchor; path: string; target: string; restored: boolean; cancelled?: boolean; input?: number } | null = null;
+		let editorTransition: { cancelled: boolean; applying: boolean } | null = null;
 		let alive = true;
-		const stop = () => { preparation?.cancel(); current = null; };
-		const cancel = () => { preparation?.cancel(); if (current) current.cancelled = true; };
+		const stop = () => { preparation?.cancel(); current = null; editorTransition = null; };
+		const cancel = () => { preparation?.cancel(); if (current) current.cancelled = true; if (editorTransition) editorTransition.cancelled = true; };
 		for (const type of ['wheel', 'touchstart', 'pointerdown', 'keydown']) view.containerEl.addEventListener(type, cancel, true);
 		const transition = (target: string, input: number) => {
 			const value = current;
@@ -118,6 +152,7 @@ export function createModeScrollAlignment() {
 			return value;
 		};
 		const restoreSource = function(this: typeof source, input: number): void {
+			if (editorTransition?.applying) return;
 			const value = transition('source', input);
 			if (!value) { sourceApply.call(this, input); return; }
 			if (value.restored || value.cancelled) return;
@@ -144,17 +179,15 @@ export function createModeScrollAlignment() {
 			// show() transfers the shared title/metadata only when the mode commits.
 			this.measureSection(this.header);
 			this.topSpace = this.pusherEl.offsetTop;
-			let line = 0;
-			const native = this.sections.find(section => {
-				if (line + section.lines > value.anchor.line) return true;
-				line += section.lines; return false;
-			});
-			if (!native || this.sections.slice(0, this.sections.indexOf(native) + 1).some(section => !section.computed)) return false;
+			const targetBlock = readingTarget(value.anchor.line);
+			if (!targetBlock) return false;
+			const { native, bodyOffset } = targetBlock;
+			if (this.sections.slice(0, this.sections.indexOf(native) + 1).some(section =>
+				!section.computed && !section.el.classList.contains('paraflow-details-continuation'))) return false;
 			const section = sections.get(native.el);
 			if (!section || section.path !== value.path || section.source !== this.text) return false;
-			const offset = value.anchor.offset(section.from);
+			const offset = value.anchor.offset(targetBlock.line);
 			if (offset === undefined) throw new Error('Reading restore section has no captured source block');
-			const bodyOffset = bodyOffsets.get(native);
 			if (bodyOffset === undefined) throw new Error('Computed Reading section has no measured body offset');
 			this.scrolling = true;
 			value.restored = true;
@@ -168,6 +201,28 @@ export function createModeScrollAlignment() {
 			const document = this.containerEl.ownerDocument, focused = document.activeElement;
 			const sourceFocused = editor(this).hasFocus;
 			const path = this.file?.path, from = this.getMode(), target = state.mode;
+			if (!disposed && alive && path && (!state.file || state.file === path) &&
+				from === 'source' && (target ?? from) === 'source' && state.source !== undefined &&
+				state.source !== (this.getState().source === true)) {
+				const cm = editor(this), doc = cm.state.doc, selection = cm.state.selection;
+				const viewport = cm.scrollDOM.getBoundingClientRect(), caret = cm.coordsAtPos(selection.main.head);
+				const cursor = !!caret && caret.top >= viewport.top && caret.bottom <= viewport.bottom;
+				const block = cm.lineBlockAtHeight(Math.max(0, viewport.top - cm.documentTop));
+				const position = cursor ? selection.main.head : block.from;
+				const offset = cursor ? caret.top - viewport.top : cm.documentTop + block.top - viewport.top;
+				const value = { cancelled: false, applying: true }; editorTransition = value;
+				const valid = () => !disposed && alive && editorTransition === value && !value.cancelled &&
+					this.file?.path === path && this.getMode() === 'source' && (this.getState().source === true) === state.source &&
+					cm.state.doc.eq(doc) && cm.state.selection.eq(selection);
+				try {
+					await original.call(this, state, result);
+					value.applying = false;
+					if (valid()) cm.dispatch({ effects: [restoreSourceBlock.of({ from: position, offset, cursor, valid,
+						restored: () => document.defaultView!.queueMicrotask(() => { if (valid()) this.syncScroll(); }),
+					}), EditorView.scrollIntoView(position, { y: 'start' })] });
+				} catch (error) { stop(); throw error; }
+				return;
+			}
 			const eligible = !disposed && alive && path && (!state.file || state.file === path) && target !== from &&
 				(from === 'preview' || from === 'source') && (target === 'preview' || target === 'source') &&
 				this.getState().source !== true && state.source !== true;
@@ -192,16 +247,19 @@ export function createModeScrollAlignment() {
 					container.ownerDocument.defaultView!.queueMicrotask(() => {
 						scheduled = false;
 						if (cleaned || reading.text !== reading.lastText) return;
-						let line = 0, height = 0, required: number | null = null;
+						const targetBlock = readingTarget(anchor.line);
+						if (!targetBlock) return;
+						let height = 0, required: number | null = null;
 						for (const native of reading.sections) {
+							if (native.el.classList.contains('paraflow-details-continuation')) continue;
 							if (!native.computed || reading.asyncSections.includes(native)) return;
-							if (line <= anchor.line && line + native.lines > anchor.line) {
-								const section = sections.get(native.el), bodyOffset = bodyOffsets.get(native);
-								const offset = section && anchor.offset(section.from);
+							if (native === targetBlock.native) {
+								const { bodyOffset } = targetBlock;
+								const offset = anchor.offset(targetBlock.line);
 								if (offset === undefined || bodyOffset === undefined) return;
 								required = height + bodyOffset - offset + container.clientHeight;
 							}
-							line += native.lines; if (native.shown) height += native.height;
+							if (native.shown) height += native.height;
 							if (required !== null && height >= required) { resolve(true); return; }
 						}
 						if (required !== null) resolve(true);
@@ -213,7 +271,7 @@ export function createModeScrollAlignment() {
 					// Initialize the native width owner before it measures prepared sections.
 					reading.onResize();
 					reading.set(editor(this).state.doc.toString());
-					reading.onRendered(() => resolve(true));
+					reading.onRendered(check);
 					if (!await ready || current !== value || value?.cancelled || !anchor.valid() || this.file?.path !== path) return;
 				} finally {
 					if (preparation === pending) preparation = null;

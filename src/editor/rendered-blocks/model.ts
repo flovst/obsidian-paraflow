@@ -5,6 +5,7 @@ import { metadataGrammar, nativeInlineGrammarFor, standaloneBreakGrammar } from 
 import { mathRangeIndex } from '../math/syntax.js';
 import { codeDraft, type CodeDraft } from '../code-blocks/draft-state.js';
 import { codeDraftMask, maskCodeSource } from '../code-blocks/parser-source.js';
+import { detailsMarkdownSource } from './details-source.js';
 export interface RenderedBlock {
 	kind: 'html' | 'mermaid'; from: number; to: number; bodyFrom: number; bodyTo: number;
 	lines: { from: number; to: number; contentFrom: number; number: number }[];
@@ -25,7 +26,7 @@ export function discoverRenderedBlocks(state: EditorState): RenderedBlock[] {
 	const blocks: RenderedBlock[] = [];
 	const tables = findTableSources(source);
 	let consumedTo = 0, tableIndex = 0;
-	grammar.configure(nativeInlineGrammarFor(mathRangeIndex(state).expressions)).parse(source).iterate({ enter(node) {
+	grammar.configure(nativeInlineGrammarFor(mathRangeIndex(state).expressions)).parse(detailsMarkdownSource(source)).iterate({ enter(node) {
 		if (node.from < consumedTo) return false;
 		while (tableIndex < tables.length && tables[tableIndex]!.to <= node.from) tableIndex++;
 		if (tableIndex < tables.length && tables[tableIndex]!.from <= node.from) return false;

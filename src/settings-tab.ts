@@ -1,6 +1,6 @@
 import { Notice, PluginSettingTab, Setting, SettingGroup, setIcon } from 'obsidian';
 import type ParaFlowPlugin from './main.js';
-import { normalizeEnhancements, type EnhancementSettings, type EnhancementToggle } from './enhancement-settings.js';
+import { DEFAULT_ENHANCEMENTS, OTHER_ENHANCEMENTS, normalizeEnhancements, type EnhancementSettings, type EnhancementToggle } from './enhancement-settings.js';
 import { translate as t, type MessageKey } from './settings-ui/i18n.js';
 import { en } from './settings-ui/en.js';
 import { renderThemePage, renderMarker, type ThemePageHost } from './settings-ui/theme-page.js';
@@ -9,7 +9,7 @@ type Choice = Record<string, string>;
 type Toggle = { enabled: boolean; save: (value: boolean) => Promise<void> };
 
 export class ParaFlowSettingTab extends PluginSettingTab {
-	private category: 'theme' | 'editing' = 'theme';
+	private category: 'theme' | 'editing' | 'other' = 'theme';
 	private group!: SettingGroup;
 	private groupDisabled = false;
 	private helpSequence = 0;
@@ -26,7 +26,8 @@ export class ParaFlowSettingTab extends PluginSettingTab {
 		const navigation = this.element(this.containerEl, 'div', 'paraflow-settings-categories');
 		navigation.setAttribute('role', 'tablist');
 		navigation.setAttribute('aria-label', t('navigation'));
-		for (const category of ['theme', 'editing'] as const) {
+		const categories = ['theme', 'editing', 'other'] as const;
+		for (const category of categories) {
 			const button = this.element(navigation, 'button');
 			button.type = 'button'; button.textContent = t(category);
 			button.id = `paraflow-tab-${category}`;
@@ -41,7 +42,7 @@ export class ParaFlowSettingTab extends PluginSettingTab {
 			button.addEventListener('keydown', event => {
 				if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
 				event.preventDefault();
-				this.category = event.key === 'Home' ? 'theme' : event.key === 'End' ? 'editing' : this.category === 'theme' ? 'editing' : 'theme';
+				this.category = event.key === 'Home' ? 'theme' : event.key === 'End' ? 'other' : categories[(categories.indexOf(this.category) + (event.key === 'ArrowRight' ? 1 : categories.length - 1)) % categories.length]!;
 				this.display();
 				this.containerEl.querySelector<HTMLButtonElement>('[aria-selected="true"]')?.focus();
 			});
@@ -49,7 +50,9 @@ export class ParaFlowSettingTab extends PluginSettingTab {
 		const panel = this.element(this.containerEl, 'div', 'paraflow-settings-panel');
 		panel.id = 'paraflow-settings-panel'; panel.setAttribute('role', 'tabpanel');
 		panel.setAttribute('aria-labelledby', `paraflow-tab-${this.category}`);
-		if (this.category === 'theme') renderThemePage(panel, this.themeHost()); else this.displayEditing(panel);
+		if (this.category === 'theme') renderThemePage(panel, this.themeHost());
+		else if (this.category === 'editing') this.displayEditing(panel);
+		else this.displayOther(panel);
 		this.accessibleNames();
 		if (focusKey && focusControl) {
 			this.containerEl.querySelector<HTMLElement>(`[data-setting="${focusKey}"] [data-control="${focusControl}"]`)?.focus({ preventScroll: true });
@@ -115,7 +118,7 @@ export class ParaFlowSettingTab extends PluginSettingTab {
 		section.dataset.feature = key;
 		const heading = new Setting(section).setName(t(key)).setHeading();
 		heading.settingEl.dataset.setting = key;
-		const collapsible = this.category === 'editing' && !['headings', 'callout', 'htmlBlocks', 'mermaid', 'footnotes'].includes(key);
+		const collapsible = this.category === 'editing' && !['headings', 'mermaid', 'footnotes'].includes(key);
 		const body = this.element(section, 'div', 'paraflow-settings-section-body');
 		body.id = `paraflow-section-${key}`;
 		if (this.category === 'editing') {
@@ -193,12 +196,13 @@ export class ParaFlowSettingTab extends PluginSettingTab {
 			let rangeInput: HTMLInputElement;
 			const defaultValue = nullable ? null : 8;
 			const current = this.paraFlow.enhancements[key];
+			const step = key === 'paragraphSpacingEm' ? 0.1 : 1;
 			const save = (value: number | null) => this.save(() => key === 'bodyTabSize'
 				? this.paraFlow.setEnhancement(key, value as number) : this.paraFlow.setEnhancement(key, value));
 			setting.addSlider(slider => {
 				rangeInput = slider.sliderEl;
 				rangeInput.addEventListener('input', () => { numberInput.value = rangeInput.value; });
-				slider.setLimits(min, max, nullable ? 0.1 : 1).setValue(current ?? min).onChange(value => {
+				slider.setLimits(min, max, step).setValue(current ?? 0).onChange(value => {
 					numberInput.value = String(value); void save(value);
 				});
 			});
@@ -206,12 +210,12 @@ export class ParaFlowSettingTab extends PluginSettingTab {
 				numberInput = text.inputEl;
 				numberInput.classList.add('paraflow-setting-number');
 				numberInput.type = 'number'; numberInput.min = String(min); numberInput.max = String(max);
-				numberInput.step = nullable ? '0.1' : '1';
+				numberInput.step = String(step);
 				text.setPlaceholder(nullable ? t('preset') : '8').setValue(String(current ?? '')).onChange(input => {
 					const parsed = Number(input);
 					const valid = input.trim() !== '' && Number.isFinite(parsed) && parsed >= min && parsed <= max && (nullable || Number.isInteger(parsed));
 					const value = valid ? parsed : defaultValue;
-					rangeInput.value = String(value ?? min);
+					rangeInput.value = String(value ?? 0);
 					if (!valid && numberInput.ownerDocument.activeElement !== numberInput) numberInput.value = '';
 					void save(value);
 				});
@@ -249,9 +253,11 @@ export class ParaFlowSettingTab extends PluginSettingTab {
 		this.feature(panel, 'images'); this.toggle('imageSourceReveal'); this.toggle('imageCenter');
 		this.feature(panel, 'headings');
 		this.feature(panel, 'callout');
+		this.select('calloutStyle', { default: 'default', obsidian: 'obsidian' });
 		this.feature(panel, 'footnotes');
 		this.feature(panel, 'mermaid');
 		this.feature(panel, 'htmlBlocks');
+		this.toggle('detailsHoverBackground');
 		this.feature(panel, 'clipboard');
 		for (const key of ['livePreviewPasteMode', 'sourcePasteMode'] as const) this.select(key, this.choices([['exact', 'exact'], ['smart', 'smart']]));
 		this.toggle('pasteCloseCodeFences');
@@ -278,6 +284,18 @@ export class ParaFlowSettingTab extends PluginSettingTab {
 		reset.settingEl.dataset.setting = 'resetEditing';
 		reset.controlEl.querySelector('button')!.dataset.control = '0';
 		reset.controlEl.querySelector('button')!.setAttribute('aria-label', t('resetEditing'));
+	}
+
+	private displayOther(panel: HTMLElement): void {
+		this.section(panel, 'other');
+		for (const key of OTHER_ENHANCEMENTS) this.toggle(key);
+		const footer = this.element(panel, 'div', 'paraflow-settings-footer');
+		const reset = new Setting(footer).addButton(button => button.setButtonText(t('resetOther')).onClick(() => this.save(async () => {
+			for (const key of OTHER_ENHANCEMENTS) await this.paraFlow.setEnhancement(key, DEFAULT_ENHANCEMENTS[key]);
+		}, true)));
+		reset.settingEl.dataset.setting = 'resetOther';
+		reset.controlEl.querySelector('button')!.dataset.control = '0';
+		reset.controlEl.querySelector('button')!.setAttribute('aria-label', t('resetOther'));
 	}
 
 	private themeHost(): ThemePageHost {

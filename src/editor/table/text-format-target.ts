@@ -3,7 +3,7 @@ import {bookmarkRange,rangeFromBookmark,type TextBookmark} from './action-target
 import {getTextToggleState} from './formatting';
 import type {TableTextCommand} from './text-menu-model';
 
-export type InlineToggleCommand='bold'|'italic'|'strikethrough'|'code'|`highlight:${string}`;
+export type InlineToggleCommand='bold'|'italic'|'strikethrough'|'underline'|'code'|`highlight:${string}`;
 type InlineFormatCommand=InlineToggleCommand|'clear';
 export function isInlineFormattingCommand(command:TableTextCommand):command is InlineFormatCommand {
 	return ['bold','italic','strikethrough','code','clear'].includes(command)||command.startsWith('highlight:');
@@ -15,6 +15,7 @@ function matches(element:HTMLElement,command:InlineFormatCommand):boolean {
 	if(command.startsWith('highlight:'))return element.tagName==='MARK';
 	if(command==='bold')return ['B','STRONG'].includes(element.tagName)||/^(bold|bolder)$/iu.test(element.style.fontWeight)||Number.parseInt(element.style.fontWeight,10)>=600;
 	if(command==='italic')return ['I','EM'].includes(element.tagName)||/^(italic|oblique)(?:\s|$)/iu.test(element.style.fontStyle);
+	if(command==='underline')return element.tagName==='U'||/(?:^|\s)underline(?:\s|$)/u.test(element.style.textDecorationLine||element.style.textDecoration);
 	return ['DEL','S','STRIKE'].includes(element.tagName)||/(?:^|\s)line-through(?:\s|$)/u.test(element.style.textDecorationLine||element.style.textDecoration);
 }
 

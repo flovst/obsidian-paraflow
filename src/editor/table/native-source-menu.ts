@@ -4,7 +4,6 @@ import type {TableSource} from './edit-session';
 import type {TableMenuItem} from './popup';
 import {nativeTableTextActions} from './native-text-actions';
 import {tableSourceActions} from './source-actions';
-import {tableEnhancementItems} from './primary-actions';
 
 interface NativeMenuCell {el:HTMLElement;}
 interface NativeMenuTable {
@@ -31,7 +30,7 @@ class CollectedMenuItem {
 }
 
 /** Unsupported HTML-model syntax must not remove any native Markdown command. */
-export function nativeSourceMenu(view:EditorView,source:TableSource,cell:HTMLElement|null,options:TableEditingOptions):TableMenuItem[] {
+export function nativeSourceMenu(view:EditorView,source:TableSource,cell:HTMLElement|null,options:TableEditingOptions,objectOnly=false):TableMenuItem[] {
 	const sourceActions=tableSourceActions(view,source,options,cell);if(!cell)return sourceActions;
 	const doc=view.state.doc;
 	const check=()=>{if(view.state.doc!==doc||!options.isActive(view)||options.isActiveView?.(view)===false||!cell.isConnected||!view.dom.contains(cell))throw new Error('表格操作目标已变化，请重新选择。');};
@@ -46,10 +45,13 @@ export function nativeSourceMenu(view:EditorView,source:TableSource,cell:HTMLEle
 	const nativeCell=native?.rows.flat().find(candidate=>candidate.el===cell);
 	const tableItems:TableMenuItem[]=[];
 	if(native&&nativeCell){
-		for(const [label,method] of [['行','makeRowMenu'],['列','makeColMenu']] as const){const menu=new CollectedMenu(check,options,()=>view.state.readOnly);native[method](menu,nativeCell);tableItems.push({label,icon:'table',separatorBefore:label==='行',children:menu.items});}
-		const menu=new CollectedMenu(check,options,()=>view.state.readOnly);native.makeSortMenu(menu,nativeCell);tableItems.push(...menu.items);
+		const tracks:TableMenuItem[]=[];
+		for(const method of ['makeRowMenu','makeColMenu'] as const){const menu=new CollectedMenu(check,options,()=>view.state.readOnly);native[method](menu,nativeCell);tracks.push(...menu.items.map((item,index)=>({...item,separatorBefore:method==='makeColMenu'&&index===0})));}
+		tableItems.push({label:'行列操作',icon:'move',children:tracks});
+		const menu=new CollectedMenu(check,options,()=>view.state.readOnly);native.makeSortMenu(menu,nativeCell);tableItems.push({label:'排序',icon:'arrow-down-az',children:menu.items});
 	}
-	const reason='当前 Markdown 单元格语法不能无损转换为增强表格模型；原生编辑功能仍可使用。';
-	const enhancements=tableEnhancementItems(options,[{label:'合并单元格',icon:'combine',disabled:true,disabledReason:reason},{label:'取消合并',icon:'split',disabled:true,disabledReason:reason}],sourceActions,[]).map(item=>item.label==='表格操作与格式'?{...item,disabled:true,disabledReason:reason}:item);
-	return [...nativeTableTextActions(view,cell,options,check),...enhancements,...tableItems];
+	const reason='合并操作需要支持当前单元格语法的增强表格模型。';
+	const actions:TableMenuItem[]=[...tableItems.slice(0,1),{label:'单元格',icon:'table-cells-merge',children:[{label:'合并单元格',icon:'combine',disabled:true,disabledReason:reason},{label:'取消合并',icon:'split',disabled:true,disabledReason:reason}]},...tableItems.slice(1),
+		...(options.getAutoWrap&&options.setAutoWrap?[{label:'表格自动换行',icon:'wrap-text',checked:options.getAutoWrap()?'on' as const:'off' as const,run:()=>{check();void options.setAutoWrap!(!options.getAutoWrap!()).catch(error=>options.notify(String(error)));}}]:[]),...sourceActions];
+	return objectOnly?actions:[...nativeTableTextActions(view,cell,options,check),...actions.map((item,index)=>({...item,separatorBefore:index===0}))];
 }

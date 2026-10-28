@@ -10,10 +10,12 @@ import { acceptedMath, discoverMath, mathRangeIndex } from './syntax.js';
 import type { MathExpression } from './range-scanner.js';
 import { createRangeQuery } from './range-query.js';
 import { maskMathSource } from './source-mask.js';
+import { detailsContainers, detailsMarkdownSource } from '../rendered-blocks/details-source.js';
+import { detailsParsingActive } from '../rendered-blocks/details-state.js';
 
 export function isLiteralDollarLine(text: string): boolean { return /^[ \t]*(?:>[ \t]*)*\${3,}$/u.test(text); }
 export const baseMathLanguage = Facet.define<Language, Language | null>({ combine: values => values[0] ?? null });
-const trees = new WeakMap<Text, { parser: Parser; ranges: readonly PendingMathRange[]; accepted: readonly MathExpression[]; code: CodeParserSource; quotes: readonly PendingMathRange[]; tree: Tree; shadow: EditorState }>();
+const trees = new WeakMap<Text, { parser: Parser; ranges: readonly PendingMathRange[]; accepted: readonly MathExpression[]; code: CodeParserSource; quotes: readonly PendingMathRange[]; details: boolean; tree: Tree; shadow: EditorState }>();
 /** Retain only the last queried shadow, never the source state's transaction history. */
 export const mathSemanticParseCache = StateField.define<EditorState | null>({
 	create: () => null,
@@ -29,6 +31,14 @@ function updateShadow(previous: EditorState | null | undefined, native: Language
 	return from === oldTo && from === newTo ? previous : previous.update({ changes: { from, to: oldTo, insert: source.slice(from, newTo) } }).state;
 }
 const dollarPresence = new WeakMap<Text, boolean>();
+const detailsPresence = new WeakMap<Text, boolean>();
+function containsDetails(doc: Text): boolean {
+	const cached = detailsPresence.get(doc);
+	if (cached !== undefined) return cached;
+	const found = detailsContainers(doc.toString()).length > 0;
+	detailsPresence.set(doc, found);
+	return found;
+}
 function containsDollar(doc: Text): boolean {
 	const cached = dollarPresence.get(doc);
 	if (cached !== undefined) return cached;
@@ -122,18 +132,20 @@ export function projectMathTree(tree: Tree, expressions: readonly MathExpression
 export function mathSyntaxTree(state: EditorState): Tree {
 	if (state.facet(baseMathLanguage)) return syntaxTree(state);
 	const code = state.facet(codeParserSource), quotes = state.facet(quoteDraftMasks);
-	if (!containsDollar(state.doc) && !code.masks.length && !quotes.length) return syntaxTree(state);
+	const details = state.facet(detailsParsingActive) && containsDetails(state.doc);
+	if (!containsDollar(state.doc) && !code.masks.length && !quotes.length && !details) return syntaxTree(state);
 	const native = state.facet(language);
 	if (!native) return syntaxTree(state);
 	const ranges = pendingMathRanges(state), accepted = state.facet(acceptedMath), cached = trees.get(state.doc);
-	if (cached?.parser === native.parser && cached.ranges === ranges && cached.accepted === accepted && cached.code === code && cached.quotes === quotes) return cached.tree;
+	if (cached?.parser === native.parser && cached.ranges === ranges && cached.accepted === accepted && cached.code === code && cached.quotes === quotes && cached.details === details) return cached.tree;
 	const expressions = acceptedParserMath(state, ranges), masks = mathParserMasks(state, ranges, expressions);
-	if (!masks.length && !code.masks.length && !quotes.length) return syntaxTree(state);
-	const source = maskQuoteDraftSource(maskCodeSource(maskedMathSource(state, masks), code.masks), quotes);
+	if (!masks.length && !code.masks.length && !quotes.length && !details) return syntaxTree(state);
+	const normalized = maskQuoteDraftSource(maskCodeSource(maskedMathSource(state, masks), code.masks), quotes);
+	const source = details ? detailsMarkdownSource(normalized) : normalized;
 	const shadow = updateShadow(cached?.shadow ?? state.field(mathSemanticParseCache, false), native, source);
 	const parsed = ensureSyntaxTree(shadow, shadow.doc.length, Infinity);
 	if (!parsed) throw new Error('Math semantic source did not complete parsing');
 	const tree = projectMathTree(parsed, expressions, code.opaque);
-	trees.set(state.doc, { parser: native.parser, ranges, accepted, code, quotes, tree, shadow });
+	trees.set(state.doc, { parser: native.parser, ranges, accepted, code, quotes, details, tree, shadow });
 	return tree;
 }
