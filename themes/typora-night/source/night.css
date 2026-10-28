@@ -156,7 +156,7 @@ h4 {
     /* 22px */
     margin-bottom: 1.5rem;
     /* 24px */
-    color: white;
+    color: #fff;
 }
 
 h5 {
@@ -175,7 +175,7 @@ h6 {
     line-height: 1rem;
     /* 16px */
     margin-bottom: 0.75rem;
-    color: white;
+    color: #fff;
 }
 
 @media (min-width: 980px) {
@@ -483,7 +483,7 @@ td {
 #typora-quick-open input{
     background-color: #525C65;
     border: 0;
-    border-bottom: 1px solid grey;
+    border-bottom: 1px solid #808080;
 }
 
 .typora-quick-open-item {
@@ -494,7 +494,7 @@ td {
 .typora-quick-open-item.active,
 .typora-quick-open-item:hover {
     background-color: #4D8BDB;
-    color: white;
+    color: #fff;
 }
 
 .typora-quick-open-item:hover {
@@ -519,7 +519,7 @@ td {
 }
 
 .ty-table-edit {
-    border-top: 1px solid gray;
+    border-top: 1px solid #808080;
     background-color: #363B40;
 }
 
@@ -568,8 +568,8 @@ td {
 .dropdown-menu .btn:focus,
 .md-toc .btn:hover,
 .md-toc .btn:focus {
-    color: white;
-    background: black;
+    color: #fff;
+    background: #000;
 }
 
 #toc-dropmenu {
@@ -606,7 +606,7 @@ td {
 .outline-item:hover {
     border-color: #363B40;
     background-color: #363B40;
-    color: white;
+    color: #fff;
 }
 
 h1.md-focus .md-attr,
@@ -630,7 +630,7 @@ h6.md-focus .md-attr,
 }
 
 #math-inline-preview .md-arrow:after {
-    background: black;
+    background: #000;
 }
 
 .modal-content {
@@ -644,11 +644,11 @@ h6.md-focus .md-attr,
 
 .modal-content input {
     background-color: rgba(26, 21, 21, 0.51);
-    color: white;
+    color: #fff;
 }
 
 .modal-content .input-group-addon {
-    color: white;
+    color: #fff;
 }
 
 .modal-backdrop {
@@ -664,11 +664,11 @@ h6.md-focus .md-attr,
 }
 
 .form-inline .input-group .input-group-addon {
-    color: white;
+    color: #fff;
 }
 
 #md-searchpanel {
-    border-bottom: 1px dashed grey;
+    border-bottom: 1px dashed #808080;
 }
 
 /** UI for electron */
@@ -722,7 +722,7 @@ footer {
 
 #recent-file-panel-action-btn {
     background: inherit;
-    border: 1px grey solid;
+    border: 1px #808080 solid;
 }
 
 .megamenu-menu-panel .dropdown-menu > li > a {
@@ -737,7 +737,7 @@ footer {
 }
 
 .megamenu-menu-panel tbody tr:hover td:nth-child(1) {
-    color: white;
+    color: #fff;
 }
 
 .modal-footer .btn-default, 
@@ -748,11 +748,11 @@ footer {
 }
 
 .btn-primary {
-    color: white;
+    color: #fff;
 }
 
 .btn-default:hover, .btn-default:focus, .btn-default.focus, .btn-default:active, .btn-default.active, .open > .dropdown-toggle.btn-default {
-    color: white;
+    color: #fff;
     border: 1px solid #ddd;
     background-color: inherit;
 }
@@ -820,11 +820,6 @@ footer {
     color: #686868 !important;
 }
 
-.on-focus-mode .md-end-block:not(.md-focus) img,
-.on-focus-mode .md-task-list-item:not(.md-focus-container)>input {
-    opacity: #686868 !important;
-}
-
 .on-focus-mode li[cid]:not(.md-focus-container){
     color: #686868;
 }
@@ -870,13 +865,13 @@ footer {
 .sidebar-footer-item:hover,
 .footer-item:hover {
     background: inherit;
-    color: white;
+    color: #fff;
 }
 
 .ty-side-sort-btn.active,
 .ty-side-sort-btn:hover,
 .selected-folder-menu-item a:after {
-    color: white;
+    color: #fff;
 }
 
 #sidebar-files-menu {
@@ -917,7 +912,7 @@ footer {
 }
 
 #ty-tooltip {
-    background-color: black;
+    background-color: #000;
     color: #eee;
 }
 
@@ -960,7 +955,7 @@ footer.ty-footer {
     background: #333;
     line-height: 22px;
     border-radius: 6px;
-    color: white;
+    color: #fff;
 }
 
 .ty-preferences input[type="search"]:focus {
@@ -1005,7 +1000,7 @@ footer.ty-footer {
 }
 
 #md-searchpanel input {
-    color: white;
+    color: #fff;
 }
 
 .modal-backdrop.in {

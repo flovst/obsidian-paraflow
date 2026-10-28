@@ -41,24 +41,16 @@ export const FOOTNOTE_CSS = `
   vertical-align: baseline;
   color: var(--text-muted);
 }
-.cm-line.paraflow-footnote-row .cm-footref:has(.paraflow-footnote-definition-source),
-.cm-line.paraflow-footnote-row .cm-footref:has(.paraflow-footnote-definition),
-.cm-line.paraflow-footnote-row .cm-hmd-footnote:has(.paraflow-footnote-definition-source),
-.cm-line.paraflow-footnote-row .cm-hmd-footnote:has(.paraflow-footnote-definition),
+.cm-line.paraflow-footnote-row :is(.cm-footref, .cm-hmd-footnote):has(:is(.paraflow-footnote-definition-source, .paraflow-footnote-definition)),
 .paraflow-footnote-definition-source,
 .paraflow-footnote-definition-source * {
-  font-size: inherit !important;
   font-weight: 600 !important;
-  line-height: inherit !important;
-  vertical-align: baseline !important;
-  position: static !important;
-  top: auto !important;
   color: var(--text-muted) !important;
 }
-.cm-line .cm-footref:has(.paraflow-footnote-reference-source),
-.cm-line .cm-hmd-footnote:has(.paraflow-footnote-reference-source),
-.cm-line .cm-footref:has(.paraflow-footnote-reference),
-.cm-line .cm-hmd-footnote:has(.paraflow-footnote-reference),
+.cm-line.paraflow-footnote-row :is(.cm-footref, .cm-hmd-footnote):has(:is(.paraflow-footnote-definition-source, .paraflow-footnote-definition)),
+.paraflow-footnote-definition-source,
+.paraflow-footnote-definition-source *,
+.cm-line :is(.cm-footref, .cm-hmd-footnote):has(:is(.paraflow-footnote-reference-source, .paraflow-footnote-reference)),
 .paraflow-footnote-reference-source,
 .paraflow-footnote-reference-source * {
   font-size: inherit !important;

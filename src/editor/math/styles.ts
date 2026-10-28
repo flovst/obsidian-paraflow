@@ -36,7 +36,6 @@ export const mathEditorStyles = `
 .cm-editor.paraflow-math-active .cm-line.paraflow-math-source-block {
   position: relative;
   box-sizing: border-box;
-  display: block !important;
   height: auto !important;
   min-height: calc(1em * var(--line-height-normal, 1.5)) !important;
   line-height: var(--line-height-normal, 1.5) !important;
@@ -48,11 +47,14 @@ export const mathEditorStyles = `
   background: var(--paraflow-surface-color);
   font-family: var(--font-monospace);
 }
+.cm-editor.paraflow-math-active .cm-line.paraflow-math-source-block,
+.cm-editor.paraflow-math-active .paraflow-math-source-block[data-paraflow-math-line]::before {
+  display: block !important;
+}
 /* Container rails have their own spans; native quote pseudo-borders must not paint the gutter. */
 .cm-editor.paraflow-math-active .cm-line.paraflow-math-source-block::before { border-inline-start: 0 !important; }
 .cm-editor.paraflow-math-active .paraflow-math-source-block[data-paraflow-math-line]::before {
   content: attr(data-paraflow-math-line) !important;
-  display: block !important;
   position: absolute;
   inset-block: 0;
   inset-inline-start: 0;
@@ -71,7 +73,6 @@ export const mathEditorStyles = `
   border-block-start: 1px solid var(--paraflow-border-color);
   border-radius: 3px 3px 0 0;
   padding-block-start: .4em !important;
-  contain: none !important;
   overflow: visible !important;
 }
 .cm-editor.paraflow-math-active .paraflow-math-source-block:not([data-paraflow-math-line]) {
@@ -128,12 +129,12 @@ export const mathEditorStyles = `
   overflow: visible;
 }
 /* The host paint-containment rule would clip the label above this widget. */
+.cm-editor.paraflow-math-active .cm-line.paraflow-math-source-start,
 .cm-editor .paraflow-math-block-preview,
 .markdown-source-view.mod-cm6 .cm-editor .cm-content .paraflow-math-block-preview {
   contain: none !important;
 }
-.paraflow-math-rendered.paraflow-math-block-preview > mjx-container[jax][display="true"],
-.paraflow-math-rendered.paraflow-math-block-preview > mjx-container[display="true"]:not([jax]) {
+.paraflow-math-rendered.paraflow-math-block-preview > .paraflow-math-output[display="true"] {
   margin: 0;
   margin-block: 0;
   max-width: 100%;
@@ -194,7 +195,7 @@ export const mathEditorStyles = `
   box-shadow: none;
   overflow: visible;
 }
-.cm-editor .paraflow-math-tooltip > mjx-container { display: block; max-width: 100%; overflow-x: auto; overflow-y: hidden; color: inherit; }
+.cm-editor .paraflow-math-tooltip > .paraflow-math-output { display: block; max-width: 100%; overflow-x: auto; overflow-y: hidden; color: inherit; }
 .cm-editor .paraflow-math-tooltip .cm-tooltip-arrow::before { border-bottom-color: #111; border-top-color: #111; }
 .cm-editor .paraflow-math-tooltip .cm-tooltip-arrow::after { border: 0; }
 `;

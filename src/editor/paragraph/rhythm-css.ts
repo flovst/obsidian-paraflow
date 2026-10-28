@@ -32,9 +32,6 @@ ${scope}>.cm-editor>.cm-scroller>.cm-sizer>.cm-contentContainer>.cm-content>.cm-
  min-height:var(--paraflow-list-sibling-gap,var(--paraflow-block-gap,.8em))!important;
  line-height:var(--paraflow-list-sibling-gap,var(--paraflow-block-gap,.8em))!important;
 }
-${[1, 2, 3, 4, 5, 6].map(level => `${scope} .paraflow-heading-following-line[data-paraflow-heading-before="h${level}"]{
- padding-block-start:max(var(--paraflow-h${level}-margin-bottom,var(--paraflow-block-gap,.8em)),var(--paraflow-p-margin-top,var(--paraflow-block-gap,.8em)))!important;
-}`).join('\n')}
 `;
 }
 

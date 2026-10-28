@@ -111,6 +111,7 @@ function renderPreview(view: EditorView, source: string, display: boolean,
 		};
 		const attach = (result: HTMLElement, cached = false): void => {
 			if (!current()) return;
+			result.classList.add('paraflow-math-output');
 			dom.replaceChildren(result);
 			if (!cached && options.finishRenderMath) void options.finishRenderMath().then(ready, showError);
 			else ready();

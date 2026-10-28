@@ -3,7 +3,8 @@ export const MEDIA_TABLE_CSS = `
 /* Native block replacement leaves an empty source carrier before the rendered table. */
 .markdown-source-view.mod-cm6.is-live-preview .paraflow-table-display-active .cm-line.HyperMD-table-row:has(>br:only-child):has(+.cm-table-widget) { height:0!important; min-height:0!important; line-height:0!important; padding-block:0!important; }
 /* Native cells freeze their dimensions before the display observer runs. */
-.markdown-source-view.mod-cm6:where(.is-live-preview) :where(.paraflow-table-display-active) .cm-table-widget { padding:0; margin-inline:0 !important; }
+.markdown-source-view.mod-cm6:where(.is-live-preview) :where(.paraflow-table-display-active) .cm-table-widget,
+.markdown-source-view.mod-cm6.is-live-preview .cm-table-widget.paraflow-display-table-widget { padding:0; margin-inline:0 !important; }
 .markdown-source-view.mod-cm6:where(.is-live-preview) :where(.paraflow-table-display-active) .cm-table-widget .table-wrapper { width:100%; }
 .markdown-source-view.mod-cm6:where(.is-live-preview) :where(.paraflow-table-display-active) .cm-table-widget .table-cell-wrapper { padding:0; height:auto; }
 .markdown-source-view.mod-cm6:where(.is-live-preview) :where(.paraflow-table-display-active) .cm-table-widget .table-cell-wrapper :is(.cm-scroller,.cm-content) { line-height:inherit; }
@@ -30,8 +31,7 @@ img.paraflow-display-image-center { display: block; margin-inline: auto; }
 .cm-content .image-embed.paraflow-display-image-container { display: inline-block; width: 100%; vertical-align: bottom; }
 .image-embed > .image-wrapper.paraflow-display-image-frame { display: block; width: fit-content; max-width: 100%; margin-inline: auto; }
 .paraflow-display-table-viewport { max-width: 100%; overflow-x: auto; }
-.markdown-source-view.mod-cm6.is-live-preview .cm-table-widget:has(table.paraflow-display-table) { padding: 0; margin-inline: 0 !important; }
-.markdown-source-view.mod-cm6.is-live-preview .cm-table-widget .table-wrapper:has(> table.paraflow-display-table) { width: 100%; }
+.markdown-source-view.mod-cm6.is-live-preview .cm-table-widget .table-wrapper.paraflow-display-table-wrapper { width: 100%; }
 .cm-table-widget table.paraflow-display-table .is-selected::after,.cm-table-widget.is-selected table.paraflow-display-table::after { inset: 0 !important; }
 table.paraflow-display-table { width: 100%; table-layout: auto; border-collapse: collapse; }
 :is(.markdown-source-view.mod-cm6.is-live-preview, .markdown-reading-view) table.paraflow-display-table { line-height: var(--paraflow-line-height, var(--line-height-normal, 1.6)); }

@@ -407,7 +407,7 @@ header, .context-menu, .megamenu-content, footer{
 }
 
 .ty-preferences .nav-group-item.active {
-    color: white;
+    color: #fff;
     background: #999;
 }
 

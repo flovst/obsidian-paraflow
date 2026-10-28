@@ -1,5 +1,5 @@
 import { createDetachedEl } from '../dom';
-import { Modal, Notice, editorInfoField, editorLivePreviewField, getLanguage, type App, type Editor, type Plugin } from 'obsidian';
+import { Modal, Notice, Platform, editorInfoField, editorLivePreviewField, getLanguage, type App, type Editor, type Plugin } from 'obsidian';
 import { EditorView } from '@codemirror/view';
 import { calloutAtMenuPosition, calloutMenuTypes, calloutTypeChange, convertSelectionToCallout } from './context-menu-callout.js';
 import { contentMenuActionPresentation, contentMenuItems, organizeContentMenu, type ContentMenu } from './context-menu-model.js';
@@ -90,7 +90,7 @@ export function registerContentMenus(plugin: Plugin): void {
 					const presentation = contentMenuActionPresentation(icon, section, color);
 					if (!presentation) return;
 					if (presentation.title) item.setTitle(t(presentation.title));
-					decorateContextMenuItem(item.dom, presentation, plugin.app);
+					decorateContextMenuItem(item.dom, presentation, plugin.app, Platform.isMacOS);
 				},
 				addObjectItems: level => {
 					if (code) {

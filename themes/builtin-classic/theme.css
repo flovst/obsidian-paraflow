@@ -110,7 +110,7 @@ body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-liv
 	> .cm-contentContainer
 	> .cm-content
 	> .cm-line {
-	margin-block: 0 !important;
+	margin-block: 0;
 }
 
 body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview:not(:is(.cm-table-widget *))
@@ -120,7 +120,7 @@ body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-liv
 	> .cm-contentContainer
 	> .cm-content
 	> .cm-line:not(.paraflow-code-line) {
-	margin-inline: 0 !important;
+	margin-inline: 0;
 }
 
 body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview:not(:is(.cm-table-widget *))
@@ -129,7 +129,7 @@ body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-liv
 	> .cm-sizer
 	> .cm-contentContainer
 	> .cm-content {
-	padding-bottom: var(--paraflow-end-spacing) !important;
+	padding-bottom: var(--paraflow-end-spacing);
 }
 
 body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview:not(:is(.cm-table-widget *))
@@ -252,8 +252,8 @@ body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='m
 	> .markdown-preview-view
 	> .markdown-preview-sizer
 	:is(ul, ol):not(:is(.callout *, .markdown-embed *)) {
-	margin-inline-start: 0 !important;
-	padding-inline-start: var(--paraflow-reading-list-indent) !important;
+	margin-inline-start: 0;
+	padding-inline-start: var(--paraflow-reading-list-indent);
 }
 
 body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='markdown']
@@ -262,7 +262,7 @@ body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='m
 	> .markdown-preview-sizer
 	:is(ul, ol):not(:is(.callout *, .markdown-embed *))
 	> li {
-	margin-inline-start: 0 !important;
+	margin-inline-start: 0;
 }
 
 body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='markdown']
@@ -478,6 +478,6 @@ body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='m
 body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='markdown'] .markdown-reading-view > .markdown-preview-view > .markdown-preview-sizer li:not(:is(.callout *, .markdown-embed *)) > :is(ul, ol) {
  margin-block-start: var(--paraflow-list-row-padding, .3em);
 }
-body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='markdown'] .markdown-reading-view > .markdown-preview-view > .markdown-preview-sizer li:not(:is(.callout *, .markdown-embed *)):has(> ul, > ol) {
+body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='markdown'] .markdown-reading-view > .markdown-preview-view > .markdown-preview-sizer li.paraflow-reading-list-parent:not(:is(.callout *, .markdown-embed *)) {
  padding-block-end: 0;
 }

@@ -2713,410 +2713,396 @@
     "line": 823,
     "surface": "shared",
     "status": "skipped",
-    "reason": "Unsupported or Typora UI selector: .on-focus-mode .md-end-block:not(.md-focus) img"
-  },
-  {
-    "file": "night.css",
-    "line": 824,
-    "surface": "shared",
-    "status": "skipped",
-    "reason": "Unsupported or Typora UI selector: .on-focus-mode .md-task-list-item:not(.md-focus-container)>input"
-  },
-  {
-    "file": "night.css",
-    "line": 828,
-    "surface": "shared",
-    "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .on-focus-mode li[cid]:not(.md-focus-container)"
   },
   {
     "file": "night.css",
-    "line": 832,
+    "line": 827,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .on-focus-mode .md-fences.md-focus .CodeMirror-code>*:not(.CodeMirror-activeline) *"
   },
   {
     "file": "night.css",
-    "line": 833,
+    "line": 828,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .on-focus-mode .CodeMirror.cm-s-inner:not(.CodeMirror-focused) *"
   },
   {
     "file": "night.css",
-    "line": 837,
+    "line": 832,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .on-focus-mode .md-focus"
   },
   {
     "file": "night.css",
-    "line": 838,
+    "line": 833,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .on-focus-mode .md-focus-container"
   },
   {
     "file": "night.css",
-    "line": 842,
+    "line": 837,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .on-focus-mode #typora-source .CodeMirror-code>*:not(.CodeMirror-activeline) *"
   },
   {
     "file": "night.css",
-    "line": 848,
+    "line": 843,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: #write .md-focus .md-diagram-panel"
   },
   {
     "file": "night.css",
-    "line": 855,
+    "line": 850,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: #write .md-focus.md-fences-with-lineno .md-diagram-panel"
   },
   {
     "file": "night.css",
-    "line": 859,
+    "line": 854,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .md-diagram-panel-error"
   },
   {
     "file": "night.css",
-    "line": 863,
+    "line": 858,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .active-tab-files #info-panel-tab-file"
   },
   {
     "file": "night.css",
-    "line": 864,
+    "line": 859,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .active-tab-files #info-panel-tab-file:hover"
   },
   {
     "file": "night.css",
-    "line": 865,
+    "line": 860,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .active-tab-outline #info-panel-tab-outline"
   },
   {
     "file": "night.css",
-    "line": 866,
+    "line": 861,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .active-tab-outline #info-panel-tab-outline:hover"
   },
   {
     "file": "night.css",
-    "line": 870,
+    "line": 865,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .sidebar-footer-item:hover"
   },
   {
     "file": "night.css",
-    "line": 871,
+    "line": 866,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .footer-item:hover"
   },
   {
     "file": "night.css",
-    "line": 876,
+    "line": 871,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .ty-side-sort-btn.active"
   },
   {
     "file": "night.css",
-    "line": 877,
+    "line": 872,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .ty-side-sort-btn:hover"
   },
   {
     "file": "night.css",
-    "line": 878,
+    "line": 873,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .selected-folder-menu-item a:after"
   },
   {
     "file": "night.css",
-    "line": 882,
+    "line": 877,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: #sidebar-files-menu"
   },
   {
     "file": "night.css",
-    "line": 888,
+    "line": 883,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .file-list-item"
   },
   {
     "file": "night.css",
-    "line": 892,
+    "line": 887,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .file-list-item-summary"
   },
   {
     "file": "night.css",
-    "line": 896,
+    "line": 891,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .file-list-item.active:first-child"
   },
   {
     "file": "night.css",
-    "line": 900,
+    "line": 895,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .file-node-background"
   },
   {
     "file": "night.css",
-    "line": 904,
+    "line": 899,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .file-library-node.active>.file-node-content"
   },
   {
     "file": "night.css",
-    "line": 905,
+    "line": 900,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .file-list-item.active"
   },
   {
     "file": "night.css",
-    "line": 910,
+    "line": 905,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .file-library-node.active>.file-node-background"
   },
   {
     "file": "night.css",
-    "line": 914,
+    "line": 909,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .file-list-item.active"
   },
   {
     "file": "night.css",
-    "line": 919,
+    "line": 914,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: #ty-tooltip"
   },
   {
     "file": "night.css",
-    "line": 924,
+    "line": 919,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .md-task-list-item>input"
   },
   {
     "file": "night.css",
-    "line": 930,
+    "line": 925,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .md-mathjax-midline"
   },
   {
     "file": "night.css",
-    "line": 935,
+    "line": 930,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: footer.ty-footer"
   },
   {
     "file": "night.css",
-    "line": 939,
+    "line": 934,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .ty-preferences .btn-default"
   },
   {
     "file": "night.css",
-    "line": 942,
+    "line": 937,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .ty-preferences .btn-default:hover"
   },
   {
     "file": "night.css",
-    "line": 946,
+    "line": 941,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .ty-preferences select"
   },
   {
     "file": "night.css",
-    "line": 951,
+    "line": 946,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .ty-preferences .nav-group-item.active"
   },
   {
     "file": "night.css",
-    "line": 952,
+    "line": 947,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .export-item.active"
   },
   {
     "file": "night.css",
-    "line": 953,
+    "line": 948,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .export-items-list-control"
   },
   {
     "file": "night.css",
-    "line": 954,
+    "line": 949,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .export-detail"
   },
   {
     "file": "night.css",
-    "line": 958,
+    "line": 953,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .ty-preferences input[type=\"search\"]"
   },
   {
     "file": "night.css",
-    "line": 966,
+    "line": 961,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .ty-preferences input[type=\"search\"]:focus"
   },
   {
     "file": "night.css",
-    "line": 970,
+    "line": 965,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: [data-is-directory=\"true\"] .file-node-content"
   },
   {
     "file": "night.css",
-    "line": 974,
+    "line": 969,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .file-node-title"
   },
   {
     "file": "night.css",
-    "line": 978,
+    "line": 973,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .html-for-mac .file-node-open-state"
   },
   {
     "file": "night.css",
-    "line": 978,
+    "line": 973,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .html-for-mac .file-node-icon"
   },
   {
     "file": "night.css",
-    "line": 982,
+    "line": 977,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: ::-webkit-scrollbar-thumb"
   },
   {
     "file": "night.css",
-    "line": 986,
+    "line": 981,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: ::-webkit-scrollbar-thumb:active"
   },
   {
     "file": "night.css",
-    "line": 990,
+    "line": 985,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: #typora-sidebar:hover div.sidebar-content-content::-webkit-scrollbar-thumb:horizontal"
   },
   {
     "file": "night.css",
-    "line": 994,
+    "line": 989,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .nav-group-item:active"
   },
   {
     "file": "night.css",
-    "line": 998,
+    "line": 993,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .md-search-hit"
   },
   {
     "file": "night.css",
-    "line": 1003,
+    "line": 998,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .md-search-hit *"
   },
   {
     "file": "night.css",
-    "line": 1007,
+    "line": 1002,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: #md-searchpanel input"
   },
   {
     "file": "night.css",
-    "line": 1011,
+    "line": 1006,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .modal-backdrop.in"
   },
   {
     "file": "night.css",
-    "line": 1016,
+    "line": 1011,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .clear-btn-icon"
   },
   {
     "file": "night.css",
-    "line": 1021,
+    "line": 1016,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .file-node-expanded>.file-node-children"
   },
   {
     "file": "night.css",
-    "line": 1025,
+    "line": 1020,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .md-alert-text-note"
   },
   {
     "file": "night.css",
-    "line": 1028,
+    "line": 1023,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .md-alert-text-important"
   },
   {
     "file": "night.css",
-    "line": 1031,
+    "line": 1026,
     "surface": "shared",
     "status": "skipped",
     "reason": "Unsupported or Typora UI selector: .md-alert-text-warning"

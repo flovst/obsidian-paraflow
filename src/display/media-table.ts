@@ -256,6 +256,11 @@ export class MediaTableDisplayController {
 			const reading = this.reading || table.closest('.markdown-reading-view') !== null;
 			this.add(table, 'paraflow-display-table');
 			const wrapper = table.parentElement;
+			const nativeWidgets = chain(table, this.root).filter(element => element.matches('.cm-table-widget'));
+			for (const widget of nativeWidgets) this.add(widget, 'paraflow-display-table-widget');
+			if (nativeWidgets.length && wrapper?.matches('.table-wrapper')) {
+				this.add(wrapper, 'paraflow-display-table-wrapper');
+			}
 			// Keep the native scroll owner so table selection and controls share its coordinates.
 			if (!table.closest('.cm-table-widget')) {
 				if (wrapper && reading && this.tableViewports.has(wrapper)) {

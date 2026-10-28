@@ -11,7 +11,8 @@ export const renderedBlockEditorStyles = `
 .paraflow-rendered-block-preview:hover { background: var(--paraflow-surface-color, var(--background-secondary)); }
 /* Keep the external source button visible and hit-testable under native CSS. */
 .cm-editor .paraflow-rendered-block-preview,
-.markdown-source-view.mod-cm6 .cm-editor .cm-content .paraflow-rendered-block-preview {
+.markdown-source-view.mod-cm6 .cm-editor .cm-content .paraflow-rendered-block-preview,
+.cm-editor .cm-content > .cm-line.paraflow-rendered-source-line {
   contain: none !important;
 }
 .paraflow-rendered-block-preview.is-editing {
@@ -48,16 +49,22 @@ export const renderedBlockEditorStyles = `
 .paraflow-rendered-block-content > :first-child { margin-block-start: 0; }
 .paraflow-rendered-block-content > :last-child { margin-block-end: 0; }
 .paraflow-rendered-block-preview[data-render-state="error"] .paraflow-rendered-block-content { color: var(--text-error); }
+.paraflow-rendered-block-badge,
+.cm-editor .cm-content > .cm-line.paraflow-rendered-source-line::before,
+.cm-editor .cm-content > .paraflow-rendered-source-line .cm-inline-code {
+  border: 0 !important;
+  border-radius: 0 !important;
+}
+.paraflow-rendered-block-badge,
+.cm-editor .cm-content > .paraflow-rendered-source-line .cm-inline-code { box-shadow: none !important; }
+.paraflow-rendered-block-badge,
+.cm-editor .cm-content > .cm-line.paraflow-rendered-source-line { height: auto !important; }
 .paraflow-rendered-block-badge {
   position: absolute !important;
   inset-block-end: 100%;
   inset-inline-end: 0;
-  height: auto !important;
   min-height: 0 !important;
   padding: .1em .55em !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
   font: .75em/1.4 var(--font-interface) !important;
   color: var(--text-muted) !important;
   background: var(--paraflow-surface-color, var(--background-secondary)) !important;
@@ -68,11 +75,11 @@ export const renderedBlockEditorStyles = `
 .paraflow-rendered-block-preview:hover > .paraflow-rendered-block-badge,
 .paraflow-rendered-block-badge:focus-visible,
 .paraflow-rendered-source-line .paraflow-rendered-block-badge { opacity: 1; }
+.cm-editor .cm-content > .cm-line.paraflow-rendered-source-line,
+.cm-editor .cm-content > .cm-line.paraflow-rendered-source-line::before { display: block !important; }
 .cm-editor .cm-content > .cm-line.paraflow-rendered-source-line {
   position: relative;
-  display: block !important;
   box-sizing: border-box;
-  height: auto !important;
   min-height: 1lh !important;
   line-height: var(--code-line-height, 1.6) !important;
   text-indent: 0 !important;
@@ -84,14 +91,12 @@ export const renderedBlockEditorStyles = `
   background: var(--paraflow-surface-color, var(--background-secondary)) !important;
   border-inline: 1px solid var(--paraflow-border-color, var(--background-modifier-border));
   overflow: visible !important;
-  contain: none !important;
 }
 .cm-editor .cm-content > .cm-line.paraflow-rendered-source-line.is-first { margin-block-start: 1.25em !important; padding-block-start: .3em !important; }
 .cm-editor .cm-content > .cm-line.paraflow-rendered-source-mermaid.is-first:not(.paraflow-callout-line) { border-block-start: var(--paraflow-block-code-border, 1px solid var(--paraflow-border-color, var(--background-modifier-border))) !important; }
 .cm-editor .cm-content > .cm-line.paraflow-rendered-source-line.is-last { padding-block-end: .3em !important; }
 .cm-editor .cm-content > .cm-line.paraflow-rendered-source-line::before {
   content: attr(data-paraflow-rendered-line) !important;
-  display: block !important;
   position: absolute;
   inset-inline-start: 0;
   inset-block: 0;
@@ -99,8 +104,6 @@ export const renderedBlockEditorStyles = `
   box-sizing: border-box;
   padding-inline-end: .7ch;
   text-align: end;
-  border: 0 !important;
-  border-radius: 0 !important;
   border-inline-end: 1px solid var(--paraflow-border-color, var(--background-modifier-border)) !important;
   color: var(--text-faint) !important;
   pointer-events: none;
@@ -110,10 +113,7 @@ export const renderedBlockEditorStyles = `
 .cm-editor .cm-content > .paraflow-rendered-source-line .cm-inline-code {
   padding: 0 !important;
   margin: 0 !important;
-  border: 0 !important;
-  border-radius: 0 !important;
   background: none !important;
-  box-shadow: none !important;
   font: inherit !important;
 }
 .paraflow-rendered-source-line .cm-indent { display: none; }

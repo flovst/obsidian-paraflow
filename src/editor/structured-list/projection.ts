@@ -911,6 +911,7 @@ export function taskDecorationsFor(state: EditorState, entries: readonly Project
 		const tokenMatch = /^\[([ xX])\]([ \t]+)$/u.exec(tokenSource);
 		if (!tokenMatch) throw new Error('Projected task token must include its content separator');
 		return [
+			Decoration.line({ class: 'paraflow-task-prefix-line' }).range(entry.prefix.from),
 			Decoration.replace({
 				widget: new TaskPrefixWidget(
 					entry.marker,

@@ -15,7 +15,16 @@ export function mathSvgCss() {
 	const svg = new SVG({ fontCache: 'none' });
 	const document = new HTMLHandler(adaptor).create('', { OutputJax: svg });
 	const css = parse(adaptor.textContent(svg.styleSheet(document)));
+	// MathJax statusline nodes are created under document.body and never enter a
+	// formula, so their rule cannot apply in this formula-owned stylesheet.
+	walk(css, { visit: 'Rule', enter(node, item, list) {
+		if (node.prelude.type === 'SelectorList' && generate(node.prelude) === 'mjx-status') list.remove(item);
+	} });
 	walk(css, { visit: 'Declaration', enter(node) { normalizeNamedColors(node.property, node.value); } });
+	walk(css, { visit: 'TypeSelector', enter(node, item) {
+		const owned = { 'mjx-tool': 'paraflow-math-tool', 'mjx-tip': 'paraflow-math-tip' }[node.name];
+		if (owned) item.data = { type: 'ClassSelector', name: owned };
+	} });
 	walk(css, { visit: 'SelectorList', enter(list) {
 		list.children.forEach(selector => {
 			const text = generate(selector);

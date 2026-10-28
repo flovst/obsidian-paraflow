@@ -165,7 +165,11 @@ export function createSvgMathRenderer(options: SvgMathRendererOptions): {
 				} finally { output.clear(); }
 				const error = result.querySelector('[data-mjx-error]');
 				if (error) throw new Error(error.getAttribute('data-mjx-error')!);
-				result.classList.add('paraflow-svg-math');
+				result.classList.add('paraflow-svg-math', 'paraflow-math-output');
+				// MathJax creates math-tooltip nodes during conversion and later moves them
+				// between its hidden SVG holder and the output root.
+				for (const tool of result.querySelectorAll('mjx-tool')) tool.classList.add('paraflow-math-tool');
+				for (const tip of result.querySelectorAll('mjx-tip')) tip.classList.add('paraflow-math-tip');
 
 				state.completed.set(key, result);
 				if (state.completed.size > completedLimit) state.completed.delete(state.completed.keys().next().value!);

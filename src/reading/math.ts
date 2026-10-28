@@ -77,6 +77,7 @@ export function createReadingMath(options: ReadingMathOptions): ReadingMath {
 				}
 				rendered = result;
 				addedClass = !element.classList.contains('paraflow-math-rendered');
+				result.classList.add('paraflow-math-output');
 				element.replaceChildren(result);
 				element.classList.add('paraflow-math-rendered');
 			} catch (error) {

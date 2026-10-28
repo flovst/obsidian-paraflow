@@ -25,7 +25,7 @@ export function isTableMenuTarget(node:Node|null):boolean {
 	if(!node)return false;return Array.from(openMenus.get(node.ownerDocument!)??[]).some(element=>element.contains(node));
 }
 
-export function createNativeTableMenuPresenter(create:()=>HostTableMenu,app?:unknown,translate:(label:string)=>string=label=>label):TableMenuPresenter {
+export function createNativeTableMenuPresenter(create:()=>HostTableMenu,app?:unknown,translate:(label:string)=>string=label=>label,mac=false):TableMenuPresenter {
 	return (doc,point,items,onClose)=>{
 		dismissMenu.get(doc)?.();
 		const menu=create(),roots=new Set<HTMLElement>(),listeners:Array<()=>void>=[];
@@ -40,7 +40,7 @@ export function createNativeTableMenuPresenter(create:()=>HostTableMenu,app?:unk
 					roots.add(item.dom);item.setTitle(translate(action.label)).setIcon(action.icon??'table').setDisabled(!!action.disabled);
 					if(action.checked)item.setChecked(action.checked==='mixed'?null:action.checked==='on');
 					if(action.disabledReason)item.dom.title=translate(action.disabledReason);
-					decorateContextMenuItem(item.dom,action,app);
+					decorateContextMenuItem(item.dom,action,app,mac);
 					if(action.children)build(item.setSubmenu(),action.children);
 					else item.onClick(()=>{clearPreview();action.run?.();});
 					if(action.preview&&!action.disabled){const enter=()=>{clearPreview();undoPreview=action.preview!();};item.dom.addEventListener('pointerenter',enter);item.dom.addEventListener('focusin',enter);item.dom.addEventListener('pointerleave',clearPreview);listeners.push(()=>{item.dom.removeEventListener('pointerenter',enter);item.dom.removeEventListener('focusin',enter);item.dom.removeEventListener('pointerleave',clearPreview);});}

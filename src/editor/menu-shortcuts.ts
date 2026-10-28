@@ -33,10 +33,10 @@ export function menuShortcutLabels(source: MenuShortcutSource, app: unknown, mac
 	return [...new Set(labels)];
 }
 
-export function decorateContextMenuItem(element: HTMLElement, source: MenuShortcutSource, app?: unknown): void {
+export function decorateContextMenuItem(element: HTMLElement, source: MenuShortcutSource, app?: unknown, mac = false): void {
 	element.classList.add('paraflow-context-menu-item');
 	element.querySelector('.paraflow-menu-shortcut')?.remove();
-	const labels = menuShortcutLabels(source, app, /Mac/u.test(element.ownerDocument.defaultView?.navigator.platform ?? ''));
+	const labels = menuShortcutLabels(source, app, mac);
 	if (!labels.length) return;
 	const hint = createDetachedEl(element.ownerDocument, 'span');
 	hint.className = 'paraflow-menu-shortcut';

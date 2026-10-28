@@ -187,7 +187,7 @@ p {
 	line-height: 1.5;
 }
 abbr {
-	border-bottom: 1px black dotted;
+	border-bottom: 1px #000 dotted;
 	cursor: help;
 }
 pre,
@@ -362,7 +362,7 @@ a {
 	font-family: 'Lato', 'Helvetica Neue', Helvetica, sans-serif;
 }
 .code-tooltip {
-	background: white;
+	background: #fff;
 }
 .code-tooltip-content {
 	font-size: 1.1rem;
@@ -449,7 +449,7 @@ a {
 }
 
 .html-for-mac #typora-sidebar {
-	background-color:white;
+	background-color:#fff;
 }
 
 .outline-content li, .outline-content ul {

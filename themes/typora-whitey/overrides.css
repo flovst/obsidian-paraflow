@@ -25,9 +25,9 @@ h2::after,
 }
 :is(.paraflow-block-boundary-gap,.paraflow-paragraph-gap-head)[data-paraflow-before="h1"][data-paraflow-after="h2"],
 .el-h2[data-paraflow-reading-before="h1"] {
-  --paraflow-gap-after: calc(.83 * var(--paraflow-h2-size)) !important;
+  --paraflow-gap-after: calc(.83 * var(--paraflow-h2-size));
 }
 :is(.paraflow-block-boundary-gap,.paraflow-paragraph-gap-head)[data-paraflow-before="h2"][data-paraflow-after="h3"],
 .el-h3[data-paraflow-reading-before="h2"] {
-  --paraflow-gap-after: calc(.83 * var(--paraflow-h3-size)) !important;
+  --paraflow-gap-after: calc(.83 * var(--paraflow-h3-size));
 }

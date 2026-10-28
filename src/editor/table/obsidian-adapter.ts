@@ -1,5 +1,5 @@
 import { createDetachedEl } from '../../dom';
-import {MarkdownView,Menu,Modal,Scope,editorInfoField,getLanguage,requireApiVersion,setIcon,type App,type Command,type View} from 'obsidian';
+import {MarkdownView,Menu,Modal,Platform,Scope,editorInfoField,getLanguage,requireApiVersion,setIcon,type App,type Command,type View} from 'obsidian';
 import type {EditorView} from '@codemirror/view';
 import {canEditCurrentTable,createTableEditingExtension,insertNewTable,showCurrentTableMenu} from './extension';
 import type {TableEditingOptions,TableValueRequest} from './editing-types';
@@ -101,7 +101,7 @@ export interface TableEditingHost {
 
 /** One host menu shell for both native Markdown and ParaFlow HTML editors. */
 export function createTableEditingIntegration(app:App,host:TableEditingHost) {
-	const options:TableEditingOptions={...host,showMenu:createNativeTableMenuPresenter(()=>new Menu() as unknown as HostTableMenu,app,label=>translateMenuText(label,getLanguage())),renderMenuIcon:setIcon,notify:message=>{new FailureDialog(app,tableErrorMessage(message)).open();},
+	const options:TableEditingOptions={...host,showMenu:createNativeTableMenuPresenter(()=>new Menu() as unknown as HostTableMenu,app,label=>translateMenuText(label,getLanguage()),Platform.isMacOS),renderMenuIcon:setIcon,notify:message=>{new FailureDialog(app,tableErrorMessage(message)).open();},
 		isActiveView:view=>host.getView()===view,
 		isSourceMode:view=>{const markdown=app.workspace.getActiveViewOfType(MarkdownView);return host.getView()===view&&markdown?.getMode()==='source'&&markdown.getState().source===true;},
 		openWikiLink:(view,target,newLeaf)=>app.workspace.openLinkText(target,view.state.field(editorInfoField).file?.path??'',newLeaf),

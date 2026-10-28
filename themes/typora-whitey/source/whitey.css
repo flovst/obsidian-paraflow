@@ -108,7 +108,7 @@ code,
 pre {
 	font-family: "Consolas", "Menlo", "Monaco", monospace, serif;
 	font-size: .9em;
-	background: white;
+	background: #fff;
 }
 .md-fences{
 	margin-left: 1em;

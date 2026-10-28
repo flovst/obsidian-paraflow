@@ -47,6 +47,7 @@ class CodeScrollWidget extends WidgetType {
 		const scroll=()=>scrollBlock(view,this.id,bar.scrollLeft);
 		bar.addEventListener('scroll',scroll);
 		const dom=wrapContainerBlock(view,bar,this.frame);dom.hidden=true;
+		if(dom!==bar)dom.classList.add('paraflow-code-scroll-container');
 		this.listeners.set(dom,()=>bar.removeEventListener('scroll',scroll));
 		return dom;
 	}

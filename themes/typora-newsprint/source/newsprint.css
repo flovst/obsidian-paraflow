@@ -543,7 +543,7 @@ header, .context-menu, .megamenu-content, footer {
 
 .file-list-item.active {
 	background-color: inherit;
-	color: black;
+	color: #000;
 }
 
 .ty-side-sort-btn.active {
@@ -610,7 +610,7 @@ input {
 
 .searchpanel-search-option-btn.active {
 	background: #777;
-	color: white;
+	color: #fff;
 }
 
 .export-detail, .light .export-detail, 
