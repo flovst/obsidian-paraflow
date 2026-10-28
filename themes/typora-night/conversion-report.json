@@ -1,5 +1,12 @@
 [
   {
+    "file": "night.css",
+    "line": 316,
+    "surface": "shared",
+    "status": "mapped",
+    "reason": "Redundant padding declaration omitted; a later basic length declaration takes precedence"
+  },
+  {
     "file": "night/mermaid.dark.css",
     "line": 1,
     "surface": "shared",
@@ -1457,13 +1464,6 @@
   },
   {
     "file": "night.css",
-    "line": 316,
-    "surface": "live-preview",
-    "status": "skipped",
-    "reason": "Live Preview blockquote layout property padding-left is not transferred"
-  },
-  {
-    "file": "night.css",
     "line": 317,
     "surface": "live-preview",
     "status": "skipped",
@@ -1528,9 +1528,16 @@
   {
     "file": "night.css",
     "line": 325,
-    "surface": "shared",
-    "status": "skipped",
-    "reason": "Unsupported or Typora UI selector: kbd"
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 325,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "night.css",
@@ -1591,9 +1598,16 @@
   {
     "file": "night.css",
     "line": 338,
-    "surface": "shared",
-    "status": "skipped",
-    "reason": "Unsupported or Typora UI selector: kbd"
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 338,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "night.css",
@@ -1647,9 +1661,16 @@
   {
     "file": "night.css",
     "line": 366,
-    "surface": "shared",
-    "status": "skipped",
-    "reason": "Unsupported or Typora UI selector: kbd"
+    "surface": "reading",
+    "status": "mapped",
+    "reason": "Reading content rule mapped"
+  },
+  {
+    "file": "night.css",
+    "line": 366,
+    "surface": "live-preview",
+    "status": "approximate",
+    "reason": "Live Preview uses Obsidian semantic classes"
   },
   {
     "file": "night.css",

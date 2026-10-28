@@ -15,6 +15,13 @@
   },
   {
     "file": "github.css",
+    "line": 260,
+    "surface": "shared",
+    "status": "mapped",
+    "reason": "Redundant padding declaration omitted; a later basic length declaration takes precedence"
+  },
+  {
+    "file": "github.css",
     "line": 1,
     "surface": "shared",
     "status": "approximate",
@@ -1027,13 +1034,6 @@
     "surface": "live-preview",
     "status": "approximate",
     "reason": "Live Preview uses Obsidian semantic classes"
-  },
-  {
-    "file": "github.css",
-    "line": 260,
-    "surface": "live-preview",
-    "status": "skipped",
-    "reason": "Live Preview code layout property padding is not transferred"
   },
   {
     "file": "github.css",

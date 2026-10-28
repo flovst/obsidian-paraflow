@@ -5,8 +5,9 @@ import { projectHeadingThemeSelectors } from './heading-selectors.js';
 import { projectContentThemeSelectors } from './content-selectors.js';
 import { projectQuoteThemeTokens } from './quote-selectors.js';
 import { cssName, themeResource } from './resource-policy.js';
+import { normalizePaddingDeclarations } from './padding-declarations.js';
 
-export const CONVERTER_VERSION = '8';
+export const CONVERTER_VERSION = '9';
 interface SourceRule { node: css.Rule | css.Atrule; file: string; media: string[] }
 
 const lengthValue = (value: string): string => /^[+-]?0(?:\.0+)?$/u.test(value) ? '0px' : value;
@@ -147,6 +148,12 @@ export function convertTyporaTheme(input: ThemeInput, options: { id: string; nam
 		visit(ast.children, media);
 	};
 	collect(packagePath(input.entry), [], []);
+	for (const { node, file } of rules) {
+		if (node.type !== 'Rule') continue;
+		for (const declaration of normalizePaddingDeclarations(node.block)) {
+			report(file, declaration, 'mapped', 'Redundant padding declaration omitted; a later basic length declaration takes precedence');
+		}
+	}
 	if (rules[0]) report(rules[0].file, rules[0].node, 'approximate', 'Content scope normalization preserves rule/declaration order, but removed html/body/#write selector specificity may differ');
 
 	let rootFontSize = '14px';
