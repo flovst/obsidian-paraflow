@@ -1,8 +1,11 @@
+import { createDetachedEl } from '../dom';
 import { FileSystemAdapter, Notice, Platform, Setting, normalizePath, type SliderComponent, type TextComponent } from 'obsidian';
 import type ParaFlowPlugin from '../main.js';
 import { supportsThemeColorScheme, type ThemeOverrides } from '../themes/appearance.js';
 import { ImportTyporaThemeModal } from '../themes/import-modal.js';
 import { translate as t, type MessageKey } from './i18n.js';
+
+declare const require: (id: 'electron') => { shell: { openPath(path: string): Promise<string> } };
 
 export interface ThemePageHost {
 	plugin: ParaFlowPlugin;
@@ -96,8 +99,7 @@ export function renderThemePage(panel: HTMLElement, host: ThemePageHost): void {
 			if (!(adapter instanceof FileSystemAdapter)) throw new Error(t('desktopOnly'));
 			const root = normalizePath((plugin.manifest.dir ?? `${plugin.app.vault.configDir}/plugins/${plugin.manifest.id}`) + '/themes');
 			// Electron is supplied by desktop Obsidian and kept external by the bundle.
-			// eslint-disable-next-line @typescript-eslint/no-require-imports, no-undef -- Obsidian supplies Electron only on desktop.
-			const { shell } = require('electron') as { shell: { openPath(path: string): Promise<string> } };
+			const { shell } = require('electron');
 			const error = await shell.openPath(adapter.getFullPath(root));
 			if (error) throw new Error(error);
 		})))
@@ -105,7 +107,7 @@ export function renderThemePage(panel: HTMLElement, host: ThemePageHost): void {
 		.addButton(button => button.setButtonText(t('export')).setDisabled(!plugin.contentThemeId || plugin.contentThemeId === 'builtin-classic').onClick(() => host.save(async () => {
 			const bytes = await plugin.exportContentTheme();
 			const url = URL.createObjectURL(new Blob([new Uint8Array(bytes).buffer], { type: 'application/zip' }));
-			const link = panel.ownerDocument.createElement('a'); link.href = url; link.download = plugin.contentThemeId + '.zip'; link.click();
+			const link = createDetachedEl(panel.ownerDocument, 'a'); link.href = url; link.download = plugin.contentThemeId + '.zip'; link.click();
 			panel.ownerDocument.defaultView?.setTimeout(() => URL.revokeObjectURL(url), 1000);
 		}))));
 	const canChooseScheme = supportsThemeColorScheme(plugin.contentThemes.find(theme => theme.id === plugin.contentThemeId));
@@ -209,7 +211,7 @@ export function renderThemePage(panel: HTMLElement, host: ThemePageHost): void {
 			});
 		});
 	}
-	const footer = panel.ownerDocument.createElement('div'); footer.className = 'paraflow-settings-footer'; panel.appendChild(footer);
+	const footer = createDetachedEl(panel.ownerDocument, 'div'); footer.className = 'paraflow-settings-footer'; panel.appendChild(footer);
 	const reset = new Setting(footer)
 		.addButton(button => button.setButtonText(t('reset'))
 			.onClick(() => host.save(async () => {
