@@ -324,6 +324,19 @@ SOFTWARE.
 
 
 ========================================================================
+dompurify 3.4.17 — Apache-2.0
+========================================================================
+
+Copyright (c) Cure53 and other contributors
+
+Source: https://github.com/cure53/DOMPurify
+Upstream license: https://github.com/cure53/DOMPurify/blob/3.4.17/LICENSE
+
+DOMPurify is available under MPL-2.0 OR Apache-2.0. ParaFlow distributes
+this component under Apache-2.0. The full Apache License, Version 2.0
+reproduced in this file applies to this component.
+
+========================================================================
 Bundled Typora content themes
 ========================================================================
 
@@ -333,5 +346,3 @@ https://github.com/typora/typora-default-themes
 
 The third-party CSS and font resources are not covered by ParaFlow's MIT
 license. See each theme directory's THIRD-PARTY-NOTICE.txt for its source.
-Redistribution permission for these exact resource versions remains to be
-confirmed before publication.
