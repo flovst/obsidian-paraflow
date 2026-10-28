@@ -7,7 +7,21 @@
   --paraflow-table-stripe-background: #363b40;
   --paraflow-table-color: #b8bfc6;
   --paraflow-border-color: #474d54;
-  --interactive-accent: #81b1db;
+  --paraflow-accent-color: #81b1db;
+  --paraflow-highlight-background: #D3D40E;
+  --paraflow-highlight-color: #000;
+}
+mark {
+  background: var(--paraflow-highlight-background);
+  color: var(--paraflow-highlight-color);
+}
+kbd {
+  padding: 2px 4px;
+  font-size: 90%;
+  color: #fff;
+  background-color: #333;
+  border-radius: 3px;
+  box-shadow: inset 0 -1px 0 rgba(0,0,0,.25);
 }
 table.paraflow-display-table :is(th, td) {
   color: var(--paraflow-table-color);

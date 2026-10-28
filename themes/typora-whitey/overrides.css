@@ -8,3 +8,26 @@
 table.paraflow-display-table > :is(thead, tbody, tfoot) > tr > :is(th, td) {
   border-inline: 0;
 }
+h2,
+.paraflow-heading-line--h2 {
+  position: relative;
+}
+h2::after,
+.paraflow-heading-line--h2::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: calc(50% - 50px);
+  width: 100px;
+  height: 1px;
+  background: #2f2f2f;
+  pointer-events: none;
+}
+:is(.paraflow-block-boundary-gap,.paraflow-paragraph-gap-head)[data-paraflow-before="h1"][data-paraflow-after="h2"],
+.el-h2[data-paraflow-reading-before="h1"] {
+  --paraflow-gap-after: calc(.83 * var(--paraflow-h2-size)) !important;
+}
+:is(.paraflow-block-boundary-gap,.paraflow-paragraph-gap-head)[data-paraflow-before="h2"][data-paraflow-after="h3"],
+.el-h3[data-paraflow-reading-before="h2"] {
+  --paraflow-gap-after: calc(.83 * var(--paraflow-h3-size)) !important;
+}
