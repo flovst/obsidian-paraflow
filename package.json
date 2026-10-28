@@ -9,7 +9,8 @@
     "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
     "version": "node version-bump.mjs && git add manifest.json versions.json",
     "lint": "eslint .",
-    "lint:css": "node build/check-css.mjs"
+    "lint:css": "node build/check-css.mjs",
+    "audit:css:public": "node build/audit-public-css.mjs"
   },
   "keywords": [
     "obsidian",
