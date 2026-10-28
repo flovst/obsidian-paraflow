@@ -24,6 +24,7 @@ export function renderedSourceClickPosition(event: Pick<MouseEvent, 'clientX' | 
 	const doc = element.ownerDocument;
 	let caret: { offsetNode: Node; offset: number } | null | undefined = doc.caretPositionFromPoint?.(event.clientX, event.clientY);
 	if (!caret) {
+		// iOS WebKit before 26.2 has no standard caretPositionFromPoint API.
 		const range = doc.caretRangeFromPoint?.(event.clientX, event.clientY);
 		if (range) caret = { offsetNode: range.startContainer, offset: range.startOffset };
 	}

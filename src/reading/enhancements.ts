@@ -1,4 +1,5 @@
 import type { EnhancementSettings } from '../enhancement-settings.js';
+import { projectReadingListClasses } from './list-classes.js';
 import { MediaTableDisplayController } from '../display/media-table.js';
 import { createCodeBlockDisplay } from '../display/code-blocks.js';
 import { normalizeReadingFootnoteLabels } from '../editor/footnotes/reading.js';
@@ -80,6 +81,7 @@ export function createReadingEnhancements(getSettings: () => Readonly<Enhancemen
 			if (settings.bodyLayout && settings.readingBlankParagraphs) restore.push(sectionRhythm(root, sourceSection, true));
 			return () => { for (const undo of restore.reverse()) undo(); };
 		}
+		restore.push(projectReadingListClasses(root, ownsElement));
 		if (settings.bodyLayout) restore.push(displayLineBreaks(root, getSectionSource(), ownsElement));
 		if (settings.callout) restore.push(enhanceReadingQuotes(root, settings.calloutStyle, ownsElement));
 		if (settings.mermaid) restore.push(enhanceReadingMermaid(root, getSectionSource(), renderMermaid, ownsElement));
@@ -126,8 +128,9 @@ export function createReadingEnhancements(getSettings: () => Readonly<Enhancemen
 			let destroyed = false;
 			const changed = (records: MutationRecord[]) => {
 				if (!records.some(record => record.type === 'attributes'
-					? (record.target as Element).matches('.callout') &&
-						(record.oldValue ?? '').split(/\s+/u).includes('is-collapsed') !== (record.target as Element).classList.contains('is-collapsed')
+					? ((record.target as Element).matches('li') || (record.target as Element).parentElement?.matches('li') ||
+						(record.target as Element).matches('.callout') &&
+						(record.oldValue ?? '').split(/\s+/u).includes('is-collapsed') !== (record.target as Element).classList.contains('is-collapsed'))
 					: owns(root, record.target.nodeType === 1 ? record.target as Element : record.target.parentElement!))) return;
 				if (pendingRefresh !== null) return;
 				const token = pendingRefresh = {};

@@ -20,7 +20,7 @@ export function mathSvgCss() {
 		list.children.forEach(selector => {
 			const text = generate(selector);
 			const scoped = text.startsWith('mjx-container')
-				? text.replace('mjx-container', 'mjx-container.paraflow-svg-math')
+				? text.replace('mjx-container', '.paraflow-svg-math')
 				: text.startsWith('[jax=') ? '.paraflow-svg-math' + text : '.paraflow-svg-math ' + text;
 			selector.children = parse(scoped, { context: 'selector' }).children;
 		});

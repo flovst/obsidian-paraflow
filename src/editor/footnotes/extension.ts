@@ -1,4 +1,5 @@
 import { createDetachedEl } from '../../dom';
+import { footnoteTooltipView } from './tooltip.js';
 import { foldedRanges, syntaxTree, unfoldEffect } from '@codemirror/language';
 import { EditorSelection, Prec, StateEffect, StateField, Transaction, type Extension, type Range } from '@codemirror/state';
 import { Decoration, EditorView, ViewPlugin, WidgetType, hoverTooltip, type DecorationSet, type ViewUpdate } from '@codemirror/view';
@@ -316,7 +317,7 @@ export function createFootnoteExtension(options: FootnoteOptions): Extension {
 					hint.className = 'paraflow-footnote-tooltip-hint';
 					hint.textContent = '按住 Ctrl/Cmd + 单击 跳转到脚注定义';
 				}
-				return { dom };
+				return footnoteTooltipView(dom);
 			} };
 		}),
 		footnoteIndexField, highlightField, projection, Prec.highest(EditorView.domEventHandlers({

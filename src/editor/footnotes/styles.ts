@@ -1,5 +1,5 @@
 export const FOOTNOTE_CSS = `
-.cm-tooltip:has(> .paraflow-footnote-tooltip) {
+.cm-tooltip.paraflow-footnote-tooltip-host {
   border: 0;
   background: transparent;
   box-shadow: none;
