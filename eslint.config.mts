@@ -15,6 +15,7 @@ export default defineConfig(
 		'package.json',
 		'package-lock.json',
 		'tsconfig.json',
+		'tsconfig.tools.json',
 	]),
 	{
 		languageOptions: {
@@ -23,6 +24,7 @@ export default defineConfig(
 			},
 			parserOptions: {
 				projectService: {
+					defaultProject: 'tsconfig.tools.json',
 					allowDefaultProject: [
 						'eslint.config.mts',
 						'manifest.json',
@@ -34,15 +36,31 @@ export default defineConfig(
 		},
 	},
 	...obsidianmd.configs.recommended,
+	{
+		files: ['build/**/*.mjs', 'stylelint.config.mjs'],
+		languageOptions: {
+			globals: { ...globals.node },
+			parserOptions: { projectService: false, project: './tsconfig.tools.json' },
+		},
+		rules: { 'obsidianmd/no-nodejs-modules': 'off' },
+	},
 
 	{
 		files: ['src/settings-tab.ts', 'src/themes/import-modal.ts'],
 		rules: { 'obsidianmd/ui/sentence-case': ['warn', { enforceCamelCaseLower: true, brands: ['Typora', 'ParaFlow', 'Obsidian', 'Markdown'], ignoreWords: ['ZIP'] }] },
 	},
 	{
-		// Theme and module style owners manage one stylesheet per window and remove it on close or unload.
-		files: ['src/themes/manager.ts', 'src/display/styles.ts'],
-		rules: { 'obsidianmd/no-forbidden-elements': 'off' },
+		files: ['src/**/*.ts'],
+		rules: {
+			// Include ownerDocument and other receiver names missed by the upstream rule.
+			'no-restricted-syntax': ['error', {
+				selector: 'CallExpression[callee.type="MemberExpression"][callee.property.name=/^(createElement|createEl)$/][arguments.0.value=/^(style|link)$/i]',
+				message: 'Use the bundled styles.css or a document-owned CSSStyleSheet instead of style/link elements.',
+			}, {
+				selector: 'CallExpression[callee.type="MemberExpression"][callee.property.name="createElementNS"][arguments.1.value=/^(style|link)$/i]',
+				message: 'Use the bundled styles.css or a document-owned CSSStyleSheet instead of style/link elements.',
+			}],
+		},
 	},
 
 	{
@@ -56,6 +74,7 @@ export default defineConfig(
 			],
 		},
 	},
+
 
 
 );
