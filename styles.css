@@ -1209,7 +1209,7 @@ body[data-paraflow-theme] .tooltip.mod-left .tooltip-arrow { top: calc(50% - 4px
 	.paraflow-task-checkbox {
 	flex: 0 0 auto;
 	margin: 0 0.375em 0 0 !important;
-	transform: none !important;
+	transform: none;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
@@ -2085,11 +2085,11 @@ pre.paraflow-code-display.paraflow-code-wrap > code {
 }
 .cm-line.paraflow-footnote-row { color: var(--text-muted); }
 .cm-line.HyperMD-footnote.paraflow-footnote-row,
-.markdown-reading-view .markdown-preview-view .footnotes:has(> ol > li.paraflow-reading-footnote) {
+.markdown-reading-view .markdown-preview-view .footnotes.paraflow-reading-footnotes {
   font-size: var(--paraflow-footnote-size, var(--paraflow-default-footnote-size, var(--footnote-size, .875em)));
   line-height: var(--paraflow-footnote-line-height, var(--paraflow-line-height, var(--line-height-normal, 1.6)));
 }
-.markdown-reading-view .markdown-preview-view .footnotes:has(> ol > li.paraflow-reading-footnote) :is(ol,ul,li,p) {
+.markdown-reading-view .markdown-preview-view .footnotes.paraflow-reading-footnotes :is(ol,ul,li,p) {
   font-size: inherit;
   line-height: inherit !important;
 }
@@ -2631,10 +2631,10 @@ pre.paraflow-code-display.paraflow-code-wrap > code {
 .paraflow-reading-tab { white-space: pre; }
 
 .paraflow-reading-blank-paragraphs,.paraflow-reading-blank-paragraphs>[data-paraflow-blank-row]{
- display:block!important;margin:0!important;padding:0!important;border:0!important;
+ display:block;margin:0!important;padding:0;border:0;
 }
 .paraflow-reading-blank-paragraphs{pointer-events:none;font-size:var(--font-text-size,16px)}
-.paraflow-reading-blank-paragraphs>[data-paraflow-blank-row]{height:var(--paraflow-reading-blank-height)!important;min-height:var(--paraflow-reading-blank-height)!important}
+.paraflow-reading-blank-paragraphs>[data-paraflow-blank-row]{height:var(--paraflow-reading-blank-height);min-height:var(--paraflow-reading-blank-height)}
 
 .paraflow-details-continuation{display:none!important}
 

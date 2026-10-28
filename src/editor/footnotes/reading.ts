@@ -1,5 +1,23 @@
 import { createDetachedEl } from '../../dom';
 const NAMED_REFERENCE = 'sup.footnote-ref > a.footnote-link[data-footref][href^="#fn-"]:not(.footnote-backref)';
+const CONTAINER_CLASS = 'paraflow-reading-footnotes';
+const containerOwners = new WeakMap<HTMLElement, { count: number; hadClass: boolean }>();
+
+function acquireContainer(container: HTMLElement): () => void {
+	let ownership = containerOwners.get(container);
+	if (!ownership) {
+		ownership = { count: 0, hadClass: container.classList.contains(CONTAINER_CLASS) };
+		containerOwners.set(container, ownership);
+	}
+	ownership.count += 1;
+	container.classList.add(CONTAINER_CLASS);
+	return () => {
+		ownership.count -= 1;
+		if (ownership.count) return;
+		if (!ownership.hadClass) container.classList.remove(CONTAINER_CLASS);
+		containerOwners.delete(container);
+	};
+}
 
 /** Keep native destinations and inline notes; show the original named-reference ID. */
 export function normalizeReadingFootnoteLabels(root: HTMLElement, source: string | null = null, owns: (element: Element) => boolean = () => true): () => void {
@@ -29,11 +47,13 @@ export function normalizeReadingFootnoteLabels(root: HTMLElement, source: string
 	}
 	const definitions = [...root.querySelectorAll<HTMLElement>('.footnotes > ol > li[id^="fn-"]')];
 	const sourceDefinitions = source === null || !definitions.length ? [] : buildFootnoteIndex(source).definitions;
+	const containers = new Set<HTMLElement>();
 	for (const definition of definitions) {
 		if (!owns(definition)) continue;
 		const number = /^fn-(\d+)-/u.exec(definition.id)?.[1];
 		const id = definition.dataset.paraflowFootnoteId ?? ids.get(definition.id) ?? sourceDefinitions.find(note => note.status === 'resolved' && String(note.number) === number)?.id;
 		if (!id) continue;
+		containers.add(definition.parentElement!.parentElement!);
 		const label = createDetachedEl(root.ownerDocument, 'span');
 		label.className = 'paraflow-reading-footnote-label';
 		label.textContent = id;
@@ -47,6 +67,8 @@ export function normalizeReadingFootnoteLabels(root: HTMLElement, source: string
 			if (!hadClassAttribute && definition.className === '') definition.removeAttribute('class');
 		});
 	}
+	// Multiple section owners can contribute definitions to the same native appendix.
+	for (const container of containers) restore.push(acquireContainer(container));
 	return () => { for (const undo of restore) undo(); };
 }
 import { buildFootnoteIndex } from './index.js';

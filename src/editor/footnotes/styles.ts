@@ -69,11 +69,11 @@ export const FOOTNOTE_CSS = `
 }
 .cm-line.paraflow-footnote-row { color: var(--text-muted); }
 .cm-line.HyperMD-footnote.paraflow-footnote-row,
-.markdown-reading-view .markdown-preview-view .footnotes:has(> ol > li.paraflow-reading-footnote) {
+.markdown-reading-view .markdown-preview-view .footnotes.paraflow-reading-footnotes {
   font-size: var(--paraflow-footnote-size, var(--paraflow-default-footnote-size, var(--footnote-size, .875em)));
   line-height: var(--paraflow-footnote-line-height, var(--paraflow-line-height, var(--line-height-normal, 1.6)));
 }
-.markdown-reading-view .markdown-preview-view .footnotes:has(> ol > li.paraflow-reading-footnote) :is(ol,ul,li,p) {
+.markdown-reading-view .markdown-preview-view .footnotes.paraflow-reading-footnotes :is(ol,ul,li,p) {
   font-size: inherit;
   line-height: inherit !important;
 }
