@@ -5,7 +5,7 @@ import { enhanceReadingTildeRuns } from './tilde-reading.js';
 const excluded = 'code, pre, kbd, script, style, textarea, sub, sup, s, del, .math, mjx-container, .MathJax, .footnote-ref, .footnote-backref, .paraflow-tilde-reading';
 const generated = '.footnote-link, .footnote-ref, .footnote-backref, .math, mjx-container, .MathJax, .mermaid, svg, button';
 
-export function enhanceReadingShorthand(root: HTMLElement, settings: ShorthandSettings, source: string | null): () => void {
+export function enhanceReadingShorthand(root: HTMLElement, settings: ShorthandSettings, source: string | null, owns: (element: Element) => boolean = () => true): () => void {
 	if (source === null || (!settings.subscript && !settings.superscript)) return () => {};
 	const ranges = discoverShorthand(source).filter(item => settings[item.kind]);
 	const offsets: number[] = [];
@@ -32,7 +32,7 @@ export function enhanceReadingShorthand(root: HTMLElement, settings: ShorthandSe
 		const index = decoded.indexOf(node.data, cursor);
 		if (index < 0) continue;
 		cursor = index + node.length;
-		if (node.parentElement?.closest(excluded)) continue;
+		if (!owns(node.parentElement!) || node.parentElement?.closest(excluded)) continue;
 		// Native inline parsing restarts after an escape and can consume our closing
 		// caret plus an alphanumeric suffix as a block ID at the end of that owner.
 		let text = node.data;
@@ -82,6 +82,6 @@ export function enhanceReadingShorthand(root: HTMLElement, settings: ShorthandSe
 		}
 		node.replaceWith(...replacement);
 	}
-	const restoreTildes = settings.subscript ? enhanceReadingTildeRuns(root, source) : () => {};
+	const restoreTildes = settings.subscript ? enhanceReadingTildeRuns(root, source, owns) : () => {};
 	return () => { restoreTildes(); for (const undo of restore) undo(); };
 }

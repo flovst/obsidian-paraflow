@@ -15,9 +15,9 @@ const wikiGrammar = {
 };
 
 /** Reading emits both an HTML break and a softbreak for the same physical newline. */
-export function createReadingLineBreakDisplay(): (root: HTMLElement, source: string | null) => () => void {
+export function createReadingLineBreakDisplay(): (root: HTMLElement, source: string | null, owns?: (element: Element) => boolean) => () => void {
  const owners = new WeakMap<HTMLBRElement, { users: number; hidden: boolean }>();
- return (root, source) => {
+ return (root, source, owns = () => true) => {
   if (source === null) return () => {};
   const tags: { from: number; to: number }[] = [];
   const hidden = new Uint8Array(source.length);
@@ -81,6 +81,7 @@ export function createReadingLineBreakDisplay(): (root: HTMLElement, source: str
   }
   const acquired = new Set<HTMLBRElement>();
   for (const first of root.querySelectorAll<HTMLBRElement>('br')) {
+   if (!owns(first)) continue;
    if (first.closest(excluded) || first.previousSibling?.nodeName === 'BR') continue;
    const group = [first];
    while (group.at(-1)!.nextSibling?.nodeName === 'BR') group.push(group.at(-1)!.nextSibling as HTMLBRElement);

@@ -12,14 +12,15 @@ export { READING_TAB_CSS } from './tabs-css.js';
 const excluded = 'pre, code, kbd, script, style, textarea, table, .math, mjx-container, .MathJax, svg, button, input, select, [contenteditable], .markdown-embed, .footnote-ref, .footnote-backref';
 
 /** Keep each literal Tab as selectable text in its current content font. */
-export function createReadingTabDisplay(): (root: HTMLElement, options: BodyTabOptions) => () => void {
+export function createReadingTabDisplay(): (root: HTMLElement, options: BodyTabOptions, owns?: (element: Element) => boolean) => () => void {
 	const owners = new WeakMap<Element, TabRunOwner>();
-	return (root, options) => {
+	return (root, options, owns = () => true) => {
 		const acquired = new Set<TabRunOwner>();
 		const walker = root.ownerDocument.createTreeWalker(root, 4);
 		const nodes: Text[] = [];
 		while (walker.nextNode()) nodes.push(walker.currentNode as Text);
 		for (const node of nodes) {
+			if (!owns(node.parentElement!)) continue;
 			if (!node.data.includes('\t') || !node.parentElement?.closest('p, li, h1, h2, h3, h4, h5, h6') || node.parentElement.closest(excluded)) continue;
 			const existing = node.parentElement.closest('.paraflow-reading-tab');
 			let owner = existing ? owners.get(existing) : undefined;

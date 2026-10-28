@@ -36,9 +36,38 @@ function isTopLevelParagraph(paragraph: HTMLElement, root: HTMLElement): boolean
 export function createReadingEnhancements(getSettings: () => Readonly<EnhancementSettings>, renderMermaid?: MermaidThemeRenderer): ReadingEnhancements {
 	const displayTabs = createReadingTabDisplay();
 	const displayLineBreaks = createReadingLineBreakDisplay();
-	const roots = new Map<HTMLElement, { refresh(): void; destroy(): void }>();
+	const roots = new Map<HTMLElement, { hasSource: boolean; clear(): void; render(): void; refresh(): void; destroy(): void; pause(): void; observe(): void }>();
+	let writing = false;
+	// Preserve pending native changes while isolating synchronous enhancement writes.
+	function withWrites(root: HTMLElement, write: () => void): void {
+		if (writing) { write(); return; }
+		const overlapping = [...roots].filter(([element]) => element.contains(root) || root.contains(element)).map(([, registration]) => registration);
+		for (const registration of overlapping) registration.pause();
+		writing = true;
+		try { write(); } finally { writing = false; for (const registration of overlapping) registration.observe(); }
+	}
+	function owns(root: HTMLElement, element: Element): boolean {
+		let nearest: Element | null = null;
+		for (let current: Element | null = element; current; current = current.parentElement) {
+			const registration = roots.get(current as HTMLElement);
+			if (!registration || delegatesToNestedRenderer(current as HTMLElement)) continue;
+			nearest ??= current;
+			// Rendered container bodies supply source missing from native child postprocessors.
+			if (registration.hasSource) return current === root;
+		}
+		return nearest === root;
+	}
+	function rebuild(root: HTMLElement, remove = false): void {
+		const overlapping = [...roots].filter(([element]) => element.contains(root) || root.contains(element));
+		withWrites(root, () => {
+			for (const [, registration] of overlapping) registration.clear();
+			if (remove) { roots.get(root)!.destroy(); roots.delete(root); }
+			for (const [element, registration] of overlapping) if (roots.get(element) === registration) registration.render();
+		});
+	}
 	const sectionRhythm = createReadingSectionRhythm();
 	function apply(root: HTMLElement, getSource: () => string | null, getSectionSource: () => string | null, getSection: () => ReadingSectionSource | null): () => void {
+		const ownsElement = (element: Element) => owns(root, element);
 		const sourceSection = getSection();
 		if (delegatesToNestedRenderer(root) && sourceSection === null) return () => {};
 		const settings = getSettings();
@@ -51,15 +80,15 @@ export function createReadingEnhancements(getSettings: () => Readonly<Enhancemen
 			if (settings.bodyLayout && settings.readingBlankParagraphs) restore.push(sectionRhythm(root, sourceSection, true));
 			return () => { for (const undo of restore.reverse()) undo(); };
 		}
-		if (settings.bodyLayout) restore.push(displayLineBreaks(root, getSectionSource()));
-		if (settings.callout) restore.push(enhanceReadingQuotes(root, settings.calloutStyle));
-		if (settings.mermaid) restore.push(enhanceReadingMermaid(root, getSectionSource(), renderMermaid));
-		if (settings.inline && (settings.subscript || settings.superscript)) restore.push(enhanceReadingShorthand(root, settings, getSectionSource()));
-		const media=new MediaTableDisplayController(root, true);
+		if (settings.bodyLayout) restore.push(displayLineBreaks(root, getSectionSource(), ownsElement));
+		if (settings.callout) restore.push(enhanceReadingQuotes(root, settings.calloutStyle, ownsElement));
+		if (settings.mermaid) restore.push(enhanceReadingMermaid(root, getSectionSource(), renderMermaid, ownsElement));
+		if (settings.inline && (settings.subscript || settings.superscript)) restore.push(enhanceReadingShorthand(root, settings, getSectionSource(), ownsElement));
+		const media=new MediaTableDisplayController(root, true, ownsElement);
 		media.update({ ...settings, tableDisplay: settings.table && settings.tableDisplay, tableEditing: settings.table && settings.tableEditing });restore.push(()=>media.destroy());
-		if(settings.code)restore.push(createCodeBlockDisplay(root,settings));
+		if(settings.code)restore.push(createCodeBlockDisplay(root,settings,ownsElement));
 		if(settings.footnotes)restore.push(normalizeReadingFootnoteLabels(root,
-			root.matches('.footnotes') || root.querySelector('.footnotes') ? getSource() : null));
+			root.matches('.footnotes') || root.querySelector('.footnotes') ? getSource() : null, ownsElement));
 		function style(element: HTMLElement, property: string, value: string): void {
 			const previous = element.style.getPropertyValue(property);
 			const priority = element.style.getPropertyPriority(property);
@@ -71,9 +100,9 @@ export function createReadingEnhancements(getSettings: () => Readonly<Enhancemen
 			});
 		}
 		if (settings.bodyLayout) {
-			restore.push(displayTabs(root, settings));
+			restore.push(displayTabs(root, settings, ownsElement));
 			for (const paragraph of [...(root.matches('p') ? [root] : []), ...root.querySelectorAll<HTMLElement>('p')]) {
-				if (!isTopLevelParagraph(paragraph, root) ||
+				if (!ownsElement(paragraph) || !isTopLevelParagraph(paragraph, root) ||
 					paragraph.closest('li, blockquote, .callout, td, th, .footnotes, .footnote, .markdown-embed, details') ||
 					(!paragraph.textContent?.trim() && paragraph.querySelector('img, .image-embed'))) continue;
 				if (settings.paragraphIndent) style(paragraph, 'text-indent', '2em');
@@ -95,9 +124,11 @@ export function createReadingEnhancements(getSettings: () => Readonly<Enhancemen
 			let undo = () => {};
 			let pendingRefresh: object | null = null;
 			let destroyed = false;
-			const observer = new ownerWindow.MutationObserver(records => {
-				if (!records.some(record => record.type !== 'attributes' || ((record.target as Element).matches('.callout') &&
-					(record.oldValue ?? '').split(/\s+/u).includes('is-collapsed') !== (record.target as Element).classList.contains('is-collapsed')))) return;
+			const changed = (records: MutationRecord[]) => {
+				if (!records.some(record => record.type === 'attributes'
+					? (record.target as Element).matches('.callout') &&
+						(record.oldValue ?? '').split(/\s+/u).includes('is-collapsed') !== (record.target as Element).classList.contains('is-collapsed')
+					: owns(root, record.target.nodeType === 1 ? record.target as Element : record.target.parentElement!))) return;
 				if (pendingRefresh !== null) return;
 				const token = pendingRefresh = {};
 				// Native PDF rendering uses a hidden window whose animation frames may never run.
@@ -106,31 +137,37 @@ export function createReadingEnhancements(getSettings: () => Readonly<Enhancemen
 					pendingRefresh = null;
 					registration.refresh();
 				});
-			});
+			};
+			const observer = new ownerWindow.MutationObserver(changed);
 			const registration = {
+				hasSource: getSectionSource() !== null,
+				clear() { pendingRefresh = null; undo(); undo = () => {}; },
+				render() { undo = apply(root, getSource, getSectionSource, getSection); },
+				pause() { changed(observer.takeRecords()); observer.disconnect(); },
+				observe() {
+					if (!destroyed) observer.observe(root, { childList: true, subtree: !delegatesToNestedRenderer(root), characterData: true, attributes: true, attributeFilter: ['class'], attributeOldValue: true });
+				},
 				refresh() {
 					if (destroyed) return;
-					pendingRefresh = null;
-					// Cleanup and enhancement writes must not schedule another refresh.
-					observer.disconnect();
-					undo();
-					undo = apply(root, getSource, getSectionSource, getSection);
-					observer.observe(root, { childList: true, subtree: !delegatesToNestedRenderer(root), characterData: true, attributes: true, attributeFilter: ['class'], attributeOldValue: true });
+					const hasSource = getSectionSource() !== null;
+					if (registration.hasSource !== hasSource) { registration.hasSource = hasSource; rebuild(root); }
+					else withWrites(root, () => { registration.clear(); registration.render(); });
 				},
 				destroy() {
 					if (destroyed) return;
 					destroyed = true;
 					pendingRefresh = null;
 					observer.disconnect();
-					undo();
+					withWrites(root, () => undo());
 				},
 			};
 			roots.set(root, registration);
-			registration.refresh();
+			if (delegatesToNestedRenderer(root)) registration.refresh();
+			else rebuild(root);
 			return () => {
 				if (roots.get(root) !== registration) return;
-				registration.destroy();
-				roots.delete(root);
+				if (delegatesToNestedRenderer(root)) { registration.destroy(); roots.delete(root); }
+				else rebuild(root, true);
 			};
 		},
 		refresh() { for (const registration of roots.values()) registration.refresh(); },

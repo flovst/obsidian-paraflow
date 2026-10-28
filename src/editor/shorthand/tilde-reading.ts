@@ -6,7 +6,7 @@ const markdown = parser.configure(GFM);
 const excluded = 'code, pre, kbd, script, style, textarea, sub, sup, .math, mjx-container, .MathJax, .footnote-ref, .footnote-backref, .paraflow-tilde-reading';
 
 /** Normalize a native strike split and a literal text run through the same source delimiter model. */
-export function enhanceReadingTildeRuns(root: HTMLElement, source: string): () => void {
+export function enhanceReadingTildeRuns(root: HTMLElement, source: string, owns: (element: Element) => boolean = () => true): () => void {
 	const undo: Array<() => void> = [];
 	let searchFrom = 0;
 	let sourceFrom = 0;
@@ -37,6 +37,7 @@ export function enhanceReadingTildeRuns(root: HTMLElement, source: string): () =
 		const end = match.index + match.value.length;
 		const first = nodes.find(item => item.from <= match.index && item.to > match.index)!;
 		const last = nodes.find(item => item.from < end && item.to >= end)!;
+		if (!owns(first.node.parentElement!) || !owns(last.node.parentElement!)) { searchFrom = end; sourceFrom = run.to; continue; }
 		if (first.node.parentElement?.closest(excluded) || last.node.parentElement?.closest(excluded)) continue;
 		const range = root.ownerDocument.createRange();
 		range.setStart(first.node, match.index - first.from); range.setEnd(last.node, end - last.from);

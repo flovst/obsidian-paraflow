@@ -14,9 +14,9 @@ function endsInList(element: HTMLElement): boolean {
 }
 
 /** Reading and native PDF roots may overlap; each registration releases only its own ownership. */
-export function enhanceReadingQuotes(root: HTMLElement, style: 'default' | 'obsidian' = 'default'): () => void {
+export function enhanceReadingQuotes(root: HTMLElement, style: 'default' | 'obsidian' = 'default', owns: (element: Element) => boolean = () => true): () => void {
 	const elements = [...(root.matches('.callout, blockquote') ? [root] : []), ...root.querySelectorAll<HTMLElement>('.callout, blockquote')]
-		.filter(element => !element.closest('.paraflow-callout-title'));
+		.filter(element => owns(element) && !element.closest('.paraflow-callout-title'));
 	for (const element of elements) {
 		const token = element.matches('.callout') ? 'paraflow-display-callout' : 'paraflow-display-quote';
 		const previous = ownership.get(element);

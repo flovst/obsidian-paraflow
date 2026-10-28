@@ -123,7 +123,7 @@ export class MediaTableDisplayController {
 	private requestedViewports = new Set<HTMLElement>();
 	private cleanupImages: (() => void) | null = null;
 
-	constructor(readonly root: HTMLElement, private readonly reading = false) {}
+	constructor(readonly root: HTMLElement, private readonly reading = false, private readonly owns: (element: Element) => boolean = () => true) {}
 
 	update(options: MediaTableDisplayOptions): void {
 		this.cleanupImages?.();
@@ -178,7 +178,7 @@ export class MediaTableDisplayController {
 
 	private images(center: boolean): void {
 		const sizedImages: Array<{ image: HTMLImageElement; block: HTMLElement }> = [];
-		for (const image of within(this.root, IMAGE)) {
+		for (const image of within(this.root, IMAGE).filter(this.owns)) {
 			const block = standaloneBlock(image, this.root);
 			if (!block) continue;
 			this.add(image, 'paraflow-display-image');
@@ -250,7 +250,7 @@ export class MediaTableDisplayController {
 	}
 
 	private tables(): void {
-		for (const table of within(this.root, 'table')) {
+		for (const table of within(this.root, 'table').filter(this.owns)) {
 			if (table.closest('.cm-editor') && table.closest('td, th')) continue;
 			// Reading postprocessors may run before their section joins the document.
 			const reading = this.reading || table.closest('.markdown-reading-view') !== null;
@@ -292,7 +292,7 @@ export class MediaTableDisplayController {
 	}
 
 	private tableWrapping(wrap: boolean): void {
-		for (const table of within(this.root, 'table')) {
+		for (const table of within(this.root, 'table').filter(this.owns)) {
 			if (table.closest('.cm-editor') && table.closest('td, th')) continue;
 			this.add(table, wrap ? 'paraflow-table-wrap' : 'paraflow-table-nowrap');
 			if (!wrap) continue;

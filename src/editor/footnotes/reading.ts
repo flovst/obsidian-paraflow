@@ -2,11 +2,12 @@ import { createDetachedEl } from '../../dom';
 const NAMED_REFERENCE = 'sup.footnote-ref > a.footnote-link[data-footref][href^="#fn-"]:not(.footnote-backref)';
 
 /** Keep native destinations and inline notes; show the original named-reference ID. */
-export function normalizeReadingFootnoteLabels(root: HTMLElement, source: string | null = null): () => void {
+export function normalizeReadingFootnoteLabels(root: HTMLElement, source: string | null = null, owns: (element: Element) => boolean = () => true): () => void {
 	const restore: Array<() => void> = [];
 	const ids = new Map<string, string>();
 	const anchors = [...(root.matches(NAMED_REFERENCE) ? [root] : []), ...root.querySelectorAll<HTMLElement>(NAMED_REFERENCE)];
 	for (const anchor of anchors) {
+		if (!owns(anchor)) continue;
 		if (anchor.closest('.markdown-source-view, pre, code')) continue;
 		const reference = anchor.parentElement!;
 		const hadReferenceClass = reference.classList.contains('paraflow-reading-footnote-reference');
@@ -29,6 +30,7 @@ export function normalizeReadingFootnoteLabels(root: HTMLElement, source: string
 	const definitions = [...root.querySelectorAll<HTMLElement>('.footnotes > ol > li[id^="fn-"]')];
 	const sourceDefinitions = source === null || !definitions.length ? [] : buildFootnoteIndex(source).definitions;
 	for (const definition of definitions) {
+		if (!owns(definition)) continue;
 		const number = /^fn-(\d+)-/u.exec(definition.id)?.[1];
 		const id = definition.dataset.paraflowFootnoteId ?? ids.get(definition.id) ?? sourceDefinitions.find(note => note.status === 'resolved' && String(note.number) === number)?.id;
 		if (!id) continue;

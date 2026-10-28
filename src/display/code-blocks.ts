@@ -1,4 +1,4 @@
-import { createDetachedEl } from '../dom';
+import { createDetachedEl, createOwnedFragment } from '../dom';
 import type { CodeBlockOptions } from '../editor/code-blocks/model.js';
 import { isRenderedCodeLanguage } from '../editor/code-blocks/source-scan.js';
 
@@ -21,7 +21,7 @@ function wrapLogicalLines(code: HTMLElement): HTMLElement[] {
 	const rows=source.split('\n');
 	if(rows[rows.length-1]==='')rows.pop();
 	if(!source)return [];
-	const output=doc.createDocumentFragment();
+	const output=createOwnedFragment(doc);
 	const ownedRows: HTMLElement[]=[];
 	let start=0;
 	for(const [index,row] of rows.entries()) {
@@ -46,11 +46,12 @@ function wrapLogicalLines(code: HTMLElement): HTMLElement[] {
 	return ownedRows;
 }
 
-export function createCodeBlockDisplay(root: HTMLElement, options: CodeBlockOptions): () => void {
+export function createCodeBlockDisplay(root: HTMLElement, options: CodeBlockOptions, owns: (element: Element) => boolean = () => true): () => void {
 	const {codeLineNumbers,codeWordWrap}=options;
 	const cleanups: Array<()=>void>=[];
 	const pres=[...(root.matches('pre') ? [root] : []),...root.querySelectorAll<HTMLElement>('pre')];
 	for(const pre of pres) {
+		if (!owns(pre)) continue;
 		const code=pre.querySelector<HTMLElement>(':scope > code');
 		if(!code || pre.classList.contains('paraflow-code-display') || pre.closest('.frontmatter,.mod-frontmatter,.mermaid,.math,.block-language-mermaid,.block-language-math'))continue;
 		const language=[...code.classList].find(name=>name.startsWith('language-'))?.slice(9) ?? '';

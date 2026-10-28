@@ -7,11 +7,14 @@ interface Owner {
 const owners = new WeakMap<HTMLElement, Owner>();
 
 /** Reading, section and export render registrations can share the same diagram. */
-export function enhanceReadingMermaid(root: HTMLElement, source: string | null = null, render?: MermaidThemeRenderer): () => void {
+export function enhanceReadingMermaid(root: HTMLElement, source: string | null = null, render?: MermaidThemeRenderer, owns: (element: Element) => boolean = () => true): () => void {
 	const diagrams = [...(root.matches('.mermaid') ? [root] : []), ...root.querySelectorAll<HTMLElement>('.mermaid')]
 		.filter(element => !element.closest('.markdown-embed'));
 	const bodies = source === null ? [] : mermaidBodies(source);
+	const acquired: HTMLElement[] = [];
 	for (const [index, diagram] of diagrams.entries()) {
+		if (!owns(diagram)) continue;
+		acquired.push(diagram);
 		let owned = owners.get(diagram);
 		if (owned) { owned.count++; if (owned.added) diagram.classList.add('paraflow-reading-mermaid'); }
 		else {
@@ -46,7 +49,7 @@ export function enhanceReadingMermaid(root: HTMLElement, source: string | null =
 		});
 	}
 	return () => {
-		for (const diagram of diagrams) {
+		for (const diagram of acquired) {
 			const owned = owners.get(diagram)!;
 			if (--owned.count) continue;
 			diagram.classList.remove('paraflow-mermaid-themed');
