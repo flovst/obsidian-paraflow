@@ -1,3 +1,4 @@
+import { createDetachedEl } from '../../dom';
 import { syntaxTree, syntaxTreeAvailable } from '@codemirror/language';
 import { Prec, StateField, type EditorState, type Extension, type Range } from '@codemirror/state';
 import { Decoration, EditorView, ViewPlugin, WidgetType, type DecorationSet } from '@codemirror/view';
@@ -46,7 +47,7 @@ class LineBreakWidget extends WidgetType {
 
 	toDOM(view: EditorView): HTMLElement {
 		const document = view.dom.ownerDocument;
-		const root = document.createElement('span');
+		const root = createDetachedEl(document, 'span');
 		root.className = 'paraflow-line-break-marker' + (this.kind === 'html' ? ' paraflow-html-break-hint' : '');
 		root.dataset.breakKind = this.kind;
 		root.setAttribute('aria-hidden', 'true');
@@ -108,11 +109,11 @@ class HtmlBreakWidget extends WidgetType {
 	get lineBreaks(): number { return 1; }
 	ignoreEvent(): boolean { return false; }
 	toDOM(view: EditorView): HTMLElement {
-		const root = view.dom.ownerDocument.createElement('span');
+		const root = createDetachedEl(view.dom.ownerDocument, 'span');
 		root.className = 'paraflow-html-break';
-		root.append(view.dom.ownerDocument.createElement('br'));
+		root.append(createDetachedEl(view.dom.ownerDocument, 'br'));
 		if(this.terminal){
-			const line=view.dom.ownerDocument.createElement('span');line.className='paraflow-html-break-empty-line';
+			const line=createDetachedEl(view.dom.ownerDocument, 'span');line.className='paraflow-html-break-empty-line';
 			root.append(line);
 		}
 		return root;

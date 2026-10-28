@@ -1,3 +1,4 @@
+import { createDetachedEl } from '../../dom';
 import { WidgetType, type EditorView, type Rect } from '@codemirror/view';
 import { dispatchTaskCheckboxToggle } from './edit-plan.js';
 import type { PrefixPolicy, ProjectionListContext } from './model.js';
@@ -63,7 +64,7 @@ function updateMarkerLabel(dom: HTMLElement, label: string | null): void {
 		current?.tagName === 'BDI' &&
 		current.classList.contains(LABEL_CLASS)
 		? current as HTMLElement
-		: dom.ownerDocument.createElement('bdi');
+		: createDetachedEl(dom.ownerDocument, 'bdi');
 	labelDom.className = LABEL_CLASS;
 	labelDom.setAttribute('dir', 'ltr');
 	labelDom.textContent = label;
@@ -99,7 +100,7 @@ export class StructuredListMarkerWidget extends WidgetType {
 	}
 
 	toDOM(view: EditorView): HTMLElement {
-		const dom = view.dom.ownerDocument.createElementNS('http://www.w3.org/1999/xhtml', 'span');
+		const dom = createDetachedEl(view.dom.ownerDocument, 'span');
 		updateOwnedMarker(dom, this.marker);
 		return dom;
 	}
@@ -132,7 +133,7 @@ export class StructuredListSeparatorWidget extends WidgetType {
 	}
 
 	toDOM(view: EditorView): HTMLElement {
-		const dom = view.dom.ownerDocument.createElement('span');
+		const dom = createDetachedEl(view.dom.ownerDocument, 'span');
 		dom.className = 'paraflow-list-separator';
 		dom.setAttribute('contenteditable', 'false');
 		dom.setAttribute('aria-hidden', 'true');
@@ -200,16 +201,16 @@ export class TaskPrefixWidget extends WidgetType {
 	}
 
 	toDOM(view: EditorView): HTMLElement {
-		const prefix = view.dom.ownerDocument.createElement('span');
+		const prefix = createDetachedEl(view.dom.ownerDocument, 'span');
 		prefix.className = 'paraflow-task-prefix';
 		prefix.setAttribute('contenteditable', 'false');
-		const marker = view.dom.ownerDocument.createElement('span');
+		const marker = createDetachedEl(view.dom.ownerDocument, 'span');
 		updateOwnedMarker(marker, this.marker);
-		const markerSeparator = view.dom.ownerDocument.createElement('span');
+		const markerSeparator = createDetachedEl(view.dom.ownerDocument, 'span');
 		markerSeparator.className = 'paraflow-task-marker-separator';
 		markerSeparator.setAttribute('aria-hidden', 'true');
 		markerSeparator.textContent = this.markerSeparator;
-		const checkbox = view.dom.ownerDocument.createElement('input');
+		const checkbox = createDetachedEl(view.dom.ownerDocument, 'input');
 		checkbox.className = 'task-list-item-checkbox paraflow-task-checkbox';
 		checkbox.type = 'checkbox';
 		checkbox.checked = this.checked;
@@ -220,11 +221,11 @@ export class TaskPrefixWidget extends WidgetType {
 			event.stopPropagation();
 			dispatchTaskCheckboxToggle(view, this.taskTokenFrom);
 		});
-		const separator = view.dom.ownerDocument.createElement('span');
+		const separator = createDetachedEl(view.dom.ownerDocument, 'span');
 		separator.className = 'paraflow-task-content-separator';
 		separator.setAttribute('aria-hidden', 'true');
 		separator.textContent = this.contentSeparator;
-		const caretMetric = view.dom.ownerDocument.createElement('span');
+		const caretMetric = createDetachedEl(view.dom.ownerDocument, 'span');
 		caretMetric.className = 'paraflow-task-caret-metric';
 		caretMetric.setAttribute('aria-hidden', 'true');
 		caretMetric.textContent = '\u200b';

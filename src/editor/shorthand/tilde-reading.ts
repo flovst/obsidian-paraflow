@@ -1,3 +1,4 @@
+import { createDetachedEl } from '../../dom';
 import { GFM, parser } from '@lezer/markdown';
 import { discoverTildeRuns } from './syntax.js';
 
@@ -44,12 +45,12 @@ export function enhanceReadingTildeRuns(root: HTMLElement, source: string): () =
 		if (firstStrike && range.startOffset === 0 && firstStrike.firstChild === first.node) range.setStartBefore(firstStrike);
 		if (lastStrike && range.endOffset === last.node.length && lastStrike.lastChild === last.node) range.setEndAfter(lastStrike);
 		const saved = range.extractContents();
-		const replacement = root.ownerDocument.createElement('span');
+		const replacement = createDetachedEl(root.ownerDocument, 'span');
 		replacement.className = 'paraflow-tilde-reading';
 		let cursor = run.from;
 		for (const part of run.parts) {
 			replacement.append(source.slice(cursor, part.from));
-			const body = root.ownerDocument.createElement(part.kind === 'subscript' ? 'sub' : 'del');
+			const body = createDetachedEl(root.ownerDocument, part.kind === 'subscript' ? 'sub' : 'del');
 			body.textContent = source.slice(part.bodyFrom, part.bodyTo).replace(/\\([ \t!"#$%&'()*+,\-./:;<=>?@[\]\\^_`{|}~])/gu, '$1'); replacement.append(body); cursor = part.to;
 		}
 		replacement.append(source.slice(cursor, run.to)); range.insertNode(replacement);

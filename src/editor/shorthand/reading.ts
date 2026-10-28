@@ -1,3 +1,4 @@
+import { createDetachedEl } from '../../dom';
 import { discoverShorthand, type ShorthandSettings } from './syntax.js';
 import { enhanceReadingTildeRuns } from './tilde-reading.js';
 
@@ -58,7 +59,7 @@ export function enhanceReadingShorthand(root: HTMLElement, settings: ShorthandSe
 			const start = offsets.indexOf(item.from, index) - index;
 			const end = offsets.indexOf(item.to - 1, index) - index + 1;
 			if (start > previous) replacement.push(root.ownerDocument.createTextNode(text.slice(previous, start)));
-			const element = root.ownerDocument.createElement(item.kind === 'subscript' ? 'sub' : 'sup');
+			const element = createDetachedEl(root.ownerDocument, item.kind === 'subscript' ? 'sub' : 'sup');
 			element.className = 'paraflow-shorthand-reading';
 			const rendered = text.slice(start + 1, end - 1).replace(/\\([ \t])/gu, '$1');
 			element.textContent = rendered;

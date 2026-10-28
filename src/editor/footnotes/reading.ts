@@ -1,3 +1,4 @@
+import { createDetachedEl } from '../../dom';
 const NAMED_REFERENCE = 'sup.footnote-ref > a.footnote-link[data-footref][href^="#fn-"]:not(.footnote-backref)';
 
 /** Keep native destinations and inline notes; show the original named-reference ID. */
@@ -31,7 +32,7 @@ export function normalizeReadingFootnoteLabels(root: HTMLElement, source: string
 		const number = /^fn-(\d+)-/u.exec(definition.id)?.[1];
 		const id = definition.dataset.paraflowFootnoteId ?? ids.get(definition.id) ?? sourceDefinitions.find(note => note.status === 'resolved' && String(note.number) === number)?.id;
 		if (!id) continue;
-		const label = root.ownerDocument.createElement('span');
+		const label = createDetachedEl(root.ownerDocument, 'span');
 		label.className = 'paraflow-reading-footnote-label';
 		label.textContent = id;
 		const hadClass = definition.classList.contains('paraflow-reading-footnote');

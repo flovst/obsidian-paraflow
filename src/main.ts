@@ -27,7 +27,6 @@ import { registerDetailsOpenState } from './display/details-open-state-obsidian.
 import { readNativePrintSource } from './reading/source.js';
 import { createReadingMath } from './reading/math.js';
 import { createModeScrollAlignment, type ModeScrollView } from './reading/mode-scroll.js';
-import { EnhancementStyles } from './display/styles.js';
 import { refreshCalloutHeaderIcons, renderCalloutHeaderIcon } from './editor/callout/header-icon.js';
 import { createTableEditingIntegration } from './editor/table/obsidian-adapter.js';
 import { registerContentMenus } from './editor/context-menu.js';
@@ -47,7 +46,6 @@ export default class ParaFlowPlugin extends Plugin {
 	private settingsUpdate: Promise<void> = Promise.resolve();
 	private themeStore!: ThemeStore;
 	private readonly themeManager = new ThemeManager();
-	private readonly enhancementStyles = new EnhancementStyles();
 	private disposed = false;
 	private editorComposition!: EditorComposition;
 	private readingEnhancements: ReadingEnhancements | null = null;
@@ -179,7 +177,6 @@ export default class ParaFlowPlugin extends Plugin {
 		const documents = new Set([this.app.workspace.containerEl.ownerDocument]);
 		this.app.workspace.iterateAllLeaves(leaf => documents.add(leaf.view.containerEl.ownerDocument));
 		this.themeManager.syncDocuments(documents);
-		this.enhancementStyles.syncDocuments(documents);
 	}
 
 	private refreshCalloutIcons(): void {
@@ -305,7 +302,7 @@ export default class ParaFlowPlugin extends Plugin {
 	async onload(): Promise<void> {
 		registerContentMenus(this);
 		registerDetailsOpenState(this, this.detailsOpenState);
-		this.register(() => { this.disposed = true; this.themeManager.destroy(); this.enhancementStyles.destroy(); });
+		this.register(() => { this.disposed = true; this.themeManager.destroy(); });
 		this.settings = normalizeSettings(await this.loadData());
 		if (this.disposed) return;
 		const modeMaintenance = createIndentModeMaintenance({

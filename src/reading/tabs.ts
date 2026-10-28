@@ -1,3 +1,4 @@
+import { createDetachedEl } from '../dom';
 import type { BodyTabOptions } from '../editor/body-tabs.js';
 
 interface TabRunOwner {
@@ -6,7 +7,7 @@ interface TabRunOwner {
 	restore(): void;
 }
 
-export const READING_TAB_CSS = '.paraflow-reading-tab { white-space: pre; }';
+export { READING_TAB_CSS } from './tabs-css.js';
 
 const excluded = 'pre, code, kbd, script, style, textarea, table, .math, mjx-container, .MathJax, svg, button, input, select, [contenteditable], .markdown-embed, .footnote-ref, .footnote-backref';
 
@@ -27,7 +28,7 @@ export function createReadingTabDisplay(): (root: HTMLElement, options: BodyTabO
 				for (const text of node.data.split(/(\t)/u)) {
 					if (!text) continue;
 					if (text[0] !== '\t') { pieces.push(root.ownerDocument.createTextNode(text)); continue; }
-					const span = root.ownerDocument.createElement('span');
+					const span = createDetachedEl(root.ownerDocument, 'span');
 					span.className = 'paraflow-reading-tab';
 					span.textContent = text; spans.push(span); pieces.push(span);
 				}

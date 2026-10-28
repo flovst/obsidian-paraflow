@@ -1,3 +1,4 @@
+import { createDetachedEl } from '../../dom';
 const activeControls=new Set<TableAddControls>();
 export function refreshTableAddControlOwnership():void {for(const controls of activeControls)controls.refreshOwnership();}
 
@@ -8,8 +9,8 @@ export class TableAddControls {
 	private readonly document:Document;
 	constructor(private readonly host:HTMLElement,private readonly table:()=>HTMLTableElement,insert:(axis:'row'|'column')=>void,private readonly isActive:()=>boolean=()=>true){
 		activeControls.add(this);
-		const doc=this.document=host.ownerDocument;this.dom=doc.createElement('div');this.dom.className='paraflow-table-add-controls';this.dom.hidden=true;
-		for(const axis of ['row','column'] as const){const button=doc.createElement('button');button.type='button';button.dataset.pfAdd=axis;button.textContent='+';button.setAttribute('aria-label',axis==='row'?'新增行':'新增列');button.onmousedown=event=>event.preventDefault();button.onclick=()=>{insert(axis);this.position();};this.dom.append(button);}
+		const doc=this.document=host.ownerDocument;this.dom=createDetachedEl(doc, 'div');this.dom.className='paraflow-table-add-controls';this.dom.hidden=true;
+		for(const axis of ['row','column'] as const){const button=createDetachedEl(doc, 'button');button.type='button';button.dataset.pfAdd=axis;button.textContent='+';button.setAttribute('aria-label',axis==='row'?'新增行':'新增列');button.onmousedown=event=>event.preventDefault();button.onclick=()=>{insert(axis);this.position();};this.dom.append(button);}
 		doc.body.append(this.dom);host.addEventListener('pointerenter',this.show);host.addEventListener('pointerleave',this.leave);this.dom.addEventListener('pointerleave',this.leave);
 		doc.addEventListener('scroll',this.position,true);doc.defaultView!.addEventListener('resize',this.position);
 		this.resize=doc.defaultView!.ResizeObserver?new doc.defaultView!.ResizeObserver(this.position):null;this.resize?.observe(host);

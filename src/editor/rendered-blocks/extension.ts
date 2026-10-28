@@ -1,3 +1,4 @@
+import { createDetachedEl } from '../../dom';
 import { containerBlockFrame, wrapContainerBlock, type ContainerFrame } from '../callout/container-surface.js';
 import { isolateHistory } from '@codemirror/commands';
 import { EditorState, Prec, StateEffect, StateField, type Extension, type Range } from '@codemirror/state';
@@ -30,7 +31,7 @@ function enabledBlocks(state: EditorState, options: RenderedBlockEditingOptions)
 }
 function label(kind: RenderedBlock['kind']): string { return kind === 'html' ? 'HTML' : 'Mermaid'; }
 function badge(view: EditorView, block: RenderedBlock): HTMLElement {
-	const element = view.dom.ownerDocument.createElement('button');
+	const element = createDetachedEl(view.dom.ownerDocument, 'button');
 	element.type = 'button'; element.className = 'paraflow-rendered-block-badge';
 	element.textContent = `${label(block.kind)} </>`;
 	element.dataset.paraflowRenderedFrom = String(block.from);
@@ -48,10 +49,10 @@ class FenceWidget extends WidgetType {
 	constructor(readonly block: RenderedBlock, readonly opening: boolean) { super(); }
 	eq(other: FenceWidget): boolean { return this.opening === other.opening && this.block.from === other.block.from && this.block.lines.length === other.block.lines.length; }
 	toDOM(view: EditorView): HTMLElement {
-		const element = view.dom.ownerDocument.createElement('div');
+		const element = createDetachedEl(view.dom.ownerDocument, 'div');
 		element.className = 'paraflow-rendered-block-fence'; element.contentEditable = 'false';
 		if (this.opening && !this.block.lines.length) {
-			const input = view.dom.ownerDocument.createElement('button'); input.type = 'button'; input.textContent = '输入图表源码';
+			const input = createDetachedEl(view.dom.ownerDocument, 'button'); input.type = 'button'; input.textContent = '输入图表源码';
 			input.addEventListener('click', () => {
 				const fence = this.block.fence!; const insert = '\n' + fence.continuation;
 				view.dispatch({ changes: { from: fence.openingTo, insert }, selection: { anchor: fence.openingTo + insert.length }, userEvent: 'input' });
@@ -75,14 +76,14 @@ class PreviewWidget extends WidgetType {
 	}
 	toDOM(view: EditorView): HTMLElement {
 		const owner = view.dom.ownerDocument;
-		const element = owner.createElement('div');
+		const element = createDetachedEl(owner, 'div');
 		element.className = `paraflow-rendered-block-preview paraflow-rendered-block-${this.block.kind}` + (this.editing ? ' is-editing' : '');
 		element.dataset.paraflowRenderedFrom = String(this.block.from);
 		element.setAttribute('contenteditable', 'false');
 		if (!this.editing) element.append(badge(view, this.block));
-		const content = owner.createElement('div'); content.className = 'paraflow-rendered-block-content markdown-rendered'; element.append(content);
+		const content = createDetachedEl(owner, 'div'); content.className = 'paraflow-rendered-block-content markdown-rendered'; element.append(content);
 		if (this.editing && this.block.kind === 'mermaid' && this.languagePosition !== 'off') {
-			const language = owner.createElement('div'); language.className = 'paraflow-rendered-language-anchor';
+			const language = createDetachedEl(owner, 'div'); language.className = 'paraflow-rendered-language-anchor';
 			language.dataset.position = this.languagePosition;
 			language.setAttribute('aria-hidden', 'true');
 			language.dataset.paraflowRenderedFrom = String(this.block.from); element.append(language);
@@ -116,7 +117,7 @@ class PreviewWidget extends WidgetType {
 		element.dataset.renderState = 'loading'; element.setAttribute('aria-busy', 'true');
 		// Each async generation receives a detached target. A stale renderer cannot
 		// overwrite the current widget, even if its cancellation is best-effort.
-		const stage = element.ownerDocument.createElement('div'); stage.className = 'markdown-rendered';
+		const stage = createDetachedEl(element.ownerDocument, 'div'); stage.className = 'markdown-rendered';
 		let alive = true;
 		let render: ReturnType<RenderedBlockEditingOptions['renderMarkdown']> | null = null;
 		const rendered = (): void => {

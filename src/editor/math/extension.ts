@@ -1,3 +1,4 @@
+import { createDetachedEl } from '../../dom';
 import { containerBlockFrame, wrapContainerBlock, type ContainerFrame } from '../callout/container-surface.js';
 import { EditorSelection, EditorState, Prec, StateEffect, StateField, type Extension, type Range, type Transaction } from '@codemirror/state';
 import { Decoration, EditorView, keymap, showTooltip, ViewPlugin, WidgetType, type DecorationSet, type Tooltip } from '@codemirror/view';
@@ -73,7 +74,7 @@ const previewUpdates = ViewPlugin.define(view => {
 
 function renderPreview(view: EditorView, source: string, display: boolean,
 	className: string, options: MathEditingOptions, contentWidget = false): { dom: HTMLElement; render: (source: string) => void; destroy: () => void } {
-	const dom = view.dom.ownerDocument.createElement(display ? 'div' : 'span');
+	const dom = createDetachedEl(view.dom.ownerDocument, display ? 'div' : 'span');
 	dom.className = className;
 	dom.contentEditable = 'false';
 	dom.setAttribute('role', 'math');
@@ -198,7 +199,7 @@ class MathBoundary extends WidgetType {
 	constructor(readonly side: 'open' | 'close') { super(); }
 	eq(other: MathBoundary): boolean { return this.side === other.side; }
 	toDOM(view: EditorView): HTMLElement {
-		const dom = view.dom.ownerDocument.createElement('span');
+		const dom = createDetachedEl(view.dom.ownerDocument, 'span');
 		dom.className = `paraflow-math-boundary paraflow-math-boundary-${this.side}`;
 		dom.contentEditable = 'false';
 		dom.textContent = '$$';
@@ -210,7 +211,7 @@ class MathBoundary extends WidgetType {
 
 class MathBadge extends WidgetType {
 	toDOM(view: EditorView): HTMLElement {
-		const dom = view.dom.ownerDocument.createElement('span');
+		const dom = createDetachedEl(view.dom.ownerDocument, 'span');
 		dom.className = 'paraflow-math-badge';
 		dom.textContent = '公式';
 		dom.contentEditable = 'false';

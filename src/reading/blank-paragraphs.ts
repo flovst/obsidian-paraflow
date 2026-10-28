@@ -1,16 +1,11 @@
+import { createDetachedEl } from '../dom';
 import type { SyntaxNode } from '@lezer/common';
 import { middleBlankRows } from '../editor/paragraph/blank-rows.js';
 import type { ParagraphPhysicalRow } from '../editor/paragraph/model.js';
 import { detailsContainers } from '../editor/rendered-blocks/details-source.js';
 
 interface RenderedBlock { node: SyntaxNode; element: HTMLElement; }
-export const READING_BLANK_PARAGRAPH_CSS = `
-.paraflow-reading-blank-paragraphs,.paraflow-reading-blank-paragraphs>[data-paraflow-blank-row]{
- display:block!important;margin:0!important;padding:0!important;border:0!important;
-}
-.paraflow-reading-blank-paragraphs{pointer-events:none;font-size:var(--font-text-size,16px)}
-.paraflow-reading-blank-paragraphs>[data-paraflow-blank-row]{height:var(--paraflow-reading-blank-height)!important;min-height:var(--paraflow-reading-blank-height)!important}
-`;
+export { READING_BLANK_PARAGRAPH_CSS } from './blank-paragraphs-css.js';
 const selectors: Readonly<Record<string, string>> = {
 	Paragraph: 'p', BulletList: 'ul', OrderedList: 'ol', ListItem: 'li',
 	Blockquote: 'blockquote,.callout', FencedCode: 'pre,.paraflow-code-display-frame',
@@ -51,12 +46,12 @@ export function displayReadingBlankParagraphs(root: HTMLElement, source: string,
 		undo.push(() => { if (previous) element.style.setProperty(property, previous, priority); else element.style.removeProperty(property); });
 	}
 	function spacer(rows: readonly ParagraphPhysicalRow[], previousKind: string, nextKind: string): HTMLDivElement {
-		const holder = root.ownerDocument.createElement('div');
+		const holder = createDetachedEl(root.ownerDocument, 'div');
 		holder.className = 'paraflow-reading-blank-paragraphs';
 		holder.setAttribute('aria-hidden', 'true');
 		const visible = rows.filter(row => row.kind !== 'folded');
 		for (const [index, row] of visible.entries()) {
-			const element = root.ownerDocument.createElement('div');
+			const element = createDetachedEl(root.ownerDocument, 'div');
 			element.dataset.paraflowBlankRow = row.kind;
 			const height = row.kind === 'editable' ? 'calc(1em * var(--paraflow-line-height,1.6))'
 				: `max(${gapEdge(index === 0 ? previousKind : 'p', 'bottom')},${gapEdge(index === visible.length - 1 ? nextKind : 'p', 'top')})`;

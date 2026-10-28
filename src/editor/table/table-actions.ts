@@ -1,3 +1,4 @@
+import { createDetachedEl } from '../../dom';
 import {tableConversionAction} from './conversion-action';
 import {admittedFragment} from './admitted-dom';
 import type {TableActionTarget} from './action-target';
@@ -52,7 +53,7 @@ export function buildTableActions(target:TableActionTarget,options:TableEditingO
 	const textCell=(format?:ToggleFormat|'highlight')=>{
 		const focus=bookmark??target.focusBookmark;
 		const cell=table.cells.find(cell=>cell.row===focus.cell.row&&cell.column===focus.cell.column)!;
-		const element=target.view.dom.ownerDocument.createElement(cell.role);element.append(admittedFragment(target.view.dom.ownerDocument,cell.html));
+		const element=createDetachedEl(target.view.dom.ownerDocument, cell.role);element.append(admittedFragment(target.view.dom.ownerDocument,cell.html));
 		element.setAttribute('style',Object.entries(cell.style).map(([property,value])=>`${property}:${value}`).join(';'));
 		const selectedBookmark=focus.from===focus.to&&format?textFormatTarget(element,focus,format==='highlight'?'highlight:':format):focus;
 		return {cell,element,range:selectedBookmark?rangeFromBookmark(element,selectedBookmark):null};
@@ -79,12 +80,12 @@ export function buildTableActions(target:TableActionTarget,options:TableEditingO
 	formatItems.push({label:'高亮',icon:'highlighter',children:([['','默认'],['red','红色'],['orange','橙色'],['yellow','黄色'],['green','绿色'],['blue','蓝色'],['purple','紫色']] as const).map(([color,label])=>{
 		const next=()=>textMode?textAction({type:'toggle',format:'highlight',color}):{...table,cells:table.cells.map(cell=>{
 			if(!positions.some(position=>cell.row===position.row&&cell.column===position.column))return cell;
-			const element=target.view.dom.ownerDocument.createElement(cell.role);element.append(admittedFragment(element.ownerDocument,cell.html));if(!element.textContent)return cell;const range=element.ownerDocument.createRange();range.selectNodeContents(element);formatTextRange(element,range,{type:'toggle',format:'highlight',color});return {...cell,html:element.innerHTML};
+			const element=createDetachedEl(target.view.dom.ownerDocument, cell.role);element.append(admittedFragment(element.ownerDocument,cell.html));if(!element.textContent)return cell;const range=element.ownerDocument.createRange();range.selectNodeContents(element);formatTextRange(element,range,{type:'toggle',format:'highlight',color});return {...cell,html:element.innerHTML};
 		})};
 		return {label,icon:'highlighter',preview:()=>target.preview(next()),run:run(()=>apply(next()))};
 	})});
 	if(!textMode){
-		const cellContents=selected.map(cell=>{const element=target.view.dom.ownerDocument.createElement(cell.role);element.append(admittedFragment(element.ownerDocument,cell.html));return {cell,element};});
+		const cellContents=selected.map(cell=>{const element=createDetachedEl(target.view.dom.ownerDocument, cell.role);element.append(admittedFragment(element.ownerDocument,cell.html));return {cell,element};});
 		const textNodes=(element:HTMLElement)=>{const walker=element.ownerDocument.createTreeWalker(element,4),nodes:Text[]=[];for(let node=walker.nextNode();node;node=walker.nextNode())if(node.textContent)nodes.push(node as Text);return nodes;};
 		const nodes=cellContents.flatMap(({element})=>textNodes(element));
 		const codeEnabled=nodes.length>0&&nodes.every(node=>node.parentElement!.closest('code'));
@@ -92,7 +93,7 @@ export function buildTableActions(target:TableActionTarget,options:TableEditingO
 			const content=cellContents.find(content=>content.cell===cell);if(!content)return cell;
 			const element=content.element.cloneNode(true) as HTMLElement;
 			if(codeEnabled)for(const code of Array.from(element.querySelectorAll('code')))code.replaceWith(...Array.from(code.childNodes));
-			else for(const node of textNodes(element)){if(node.parentElement!.closest('code'))continue;const code=element.ownerDocument.createElement('code');node.replaceWith(code);code.append(node);}
+			else for(const node of textNodes(element)){if(node.parentElement!.closest('code'))continue;const code=createDetachedEl(element.ownerDocument, 'code');node.replaceWith(code);code.append(node);}
 			return {...cell,html:element.innerHTML};
 		})});
 		formatItems.push({label:'行内代码',icon:'code',separatorBefore:true,checked:codeEnabled?'on':'off',disabled:nodes.length===0,disabledReason:nodes.length===0?'所选单元格为空':undefined,preview:()=>target.preview(nextCode()),run:run(()=>apply(nextCode()))});
@@ -178,7 +179,7 @@ export function tableContextItems(target:TableActionTarget,options:TableEditingO
 	if(selectedCells){
 		const clearCells=()=>{check();if(target.view.state.readOnly)return;const table=target.session.table;const next={...table,cells:table.cells.map(cell=>{
 			if(!target.positions.some(position=>cell.row===position.row&&cell.column===position.column))return cell;
-			const element=target.view.dom.ownerDocument.createElement(cell.role);element.append(admittedFragment(element.ownerDocument,cell.html));const range=element.ownerDocument.createRange();range.selectNodeContents(element);if(element.textContent)formatTextRange(element,range,{type:'reset',includeCode:true});const style={...cell.style};for(const key of Object.keys(style))if(['font-weight','font-style','font-family','font-size','color'].includes(key)||key.startsWith('text-decoration'))delete style[key];return {...cell,html:element.innerHTML,style};
+			const element=createDetachedEl(target.view.dom.ownerDocument, cell.role);element.append(admittedFragment(element.ownerDocument,cell.html));const range=element.ownerDocument.createRange();range.selectNodeContents(element);if(element.textContent)formatTextRange(element,range,{type:'reset',includeCode:true});const style={...cell.style};for(const key of Object.keys(style))if(['font-weight','font-style','font-family','font-size','color'].includes(key)||key.startsWith('text-decoration'))delete style[key];return {...cell,html:element.innerHTML,style};
 		})};target.commit(next);};
 		text[formatIndex]={...format,label:'所选单元格格式',children:[...parts.format,{label:'清除文本格式',icon:'eraser',separatorBefore:true,disabled:target.view.state.readOnly,run:clearCells}]};
 	}else{

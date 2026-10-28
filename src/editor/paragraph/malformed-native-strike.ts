@@ -1,3 +1,4 @@
+import { createDetachedEl } from '../../dom';
 import { syntaxTree } from '@codemirror/language';
 import type { EditorState } from '@codemirror/state';
 import type { SyntaxNode } from '@lezer/common';
@@ -60,7 +61,7 @@ export class LiteralStrikeWidget extends WidgetType {
 		return this.from === other.from && this.text === other.text && this.isOwnerActive === other.isOwnerActive;
 	}
 	toDOM(view: EditorView): HTMLElement {
-		const element = view.dom.ownerDocument.createElement('span');
+		const element = createDetachedEl(view.dom.ownerDocument, 'span');
 		element.className = 'paraflow-invalid-native-strike';
 		element.dataset.paraflowLiteralStrike = '';
 		element.textContent = this.text;

@@ -1,3 +1,4 @@
+import { createDetachedEl } from '../../dom';
 import {validateTable} from './grid';
 import type {TableModel} from './model';
 import type {HtmlTable} from './serialization';
@@ -7,7 +8,7 @@ import {admittedFragment} from './admitted-dom';
 export function sortTableRows(envelope:HtmlTable,column:number,direction:1|-1,doc:Document):{table:TableModel;origins:number[]} {
 	const table=envelope.table;validateTable(table);
 	const origins=Array.from({length:table.rows},(_,row)=>row);
-	const value=(row:number)=>{const cell=table.cells.find(cell=>cell.row<=row&&row<cell.row+cell.rowSpan&&cell.column<=column&&column<cell.column+cell.columnSpan)!;const element=doc.createElement('div');element.append(admittedFragment(doc,cell.html));return (element.textContent??'').trim();};
+	const value=(row:number)=>{const cell=table.cells.find(cell=>cell.row<=row&&row<cell.row+cell.rowSpan&&cell.column<=column&&column<cell.column+cell.columnSpan)!;const element=createDetachedEl(doc, 'div');element.append(admittedFragment(doc,cell.html));return (element.textContent??'').trim();};
 	const collator=new Intl.Collator(undefined,{numeric:true});
 	for(const group of envelope.rowGroups){
 		if(group.kind!=='tbody')continue;

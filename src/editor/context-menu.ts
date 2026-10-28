@@ -1,3 +1,4 @@
+import { createDetachedEl } from '../dom';
 import { Modal, Notice, editorInfoField, editorLivePreviewField, getLanguage, type App, type Editor, type Plugin } from 'obsidian';
 import { EditorView } from '@codemirror/view';
 import { calloutAtMenuPosition, calloutMenuTypes, calloutTypeChange, convertSelectionToCallout } from './context-menu-callout.js';
@@ -15,9 +16,9 @@ class CalloutTypeDialog extends Modal {
 	onOpen(): void {
 		this.titleEl.textContent = t('Callout 类型');
 		const doc = this.contentEl.ownerDocument;
-		const input = doc.createElement('input'); input.type = 'text'; input.value = this.initial; input.setAttribute('aria-label', t('Callout 类型'));
-		const error = doc.createElement('p'); error.setAttribute('aria-live', 'polite');
-		const confirm = doc.createElement('button'); confirm.textContent = t('确定'); confirm.className = 'mod-cta';
+		const input = createDetachedEl(doc, 'input'); input.type = 'text'; input.value = this.initial; input.setAttribute('aria-label', t('Callout 类型'));
+		const error = createDetachedEl(doc, 'p'); error.setAttribute('aria-live', 'polite');
+		const confirm = createDetachedEl(doc, 'button'); confirm.textContent = t('确定'); confirm.className = 'mod-cta';
 		const submit = () => {
 			const value = input.value.trim();
 			if (!/^[\p{L}\p{N}_-]+$/u.test(value)) { error.textContent = t('请输入类型名称，可使用字母、数字、连字符或下划线。'); return; }
@@ -25,7 +26,7 @@ class CalloutTypeDialog extends Modal {
 		};
 		confirm.onclick = submit;
 		input.onkeydown = event => { if (event.key === 'Enter') { event.preventDefault(); submit(); } };
-		const cancel = doc.createElement('button'); cancel.textContent = t('取消'); cancel.onclick = () => this.close();
+		const cancel = createDetachedEl(doc, 'button'); cancel.textContent = t('取消'); cancel.onclick = () => this.close();
 		this.contentEl.append(input, error, cancel, confirm); input.focus(); input.select();
 	}
 	onClose(): void { this.contentEl.replaceChildren(); }

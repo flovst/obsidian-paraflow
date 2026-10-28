@@ -1,3 +1,4 @@
+import { createDetachedEl } from '../dom';
 import {parser, GFM} from '@lezer/markdown';
 import {scanMathRanges} from '../editor/math/range-scanner.js';
 import {mathSourceMarkers} from '../editor/math/transient-source.js';
@@ -95,7 +96,7 @@ export function createReadingMathRanges(renderMarkdown:Render,renderMath?:Render
      if(!renderMath)throw new Error('Reading inline math renderer is unavailable');
      const result=await renderMath(math.tex,false,target.ownerDocument);
      if(!valid())return;
-     const host=target.ownerDocument.createElement('span');host.className='math math-inline is-loaded paraflow-math-rendered';host.append(result);
+     const host=createDetachedEl(target.ownerDocument, 'span');host.className='math math-inline is-loaded paraflow-math-rendered';host.append(result);
      const range=target.ownerDocument.createRange();range.setStart(first,first.data.indexOf(math.start));range.setEnd(last,last.data.indexOf(math.end)+math.end.length);
      range.deleteContents();range.insertNode(host);
     }
@@ -130,9 +131,9 @@ export function createReadingMathRanges(renderMarkdown:Render,renderMath?:Render
    if(sectionSource===lines(section.text)&&!sectionRefs.length&&!nativeFooter&&!finalSection)return false;
    owners.get(root)?.();
    const referenceHTML=(ref:ReadingFootnoteReference)=>{
-    const sup=root.ownerDocument.createElement('sup');sup.className='footnote-ref';sup.dataset.paraflowFootref=String(ref.from);
+    const sup=createDetachedEl(root.ownerDocument, 'sup');sup.className='footnote-ref';sup.dataset.paraflowFootref=String(ref.from);
     sup.id=referenceId(docId,ref);
-    const anchor=root.ownerDocument.createElement('a');anchor.className='footnote-link';
+    const anchor=createDetachedEl(root.ownerDocument, 'a');anchor.className='footnote-link';
     if(!ref.inline)anchor.dataset.footref=ref.id;
     anchor.href='#'+destination(docId,ref.number);anchor.textContent=`[${ref.number}${ref.occurrence>1?'-'+(ref.occurrence-1):''}]`;sup.append(anchor);
     return sup.outerHTML;
@@ -145,7 +146,7 @@ export function createReadingMathRanges(renderMarkdown:Render,renderMath?:Render
    let group=documents.get(docId);
    if(refs.length&&(!group||group.text!==adapted||group.owner!==root.ownerDocument)){
     if(group){group.current=false;group.footer.remove();for(const dispose of group.dispose.splice(0).reverse())dispose();}
-    const footer=root.ownerDocument.createElement('div');footer.className='paraflow-reading-math-section markdown-rendered';nested.add(footer);
+    const footer=createDetachedEl(root.ownerDocument, 'div');footer.className='paraflow-reading-math-section markdown-rendered';nested.add(footer);
     const created={text:adapted,owner:root.ownerDocument,refs,footer,ready:Promise.resolve(),roots:new Set<HTMLElement>(),dispose:[] as (()=>void)[],current:true};
     group=created;documents.set(docId,created);
     const definitions=[...index!.definitions.filter((def,at,all)=>def.references.length&&!all.slice(at+1).some(item=>item.id===def.id)).map(def=>{
@@ -167,7 +168,7 @@ export function createReadingMathRanges(renderMarkdown:Render,renderMath?:Render
       item.setAttribute('value',String(def.number));
       for(const back of item.querySelectorAll('.footnote-backref'))back.remove();
       for(const ref of def.references){
-       const back=root.ownerDocument.createElement('a');back.className='footnote-backref footnote-link';
+       const back=createDetachedEl(root.ownerDocument, 'a');back.className='footnote-backref footnote-link';
        back.href='#'+referenceId(docId,ref);back.textContent='↩︎';(item.querySelector('p')??item).append(back);
       }
      }
@@ -177,7 +178,7 @@ export function createReadingMathRanges(renderMarkdown:Render,renderMath?:Render
    if(group?.text!==adapted||group?.owner!==root.ownerDocument)group=undefined;
    sectionSource=rewrite(start,start+sectionSource.length);
    const source=referenceDefinitions+sectionSource;
-   const original=[...root.childNodes],target=root.ownerDocument.createElement('div'),children:(()=>void)[]=[];
+   const original=[...root.childNodes],target=createDetachedEl(root.ownerDocument, 'div'),children:(()=>void)[]=[];
    target.className='paraflow-reading-math-section markdown-rendered';nested.add(target);
    let current=true;
    const documentGroup=group;

@@ -1,3 +1,4 @@
+import { createDetachedEl } from '../../dom';
 import { syntaxTree, syntaxTreeAvailable } from '@codemirror/language';
 import {
 	Facet,
@@ -941,7 +942,7 @@ function createTaskContentCaret(isActive: (view: EditorView) => boolean): Extens
 		private readonly onScroll = (): void => this.schedule();
 
 		constructor(readonly view: EditorView) {
-			this.caret = view.dom.ownerDocument.createElement('span');
+			this.caret = createDetachedEl(view.dom.ownerDocument, 'span');
 			this.caret.className = 'paraflow-task-content-caret';
 			this.caret.setAttribute('aria-hidden', 'true');
 			view.dom.append(this.caret);

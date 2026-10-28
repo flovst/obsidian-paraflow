@@ -1,3 +1,4 @@
+import { createDetachedEl } from '../../dom';
 import { syntaxTree } from '@codemirror/language';
 import { Facet, Prec, StateField, type EditorState, type Extension, type Range } from '@codemirror/state';
 import { Decoration, EditorView, WidgetType, type DecorationSet } from '@codemirror/view';
@@ -9,7 +10,7 @@ class ThematicBreakWidget extends WidgetType {
 	eq(other: WidgetType): boolean { return other instanceof ThematicBreakWidget; }
 	ignoreEvent(): boolean { return false; }
 	toDOM(view: EditorView): HTMLElement {
-		const rule = view.dom.ownerDocument.createElement('hr');
+		const rule = createDetachedEl(view.dom.ownerDocument, 'hr');
 		rule.className = 'paraflow-thematic-break-rule';
 		rule.setAttribute('role', 'separator');
 		return rule;

@@ -1,3 +1,4 @@
+import { createDetachedEl } from '../../dom';
 import { assertPosition, validateTable } from './grid';
 import type { CellPosition, TableCell, TableModel } from './model';
 import {isHighlightColor,type HighlightColor} from './highlight';
@@ -81,7 +82,7 @@ export function applyCellToggle(table: TableModel, positions: readonly CellPosit
 /** User input is admitted here before a preview or source mutation. */
 export function validateCellStyle(property: CellFormatProperty, value: string, ownerDocument: Document = document): string {
 	const candidate = value.trim();
-	const probe = ownerDocument.createElement('span').style;
+	const probe = createDetachedEl(ownerDocument, 'span').style;
 	probe.setProperty(property, candidate);
 	const normalized = probe.getPropertyValue(property);
 	if (!candidate || !normalized || /[;{}]/u.test(candidate)) throw new Error('无效的格式值');
@@ -188,7 +189,7 @@ function distributeCellDecoration(cell: HTMLElement): void {
 	if (!properties.length) return;
 	const texts = textSlices(cell, 0, cell.textContent?.length ?? 0);
 	for (const { node } of texts) {
-		const span = cell.ownerDocument.createElement('span');
+		const span = createDetachedEl(cell.ownerDocument, 'span');
 		for (const property of properties) span.style.setProperty(property, cell.style.getPropertyValue(property), cell.style.getPropertyPriority(property));
 		node.replaceWith(span); span.append(node);
 	}
@@ -213,11 +214,11 @@ export function formatTextRange(cell: HTMLElement, range: Range, action: TextFor
 	const wrap=(node:Node):Node=>{
 		if(action.type==='reset')return node;
 		if(action.type==='toggle'){
-			if(enabled){const tag={bold:'strong',italic:'em',strikethrough:'s',underline:'u',highlight:'mark'}[action.format],element=cell.ownerDocument.createElement(tag);if(action.format==='highlight'&&action.color)element.setAttribute('data-highlight',action.color);element.append(node);return element;}
+			if(enabled){const tag=({bold:'strong',italic:'em',strikethrough:'s',underline:'u',highlight:'mark'} as const)[action.format],element=createDetachedEl(cell.ownerDocument, tag);if(action.format==='highlight'&&action.color)element.setAttribute('data-highlight',action.color);element.append(node);return element;}
 			const inherited=action.format==='bold'?bold(cell.style.fontWeight||(cell.tagName==='TH'?'bold':'normal')):action.format==='italic'&&/^(?:italic|oblique)(?:\s|$)/u.test(cell.style.fontStyle);
 			if(!inherited)return node;
 		}
-		const span=cell.ownerDocument.createElement('span');span.style.setProperty(action.type==='toggle'?propertyFor(action.format):action.property,value);span.append(node);return span;
+		const span=createDetachedEl(cell.ownerDocument, 'span');span.style.setProperty(action.type==='toggle'?propertyFor(action.format):action.property,value);span.append(node);return span;
 	};
 	const visit = (node: Node,insideCode=false): Piece[] => {
 		if (node.nodeType === 3) {
@@ -250,7 +251,7 @@ export function formatTextRange(cell: HTMLElement, range: Range, action: TextFor
 					for (const piece of children) {
 						const source = piece.selected ? cleaned.style : element.style;
 						if (!source.getPropertyValue(property)) continue;
-						const span = cell.ownerDocument.createElement('span');
+						const span = createDetachedEl(cell.ownerDocument, 'span');
 						span.style.setProperty(property, source.getPropertyValue(property), source.getPropertyPriority(property));
 						span.append(piece.node); piece.node = span;
 					}
@@ -267,7 +268,7 @@ export function formatTextRange(cell: HTMLElement, range: Range, action: TextFor
 			if (selected && clearSelectedElement(clone, action)) {
 				// Keep unrelated attributes while removing the formatting semantics.
 				if (clone.attributes.length) {
-					const span = cell.ownerDocument.createElement('span');
+					const span = createDetachedEl(cell.ownerDocument, 'span');
 					for (const attribute of Array.from(clone.attributes)) span.setAttribute(attribute.name, attribute.value);
 					span.append(...Array.from(clone.childNodes)); result.push({ selected, node: span });
 				} else result.push(...Array.from(clone.childNodes).map(child => ({ selected, node: child })));

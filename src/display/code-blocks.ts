@@ -1,3 +1,4 @@
+import { createDetachedEl } from '../dom';
 import type { CodeBlockOptions } from '../editor/code-blocks/model.js';
 import { isRenderedCodeLanguage } from '../editor/code-blocks/source-scan.js';
 
@@ -29,7 +30,7 @@ function wrapLogicalLines(code: HTMLElement): HTMLElement[] {
 		const last=texts.find(text=>text.to>=end)!;
 		const range=doc.createRange();
 		range.setStart(first.node,start-first.from);range.setEnd(last.node,end-last.from);
-		const line=doc.createElement('span');
+		const line=createDetachedEl(doc, 'span');
 		line.className='paraflow-code-row';
 		line.setAttribute('data-paraflow-line',String(index+1));
 		line.style.setProperty('--paraflow-code-number-digits',String(String(rows.length).length));
@@ -63,13 +64,13 @@ export function createCodeBlockDisplay(root: HTMLElement, options: CodeBlockOpti
 		let label: HTMLElement | null=null;
 		let frame: HTMLElement | null=null;
 		if(language && language!=='none' && !pre.querySelector('.code-block-flair,.code-block-language')) {
-			frame=pre.ownerDocument.createElement('div');frame.className='paraflow-code-display-frame';
+			frame=createDetachedEl(pre.ownerDocument, 'div');frame.className='paraflow-code-display-frame';
 			pre.before(frame);frame.append(pre);
-			label=pre.ownerDocument.createElement('span');label.className='paraflow-code-language';label.textContent=language;frame.append(label);
+			label=createDetachedEl(pre.ownerDocument, 'span');label.className='paraflow-code-language';label.textContent=language;frame.append(label);
 		}
 		let button: HTMLButtonElement | null=null;
 		if(!hasNativeCopy(pre)) {
-			button=pre.ownerDocument.createElement('button');button.className='paraflow-code-copy';button.type='button';button.textContent='复制';
+			button=createDetachedEl(pre.ownerDocument, 'button');button.className='paraflow-code-copy';button.type='button';button.textContent='复制';
 			button.setAttribute('aria-label','复制代码');
 			button.addEventListener('click',copy);
 			pre.append(button);

@@ -1,3 +1,4 @@
+import { createDetachedEl } from '../../dom';
 import type { EditorState } from '@codemirror/state';
 import { WidgetType, type EditorView } from '@codemirror/view';
 import type { SyntaxNode } from '@lezer/common';
@@ -55,7 +56,7 @@ export class InlineHtmlWidget extends WidgetType {
 	}
 
 	toDOM(view: EditorView): HTMLElement {
-		const container = view.dom.ownerDocument.createElement('span');
+		const container = createDetachedEl(view.dom.ownerDocument, 'span');
 		container.className = 'paraflow-inline-html';
 		const disposeRender = this.render(this.source, container, view);
 		const mapping = htmlTextSourceMap(this.source, container.ownerDocument);

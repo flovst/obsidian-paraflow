@@ -1,3 +1,4 @@
+import { createDetachedEl, createDetachedSvg } from '../../dom';
 import { EditorSelection, EditorState, Prec, StateEffect, StateField, type Extension, type Range } from '@codemirror/state';
 import { Decoration, Direction, EditorView, layer, RectangleMarker, ViewPlugin, WidgetType, type DecorationSet } from '@codemirror/view';
 import { createSharedMathParser } from '../math/shared-parser.js';
@@ -20,10 +21,10 @@ export interface DetailsEditingState {
 }
 
 function icon(document: Document, pathData: string, size: number): SVGSVGElement {
-	const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+	const svg = createDetachedSvg(document, 'svg');
 	svg.setAttribute('viewBox', '0 0 16 16'); svg.setAttribute('width', String(size)); svg.setAttribute('height', String(size));
 	svg.setAttribute('aria-hidden', 'true');
-	const path = svg.appendChild(document.createElementNS(svg.namespaceURI, 'path'));
+	const path = svg.appendChild(createDetachedSvg(document, 'path'));
 	path.setAttribute('d', pathData); return svg;
 }
 class Summary extends WidgetType {
@@ -33,11 +34,11 @@ class Summary extends WidgetType {
 			&& this.block.titleFrom === other.block.titleFrom && this.title === other.title && this.open === other.open && this.frame?.key === other.frame?.key;
 	}
 	toDOM(view: EditorView): HTMLElement {
-		const root = view.dom.ownerDocument.createElement('div'); root.className = 'paraflow-details-summary';
+		const root = createDetachedEl(view.dom.ownerDocument, 'div'); root.className = 'paraflow-details-summary';
 		root.dataset.paraflowDetailsFrom = String(this.block.from);
 		root.contentEditable = 'false';
 		const editSummary = () => { view.dispatch({ effects: edit.of(this.block.from), selection: { anchor: this.block.titleFrom } }); view.focus(); };
-		const button = root.appendChild(view.dom.ownerDocument.createElement('button'));
+		const button = root.appendChild(createDetachedEl(view.dom.ownerDocument, 'button'));
 		button.type = 'button'; button.className = 'paraflow-details-toggle'; button.setAttribute('aria-expanded', String(this.open));
 		const disclosure = icon(root.ownerDocument, this.open ? 'M3 5 L13 5 L8 12 Z' : 'M5 3 L12 8 L5 13 Z', 18);
 		disclosure.setAttribute('fill', 'currentColor'); button.append(disclosure, this.title || '详细信息');
@@ -47,7 +48,7 @@ class Summary extends WidgetType {
 			view.dispatch({ effects: toggle.of({ from: this.block.from, open: !this.open }),
 				...(this.open && this.block.bodyFrom <= selection.head && selection.head < this.block.to ? { selection: { anchor: this.block.from } } : {}) });
 		});
-		const source = root.appendChild(view.dom.ownerDocument.createElement('button'));
+		const source = root.appendChild(createDetachedEl(view.dom.ownerDocument, 'button'));
 		source.type = 'button'; source.className = 'paraflow-details-source'; source.setAttribute('aria-label', '编辑折叠区域源码');
 		const sourceIcon = icon(root.ownerDocument, 'M5 4.5 1.5 8 5 11.5 M11 4.5 14.5 8 11 11.5 M9.5 3 6.5 13', 16);
 		sourceIcon.setAttribute('fill', 'none'); sourceIcon.setAttribute('stroke', 'currentColor'); sourceIcon.setAttribute('stroke-width', '.8');
@@ -66,7 +67,7 @@ class Background extends RectangleMarker {
 	eq(other: Background): boolean { return super.eq(other) && this.frame?.key === other.frame?.key; }
 	draw(): HTMLDivElement {
 		const element = super.draw();
-		const fill = element.appendChild(element.ownerDocument.createElement('div')); fill.className = 'paraflow-details-hover-background';
+		const fill = element.appendChild(createDetachedEl(element.ownerDocument, 'div')); fill.className = 'paraflow-details-hover-background';
 		this.inset(element); return element;
 	}
 	update(element: HTMLElement, previous: Background): boolean { super.update(element, previous); this.inset(element); return true; }

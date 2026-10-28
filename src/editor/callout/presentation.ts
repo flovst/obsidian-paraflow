@@ -1,3 +1,4 @@
+import { createDetachedEl, createDetachedSvg } from '../../dom';
 import { codeFolding, foldEffect, foldedRanges, unfoldEffect } from '@codemirror/language';
 import { EditorSelection, EditorState, Prec, RangeSet, StateEffect, StateField, type Extension, type Range as CMRange } from '@codemirror/state';
 import { Decoration, EditorView, ViewPlugin, WidgetType, keymap, type DecorationSet, type ViewUpdate } from '@codemirror/view';
@@ -97,7 +98,7 @@ class HeaderIcon {
 	constructor(readonly type: string, readonly metadata: string, readonly options: CalloutPresentationOptions) {}
 	attach(view: EditorView): HTMLElement {
 		if (!this.node) {
-			this.node = view.dom.ownerDocument.createElement('span');
+			this.node = createDetachedEl(view.dom.ownerDocument, 'span');
 			this.node.className = 'paraflow-callout-icon';
 			this.node.setAttribute('aria-hidden', 'true');
 		}
@@ -111,11 +112,11 @@ class Header extends WidgetType {
 	constructor(readonly card: CalloutCard, readonly icon: HeaderIcon, readonly titleFocused: boolean) { super(); }
 	eq(other: Header): boolean { return this.titleFocused === other.titleFocused && this.card.type === other.card.type && this.card.metadata === other.card.metadata && this.card.from === other.card.from && (titleFrom(this.card) === this.card.headerTo) === (titleFrom(other.card) === other.card.headerTo); }
 	toDOM(view: EditorView): HTMLElement {
-		const container = view.dom.ownerDocument.createElement('span');
+		const container = createDetachedEl(view.dom.ownerDocument, 'span');
 		container.className = 'paraflow-callout-title';
 		container.append(this.icon.attach(view));
 		if (titleFrom(this.card) === this.card.headerTo && !this.titleFocused) {
-			const placeholder = view.dom.ownerDocument.createElement('span');
+			const placeholder = createDetachedEl(view.dom.ownerDocument, 'span');
 			placeholder.className = 'paraflow-callout-default-title';
 			placeholder.textContent = this.card.type.charAt(0).toUpperCase() + this.card.type.slice(1);
 			placeholder.addEventListener('mousedown', event => {
@@ -124,13 +125,13 @@ class Header extends WidgetType {
 			});
 			container.append(placeholder);
 		}
-		const edit = view.dom.ownerDocument.createElement('button');
+		const edit = createDetachedEl(view.dom.ownerDocument, 'button');
 		edit.type = 'button'; edit.className = 'paraflow-callout-edit';
 		edit.setAttribute('aria-label', '编辑标注类型和折叠元数据');
-		const sourceIcon = view.dom.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'svg');
+		const sourceIcon = createDetachedSvg(view.dom.ownerDocument, 'svg');
 		sourceIcon.setAttribute('viewBox', '0 0 16 16'); sourceIcon.setAttribute('aria-hidden', 'true');
 		sourceIcon.setAttribute('focusable', 'false');
-		const sourcePath = view.dom.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'path');
+		const sourcePath = createDetachedSvg(view.dom.ownerDocument, 'path');
 		sourcePath.setAttribute('d', 'M5 4.5 1.5 8 5 11.5 M11 4.5 14.5 8 11 11.5 M9.5 3 6.5 13');
 		sourcePath.setAttribute('fill', 'none'); sourcePath.setAttribute('stroke', 'currentColor');
 		sourcePath.setAttribute('stroke-width', '0.8'); sourcePath.setAttribute('stroke-linecap', 'round');
@@ -152,15 +153,15 @@ class FoldControl extends WidgetType {
 	constructor(readonly from: number, readonly collapsed: boolean) { super(); }
 	eq(other: FoldControl): boolean { return this.from === other.from && this.collapsed === other.collapsed; }
 	toDOM(view: EditorView): HTMLElement {
-		const fold = view.dom.ownerDocument.createElement('button');
+		const fold = createDetachedEl(view.dom.ownerDocument, 'button');
 		fold.type = 'button'; fold.className = 'callout-fold paraflow-callout-fold';
 		fold.setAttribute('contenteditable', 'false');
 		fold.setAttribute('aria-label', this.collapsed ? '展开 Callout' : '折叠 Callout');
 		fold.setAttribute('aria-expanded', String(!this.collapsed));
 		fold.dataset.collapsed = String(this.collapsed);
-		const svg = view.dom.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'svg');
+		const svg = createDetachedSvg(view.dom.ownerDocument, 'svg');
 		svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('aria-hidden', 'true');
-		const path = view.dom.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'path');
+		const path = createDetachedSvg(view.dom.ownerDocument, 'path');
 		path.setAttribute('d', this.collapsed ? 'm9 6 6 6-6 6' : 'm6 9 6 6 6-6');
 		path.setAttribute('fill', 'none'); path.setAttribute('stroke', 'currentColor');
 		path.setAttribute('stroke-width', '2'); path.setAttribute('stroke-linecap', 'round'); path.setAttribute('stroke-linejoin', 'round');
@@ -254,7 +255,7 @@ class ContainerBoundaryGap extends Rails {
 	constructor(cards: readonly CalloutCard[], tails: readonly number[], readonly before: string, readonly after: string) { super(cards, tails); }
 	eq(other: ContainerBoundaryGap): boolean { return super.eq(other) && this.before === other.before && this.after === other.after; }
 	toDOM(view: EditorView): HTMLElement {
-		const gap = view.dom.ownerDocument.createElement('div');
+		const gap = createDetachedEl(view.dom.ownerDocument, 'div');
 		gap.className = 'paraflow-container-boundary-gap';
 		gap.dataset.paraflowBefore = this.before;
 		gap.dataset.paraflowAfter = this.after;

@@ -1,3 +1,4 @@
+import { createDetachedEl } from '../../dom';
 import {captureTableFocus,requestTableFocus,clearTableFocus,updateTableFocusBookmark,type TableFocusBookmark} from './focus-handoff';
 import {tableEdgeAxis} from './edge-hit';
 import {redo,undo} from '@codemirror/commands';
@@ -60,7 +61,7 @@ export class HtmlTableController implements TableActionTarget {
 	private readonly outerCursor:TableOuterDragCursor;
 	constructor(readonly view:EditorView,session:TableEditSession,readonly options:TableEditingOptions){
 		this.session=session;this.current=this.anchor={row:0,column:0};this.rectangle=closeSelection(session.table,this.anchor,this.anchor);this.trackRectangle={top:0,left:0,bottom:0,right:0};
-		this.dom=view.dom.ownerDocument.createElement('div');this.dom.className='paraflow-html-table-editor';this.dom.dataset.pfTableFrom=String(session.target.from);this.dom.setAttribute('contenteditable','false');
+		this.dom=createDetachedEl(view.dom.ownerDocument, 'div');this.dom.className='paraflow-html-table-editor';this.dom.dataset.pfTableFrom=String(session.target.from);this.dom.setAttribute('contenteditable','false');
 		let owners=selectionOwners.get(view);if(!owners){owners=new Set();selectionOwners.set(view,owners);}owners.add(this);
 		this.render();
 		this.refreshOptions();
@@ -140,7 +141,7 @@ export class HtmlTableController implements TableActionTarget {
 			let tail=element.lastChild;
 			while(tail?.nodeType===3&&/^[\t\r\n ]*$/u.test(tail.textContent!))tail=tail.previousSibling;
 			// Empty contenteditable cells need a real line box for vertical caret alignment.
-			if(!tail||tail instanceof element.ownerDocument.defaultView!.HTMLBRElement){const placeholder=element.ownerDocument.createElement('br');placeholder.dataset.paraflowCellPlaceholder='true';element.append(placeholder);}
+			if(!tail||tail.instanceOf(element.ownerDocument.defaultView!.HTMLBRElement)){const placeholder=createDetachedEl(element.ownerDocument, 'br');placeholder.dataset.paraflowCellPlaceholder='true';element.append(placeholder);}
 			element.dataset.pfStripe=String(cell.row%2);element.setAttribute('contenteditable','true');element.setAttribute('tabindex','0');
 			element.setAttribute('aria-label',`第 ${cell.row+1} 行，第 ${cell.column+1} 列`);element.spellcheck=true;
 		});
@@ -194,7 +195,7 @@ export class HtmlTableController implements TableActionTarget {
 			const range=textRange.getRangeAt(0),cell=this.getNodeCell(range.commonAncestorContainer);
 			if(cell&&(cell.querySelector('[data-paraflow-cell-placeholder]')||this.linkPresentation.hasDerived(cell))){
 				const fragment=this.linkPresentation.cloneRange(cell,range);for(const placeholder of fragment.querySelectorAll('[data-paraflow-cell-placeholder]'))placeholder.remove();
-				const content=doc.createElement('div');content.append(fragment);
+				const content=createDetachedEl(doc, 'div');content.append(fragment);
 				event.clipboardData.setData('text/html',content.innerHTML);
 				for(const br of content.querySelectorAll('br'))br.replaceWith(doc.createTextNode('\n'));
 				event.clipboardData.setData('text/plain',content.textContent??'');event.preventDefault();event.stopPropagation();return;
@@ -251,7 +252,7 @@ export class HtmlTableController implements TableActionTarget {
 			const first=axis==='row'?this.rectangle.top:this.rectangle.left,last=axis==='row'?this.rectangle.bottom:this.rectangle.right;
 			const table=this.dom.querySelector('table')!,point={x:event.clientX,y:event.clientY};
 			const preview=new TableDragPreview(table,Array.from(table.querySelectorAll<HTMLElement>('[aria-selected="true"]')),axis,point);
-			const cue=this.dom.ownerDocument.createElement('div');cue.className='paraflow-table-drag-cue';cue.dataset.pfAxis=axis;cue.hidden=true;preview.dom.append(cue);
+			const cue=createDetachedEl(this.dom.ownerDocument, 'div');cue.className='paraflow-table-drag-cue';cue.dataset.pfAxis=axis;cue.hidden=true;preview.dom.append(cue);
 			this.trackDrag={axis,first,last,source:this.session.target.source,geometry:readTrackGeometry(table,this.session.table,axis),preview,cue,point};this.dom.dataset.pfTrackDrag=axis;
 	}
 	private outerPointerDown=(event:PointerEvent):void=>{
@@ -347,7 +348,7 @@ export class HtmlTableController implements TableActionTarget {
 		if(previousBreaks&&tail?.tagName==='BR'&&!element.textContent?.trim()&&!previousBreaks.has(tail))tail.setAttribute('data-paraflow-cell-placeholder','true');
 		this.clearPreview();const position=this.position(element);
 		// Browsers may insert div for Enter. Standard paragraphs are the stored form.
-		for(const div of Array.from(element.querySelectorAll('div'))){const p=element.ownerDocument.createElement('p');p.append(...Array.from(div.childNodes));div.replaceWith(p);}
+		for(const div of Array.from(element.querySelectorAll('div'))){const p=createDetachedEl(element.ownerDocument, 'p');p.append(...Array.from(div.childNodes));div.replaceWith(p);}
 		const html=this.cellHtml(element);
 		if(html===unchangedContent||this.session.table.cells.some(cell=>cell.row===position.row&&cell.column===position.column&&cell.html===html))return;
 		const table={...this.session.table,cells:this.session.table.cells.map(cell=>cell.row===position.row&&cell.column===position.column?{...cell,html}:cell)};
@@ -433,9 +434,9 @@ export class HtmlTableController implements TableActionTarget {
 				const cell=this.getEventCell(event);const selection=this.dom.ownerDocument.getSelection();if(!cell||!selection?.rangeCount)return;
 				const range=selection.getRangeAt(0);if(!cell.contains(range.commonAncestorContainer))return;
 				const prefix=range.cloneRange();prefix.selectNodeContents(cell);prefix.setEnd(range.startContainer,range.startOffset);const index=prefix.cloneContents().querySelectorAll('br').length;
-				range.deleteContents();const br=cell.ownerDocument.createElement('br');range.insertNode(br);range.setStartAfter(br);range.collapse(true);selection.removeAllRanges();selection.addRange(range);this.input(event);
+				range.deleteContents();const br=createDetachedEl(cell.ownerDocument, 'br');range.insertNode(br);range.setStartAfter(br);range.collapse(true);selection.removeAllRanges();selection.addRange(range);this.input(event);
 				const current=this.cellElement(this.current)!;current.focus();const inserted=current.querySelectorAll('br')[index];if(inserted){
-					if(inserted===current.lastChild){const placeholder=current.ownerDocument.createElement('br');placeholder.dataset.paraflowCellPlaceholder='true';current.append(placeholder);}
+					if(inserted===current.lastChild){const placeholder=createDetachedEl(current.ownerDocument, 'br');placeholder.dataset.paraflowCellPlaceholder='true';current.append(placeholder);}
 					const caret=current.ownerDocument.createRange();caret.setStartAfter(inserted);caret.collapse(true);selection.removeAllRanges();selection.addRange(caret);
 				}
 			}else{
@@ -507,7 +508,7 @@ export class HtmlTableController implements TableActionTarget {
 		const selection=cell.ownerDocument.getSelection();if(!selection?.rangeCount)return;const range=selection.getRangeAt(0);
 		if(!cell.contains(range.commonAncestorContainer))return;
 		range.deleteContents();const fragment=cell.ownerDocument.createDocumentFragment();const lines=event.clipboardData.getData('text/plain').split(/\r?\n/u);
-		lines.forEach((line,index)=>{if(index)fragment.append(cell.ownerDocument.createElement('br'));fragment.append(cell.ownerDocument.createTextNode(line));});
+		lines.forEach((line,index)=>{if(index)fragment.append(createDetachedEl(cell.ownerDocument, 'br'));fragment.append(cell.ownerDocument.createTextNode(line));});
 		const last=fragment.lastChild;range.insertNode(fragment);if(last){range.setStartAfter(last);range.collapse(true);selection.removeAllRanges();selection.addRange(range);}
 		this.input(event);
 	};

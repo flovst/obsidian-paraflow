@@ -1,3 +1,4 @@
+import { createDetachedEl } from '../../dom';
 import { Facet, type EditorState } from '@codemirror/state';
 import { EditorView, WidgetType } from '@codemirror/view';
 import { quoteContainers, type CalloutCard } from './presentation-model.js';
@@ -22,10 +23,10 @@ export class ContainerRails extends WidgetType {
 		});
 	}
 	toDOM(view: EditorView): HTMLElement {
-		const container = view.dom.ownerDocument.createElement('span');
+		const container = createDetachedEl(view.dom.ownerDocument, 'span');
 		container.className = 'paraflow-callout-rails'; container.setAttribute('aria-hidden', 'true');
 		for (const [index, card] of this.cards.entries()) {
-			const rail = container.ownerDocument.createElement('span');
+			const rail = createDetachedEl(container.ownerDocument, 'span');
 			rail.className = `paraflow-callout-rail${card.kind === 'callout' ? ' callout' : ' paraflow-quote-rail'}`;
 			rail.dataset.callout = card.type; rail.dataset.calloutMetadata = card.metadata;
 			if (card.from === this.row?.from) rail.dataset.paraflowRailStart = 'true';
@@ -54,7 +55,7 @@ export function containerBlockFrame(state: EditorState, from: number, to: number
 /** Keep the render target separate: async render failures may clear its children. */
 export function wrapContainerBlock(view: EditorView, content: HTMLElement, frame: ContainerFrame | null): HTMLElement {
 	if (!frame || !view.state.facet(containerPresentation).some(owner => owner.isActive(view))) return content;
-	const wrapper = content.ownerDocument.createElement('div'); wrapper.className = 'paraflow-container-block';
+	const wrapper = createDetachedEl(content.ownerDocument, 'div'); wrapper.className = 'paraflow-container-block';
 	if (frame.rails.cards.at(-1)!.kind === 'quote') wrapper.classList.add('paraflow-quote-block');
 	wrapper.contentEditable = 'false'; wrapper.dataset.paraflowContainerFrame = frame.key;
 	wrapper.style.setProperty('--paraflow-callout-depth', String(frame.rails.cards.at(-1)!.depth - 1));

@@ -1,3 +1,4 @@
+import { createDetachedEl, createDetachedSvg } from '../../dom';
 import {NativeTableTarget} from './native-target';
 import type {EditorView} from '@codemirror/view';
 import {type TableSource} from './edit-session';
@@ -29,12 +30,12 @@ const toolbarIcons={
 } as const;
 
 function toolbarIcon(doc:Document,name:keyof typeof toolbarIcons):SVGSVGElement {
-	const icon=doc.createElementNS('http://www.w3.org/2000/svg','svg');
+	const icon=createDetachedSvg(doc, 'svg');
 	icon.setAttribute('viewBox','0 0 16 16');icon.setAttribute('aria-hidden','true');icon.setAttribute('focusable','false');
 	icon.setAttribute('fill','none');icon.setAttribute('stroke','currentColor');icon.setAttribute('stroke-width','1.25');
 	icon.setAttribute('stroke-linecap','round');icon.setAttribute('stroke-linejoin','round');
-	if(name==='more')for(const x of [3,8,13]){const dot=doc.createElementNS('http://www.w3.org/2000/svg','circle');dot.setAttribute('cx',String(x));dot.setAttribute('cy','8');dot.setAttribute('r','1.7');dot.setAttribute('fill','currentColor');dot.setAttribute('stroke','none');icon.append(dot);}
-	else {const path=doc.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d',toolbarIcons[name]);icon.append(path);}
+	if(name==='more')for(const x of [3,8,13]){const dot=createDetachedSvg(doc, 'circle');dot.setAttribute('cx',String(x));dot.setAttribute('cy','8');dot.setAttribute('r','1.7');dot.setAttribute('fill','currentColor');dot.setAttribute('stroke','none');icon.append(dot);}
+	else {const path=createDetachedSvg(doc, 'path');path.setAttribute('d',toolbarIcons[name]);icon.append(path);}
 	return icon;
 }
 
@@ -143,11 +144,11 @@ export class TableFocusToolbar {
 		lifecycle.close=this.sourceMenu.close;button.setAttribute('aria-expanded','true');
 	}
 	private create():void {
-		const doc=this.view.dom.ownerDocument;const root=doc.createElement('div');root.className='paraflow-table-toolbar';root.setAttribute('role','toolbar');root.setAttribute('aria-label','表格工具栏');root.setAttribute('contenteditable','false');
-		const start=doc.createElement('div');start.className='paraflow-table-toolbar-start';root.append(start);
-		const makeGroup=(parent:HTMLElement,name:string,label:string)=>{const group=doc.createElement('div');group.className='paraflow-table-toolbar-group';group.dataset.pfToolbarGroup=name;group.setAttribute('role','group');group.setAttribute('aria-label',label);parent.append(group);return group;};
+		const doc=this.view.dom.ownerDocument;const root=createDetachedEl(doc, 'div');root.className='paraflow-table-toolbar';root.setAttribute('role','toolbar');root.setAttribute('aria-label','表格工具栏');root.setAttribute('contenteditable','false');
+		const start=createDetachedEl(doc, 'div');start.className='paraflow-table-toolbar-start';root.append(start);
+		const makeGroup=(parent:HTMLElement,name:string,label:string)=>{const group=createDetachedEl(doc, 'div');group.className='paraflow-table-toolbar-group';group.dataset.pfToolbarGroup=name;group.setAttribute('role','group');group.setAttribute('aria-label',label);parent.append(group);return group;};
 		let group=makeGroup(start,'size','表格大小');
-		const button=(label:string,icon:keyof typeof toolbarIcons|null,action:(target:TableToolbarTarget)=>void)=>{const element=doc.createElement('button');element.type='button';element.setAttribute('aria-label',label);if(icon)element.append(toolbarIcon(doc,icon));element.onmousedown=event=>event.preventDefault();element.onclick=()=>this.run(action);group.append(element);return element;};
+		const button=(label:string,icon:keyof typeof toolbarIcons|null,action:(target:TableToolbarTarget)=>void)=>{const element=createDetachedEl(doc, 'button');element.type='button';element.setAttribute('aria-label',label);if(icon)element.append(toolbarIcon(doc,icon));element.onmousedown=event=>event.preventDefault();element.onclick=()=>this.run(action);group.append(element);return element;};
 		button('调整表格行列数','grid',target=>{
 			const box=root.getBoundingClientRect();this.popup=showTableSizePopup(doc,{x:box.left,y:box.bottom},target,(rows,columns)=>{
 				this.check(target);if(rows===target.rows&&columns===target.columns)return;

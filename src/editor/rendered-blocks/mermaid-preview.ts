@@ -1,3 +1,4 @@
+import { createDetachedEl } from '../../dom';
 import type { EditorView } from '@codemirror/view';
 import type { RenderedBlockEditingOptions } from './extension.js';
 import { hasMermaidContentTheme, mermaidMarkdownTheme } from '../../display/mermaid-theme.js';
@@ -115,7 +116,7 @@ export class MermaidPreviews {
 		};
 	}
 	private create(source: string, from: number): Entry {
-		const content = this.document.createElement('div');
+		const content = createDetachedEl(this.document, 'div');
 		content.className = 'paraflow-rendered-block-content markdown-rendered';
 		content.classList.toggle('paraflow-mermaid-themed', hasMermaidContentTheme(this.view.dom));
 		const entry: Entry = { source, from, content, state: 'loading', destroy: () => {}, lease: null,

@@ -1,3 +1,4 @@
+import { createDetachedEl } from '../../dom';
 import { EditorSelection, EditorState, Transaction, Prec, StateField, type Extension, type Range } from '@codemirror/state';
 import { syntaxTree } from '@codemirror/language';
 import { Decoration, EditorView, ViewPlugin, WidgetType, keymap } from '@codemirror/view';
@@ -20,7 +21,7 @@ import { deleteAdjacentCode } from './operations.js';
 class EmptyCodeCaret extends WidgetType {
 	eq():boolean{return true;}
 	toDOM(view:EditorView):HTMLElement {
-		const glyph=view.dom.ownerDocument.createElement('span');glyph.className='paraflow-code-caret-glyph';
+		const glyph=createDetachedEl(view.dom.ownerDocument, 'span');glyph.className='paraflow-code-caret-glyph';
 		// A font glyph makes Chromium paint the adjacent native caret like a real blank BR.
 		glyph.textContent='\u200b';glyph.setAttribute('aria-hidden','true');return glyph;
 	}
@@ -31,11 +32,11 @@ class CodeEnding extends WidgetType {
 	constructor(readonly from: number, readonly bottomControl: boolean, readonly frame: ContainerFrame | null, readonly listInset: string, readonly indented = false) { super(); }
 	eq(other: CodeEnding): boolean { return this.from === other.from && this.bottomControl === other.bottomControl && this.frame?.key === other.frame?.key && this.listInset === other.listInset && this.indented === other.indented; }
 	toDOM(view: EditorView): HTMLElement {
-		const ending = view.dom.ownerDocument.createElement('div');
+		const ending = createDetachedEl(view.dom.ownerDocument, 'div');
 		ending.className = 'paraflow-code-ending' + (this.indented ? ' paraflow-code-ending--indented' : '');
 		ending.dataset.paraflowCodeBlock = String(this.from);
 		if (this.bottomControl) {
-			const space = view.dom.ownerDocument.createElement('div');
+			const space = createDetachedEl(view.dom.ownerDocument, 'div');
 			space.className = 'paraflow-code-ending-space';
 			space.style.setProperty('--paraflow-code-list-inset',this.listInset);
 			space.append(ending);
@@ -53,12 +54,12 @@ class CodeHeading extends WidgetType {
 		return this.from === other.from && this.language === other.language && this.position === other.position && this.frame?.key === other.frame?.key && this.listInset === other.listInset && this.indented === other.indented;
 	}
 	toDOM(view: EditorView): HTMLElement {
-		const heading = view.dom.ownerDocument.createElement('div');
+		const heading = createDetachedEl(view.dom.ownerDocument, 'div');
 		heading.className = 'paraflow-code-heading' + (this.indented ? ' paraflow-code-heading--indented' : '');
 		heading.style.setProperty('--paraflow-code-list-inset',this.listInset);
 		heading.dataset.paraflowCodeBlock = String(this.from);
 		if (this.position === 'top-right') {
-			const edit = heading.ownerDocument.createElement('button');
+			const edit = createDetachedEl(heading.ownerDocument, 'button');
 			edit.className = 'paraflow-code-edit-syntax';
 			edit.type = 'button'; edit.textContent = this.language || '代码';
 			edit.setAttribute('aria-label', '编辑代码块语言');

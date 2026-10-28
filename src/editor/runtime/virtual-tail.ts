@@ -1,3 +1,4 @@
+import { createDetachedEl } from '../../dom';
 import {EditorSelection, EditorState, Facet, Prec, StateEffect, StateField, Transaction, type Extension, type Text, type TransactionSpec} from '@codemirror/state';
 import {Decoration, EditorView, ViewPlugin, WidgetType, getDrawSelectionConfig} from '@codemirror/view';
 import {invertedEffects, isolateHistory} from '@codemirror/commands';
@@ -96,14 +97,14 @@ class TailWidget extends WidgetType {
 	constructor(readonly active:boolean,readonly blinkRate:number,readonly side:'before'|'after',readonly tag:string){super();}
 	eq(other:TailWidget):boolean{return this.active===other.active&&this.blinkRate===other.blinkRate&&this.side===other.side&&this.tag===other.tag;}
 	toDOM(view:EditorView):HTMLElement {
-		const row=view.dom.ownerDocument.createElement('div');row.className=this.side==='after'?'paraflow-virtual-tail':'paraflow-virtual-head';
+		const row=createDetachedEl(view.dom.ownerDocument, 'div');row.className=this.side==='after'?'paraflow-virtual-tail':'paraflow-virtual-head';
 		row.classList.toggle('paraflow-virtual-edge-inactive',!this.active);
 		if(this.side==='before'&&!this.active)return row;
-		const gap=view.dom.ownerDocument.createElement('div');gap.className='paraflow-block-boundary-gap';gap.dataset.paraflowBefore=this.side==='after'?this.tag:'p';gap.dataset.paraflowAfter=this.side==='after'?'p':this.tag;
+		const gap=createDetachedEl(view.dom.ownerDocument, 'div');gap.className='paraflow-block-boundary-gap';gap.dataset.paraflowBefore=this.side==='after'?this.tag:'p';gap.dataset.paraflowAfter=this.side==='after'?'p':this.tag;
 		if(this.side==='after')row.append(gap);
-		const body=view.dom.ownerDocument.createElement('div');body.className='paraflow-virtual-edge-body';row.append(body);
+		const body=createDetachedEl(view.dom.ownerDocument, 'div');body.className='paraflow-virtual-edge-body';row.append(body);
 		row.setAttribute('aria-hidden','true');
-		if(this.active){const caret=view.dom.ownerDocument.createElement('span');caret.className='paraflow-virtual-tail-caret';caret.textContent='\u200b';
+		if(this.active){const caret=createDetachedEl(view.dom.ownerDocument, 'span');caret.className='paraflow-virtual-tail-caret';caret.textContent='\u200b';
 			const blink=this.blinkRate;
 			caret.style.animationDuration=`${blink}ms`;caret.classList.toggle('paraflow-virtual-tail-caret-static',blink<=0);body.append(caret);}
 		if(this.side==='before')row.append(gap);

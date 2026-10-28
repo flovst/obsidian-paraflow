@@ -1,3 +1,4 @@
+import { createDetachedEl } from '../dom';
 import { detailsContainers } from '../editor/rendered-blocks/details-source.js';
 import type { ReadingSectionSource } from './section-rhythm.js';
 import { readingDetailsBodyBlocks, registerReadingDetailsOwner } from './details-ownership.js';
@@ -5,7 +6,7 @@ import type { DetailsOpenState } from '../display/details-open-state.js';
 
 export interface ReadingDetailsState { cache: DetailsOpenState; path: string }
 
-export const READING_DETAILS_CSS = '.paraflow-details-continuation{display:none!important}';
+export { READING_DETAILS_CSS } from './details-css.js';
 
 /** Render each complete disclosure body through the same Markdown pipeline as ordinary content. */
 export async function renderReadingDetails(root: HTMLElement, section: ReadingSectionSource,
@@ -40,7 +41,7 @@ async function renderDetails(root: HTMLElement, section: ReadingSectionSource,
 		const block = outer[index]!, element = elements[index]!;
 		const summary = element.querySelector<HTMLElement>(':scope > summary');
 		if (!summary) continue;
-		const body = element.ownerDocument.createElement('div'); body.className = 'paraflow-details-body markdown-rendered';
+		const body = createDetachedEl(element.ownerDocument, 'div'); body.className = 'paraflow-details-body markdown-rendered';
 		const quoteDepth = (/^(?:[ \t]*>[ \t]?)+/u.exec(source.slice(block.from))?.[0].match(/>/gu) ?? []).length;
 		const markdown = source.slice(block.bodyFrom, block.bodyTo).split('\n').map(line => {
 			// Quote spacing can vary by row, including a bare marker on a blank row.

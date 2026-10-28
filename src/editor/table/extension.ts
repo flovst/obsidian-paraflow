@@ -1,3 +1,4 @@
+import { createDetachedEl } from '../../dom';
 import {clearTableActivationResume,clearTableFocus,hasTableActivationRequest,hasTableFocusRequest,resumeHtmlActivationFocus,restoreTableFocus,tableFocusOwner,type TableFocusBookmark} from './focus-handoff';
 import {Prec,StateEffect,StateField,type EditorState,type Extension,type Range} from '@codemirror/state';
 import {Decoration,EditorView,ViewPlugin,WidgetType} from '@codemirror/view';
@@ -64,7 +65,7 @@ class TableWidget extends WidgetType {
 		let root=wrapContainerBlock(view,controller.dom,this.frame);
 		const container=this.session.target.container;
 		if(container?.kind==='list'){
-			root=view.dom.ownerDocument.createElement('div');root.className='paraflow-list-table-container';root.contentEditable='false';
+			root=createDetachedEl(view.dom.ownerDocument, 'div');root.className='paraflow-list-table-container';root.contentEditable='false';
 			this.listStyle(root);root.append(controller.dom);
 		}
 		domControllers.set(root,controller);return root;

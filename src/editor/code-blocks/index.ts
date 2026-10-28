@@ -1,3 +1,4 @@
+import { createDetachedEl } from '../../dom';
 import { StateEffect, StateField, type EditorState, type Extension, type Range } from '@codemirror/state';
 import { syntaxTree } from '@codemirror/language';
 import { Decoration, EditorView, ViewPlugin, WidgetType, type DecorationSet, type ViewUpdate } from '@codemirror/view';
@@ -36,13 +37,13 @@ class CodeScrollWidget extends WidgetType {
 	constructor(readonly id: number, readonly frame: ContainerFrame | null, readonly listDepth = 0, readonly listInset?: string) {super();}
 	eq(other: CodeScrollWidget): boolean {return this.id===other.id && this.frame?.key===other.frame?.key && this.listDepth===other.listDepth && this.listInset===other.listInset;}
 	toDOM(view: EditorView): HTMLElement {
-		const bar=view.dom.ownerDocument.createElement('div');
+		const bar=createDetachedEl(view.dom.ownerDocument, 'div');
 		bar.className='paraflow-code-scroll';bar.setAttribute('data-paraflow-code-block',String(this.id));
 		bar.style.setProperty('--paraflow-code-list-depth', String(this.listDepth));
 		if(this.listInset)bar.style.setProperty('--paraflow-code-list-inset',this.listInset);
 		bar.hidden=true;
 		bar.setAttribute('aria-label','横向滚动代码');bar.setAttribute('role','region');bar.tabIndex=0;
-		const track=view.dom.ownerDocument.createElement('div');track.className='paraflow-code-scroll-track';bar.append(track);
+		const track=createDetachedEl(view.dom.ownerDocument, 'div');track.className='paraflow-code-scroll-track';bar.append(track);
 		const scroll=()=>scrollBlock(view,this.id,bar.scrollLeft);
 		bar.addEventListener('scroll',scroll);
 		const dom=wrapContainerBlock(view,bar,this.frame);dom.hidden=true;
@@ -59,7 +60,7 @@ class CodeScrollWidget extends WidgetType {
 class CodeExtentWidget extends WidgetType {
 	eq(): boolean {return true;}
 	toDOM(view: EditorView): HTMLElement {
-		const extent=view.dom.ownerDocument.createElement('span');
+		const extent=createDetachedEl(view.dom.ownerDocument, 'span');
 		extent.className='paraflow-code-extent';extent.setAttribute('aria-hidden','true');
 		return extent;
 	}

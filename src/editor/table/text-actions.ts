@@ -1,3 +1,4 @@
+import { createDetachedEl } from '../../dom';
 import {admittedFragment} from './admitted-dom';
 import {bookmarkRange,rangeFromBookmark,type TableActionTarget} from './action-target';
 import type {TableEditingOptions} from './editing-types';
@@ -18,7 +19,7 @@ export function tableTextActions(target:TableActionTarget,options:TableEditingOp
 	const doc=target.view.dom.ownerDocument,session=target.session,table=session.table;
 	const bookmark=target.textBookmark??target.focusBookmark;
 	const cell=table.cells.find(cell=>cell.row===bookmark.cell.row&&cell.column===bookmark.cell.column)!;
-	const content=()=>{const element=doc.createElement(cell.role);element.append(admittedFragment(doc,cell.html));return element;};
+	const content=()=>{const element=createDetachedEl(doc, cell.role);element.append(admittedFragment(doc,cell.html));return element;};
 	const selected=bookmark.from!==bookmark.to,readOnly=target.view.state.readOnly;
 	const run=(action:()=>void|Promise<void>,mutates=true)=>()=>{void Promise.resolve().then(()=>{check();if(mutates&&target.view.state.readOnly)return;return action();}).catch(error=>options.notify(error instanceof Error?error.message:String(error)));};
 	const mutate=(edit:(element:HTMLElement,range:Range)=>number|void,keepSelection=false,operationBookmark=bookmark)=>{
@@ -29,7 +30,7 @@ export function tableTextActions(target:TableActionTarget,options:TableEditingOp
 		const from=keepSelection?bookmark.from:inserted+bookmark.from,to=keepSelection?bookmark.to:from;
 		target.replaceSource(source,undefined,{cell:bookmark.cell,from,to,text:element.textContent??''});
 	};
-	const copy=async()=>{const element=content(),range=rangeFromBookmark(element,bookmark),fragment=doc.createElement('span');fragment.append(range.cloneContents());const value={text:range.toString(),html:fragment.innerHTML};if(options.writeClipboardContent)await options.writeClipboardContent(value);else await options.writeClipboard(value.text);};
+	const copy=async()=>{const element=content(),range=rangeFromBookmark(element,bookmark),fragment=createDetachedEl(doc, 'span');fragment.append(range.cloneContents());const value={text:range.toString(),html:fragment.innerHTML};if(options.writeClipboardContent)await options.writeClipboardContent(value);else await options.writeClipboard(value.text);};
 	const paste=async(plain:boolean)=>{
 		const value=await options.readClipboard!();check();
 		mutate((element,range)=>{
@@ -39,7 +40,7 @@ export function tableTextActions(target:TableActionTarget,options:TableEditingOp
 				const body=new doc.defaultView!.DOMParser().parseFromString(value.html,'text/html').body;
 				const comments=doc.createTreeWalker(body,128);const removed:Node[]=[];for(let node=comments.nextNode();node;node=comments.nextNode())removed.push(node);for(const node of removed)node.parentNode!.removeChild(node);
 				const admitted=htmlToGrid(`<table><tr><td>${body.innerHTML}</td></tr></table>`).table.cells[0]!.html;fragment=admittedFragment(doc,admitted);
-			}else{fragment=doc.createDocumentFragment();value.text.split(/\r\n?|\n/u).forEach((text,index)=>{if(index)fragment.append(doc.createElement('br'));fragment.append(doc.createTextNode(text));});}
+			}else{fragment=doc.createDocumentFragment();value.text.split(/\r\n?|\n/u).forEach((text,index)=>{if(index)fragment.append(createDetachedEl(doc, 'br'));fragment.append(doc.createTextNode(text));});}
 			range.deleteContents();const length=fragment.textContent?.length??0;range.insertNode(fragment);return length;
 		});
 	};
@@ -70,8 +71,8 @@ export function tableTextActions(target:TableActionTarget,options:TableEditingOp
 					const existing=Array.from(element.querySelectorAll('code')).map(code=>{const run=doc.createRange();run.selectNodeContents(code);return {code,...bookmarkRange(element,run)};}).find(run=>run.from<=offsets.from&&run.to>=offsets.to);
 					if(existing){
 						const value=existing.code.textContent,before=value.slice(0,offsets.from-existing.from),after=value.slice(offsets.to-existing.from);
-						const fragment=doc.createDocumentFragment();if(before){const prefix=doc.createElement('code');prefix.textContent=before;fragment.append(prefix);}fragment.append(doc.createTextNode(range.toString()));if(after){const suffix=doc.createElement('code');suffix.textContent=after;fragment.append(suffix);}existing.code.replaceWith(fragment);
-					}else{const code=doc.createElement('code');code.textContent=range.toString();range.deleteContents();range.insertNode(code);}
+						const fragment=doc.createDocumentFragment();if(before){const prefix=createDetachedEl(doc, 'code');prefix.textContent=before;fragment.append(prefix);}fragment.append(doc.createTextNode(range.toString()));if(after){const suffix=createDetachedEl(doc, 'code');suffix.textContent=after;fragment.append(suffix);}existing.code.replaceWith(fragment);
+					}else{const code=createDetachedEl(doc, 'code');code.textContent=range.toString();range.deleteContents();range.insertNode(code);}
 				}
 				else if(command==='clear')formatTextRange(element,range,{type:'reset',includeCode:true});
 				else formatTextRange(element,range,{type:'toggle',format:command.startsWith('highlight:')?'highlight':command as 'bold'|'italic'|'strikethrough',color:command.startsWith('highlight:')?command.slice('highlight:'.length) as HighlightColor:undefined});

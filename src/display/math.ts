@@ -61,7 +61,7 @@ export function createSvgMathRenderer(options: SvgMathRendererOptions): {
 	let readiness: Promise<void> | null = null;
 	let queue: Promise<unknown> = Promise.resolve();
 	let started = false;
-	type Owner = { style: HTMLStyleElement | null; completed: Map<string, HTMLElement>; pending: Map<string, Promise<HTMLElement>>; cleanup: () => void; alive: boolean };
+	type Owner = { completed: Map<string, HTMLElement>; pending: Map<string, Promise<HTMLElement>>; cleanup: () => void; alive: boolean };
 	const owners = new Map<Document, Owner>();
 	const closed = new WeakSet<Document>();
 	const references = new WeakMap<object, number>();
@@ -96,8 +96,8 @@ export function createSvgMathRenderer(options: SvgMathRendererOptions): {
 		if (closed.has(document) || !document.defaultView) throw new Error('Math renderer document destroyed');
 		const existing = owners.get(document);
 		if (existing) return existing;
-		const state: Owner = { style: null, completed: new Map(), pending: new Map(), alive: true, cleanup() {
-			state.alive = false; state.style?.remove(); state.completed.clear(); state.pending.clear();
+		const state: Owner = { completed: new Map(), pending: new Map(), alive: true, cleanup() {
+			state.alive = false; state.completed.clear(); state.pending.clear();
 			owners.delete(document); closed.add(document);
 			document.defaultView?.removeEventListener('unload', state.cleanup);
 		} };
@@ -166,14 +166,7 @@ export function createSvgMathRenderer(options: SvgMathRendererOptions): {
 				const error = result.querySelector('[data-mjx-error]');
 				if (error) throw new Error(error.getAttribute('data-mjx-error')!);
 				result.classList.add('paraflow-svg-math');
-				if (!state.style) {
-					const style = owner.createElement('style');
-					style.dataset.paraflowMathSvg = '';
-					// All SVG jax rules begin with mjx-container; leave other renderers untouched.
-					style.textContent = (svg.styleSheet(output) as HTMLElement).textContent.replaceAll('mjx-container', 'mjx-container.paraflow-svg-math');
-					owner.head.append(style);
-					state.style = style;
-				}
+
 				state.completed.set(key, result);
 				if (state.completed.size > completedLimit) state.completed.delete(state.completed.keys().next().value!);
 				return result;

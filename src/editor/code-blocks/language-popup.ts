@@ -1,3 +1,4 @@
+import { createDetachedEl, createDetachedSvg } from '../../dom';
 import { isolateHistory } from '@codemirror/commands';
 import type { EditorView } from '@codemirror/view';
 import { discoverCodeBlocks } from './model.js';
@@ -28,12 +29,12 @@ export function openCodeLanguagePopup(view: EditorView, from: number, anchor: HT
 	const suffix = block.indented ? '' : doc.sliceString(end, opening.to);
 	const validToken = (value: string) => !/[\s`~{}<>="'\\\p{Cc}]/u.test(value) && (value.toLowerCase() === 'mermaid' || !isRenderedCodeLanguage(value));
 	const owner = view.dom.ownerDocument;
-	const popup = owner.createElement('div');
+	const popup = createDetachedEl(owner, 'div');
 	popup.className = 'paraflow-code-language-popup';
 	popup.dataset.position = options.position;
-	const input = owner.createElement('input'); input.type = 'text'; input.value = language;
+	const input = createDetachedEl(owner, 'input'); input.type = 'text'; input.value = language;
 	input.setAttribute('aria-label', '代码语言'); input.placeholder = '代码语言'; input.autocomplete = 'off'; input.spellcheck = false;
-	const suggestions = owner.createElement('div'); suggestions.className = 'paraflow-code-language-suggestions';
+	const suggestions = createDetachedEl(owner, 'div'); suggestions.className = 'paraflow-code-language-suggestions';
 	suggestions.setAttribute('role', 'listbox'); suggestions.setAttribute('aria-label', '代码语言推荐'); suggestions.hidden = true;
 	let selected = -1;
 	popup.append(input, suggestions); owner.body.append(popup);
@@ -109,12 +110,12 @@ export function openCodeLanguagePopup(view: EditorView, from: number, anchor: HT
 	function recommend(): void {
 		selected = -1;
 		suggestions.replaceChildren(...codeLanguageSuggestions(input.value).map(language => {
-			const option = owner.createElement('button'); option.type = 'button'; option.textContent = language;
+			const option = createDetachedEl(owner, 'button'); option.type = 'button'; option.textContent = language;
 			const { category, path } = codeLanguageIcon(language);
-			const icon = owner.createElementNS('http://www.w3.org/2000/svg', 'svg');
+			const icon = createDetachedSvg(owner, 'svg');
 			icon.setAttribute('viewBox', '0 0 16 16'); icon.setAttribute('class', 'paraflow-code-language-icon');
 			icon.setAttribute('data-category', category); icon.setAttribute('aria-hidden', 'true'); icon.setAttribute('focusable', 'false');
-			const shape = owner.createElementNS('http://www.w3.org/2000/svg', 'path'); shape.setAttribute('d', path);
+			const shape = createDetachedSvg(owner, 'path'); shape.setAttribute('d', path);
 			icon.append(shape); option.prepend(icon);
 			option.setAttribute('role', 'option'); option.setAttribute('aria-selected', 'false');
 			option.addEventListener('mousedown', event => event.preventDefault());

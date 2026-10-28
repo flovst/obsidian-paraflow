@@ -1,3 +1,4 @@
+import { createDetachedEl } from '../../dom';
 import {parseStyle, TableSerializationError} from './html-serialization';
 import {ident} from 'css-tree';
 import {isHighlightColor,type HighlightColor} from './highlight';
@@ -22,8 +23,8 @@ export function normalizeInlineNodes(nodes:readonly Node[],row:number,column:num
   if(inheritedFormats.italic&&state.italicOff)lose('inline-attribute','Local normal font-style overrides inherited cell italic and cannot be expressed in Markdown');
   const wrappers:Element[]=[];
   if(state.link)wrappers.push(state.link.cloneNode(false) as Element);
-  for(const [enabled,tag] of [[state.bold,'strong'],[state.italic,'em'],[state.strike,'s'],[state.underline,'u']] as const)if(enabled)wrappers.push(doc.createElement(tag));
-  if(state.highlight!==null){const mark=doc.createElement('mark');if(state.highlight)mark.setAttribute('data-highlight',state.highlight);wrappers.push(mark);}
+  for(const [enabled,tag] of [[state.bold,'strong'],[state.italic,'em'],[state.strike,'s'],[state.underline,'u']] as const)if(enabled)wrappers.push(createDetachedEl(doc, tag));
+  if(state.highlight!==null){const mark=createDetachedEl(doc, 'mark');if(state.highlight)mark.setAttribute('data-highlight',state.highlight);wrappers.push(mark);}
   let parent:Node=output;
   for(const wrapper of wrappers){const last=parent.lastChild;if(last?.nodeType===1&&same(last as Element,wrapper)&&(wrapper.localName!=='a'||linkOrigins.get(last as Element)===state.link))parent=last;else{if(wrapper.localName==='a'&&state.link)linkOrigins.set(wrapper,state.link);parent.appendChild(wrapper);parent=wrapper;}}
   if(node.nodeType===3&&parent.lastChild?.nodeType===3)parent.lastChild.textContent=(parent.lastChild.textContent??'')+(node.textContent??'');else parent.appendChild(node);
@@ -63,17 +64,17 @@ export function normalizeInlineNodes(nodes:readonly Node[],row:number,column:num
   state.strike ||= ownStrike;state.underline ||= ownUnderline;
   if(tag==='a'){
    if(wiki&&wikiLink)state.link=createWikiAnchor(doc,wikiLink);
-   else{const link=doc.createElement('a');for(const name of ['href','title'])if(element.hasAttribute(name))link.setAttribute(name,element.getAttribute(name)!);state.link=link;}
+   else{const link=createDetachedEl(doc, 'a');for(const name of ['href','title'])if(element.hasAttribute(name))link.setAttribute(name,element.getAttribute(name)!);state.link=link;}
   }
   if(tag==='code'||tag==='br'){
-   const leaf=doc.createElement(tag);if(tag==='code')leaf.textContent=element.textContent;append(leaf,state);return;
+   const leaf=createDetachedEl(doc, tag);if(tag==='code')leaf.textContent=element.textContent;append(leaf,state);return;
   }
   if(!['span','strong','em','s','u','mark','a'].includes(tag))lose('inline-element',`Inline ${tag} cannot be expressed in Markdown`);
   let previous=node.previousSibling;while(previous?.nodeType===3&&!previous.textContent?.trim())previous=previous.previousSibling;
-  if(tag==='p'&&previous&&!(previous.nodeType===1&&['p','br'].includes((previous as Element).localName)))append(doc.createElement('br'),inherited);
+  if(tag==='p'&&previous&&!(previous.nodeType===1&&['p','br'].includes((previous as Element).localName)))append(createDetachedEl(doc, 'br'),inherited);
   const before=emitted;for(const child of Array.from(element.childNodes))visit(child,state);
   if(tag==='a'&&emitted===before)append(doc.createTextNode(''),state);
-  if(tag==='p'&&node.nextSibling)append(doc.createElement('br'),inherited);
+  if(tag==='p'&&node.nextSibling)append(createDetachedEl(doc, 'br'),inherited);
  };
  for(const node of nodes)visit(node,{bold:false,italic:false,boldOff:false,italicOff:false,strike:false,underline:false,highlight:null});
  return Array.from(output.childNodes);

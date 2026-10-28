@@ -1,3 +1,4 @@
+import { createDetachedEl } from '../../dom';
 import type {TableAxis} from './model';
 
 export interface TableDragPoint {readonly x:number;readonly y:number;}
@@ -29,13 +30,13 @@ function snapshotCell(source:HTMLTableCellElement,origin:{left:number;top:number
 }
 
 function snapshotTable(table:HTMLTableElement,selectedCells:readonly HTMLElement[],box:{left:number;top:number;width:number;height:number}):HTMLTableElement {
-	const doc=table.ownerDocument;const snapshot=doc.createElement('table');snapshot.className='paraflow-table-drag-preview-table';copyAppearance(table,snapshot);
+	const doc=table.ownerDocument;const snapshot=createDetachedEl(doc, 'table');snapshot.className='paraflow-table-drag-preview-table';copyAppearance(table,snapshot);
 	snapshot.style.width=`${box.width}px`;snapshot.style.height=`${box.height}px`;
 	const rows=new Map<number,HTMLTableCellElement[]>();
 	for(const cell of selectedCells as readonly HTMLTableCellElement[]){const index=(cell.parentElement as HTMLTableRowElement).rowIndex;const cells=rows.get(index)??[];cells.push(cell);rows.set(index,cells);}
-	const body=doc.createElement('tbody');snapshot.append(body);
+	const body=createDetachedEl(doc, 'tbody');snapshot.append(body);
 	for(const [,cells] of Array.from(rows).sort(([first],[second])=>first-second)){
-		const row=doc.createElement('tr');body.append(row);
+		const row=createDetachedEl(doc, 'tr');body.append(row);
 		for(const cell of cells.sort((a,b)=>a.cellIndex-b.cellIndex))row.append(snapshotCell(cell,box));
 	}
 	const ids=new Map<string,string>(),prefix=`pf-table-drag-${++nextPreviewId}-`;
@@ -67,8 +68,8 @@ export class TableDragPreview {
 		}
 		const boxes=selectedCells.map(cell=>cell.getBoundingClientRect());const left=Math.min(...boxes.map(box=>box.left)),top=Math.min(...boxes.map(box=>box.top));
 		this.contentBox={left,top,width:Math.max(...boxes.map(box=>box.right))-left,height:Math.max(...boxes.map(box=>box.bottom))-top};
-		this.dom=doc.createElement('div');this.dom.className='paraflow-table-drag-preview-layer';this.dom.setAttribute('aria-hidden','true');this.dom.setAttribute('inert','');
-		this.ghost=doc.createElement('div');this.ghost.className=`paraflow-table-drag-preview mod-${axis==='column'?'col':'row'}`;this.ghost.style.width=`${this.contentBox.width}px`;this.ghost.style.height=`${this.contentBox.height}px`;
+		this.dom=createDetachedEl(doc, 'div');this.dom.className='paraflow-table-drag-preview-layer';this.dom.setAttribute('aria-hidden','true');this.dom.setAttribute('inert','');
+		this.ghost=createDetachedEl(doc, 'div');this.ghost.className=`paraflow-table-drag-preview mod-${axis==='column'?'col':'row'}`;this.ghost.style.width=`${this.contentBox.width}px`;this.ghost.style.height=`${this.contentBox.height}px`;
 		this.ghost.append(snapshotTable(table,selectedCells,this.contentBox));this.dom.append(this.ghost);doc.body.append(this.dom);this.position();
 		doc.addEventListener('scroll',this.schedule,true);doc.defaultView!.addEventListener('resize',this.schedule);
 	}

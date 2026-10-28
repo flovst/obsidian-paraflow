@@ -74,10 +74,7 @@ export class ParaFlowSettingTab extends PluginSettingTab {
 	}
 
 	private element<K extends keyof HTMLElementTagNameMap>(parent: HTMLElement, tag: K, cls?: string): HTMLElementTagNameMap[K] {
-		const element = parent.ownerDocument.createElement(tag);
-		if (cls) element.className = cls;
-		parent.appendChild(element);
-		return element;
+		return parent.createEl(tag, { cls });
 	}
 
 	private help(setting: Setting, key: MessageKey): void {

@@ -1,3 +1,4 @@
+import { createDetachedEl } from '../../dom';
 import type {EditorView} from '@codemirror/view';
 import type {Text} from '@codemirror/state';
 import {findEditableTableSources} from './edit-session.js';
@@ -10,7 +11,7 @@ export class TableBreakHints {
  private readonly terminalBodies=new Set<HTMLElement>();
  private readonly nativeSpacers=new Map<HTMLElement,HTMLSpanElement>();
  constructor(private readonly view:EditorView){
-  this.layer=view.dom.ownerDocument.createElement('div');
+  this.layer=createDetachedEl(view.dom.ownerDocument, 'div');
   this.layer.className='paraflow-table-break-hints';this.layer.setAttribute('aria-hidden','true');this.layer.setAttribute('contenteditable','false');
   view.dom.ownerDocument.body.append(this.layer);
  }
@@ -23,7 +24,7 @@ export class TableBreakHints {
    const existing=this.nativeSpacers.get(br);
    if(existing?.nextSibling===br)continue;
    existing?.remove();
-   const spacer=br.ownerDocument.createElement('span');spacer.className='paraflow-table-break-spacer';spacer.setAttribute('aria-hidden','true');spacer.setAttribute('contenteditable','false');
+   const spacer=createDetachedEl(br.ownerDocument, 'span');spacer.className='paraflow-table-break-spacer';spacer.setAttribute('aria-hidden','true');spacer.setAttribute('contenteditable','false');
    br.before(spacer);this.nativeSpacers.set(br,spacer);
   }
   for(const [br,spacer] of this.nativeSpacers)if(!nativeBreaks.has(br)){spacer.remove();this.nativeSpacers.delete(br);}
@@ -54,7 +55,7 @@ export class TableBreakHints {
     const clip=parent.getBoundingClientRect();left=Math.max(left,clip.left);right=Math.min(right,clip.right);
    }
    if(right<=left||box.left>=right)continue;
-   const hint=br.ownerDocument.createElement('span');hint.className='paraflow-table-break-hint';hint.textContent='<br>';
+   const hint=createDetachedEl(br.ownerDocument, 'span');hint.className='paraflow-table-break-hint';hint.textContent='<br>';
    if(br.closest('.paraflow-html-table-editor'))hint.classList.add('paraflow-table-break-hint-rich');
    const font=br.ownerDocument.defaultView!.getComputedStyle(br);
    hint.style.color=font.getPropertyValue('--paraflow-source-color')||font.getPropertyValue('--text-faint');

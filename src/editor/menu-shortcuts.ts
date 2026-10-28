@@ -1,3 +1,4 @@
+import { createDetachedEl } from '../dom';
 export interface MenuShortcutSource {
 	commandId?: string;
 	systemShortcut?: 'cut' | 'copy' | 'paste' | 'selectAll';
@@ -37,7 +38,7 @@ export function decorateContextMenuItem(element: HTMLElement, source: MenuShortc
 	element.querySelector('.paraflow-menu-shortcut')?.remove();
 	const labels = menuShortcutLabels(source, app, /Mac/u.test(element.ownerDocument.defaultView?.navigator.platform ?? ''));
 	if (!labels.length) return;
-	const hint = element.ownerDocument.createElement('span');
+	const hint = createDetachedEl(element.ownerDocument, 'span');
 	hint.className = 'paraflow-menu-shortcut';
 	hint.textContent = labels[0]!;
 	hint.title = labels.join(' / ');

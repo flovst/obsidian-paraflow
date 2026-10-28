@@ -1,3 +1,4 @@
+import { createDetachedEl } from '../../dom';
 import type {TableActionTarget} from './action-target';
 import type {TableEditingOptions} from './editing-types';
 import {planHtmlToMarkdown} from './markdown-serialization';
@@ -19,7 +20,7 @@ export function tableConversionAction(target:TableActionTarget,options:TableEdit
 		}
 		const offset=plan.headerAdded?1:0,cell={row:bookmark.cell.row+offset,column:bookmark.cell.column};
 		const model=htmlToGrid(markdownToHtml(plan.markdown)).table.cells.find(candidate=>candidate.row===cell.row&&candidate.column===cell.column)!;
-		const plain=target.view.dom.ownerDocument.createElement('div');plain.append(admittedFragment(plain.ownerDocument,model.html));const text=plain.textContent??'';
+		const plain=createDetachedEl(target.view.dom.ownerDocument, 'div');plain.append(admittedFragment(plain.ownerDocument,model.html));const text=plain.textContent??'';
 		// A lossy inline rewrite can change text offsets. Keep its cell and choose its start.
 		const offsets=text===bookmark.text?{from:bookmark.from,to:bookmark.to}:{from:0,to:0};
 		const rectangle=bookmark.rectangle?{...bookmark.rectangle,top:bookmark.rectangle.top+offset,bottom:bookmark.rectangle.bottom+offset}:undefined;

@@ -1,3 +1,4 @@
+import { createDetachedEl } from '../../dom';
 import { Facet, Prec, StateField, type EditorState, type Extension, type Range } from '@codemirror/state';
 import { Decoration, EditorView, WidgetType, type DecorationSet } from '@codemirror/view';
 import { paragraphBoundaryTag } from './model.js';
@@ -10,7 +11,7 @@ class BlockBoundaryGap extends WidgetType {
 	constructor(readonly before: string, readonly after: string) { super(); }
 	eq(other: BlockBoundaryGap): boolean { return this.before === other.before && this.after === other.after; }
 	toDOM(view: EditorView): HTMLElement {
-		const gap = view.dom.ownerDocument.createElement('div');
+		const gap = createDetachedEl(view.dom.ownerDocument, 'div');
 		gap.className = 'paraflow-block-boundary-gap';
 		gap.dataset.paraflowBefore = this.before;
 		gap.dataset.paraflowAfter = this.after;

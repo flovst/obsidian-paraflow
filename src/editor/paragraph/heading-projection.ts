@@ -1,3 +1,4 @@
+import { createDetachedEl } from '../../dom';
 import { syntaxTree, syntaxTreeAvailable } from '@codemirror/language';
 import { invertedEffects } from '@codemirror/commands';
 import {
@@ -106,7 +107,7 @@ class HeadingBadgeWidget extends WidgetType {
 		const badge = createSpan();
 		badge.className = 'paraflow-heading-badge';
 		badge.setAttribute('aria-hidden', 'true');
-		const label = badge.ownerDocument.createElement('span');
+		const label = createDetachedEl(badge.ownerDocument, 'span');
 		label.className = 'paraflow-heading-badge-label';
 		label.textContent = `h${this.level}`;
 		badge.append(label);

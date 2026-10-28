@@ -1,3 +1,4 @@
+import { createDetachedEl } from '../../dom';
 export interface WikiLinkSource {readonly target:string;readonly alias:string|null;}
 
 /** Table aliases carry an escaped pipe; embeds retain separate unsupported ownership. */
@@ -14,7 +15,7 @@ export function encodeWikiSource(link:WikiLinkSource):string {
 }
 
 export function createWikiAnchor(doc:Document,link:WikiLinkSource):HTMLAnchorElement {
- const anchor=doc.createElement('a');anchor.className='internal-link';anchor.setAttribute('data-href',link.target);anchor.setAttribute('href',link.target);if(link.alias!==null)anchor.setAttribute('data-pf-wiki-alias','true');return anchor;
+ const anchor=createDetachedEl(doc, 'a');anchor.className='internal-link';anchor.setAttribute('data-href',link.target);anchor.setAttribute('href',link.target);if(link.alias!==null)anchor.setAttribute('data-pf-wiki-alias','true');return anchor;
 }
 
 export function isWikiAnchor(element:Element):boolean {return element.localName==='a'&&element.getAttribute('class')==='internal-link'&&element.hasAttribute('data-href');}

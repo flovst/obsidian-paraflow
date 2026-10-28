@@ -1,3 +1,4 @@
+import { createDetachedEl } from '../../dom';
 import type { EditorView } from '@codemirror/view';
 
 interface NativeIcons {
@@ -30,7 +31,7 @@ export function renderCalloutHeaderIcon(source: string, element: HTMLElement, vi
 	const owner = element.ownerDocument;
 	let current: string | undefined;
 	function refresh(): void {
-		const probe = owner.createElement('div');
+		const probe = createDetachedEl(owner, 'div');
 		probe.className = 'callout paraflow-callout-icon-probe';
 		probe.dataset.callout = type!;
 		probe.dataset.calloutMetadata = metadata;

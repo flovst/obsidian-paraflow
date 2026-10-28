@@ -1,3 +1,4 @@
+import { createDetachedEl } from '../../dom';
 import {Facet,type Text as DocumentText,type Transaction} from '@codemirror/state';
 import {EditorView} from '@codemirror/view';
 import {bookmarkRange,type TextBookmark} from './action-target';
@@ -30,7 +31,7 @@ export function tableActivationDestination(view:EditorView,position:number):{fro
 /** Store logical cell/text coordinates; replacement DOM belongs to the view lifecycle. */
 export function captureTableFocus(cell:HTMLElement,position:CellPosition,html:string):TableFocusBookmark {
  cell=cell.querySelector<HTMLElement>('.cm-content')??cell;
- const plain=cell.ownerDocument.createElement('div');plain.append(admittedFragment(cell.ownerDocument,html));const text=plain.textContent??'';
+ const plain=createDetachedEl(cell.ownerDocument, 'div');plain.append(admittedFragment(cell.ownerDocument,html));const text=plain.textContent??'';
  const selection=cell.ownerDocument.getSelection(),range=selection?.rangeCount?selection.getRangeAt(0):null;
  const offsets=range&&cell.contains(range.startContainer)&&cell.contains(range.endContainer)?bookmarkRange(cell,range):{from:0,to:0};
  const mapped=cell.textContent===text?offsets:mapMarkdownTextSelection(cell.textContent??'',offsets.from,offsets.to,text);
