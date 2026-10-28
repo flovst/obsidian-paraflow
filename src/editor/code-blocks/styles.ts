@@ -313,7 +313,6 @@ pre.paraflow-code-display {
   max-width: 100%;
   overflow-x: auto !important;
   white-space: pre !important;
-  padding: var(--paraflow-block-code-padding, 0.35em 0.65em) !important;
   padding-top: var(--paraflow-block-code-padding-top, max(.65em, calc(var(--font-text-size, 1rem) * .6875 - 1px))) !important;
   padding-bottom: var(--paraflow-block-code-padding-bottom, max(.65em, calc(var(--font-text-size, 1rem) * .6875 - 1px))) !important;
   padding-left: var(--paraflow-block-code-padding-left, .65em) !important;
@@ -321,7 +320,7 @@ pre.paraflow-code-display {
   line-height: var(--paraflow-block-code-line-height, var(--code-line-height, 1.6)) !important;
   border: var(--paraflow-block-code-border, 1px solid var(--background-modifier-border));
 }
-pre.paraflow-code-display:has(.paraflow-code-row[data-paraflow-line]) {
+pre.paraflow-code-display.paraflow-code-numbered-lines {
   padding-left: var(--paraflow-code-numbered-inset, var(--paraflow-block-code-padding-left, .65em)) !important;
 }
 pre.paraflow-code-display > code {

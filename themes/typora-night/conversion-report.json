@@ -1,10 +1,31 @@
 [
   {
     "file": "night.css",
+    "line": 41,
+    "surface": "shared",
+    "status": "mapped",
+    "reason": "Redundant background declaration omitted; a later CSS variable declaration wins the cascade"
+  },
+  {
+    "file": "night.css",
     "line": 316,
     "surface": "shared",
     "status": "mapped",
     "reason": "Redundant padding declaration omitted; a later basic length declaration takes precedence"
+  },
+  {
+    "file": "night.css",
+    "line": 910,
+    "surface": "shared",
+    "status": "mapped",
+    "reason": "Redundant background declaration omitted; a later CSS variable declaration wins the cascade"
+  },
+  {
+    "file": "night.css",
+    "line": 914,
+    "surface": "shared",
+    "status": "mapped",
+    "reason": "Redundant background declaration omitted; a later CSS variable declaration wins the cascade"
   },
   {
     "file": "night/mermaid.dark.css",

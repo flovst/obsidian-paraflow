@@ -385,9 +385,6 @@ body[data-paraflow-theme] .tooltip.mod-left .tooltip-arrow { top: calc(50% - 4px
 
 .markdown-source-view.mod-cm6.is-live-preview
 	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
-	.HyperMD-task-line:has(.paraflow-list-marker--ordered),
-.markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
 	.paraflow-list-owned-line--ordered-task {
 	--paraflow-live-list-hanging-indent: 2.25em;
 }
@@ -1477,13 +1474,13 @@ body .mermaid.paraflow-mermaid-themed > svg {
 
 /* Keep native task bodies on the same hanging slot as the protected LP prefix. */
 .markdown-source-view.mod-cm6.is-live-preview > .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
- .paraflow-task-prefix:not(:has(.paraflow-list-marker--ordered)) {
+ .paraflow-task-prefix--unordered {
  position: relative;
  height: 1lh;
  vertical-align: top;
 }
 .markdown-source-view.mod-cm6.is-live-preview > .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
- .paraflow-task-prefix:not(:has(.paraflow-list-marker--ordered)) .paraflow-task-checkbox {
+ .paraflow-task-prefix--unordered .paraflow-task-checkbox {
  position: absolute;
  inset-inline-start: 0;
  top: calc(50% - var(--checkbox-size, 1em) / 2);
@@ -1940,7 +1937,6 @@ pre.paraflow-code-display {
   max-width: 100%;
   overflow-x: auto !important;
   white-space: pre !important;
-  padding: var(--paraflow-block-code-padding, 0.35em 0.65em) !important;
   padding-top: var(--paraflow-block-code-padding-top, max(.65em, calc(var(--font-text-size, 1rem) * .6875 - 1px))) !important;
   padding-bottom: var(--paraflow-block-code-padding-bottom, max(.65em, calc(var(--font-text-size, 1rem) * .6875 - 1px))) !important;
   padding-left: var(--paraflow-block-code-padding-left, .65em) !important;
@@ -1948,7 +1944,7 @@ pre.paraflow-code-display {
   line-height: var(--paraflow-block-code-line-height, var(--code-line-height, 1.6)) !important;
   border: var(--paraflow-block-code-border, 1px solid var(--background-modifier-border));
 }
-pre.paraflow-code-display:has(.paraflow-code-row[data-paraflow-line]) {
+pre.paraflow-code-display.paraflow-code-numbered-lines {
   padding-left: var(--paraflow-code-numbered-inset, var(--paraflow-block-code-padding-left, .65em)) !important;
 }
 pre.paraflow-code-display > code {
@@ -2705,4 +2701,4 @@ pre.paraflow-code-display.paraflow-code-wrap > code {
 .markdown-reading-view .callout.paraflow-display-callout[data-paraflow-callout-style="obsidian"]::before,
 .cm-editor[data-paraflow-callout-style="obsidian"] .cm-callout > .callout::before { display: none; }
 
-mjx-container.paraflow-svg-math[jax="SVG"]{direction:ltr}mjx-container.paraflow-svg-math[jax="SVG"]>svg{overflow:visible;min-height:1px;min-width:1px}mjx-container.paraflow-svg-math[jax="SVG"]>svg a{fill:blue;stroke:blue}mjx-container.paraflow-svg-math[jax="SVG"][display="true"]{display:block;text-align:center;margin:1em 0}mjx-container.paraflow-svg-math[jax="SVG"][display="true"][width="full"]{display:flex}mjx-container.paraflow-svg-math[jax="SVG"][justify="left"]{text-align:left}mjx-container.paraflow-svg-math[jax="SVG"][justify="right"]{text-align:right}.paraflow-svg-math g[data-mml-node="merror"]>g{fill:red;stroke:red}.paraflow-svg-math g[data-mml-node="merror"]>rect[data-background]{fill:yellow;stroke:none}.paraflow-svg-math g[data-mml-node="mtable"]>line[data-line],.paraflow-svg-math svg[data-table]>g>line[data-line]{stroke-width:70px;fill:none}.paraflow-svg-math g[data-mml-node="mtable"]>rect[data-frame],.paraflow-svg-math svg[data-table]>g>rect[data-frame]{stroke-width:70px;fill:none}.paraflow-svg-math g[data-mml-node="mtable"]>.mjx-dashed,.paraflow-svg-math svg[data-table]>g>.mjx-dashed{stroke-dasharray:140}.paraflow-svg-math g[data-mml-node="mtable"]>.mjx-dotted,.paraflow-svg-math svg[data-table]>g>.mjx-dotted{stroke-linecap:round;stroke-dasharray:0,140}.paraflow-svg-math g[data-mml-node="mtable"]>g>svg{overflow:visible}.paraflow-svg-math[jax="SVG"] mjx-tool{display:inline-block;position:relative;width:0;height:0}.paraflow-svg-math[jax="SVG"] mjx-tool>mjx-tip{position:absolute;top:0;left:0}.paraflow-svg-math mjx-tool>mjx-tip{display:inline-block;padding:.2em;border:1px solid #888;font-size:70%;background-color:#F8F8F8;color:black;box-shadow:2px 2px 5px #AAAAAA}.paraflow-svg-math g[data-mml-node="maction"][data-toggle]{cursor:pointer}.paraflow-svg-math mjx-status{display:block;position:fixed;left:1em;bottom:1em;min-width:25%;padding:.2em .4em;border:1px solid #888;font-size:90%;background-color:#F8F8F8;color:black}.paraflow-svg-math foreignObject[data-mjx-xml]{font-family:initial;line-height:normal;overflow:visible}mjx-container.paraflow-svg-math[jax="SVG"] path[data-c],mjx-container.paraflow-svg-math[jax="SVG"] use[data-c]{stroke-width:3}
+mjx-container.paraflow-svg-math[jax="SVG"]{direction:ltr}mjx-container.paraflow-svg-math[jax="SVG"]>svg{overflow:visible;min-height:1px;min-width:1px}mjx-container.paraflow-svg-math[jax="SVG"]>svg a{fill:#00f;stroke:#00f}mjx-container.paraflow-svg-math[jax="SVG"][display="true"]{display:block;text-align:center;margin:1em 0}mjx-container.paraflow-svg-math[jax="SVG"][display="true"][width="full"]{display:flex}mjx-container.paraflow-svg-math[jax="SVG"][justify="left"]{text-align:left}mjx-container.paraflow-svg-math[jax="SVG"][justify="right"]{text-align:right}.paraflow-svg-math g[data-mml-node="merror"]>g{fill:#f00;stroke:#f00}.paraflow-svg-math g[data-mml-node="merror"]>rect[data-background]{fill:#ff0;stroke:none}.paraflow-svg-math g[data-mml-node="mtable"]>line[data-line],.paraflow-svg-math svg[data-table]>g>line[data-line]{stroke-width:70px;fill:none}.paraflow-svg-math g[data-mml-node="mtable"]>rect[data-frame],.paraflow-svg-math svg[data-table]>g>rect[data-frame]{stroke-width:70px;fill:none}.paraflow-svg-math g[data-mml-node="mtable"]>.mjx-dashed,.paraflow-svg-math svg[data-table]>g>.mjx-dashed{stroke-dasharray:140}.paraflow-svg-math g[data-mml-node="mtable"]>.mjx-dotted,.paraflow-svg-math svg[data-table]>g>.mjx-dotted{stroke-linecap:round;stroke-dasharray:0,140}.paraflow-svg-math g[data-mml-node="mtable"]>g>svg{overflow:visible}.paraflow-svg-math[jax="SVG"] mjx-tool{display:inline-block;position:relative;width:0;height:0}.paraflow-svg-math[jax="SVG"] mjx-tool>mjx-tip{position:absolute;top:0;left:0}.paraflow-svg-math mjx-tool>mjx-tip{display:inline-block;padding:.2em;border:1px solid #888;font-size:70%;background-color:#F8F8F8;color:#000;box-shadow:2px 2px 5px #AAAAAA}.paraflow-svg-math g[data-mml-node="maction"][data-toggle]{cursor:pointer}.paraflow-svg-math mjx-status{display:block;position:fixed;left:1em;bottom:1em;min-width:25%;padding:.2em .4em;border:1px solid #888;font-size:90%;background-color:#F8F8F8;color:#000}.paraflow-svg-math foreignObject[data-mjx-xml]{font-family:initial;line-height:normal;overflow:visible}mjx-container.paraflow-svg-math[jax="SVG"] path[data-c],mjx-container.paraflow-svg-math[jax="SVG"] use[data-c]{stroke-width:3}

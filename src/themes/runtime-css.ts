@@ -76,7 +76,7 @@ ${roots},${source}{
  caret-color:var(--paraflow-content-color,var(--text-normal));
 }
 ${source}{--paraflow-source-font:var(--font-text)}
-${live}.is-readable-line-width,${source}.is-readable-line-width,${reading}:has(.markdown-preview-view.is-readable-line-width){--paraflow-host-content-width:var(--paraflow-host-width)}
+${live}.is-readable-line-width,${source}.is-readable-line-width,${reading}:has(>.markdown-preview-view.is-readable-line-width){--paraflow-host-content-width:var(--paraflow-host-width)}
 ${source}>.cm-editor>.cm-scroller>.cm-sizer{max-width:none;width:100%}
 ${source}>.cm-editor>.cm-scroller>.cm-sizer>.cm-contentContainer>.cm-content{
  max-width:var(--paraflow-text-width);margin-inline:auto;

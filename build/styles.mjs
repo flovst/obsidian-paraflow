@@ -5,6 +5,7 @@ import { liteAdaptor } from 'mathjax-full/js/adaptors/liteAdaptor.js';
 import { HTMLHandler } from 'mathjax-full/js/handlers/html/HTMLHandler.js';
 import { SVG } from 'mathjax-full/js/output/svg.js';
 import { generate, parse, walk } from 'css-tree';
+import { normalizeNamedColors } from '../src/themes/named-colors.mjs';
 
 const root = new URL('../', import.meta.url);
 
@@ -14,6 +15,7 @@ export function mathSvgCss() {
 	const svg = new SVG({ fontCache: 'none' });
 	const document = new HTMLHandler(adaptor).create('', { OutputJax: svg });
 	const css = parse(adaptor.textContent(svg.styleSheet(document)));
+	walk(css, { visit: 'Declaration', enter(node) { normalizeNamedColors(node.property, node.value); } });
 	walk(css, { visit: 'SelectorList', enter(list) {
 		list.children.forEach(selector => {
 			const text = generate(selector);

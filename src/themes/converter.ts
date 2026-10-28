@@ -6,8 +6,10 @@ import { projectContentThemeSelectors } from './content-selectors.js';
 import { projectQuoteThemeTokens } from './quote-selectors.js';
 import { cssName, themeResource } from './resource-policy.js';
 import { normalizePaddingDeclarations } from './padding-declarations.js';
+import { normalizeBackgroundDeclarations } from './background-declarations.js';
+import { normalizeNamedColors } from './named-colors.mjs';
 
-export const CONVERTER_VERSION = '9';
+export const CONVERTER_VERSION = '10';
 interface SourceRule { node: css.Rule | css.Atrule; file: string; media: string[] }
 
 const lengthValue = (value: string): string => /^[+-]?0(?:\.0+)?$/u.test(value) ? '0px' : value;
@@ -153,6 +155,9 @@ export function convertTyporaTheme(input: ThemeInput, options: { id: string; nam
 		for (const declaration of normalizePaddingDeclarations(node.block)) {
 			report(file, declaration, 'mapped', 'Redundant padding declaration omitted; a later basic length declaration takes precedence');
 		}
+		for (const declaration of normalizeBackgroundDeclarations(node.block)) {
+			report(file, declaration, 'mapped', 'Redundant background declaration omitted; a later CSS variable declaration wins the cascade');
+		}
 	}
 	if (rules[0]) report(rules[0].file, rules[0].node, 'approximate', 'Content scope normalization preserves rule/declaration order, but removed html/body/#write selector specificity may differ');
 
@@ -219,6 +224,7 @@ export function convertTyporaTheme(input: ThemeInput, options: { id: string; nam
 
 	const rewriteValue = (declaration: css.Declaration, source: SourceRule, fontFace = false): string | null => {
 		const value = css.clone(declaration.value);
+		normalizeNamedColors(declaration.property, value);
 		let usable = true;
 		css.walk(value, node => {
 			const resource = themeResource(node);

@@ -202,7 +202,7 @@ export class TaskPrefixWidget extends WidgetType {
 
 	toDOM(view: EditorView): HTMLElement {
 		const prefix = createDetachedEl(view.dom.ownerDocument, 'span');
-		prefix.className = 'paraflow-task-prefix';
+		prefix.className = `paraflow-task-prefix paraflow-task-prefix--${this.marker.label === null ? 'unordered' : 'ordered'}`;
 		prefix.setAttribute('contenteditable', 'false');
 		const marker = createDetachedEl(view.dom.ownerDocument, 'span');
 		updateOwnedMarker(marker, this.marker);

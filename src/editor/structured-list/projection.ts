@@ -8,6 +8,7 @@ import {
 	StateField,
 	type EditorState,
 	type Extension,
+	type Range,
 	type Transaction,
 } from '@codemirror/state';
 import {
@@ -840,6 +841,19 @@ function sentinelDecorations(entry: ProjectionEntry) {
 	return from < entry.prefix.to ? [Decoration.replace({}).range(from, entry.prefix.to)] : [];
 }
 
+function markerLineDecorations(entry: ProjectionEntry): Range<Decoration>[] {
+	const projectedDepth = entry.marker.depth < 6;
+	const orderedTask = entry.marker.kind === 'task' && entry.marker.label !== null;
+	if (!projectedDepth && !orderedTask) return [];
+	const classes = [];
+	if (projectedDepth) classes.push('paraflow-list-marker-line');
+	if (orderedTask) classes.push('paraflow-list-owned-line--ordered-task');
+	return [Decoration.line({ attributes: {
+		class: classes.join(' '),
+		...(projectedDepth ? { style: `--paraflow-list-depth:${entry.marker.depth}` } : {}),
+	} }).range(entry.prefix.from)];
+}
+
 export function decorationsFor(entries: readonly ProjectionEntry[]): DecorationSet {
 	const blankRows = new Map(listBlankRuns(entries).flatMap(run => run.rows.map(row => [row.at, row.kind] as const)));
 	const ownedLines = entries.flatMap(entry => entry.ownedLines);
@@ -848,9 +862,7 @@ export function decorationsFor(entries: readonly ProjectionEntry[]): DecorationS
 			.map(line => line.range.from)));
 	const ownedStarts = new Set(entries.flatMap(entry=>entry.ownedLines.map(line=>line.range.from)));
 	const ranges = entries.flatMap((entry) => [
-		...(entry.marker.depth < 6 ? [Decoration.line({ attributes: {
-			class: 'paraflow-list-marker-line', style: `--paraflow-list-depth:${entry.marker.depth}`,
-		} }).range(entry.prefix.from)] : []),
+		...markerLineDecorations(entry),
 		...(entry.taskToken
 			? []
 			: [Decoration.replace({ widget: entry.widget }).range(

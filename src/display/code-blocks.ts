@@ -61,6 +61,7 @@ export function createCodeBlockDisplay(root: HTMLElement, options: CodeBlockOpti
 		pre.classList.add(...classes);
 		const original=[...code.childNodes];
 		const ownedRows=codeLineNumbers ? wrapLogicalLines(code) : [];
+		if(ownedRows.length) { classes.push('paraflow-code-numbered-lines');pre.classList.add('paraflow-code-numbered-lines'); }
 		const ownedMarkup=code.innerHTML;
 		let label: HTMLElement | null=null;
 		let frame: HTMLElement | null=null;

@@ -10,6 +10,7 @@
     "noUncheckedIndexedAccess": true,
     "moduleResolution": "node",
     "isolatedModules": true,
+    "allowJs": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "allowSyntheticDefaultImports": true,
@@ -21,6 +22,7 @@
     "types": []
   },
   "include": [
-    "src/**/*.ts"
+    "src/**/*.ts",
+    "src/**/*.mjs"
   ]
 }
