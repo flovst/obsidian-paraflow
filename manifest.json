@@ -1,8 +1,8 @@
 {
 	"id": "paraflow",
 	"name": "ParaFlow",
-	"version": "0.1.3",
-	"minAppVersion": "1.11.4",
+	"version": "0.1.4",
+	"minAppVersion": "1.13.4",
 	"description": "Provides structured Live Preview list editing with bundled Typora-style reading and editing visuals.",
 	"author": "flovst",
 	"isDesktopOnly": false

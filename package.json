@@ -1,6 +1,6 @@
 {
   "name": "obsidian-paraflow",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Provides structured Live Preview list editing with bundled Typora-style reading and editing visuals.",
   "main": "main.js",
   "type": "module",

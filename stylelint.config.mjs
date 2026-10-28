@@ -6,7 +6,7 @@ export default {
 	rules: {
 		...obsidian.rules,
 		'plugin/no-unsupported-browser-features': [true, {
-			severity: 'warning', browsers: ['electron >= 39'],
+			severity: 'warning', browsers: ['electron >= 43'],
 			ignore: ['css-nesting', 'css-cascade-layers'],
 		}],
 		'selector-type-no-unknown': [true, {
