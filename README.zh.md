@@ -24,13 +24,13 @@ ParaFlow 是一个尝试将 Typora 中的部分功能/体验迁移到 Obsidian �
 
 > 每个功能都可以在设置中单独开关（至少在预期中是），但目前可能仍然存在问题
 >
-> [Release 中提供了已安装 ParaFlow 的 showcase 库](../../releases/tag/0.1.1)，方便直接体验。
+> [Release 中提供了已安装 ParaFlow 的 showcase 库](../../releases/tag/0.1.2)，方便直接体验。
 
 ## 安装
 
 #### 体验 showcase 库
 
-从 [Release](../../releases/tag/0.1.1) 下载 `showcase-paraflow-0.1.1.zip`，解压后在 Obsidian 中将 `showcase-paraflow` 文件夹作为笔记库打开。其中包含对应版本的 ParaFlow、示例笔记和预设配置。随附的 6 个 CSS snippets 默认全部关闭。
+从 [Release](../../releases/tag/0.1.2) 下载 `showcase-paraflow-0.1.2.zip`，解压后在 Obsidian 中将 `showcase-paraflow` 文件夹作为笔记库打开。其中包含对应版本的 ParaFlow、示例笔记和预设配置。随附的 6 个 CSS snippets 默认全部关闭。
 
 #### 手动安装
 
