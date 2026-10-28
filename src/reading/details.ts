@@ -6,6 +6,10 @@ import type { DetailsOpenState } from '../display/details-open-state.js';
 
 export interface ReadingDetailsState { cache: DetailsOpenState; path: string }
 
+function isDetailsElement(element: HTMLElement): element is HTMLDetailsElement {
+	return element.localName === 'details';
+}
+
 export { READING_DETAILS_CSS } from './details-css.js';
 
 /** Render each complete disclosure body through the same Markdown pipeline as ordinary content. */
@@ -34,7 +38,7 @@ async function renderDetails(root: HTMLElement, section: ReadingSectionSource,
 		return () => { root.classList.toggle('paraflow-details-continuation', hidden); };
 	}
 	const outer = outerBlocks.filter(block => section.lineStart <= lineAt(block.from) && lineAt(block.from) <= section.lineEnd);
-	const elements = [...(root.matches('details') ? [root as HTMLDetailsElement] : []), ...root.querySelectorAll<HTMLDetailsElement>('details')]
+	const elements = [...(isDetailsElement(root) ? [root] : []), ...root.querySelectorAll<HTMLDetailsElement>('details')]
 		.filter(element => !element.parentElement?.closest('details') || element.parentElement.closest('details') === root.parentElement?.closest('details'));
 	const releases: (() => void)[] = [];
 	for (let index = 0; index < Math.min(outer.length, elements.length); index++) {

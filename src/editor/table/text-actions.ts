@@ -1,4 +1,4 @@
-import { createDetachedEl } from '../../dom';
+import { createDetachedEl, createOwnedFragment } from '../../dom';
 import {admittedFragment} from './admitted-dom';
 import {bookmarkRange,rangeFromBookmark,type TableActionTarget} from './action-target';
 import type {TableEditingOptions} from './editing-types';
@@ -40,7 +40,7 @@ export function tableTextActions(target:TableActionTarget,options:TableEditingOp
 				const body=new doc.defaultView!.DOMParser().parseFromString(value.html,'text/html').body;
 				const comments=doc.createTreeWalker(body,128);const removed:Node[]=[];for(let node=comments.nextNode();node;node=comments.nextNode())removed.push(node);for(const node of removed)node.parentNode!.removeChild(node);
 				const admitted=htmlToGrid(`<table><tr><td>${body.innerHTML}</td></tr></table>`).table.cells[0]!.html;fragment=admittedFragment(doc,admitted);
-			}else{fragment=doc.createDocumentFragment();value.text.split(/\r\n?|\n/u).forEach((text,index)=>{if(index)fragment.append(createDetachedEl(doc, 'br'));fragment.append(doc.createTextNode(text));});}
+			}else{fragment=createOwnedFragment(doc);value.text.split(/\r\n?|\n/u).forEach((text,index)=>{if(index)fragment.append(createDetachedEl(doc, 'br'));fragment.append(doc.createTextNode(text));});}
 			range.deleteContents();const length=fragment.textContent?.length??0;range.insertNode(fragment);return length;
 		});
 	};
@@ -71,7 +71,7 @@ export function tableTextActions(target:TableActionTarget,options:TableEditingOp
 					const existing=Array.from(element.querySelectorAll('code')).map(code=>{const run=doc.createRange();run.selectNodeContents(code);return {code,...bookmarkRange(element,run)};}).find(run=>run.from<=offsets.from&&run.to>=offsets.to);
 					if(existing){
 						const value=existing.code.textContent,before=value.slice(0,offsets.from-existing.from),after=value.slice(offsets.to-existing.from);
-						const fragment=doc.createDocumentFragment();if(before){const prefix=createDetachedEl(doc, 'code');prefix.textContent=before;fragment.append(prefix);}fragment.append(doc.createTextNode(range.toString()));if(after){const suffix=createDetachedEl(doc, 'code');suffix.textContent=after;fragment.append(suffix);}existing.code.replaceWith(fragment);
+						const fragment=createOwnedFragment(doc);if(before){const prefix=createDetachedEl(doc, 'code');prefix.textContent=before;fragment.append(prefix);}fragment.append(doc.createTextNode(range.toString()));if(after){const suffix=createDetachedEl(doc, 'code');suffix.textContent=after;fragment.append(suffix);}existing.code.replaceWith(fragment);
 					}else{const code=createDetachedEl(doc, 'code');code.textContent=range.toString();range.deleteContents();range.insertNode(code);}
 				}
 				else if(command==='clear')formatTextRange(element,range,{type:'reset',includeCode:true});

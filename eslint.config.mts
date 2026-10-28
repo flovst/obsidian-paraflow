@@ -54,6 +54,9 @@ export default defineConfig(
 		rules: {
 			// Include ownerDocument and other receiver names missed by the upstream rule.
 			'no-restricted-syntax': ['error', {
+				selector: 'CallExpression[callee.type="MemberExpression"][callee.property.name="createDocumentFragment"]',
+				message: 'Use createOwnedFragment to preserve document ownership through the Obsidian helper.',
+			}, {
 				selector: 'CallExpression[callee.type="MemberExpression"][callee.property.name=/^(createElement|createEl)$/][arguments.0.value=/^(style|link)$/i]',
 				message: 'Use the bundled styles.css or a document-owned CSSStyleSheet instead of style/link elements.',
 			}, {

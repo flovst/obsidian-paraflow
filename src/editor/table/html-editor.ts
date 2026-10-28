@@ -1,4 +1,4 @@
-import { createDetachedEl } from '../../dom';
+import { createDetachedEl, createOwnedFragment } from '../../dom';
 import {captureTableFocus,requestTableFocus,clearTableFocus,updateTableFocusBookmark,type TableFocusBookmark} from './focus-handoff';
 import {tableEdgeAxis} from './edge-hit';
 import {redo,undo} from '@codemirror/commands';
@@ -507,7 +507,7 @@ export class HtmlTableController implements TableActionTarget {
 		const cell=this.getEventCell(event);if(!cell||!event.clipboardData)return;event.preventDefault();event.stopPropagation();
 		const selection=cell.ownerDocument.getSelection();if(!selection?.rangeCount)return;const range=selection.getRangeAt(0);
 		if(!cell.contains(range.commonAncestorContainer))return;
-		range.deleteContents();const fragment=cell.ownerDocument.createDocumentFragment();const lines=event.clipboardData.getData('text/plain').split(/\r?\n/u);
+		range.deleteContents();const fragment=createOwnedFragment(cell.ownerDocument);const lines=event.clipboardData.getData('text/plain').split(/\r?\n/u);
 		lines.forEach((line,index)=>{if(index)fragment.append(createDetachedEl(cell.ownerDocument, 'br'));fragment.append(cell.ownerDocument.createTextNode(line));});
 		const last=fragment.lastChild;range.insertNode(fragment);if(last){range.setStartAfter(last);range.collapse(true);selection.removeAllRanges();selection.addRange(range);}
 		this.input(event);

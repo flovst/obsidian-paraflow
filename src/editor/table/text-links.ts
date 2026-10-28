@@ -1,4 +1,4 @@
-import { createDetachedEl } from '../../dom';
+import { createDetachedEl, createOwnedFragment } from '../../dom';
 import {bookmarkRange} from './action-target';
 import {createWikiAnchor,isWikiAnchor,isWikiAttribute} from './wiki-links';
 
@@ -15,12 +15,12 @@ export function replaceTextLink(cell:HTMLElement,range:Range,href:string,title:s
   const link=create(href);link.textContent=href;const code=parent.closest('code');
   if(code){
    const before=range.cloneRange(),after=range.cloneRange();before.selectNodeContents(code);before.setEnd(range.startContainer,range.startOffset);after.selectNodeContents(code);after.setStart(range.endContainer,range.endOffset);
-   const fragment=doc.createDocumentFragment();for(const [part,node] of [[before,null],[null,link],[after,null]] as const){if(node)fragment.append(node);else if(part?.toString()){const segment=code.cloneNode(false);segment.textContent=part.toString();fragment.append(segment);}}code.replaceWith(fragment);
+   const fragment=createOwnedFragment(doc);for(const [part,node] of [[before,null],[null,link],[after,null]] as const){if(node)fragment.append(node);else if(part?.toString()){const segment=code.cloneNode(false);segment.textContent=part.toString();fragment.append(segment);}}code.replaceWith(fragment);
   }else range.insertNode(link);return href.length;
  }
  const {from,to}=bookmarkRange(cell,range),label=range.toString();let offset=0;
  const appendLinks=(pieces:readonly Piece[]):DocumentFragment=>{
-  const fragment=doc.createDocumentFragment();let link:HTMLAnchorElement|null=null;
+  const fragment=createOwnedFragment(doc);let link:HTMLAnchorElement|null=null;
   for(const piece of pieces){if(piece.selected&&href){if(!link){link=create(label);fragment.append(link);}link.append(piece.node);}else{link=null;fragment.append(piece.node);}}
   return fragment;
  };

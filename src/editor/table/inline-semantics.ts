@@ -1,4 +1,4 @@
-import { createDetachedEl } from '../../dom';
+import { createDetachedEl, createOwnedFragment } from '../../dom';
 import {parseStyle, TableSerializationError} from './html-serialization';
 import {ident} from 'css-tree';
 import {isHighlightColor,type HighlightColor} from './highlight';
@@ -11,7 +11,7 @@ const aliases:Record<string,string>={b:'strong',i:'em',del:'s',strike:'s'};
 
 /** Finite semantic decoding, shared by Markdown output and its round-trip authority. */
 export function normalizeInlineNodes(nodes:readonly Node[],row:number,column:number,onLoss?:Loss,inheritedFormats:InheritedInlineFormats={bold:false,italic:false}):Node[] {
- const doc=nodes[0]?.ownerDocument??document,output=doc.createDocumentFragment();let emitted=0;
+ const doc=nodes[0]?.ownerDocument??document,output=createOwnedFragment(doc);let emitted=0;
  const linkOrigins=new WeakMap<Element,Element>();
  const lose=(kind:'inline-attribute'|'inline-element',message:string)=>{
   if(onLoss)onLoss(kind,message);else throw new TableSerializationError(message,row+1,column+1);
