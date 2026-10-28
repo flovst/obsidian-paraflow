@@ -56,9 +56,9 @@ ParaFlow provides source editing and previews for HTML blocks such as `<div>` an
 
 Under **Settings → ParaFlow → Editing**, toggle **Quotes & callouts** and **HTML preview** independently. The current [content theme](themes.en.md) controls text styling within containers.
 
-Expand the **Quotes & callouts** settings group to choose the `default` vertical rule style or the `obsidian` style with a block background. Both styles share title editing, folding, and click behavior.
+In the **Quotes & callouts** settings group, choose the `default` vertical rule style or the `obsidian` style with a block background. Both styles share title editing, folding, and click behavior.
 
-Expand **HTML preview** to toggle **Details hover background**. When enabled, the whole disclosure region fades in a translucent background as the pointer enters, preserving its enclosing callout's background color.
+Under **HTML preview**, toggle **Details hover background**. When enabled, the whole disclosure region fades in a translucent background as the pointer enters, preserving its enclosing callout's background color.
 
 To inspect structure, switch to Source mode and check quote prefixes, callout types, and HTML tags. Use the corresponding HTML markup when editing HTML content.
 

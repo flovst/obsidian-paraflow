@@ -41,7 +41,7 @@ export function isParaFlowLivePreview(state: EditorState): boolean {
 }
 
 export default class ParaFlowPlugin extends Plugin {
-	private settings: ParaFlowSettings = normalizeSettings(null);
+	settings: ParaFlowSettings = normalizeSettings(null);
 	private editorLifecycle: EditorExtensionLifecycle | null = null;
 	private settingsUpdate: Promise<void> = Promise.resolve();
 	private themeStore!: ThemeStore;

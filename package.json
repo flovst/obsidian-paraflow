@@ -36,7 +36,7 @@
     "globals": "^17.6.0",
     "jiti": "^2.6.1",
     "jsdom": "26.1.0",
-    "obsidian": "latest",
+    "obsidian": "1.13.0",
     "stylelint": "17.16.0",
     "stylelint-config-obsidianmd": "0.1.0",
     "tsx": "4.23.12",

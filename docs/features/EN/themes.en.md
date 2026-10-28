@@ -6,6 +6,8 @@ ParaFlow currently includes five of Typora's default themes, which you can selec
 
 The settings also offer an experimental Typora theme importer, which is still unstable. The source repository includes a Skill for importing Typora themes. If you have a particular theme in mind, I recommend letting your agent try that approach.
 
+ParaFlow settings use three native sub-pages: **Theme**, **Editing**, and **Other**. Obsidian's settings search can find individual options by their names and descriptions, including options within a disabled module.
+
 ## Importing a Typora theme (experimental)
 
 1. Click “Import theme” and choose a CSS file, ZIP archive, or theme folder.

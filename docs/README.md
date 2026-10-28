@@ -20,6 +20,6 @@ These guides explain ParaFlow's editing features, settings, and content themes. 
 
 ## Trying the features
 
-Open an example from the showcase in Live Preview, make a small edit, and compare it with Source and Reading views. Settings are under **Settings → ParaFlow**, with separate **Theme** and **Editing** categories.
+Open an example from the showcase in Live Preview, make a small edit, and compare it with Source and Reading views. Settings are under **Settings → ParaFlow**, organized into **Theme**, **Editing**, and **Other** subpages. You can also find and adjust individual options through Obsidian's settings search.
 
 The [project README](../README.md) covers installation, building from source, supported platforms, and contributions. The [Chinese index](README.zh.md) links to the corresponding Chinese guides.

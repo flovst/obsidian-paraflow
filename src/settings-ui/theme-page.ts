@@ -9,8 +9,8 @@ declare const require: (id: 'electron') => { shell: { openPath(path: string): Pr
 
 export interface ThemePageHost {
 	plugin: ParaFlowPlugin;
-	section(panel: HTMLElement, key: MessageKey): void;
-	row(key: MessageKey, build: (setting: Setting) => unknown, disabled?: boolean): void;
+	section(key: MessageKey): void;
+	row(key: MessageKey, build: (setting: Setting) => unknown, disabled?: () => boolean): void;
 	save(action: () => Promise<void>, refresh?: boolean): Promise<void>;
 	refresh(): void;
 }
@@ -28,9 +28,9 @@ function saveOverride(host: ThemePageHost, key: keyof ThemeOverrides, value: str
 }
 
 function range(host: ThemePageHost, key: 'fontSize' | 'fontWeight' | 'width' | 'lineHeight', min: number, max: number, step: number, fallback: number): void {
-	const current = host.plugin.contentThemeOverrides[key];
-	const mode = current === undefined ? '' : current === 'host' ? 'host' : 'custom';
 	host.row(key, setting => {
+		const current = host.plugin.contentThemeOverrides[key];
+		const mode = current === undefined ? '' : current === 'host' ? 'host' : 'custom';
 		setting.controlEl.classList.add('paraflow-setting-custom');
 		let slider: SliderComponent;
 		let text: TextComponent;
@@ -69,10 +69,9 @@ export function renderMarker(host: ThemePageHost): void {
 		.setValue(host.plugin.contentThemeOverrides.marker ?? '').onChange(value => saveOverride(host, 'marker', value || undefined))));
 }
 
-export function renderThemePage(panel: HTMLElement, host: ThemePageHost): void {
+export function renderThemePage(host: ThemePageHost): void {
 	const plugin = host.plugin;
-	const current = plugin.contentThemeOverrides;
-	host.section(panel, 'themeManagement');
+	host.section('themeManagement');
 	host.row('contentTheme', setting => setting.addDropdown(dropdown => {
 		dropdown.addOption('', t('followObsidian'));
 		for (const theme of plugin.contentThemes) {
@@ -107,17 +106,17 @@ export function renderThemePage(panel: HTMLElement, host: ThemePageHost): void {
 		.addButton(button => button.setButtonText(t('export')).setDisabled(!plugin.contentThemeId || plugin.contentThemeId === 'builtin-classic').onClick(() => host.save(async () => {
 			const bytes = await plugin.exportContentTheme();
 			const url = URL.createObjectURL(new Blob([new Uint8Array(bytes).buffer], { type: 'application/zip' }));
-			const link = createDetachedEl(panel.ownerDocument, 'a'); link.href = url; link.download = plugin.contentThemeId + '.zip'; link.click();
-			panel.ownerDocument.defaultView?.setTimeout(() => URL.revokeObjectURL(url), 1000);
+			const link = createDetachedEl(setting.settingEl.ownerDocument, 'a'); link.href = url; link.download = plugin.contentThemeId + '.zip'; link.click();
+			setting.settingEl.ownerDocument.defaultView?.setTimeout(() => URL.revokeObjectURL(url), 1000);
 		}))));
-	const canChooseScheme = supportsThemeColorScheme(plugin.contentThemes.find(theme => theme.id === plugin.contentThemeId));
+	const canChooseScheme = () => supportsThemeColorScheme(plugin.contentThemes.find(theme => theme.id === plugin.contentThemeId));
 	host.row('colorScheme', setting => setting.addDropdown(dropdown => {
 		dropdown.selectEl.classList.add('paraflow-setting-mode');
 		dropdown.addOptions(choices([['', 'preset'], ['host', 'followObsidian'], ['light', 'light'], ['dark', 'dark']]))
-			.setValue(canChooseScheme ? current.colorScheme ?? '' : '').onChange(value => saveOverride(host, 'colorScheme', value || undefined));
-	}), !canChooseScheme);
+			.setValue(canChooseScheme() ? plugin.contentThemeOverrides.colorScheme ?? '' : '').onChange(value => saveOverride(host, 'colorScheme', value || undefined));
+	}), () => !canChooseScheme());
 	host.row('accentColor', setting => {
-		const value = current.accentColor; const mode = value === undefined ? '' : value === 'host' ? 'host' : 'custom';
+		const value = plugin.contentThemeOverrides.accentColor; const mode = value === undefined ? '' : value === 'host' ? 'host' : 'custom';
 		setting.controlEl.classList.add('paraflow-setting-custom');
 		setting.addColorPicker(color => color.setValue(mode === 'custom' ? value! : '#428bca').setDisabled(mode !== 'custom')
 			.onChange(input => saveOverride(host, 'accentColor', input)));
@@ -127,9 +126,9 @@ export function renderThemePage(panel: HTMLElement, host: ThemePageHost): void {
 				.onChange(source => saveOverride(host, 'accentColor', source === '' ? undefined : source === 'host' ? 'host' : '#428bca', true));
 		});
 	});
-	host.section(panel, 'appearance');
+	host.section('appearance');
 	host.row('fontFamily', setting => {
-		const value = current.fontFamily; const mode = value === undefined ? '' : value === 'host' ? 'host' : 'custom';
+		const value = plugin.contentThemeOverrides.fontFamily; const mode = value === undefined ? '' : value === 'host' ? 'host' : 'custom';
 		setting.controlEl.classList.add('paraflow-setting-custom');
 		setting.addText(text => {
 			text.setPlaceholder('Georgia, serif').setValue(mode === 'custom' ? value! : '').setDisabled(mode !== 'custom');
@@ -150,7 +149,7 @@ export function renderThemePage(panel: HTMLElement, host: ThemePageHost): void {
 	range(host, 'fontWeight', 300, 500, 100, 400);
 	range(host, 'lineHeight', 1, 2.5, 0.05, 1.6);
 	range(host, 'width', 320, 1600, 10, 800);
-	host.section(panel, 'properties');
+	host.section('properties');
 	host.row('metadataGap', setting => {
 		setting.controlEl.classList.add('paraflow-setting-custom');
 		let slider: SliderComponent;
@@ -177,9 +176,10 @@ export function renderThemePage(panel: HTMLElement, host: ThemePageHost): void {
 		});
 	});
 	host.row('metadataLayout', setting => setting.addDropdown(dropdown => dropdown.addOptions(choices([['content', 'content'], ['native', 'native']]))
-		.setValue(current.metadataLayout ?? 'content').onChange(value => saveOverride(host, 'metadataLayout', value))));
+		.setValue(plugin.contentThemeOverrides.metadataLayout ?? 'content').onChange(value => saveOverride(host, 'metadataLayout', value))));
 	for (const [key, max] of [['metadataPadding', 100]] as const) {
 		host.row(key, setting => {
+			const current = plugin.contentThemeOverrides;
 			setting.controlEl.classList.add('paraflow-setting-custom');
 			let slider: SliderComponent;
 			let text: TextComponent;
@@ -211,8 +211,7 @@ export function renderThemePage(panel: HTMLElement, host: ThemePageHost): void {
 			});
 		});
 	}
-	const footer = createDetachedEl(panel.ownerDocument, 'div'); footer.className = 'paraflow-settings-footer'; panel.appendChild(footer);
-	const reset = new Setting(footer)
+	host.row('resetAdjustments', setting => setting
 		.addButton(button => button.setButtonText(t('reset'))
 			.onClick(() => host.save(async () => {
 				await plugin.setContentThemeOverrides(resetThemeValues(plugin.contentThemeOverrides));
@@ -226,12 +225,7 @@ export function renderThemePage(panel: HTMLElement, host: ThemePageHost): void {
 			}), true)))
 		.addButton(button => button.setButtonText(t('followThemeAll'))
 			.onClick(() => host.save(() => plugin.setContentThemeOverrides(plugin.contentThemeOverrides.marker
-				? { marker: plugin.contentThemeOverrides.marker } : {}), true)));
-	reset.settingEl.dataset.setting = 'resetAdjustments';
-	reset.controlEl.querySelectorAll('button').forEach((button, index) => {
-		button.setAttribute('aria-label', t((['reset', 'followObsidianAll', 'followThemeAll'] as const)[index]!));
-		button.dataset.control = String(index);
-	});
+				? { marker: plugin.contentThemeOverrides.marker } : {}), true))));
 }
 
 function resetThemeValues(current: ThemeOverrides): ThemeOverrides {
