@@ -728,16 +728,16 @@ body[data-paraflow-theme] .tooltip.mod-left .tooltip-arrow { top: calc(50% - 4px
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-inline-active
+	> .cm-editor.paraflow-inline-active .cm-content[contenteditable] .cm-line
 	.cm-url:has(> .paraflow-inline-source-active) {
-	text-decoration-line: none !important;
+	text-decoration-line: none;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
 	.cm-formatting-strikethrough.cm-strikethrough:has(.paraflow-inline-source-active--strikethrough),
 .markdown-source-view.mod-cm6.is-live-preview
 	.paraflow-inline-source-active--strikethrough .cm-formatting-strikethrough.cm-strikethrough {
-	text-decoration-line: none !important;
+	text-decoration-line: none;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview .paraflow-invalid-native-strike,
@@ -843,45 +843,45 @@ body[data-paraflow-theme] .tooltip.mod-left .tooltip-arrow { top: calc(50% - 4px
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-inline-active
+	> .cm-editor.paraflow-inline-active .cm-content[contenteditable] .cm-line
 	.paraflow-inline-source-active,
 .markdown-source-view.mod-cm6.is-live-preview
-	.cm-table-widget .cm-content .cm-formatting:is(.cm-formatting-code, .cm-formatting-strong, .cm-formatting-em, .cm-formatting-strikethrough, .cm-formatting-highlight, .cm-formatting-link, .cm-formatting-link-string),
+	.cm-table-widget .cm-content[contenteditable] .cm-line .cm-formatting:is(.cm-formatting-code, .cm-formatting-strong, .cm-formatting-em, .cm-formatting-strikethrough, .cm-formatting-highlight, .cm-formatting-link, .cm-formatting-link-string),
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-inline-active
+	> .cm-editor.paraflow-inline-active .cm-content[contenteditable] .cm-line
 	.paraflow-inline-source-active * {
 	color: var(--paraflow-source-color, var(--text-faint)) !important;
-	font-family: var(--font-text) !important;
-	font-size: 1em !important;
-	font-style: normal !important;
-	font-weight: 400 !important;
-	line-height: inherit !important;
+	font-family: var(--font-text);
+	font-size: 1em;
+	font-style: normal;
+	font-weight: 400;
+	line-height: inherit;
 	text-decoration: none !important;
 	background: transparent !important;
-	border: 0 !important;
-	border-radius: 0 !important;
-	padding: 0 !important;
+	border: 0;
+	border-radius: 0;
+	padding: 0;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-inline-active
+	> .cm-editor.paraflow-inline-active .cm-content[contenteditable] .cm-line
 	.cm-highlight:has(:is(.paraflow-inline-body--highlight, .paraflow-inline-source-active)),
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-inline-active
+	> .cm-editor.paraflow-inline-active .cm-content[contenteditable] .cm-line
 	.cm-inline-code:has(:is(.paraflow-inline-body--inline-code, .paraflow-inline-source-active)) {
 	background: transparent !important;
-	border: 0 !important;
-	border-radius: 0 !important;
-	box-shadow: none !important;
-	padding: 0 !important;
+	border: 0;
+	border-radius: 0;
+	box-shadow: none;
+	padding: 0;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor.paraflow-inline-active
+	> .cm-editor.paraflow-inline-active .cm-content[contenteditable] .cm-line
 	.cm-inline-code:has(:is(.paraflow-inline-body--inline-code, .paraflow-inline-source-active)) {
-	font-family: inherit !important;
-	font-size: 1em !important;
-	line-height: inherit !important;
+	font-family: inherit;
+	font-size: 1em;
+	line-height: inherit;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
@@ -1311,19 +1311,19 @@ body[data-paraflow-theme] .tooltip.mod-left .tooltip-arrow { top: calc(50% - 4px
 .markdown-source-view.mod-cm6.is-live-preview .paraflow-body-indent {
 	text-indent: 2em !important;
 }
-.markdown-source-view.mod-cm6.is-live-preview > .cm-editor.paraflow-inline-active :is(.paraflow-literal-inline-marker,:is(.cm-inline-code,.cm-highlight):has(.paraflow-literal-inline-marker)) {
+.markdown-source-view.mod-cm6.is-live-preview > .cm-editor.paraflow-inline-active .cm-content[contenteditable] .cm-line :is(.paraflow-literal-inline-marker,:is(.cm-inline-code,.cm-highlight):has(.paraflow-literal-inline-marker)) {
   color: inherit !important;
-  font-family: inherit !important;
-  font-size: inherit !important;
-  font-style: inherit !important;
-  font-weight: inherit !important;
-  line-height: inherit !important;
+  font-family: inherit;
+  font-size: inherit;
+  font-style: inherit;
+  font-weight: inherit;
+  line-height: inherit;
   text-decoration: none !important;
   background: transparent !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  padding: 0 !important;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
 }
 
 /* A content-themed diagram already owns its palette. */

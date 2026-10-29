@@ -10,9 +10,9 @@ export const renderedBlockEditorStyles = `
 }
 .paraflow-rendered-block-preview:hover { background: var(--paraflow-surface-color, var(--background-secondary)); }
 /* Keep the external source button visible and hit-testable under native CSS. */
-.cm-editor .paraflow-rendered-block-preview,
+.markdown-source-view.mod-cm6 .cm-editor .paraflow-rendered-block-preview,
 .markdown-source-view.mod-cm6 .cm-editor .cm-content .paraflow-rendered-block-preview,
-.cm-editor .cm-content > .cm-line.paraflow-rendered-source-line {
+.markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-rendered-source-line {
   contain: none !important;
 }
 .paraflow-rendered-block-preview.is-editing {
@@ -49,54 +49,54 @@ export const renderedBlockEditorStyles = `
 .paraflow-rendered-block-content > :first-child { margin-block-start: 0; }
 .paraflow-rendered-block-content > :last-child { margin-block-end: 0; }
 .paraflow-rendered-block-preview[data-render-state="error"] .paraflow-rendered-block-content { color: var(--text-error); }
-.paraflow-rendered-block-badge,
-.cm-editor .cm-content > .cm-line.paraflow-rendered-source-line::before,
-.cm-editor .cm-content > .paraflow-rendered-source-line .cm-inline-code {
+.markdown-source-view.mod-cm6 .cm-editor .paraflow-rendered-block-badge,
+.markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-rendered-source-line::before,
+.markdown-source-view.mod-cm6 .cm-editor .cm-content > .paraflow-rendered-source-line .cm-inline-code {
   border: 0 !important;
   border-radius: 0 !important;
 }
-.paraflow-rendered-block-badge,
-.cm-editor .cm-content > .paraflow-rendered-source-line .cm-inline-code { box-shadow: none !important; }
-.paraflow-rendered-block-badge,
-.cm-editor .cm-content > .cm-line.paraflow-rendered-source-line { height: auto !important; }
-.paraflow-rendered-block-badge {
-  position: absolute !important;
+.markdown-source-view.mod-cm6 .cm-editor .paraflow-rendered-block-badge,
+.markdown-source-view.mod-cm6 .cm-editor .cm-content > .paraflow-rendered-source-line .cm-inline-code { box-shadow: none !important; }
+.markdown-source-view.mod-cm6 .cm-editor .paraflow-rendered-block-badge,
+.markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-rendered-source-line { height: auto; }
+.markdown-source-view.mod-cm6 .cm-editor .paraflow-rendered-block-badge {
+  position: absolute;
   inset-block-end: 100%;
   inset-inline-end: 0;
-  min-height: 0 !important;
-  padding: .1em .55em !important;
-  font: .75em/1.4 var(--font-interface) !important;
-  color: var(--text-muted) !important;
-  background: var(--paraflow-surface-color, var(--background-secondary)) !important;
+  min-height: 0;
+  padding: .1em .55em;
+  font: .75em/1.4 var(--font-interface);
+  color: var(--text-muted);
+  background: var(--paraflow-surface-color, var(--background-secondary));
   opacity: 0;
   user-select: none;
   transition: opacity .15s ease;
 }
-.paraflow-rendered-block-preview:hover > .paraflow-rendered-block-badge,
-.paraflow-rendered-block-badge:focus-visible,
-.paraflow-rendered-source-line .paraflow-rendered-block-badge { opacity: 1; }
-.cm-editor .cm-content > .cm-line.paraflow-rendered-source-line,
-.cm-editor .cm-content > .cm-line.paraflow-rendered-source-line::before { display: block !important; }
-.cm-editor .cm-content > .cm-line.paraflow-rendered-source-line {
+.markdown-source-view.mod-cm6 .cm-editor .paraflow-rendered-block-preview:hover > .paraflow-rendered-block-badge,
+.markdown-source-view.mod-cm6 .cm-editor .paraflow-rendered-block-badge:focus-visible,
+.markdown-source-view.mod-cm6 .cm-editor .paraflow-rendered-source-line .paraflow-rendered-block-badge { opacity: 1; }
+.markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-rendered-source-line,
+.markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-rendered-source-line::before { display: block; }
+.markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-rendered-source-line {
   position: relative;
   box-sizing: border-box;
-  min-height: 1lh !important;
+  min-height: 1lh;
   line-height: var(--code-line-height, 1.6) !important;
-  text-indent: 0 !important;
-  white-space: pre-wrap !important;
+  text-indent: 0;
+  white-space: pre-wrap;
   margin: 0 !important;
-  padding: 0 .5em 0 4.5ch !important;
+  padding: 0 .5em 0 4.5ch;
   font-family: var(--paraflow-block-code-font, var(--font-monospace));
   font-size: var(--paraflow-block-code-size, .9em);
   background: var(--paraflow-surface-color, var(--background-secondary)) !important;
   border-inline: 1px solid var(--paraflow-border-color, var(--background-modifier-border));
-  overflow: visible !important;
+  overflow: visible;
 }
-.cm-editor .cm-content > .cm-line.paraflow-rendered-source-line.is-first { margin-block-start: 1.25em !important; padding-block-start: .3em !important; }
-.cm-editor .cm-content > .cm-line.paraflow-rendered-source-mermaid.is-first:not(.paraflow-callout-line) { border-block-start: var(--paraflow-block-code-border, 1px solid var(--paraflow-border-color, var(--background-modifier-border))) !important; }
-.cm-editor .cm-content > .cm-line.paraflow-rendered-source-line.is-last { padding-block-end: .3em !important; }
-.cm-editor .cm-content > .cm-line.paraflow-rendered-source-line::before {
-  content: attr(data-paraflow-rendered-line) !important;
+.markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-rendered-source-line.is-first { margin-block-start: 1.25em !important; padding-block-start: .3em; }
+.markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-rendered-source-mermaid.is-first:not(.paraflow-callout-line) { border-block-start: var(--paraflow-block-code-border, 1px solid var(--paraflow-border-color, var(--background-modifier-border))) !important; }
+.markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-rendered-source-line.is-last { padding-block-end: .3em; }
+.markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-rendered-source-line::before {
+  content: attr(data-paraflow-rendered-line);
   position: absolute;
   inset-inline-start: 0;
   inset-block: 0;
@@ -105,12 +105,12 @@ export const renderedBlockEditorStyles = `
   padding-inline-end: .7ch;
   text-align: end;
   border-inline-end: 1px solid var(--paraflow-border-color, var(--background-modifier-border)) !important;
-  color: var(--text-faint) !important;
+  color: var(--text-faint);
   pointer-events: none;
   user-select: none;
 }
 .cm-editor .cm-content > .cm-line.paraflow-rendered-source-line.is-first::before { padding-block-start: .3em; }
-.cm-editor .cm-content > .paraflow-rendered-source-line .cm-inline-code {
+.markdown-source-view.mod-cm6 .cm-editor .cm-content > .paraflow-rendered-source-line .cm-inline-code {
   padding: 0 !important;
   margin: 0 !important;
   background: none !important;
@@ -131,6 +131,6 @@ export const renderedBlockEditorStyles = `
   --paraflow-html-string-color: #98c379;
 }
 @media (prefers-reduced-motion: reduce) {
-  .paraflow-rendered-block-preview, .paraflow-rendered-block-badge { transition: none; }
+  .paraflow-rendered-block-preview, .markdown-source-view.mod-cm6 .cm-editor .paraflow-rendered-block-badge { transition: none; }
 }
 `;

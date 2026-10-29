@@ -195,7 +195,7 @@ ${reading} pre${exclude}{
  line-height:var(--paraflow-block-code-line-height,var(--code-line-height,1.6));
 }
 ${reading} pre code${exclude}{font:inherit;color:inherit;background:transparent;border:0;padding:0}
-${reading} :not(pre)>code${exclude},${live} .cm-inline-code:not(:has(.paraflow-inline-body--inline-code)):not(:has(.paraflow-inline-source-active))${exclude}{
+${reading} :not(pre)>code${exclude},${live} .cm-inline-code:not(:has(:is(.paraflow-inline-body--inline-code,.paraflow-inline-source-active,.paraflow-literal-inline-marker))):not(:where(.paraflow-literal-inline-marker,.paraflow-inline-source-active,.paraflow-inline-source-active *,.paraflow-code-line *,.paraflow-rendered-source-line *))${exclude}{
  color:var(--paraflow-inline-code-color,var(--code-normal));
  background:var(--paraflow-inline-code-background,var(--code-background));
  font-family:var(--paraflow-inline-code-font,var(--font-monospace));font-size:var(--paraflow-inline-code-size,.9em);

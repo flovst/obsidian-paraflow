@@ -73,7 +73,7 @@ export const containerSurfaceStyles = {
 	'.paraflow-callout-rails > .paraflow-callout-rail': { display: 'block', position: 'absolute',
 		insetInlineStart: 'calc(var(--paraflow-callout-list-inset, 0px) + var(--paraflow-rail-callouts) * var(--paraflow-callout-inset, 24px) + (var(--paraflow-callout-rail-depth) - var(--paraflow-rail-callouts)) * var(--paraflow-quote-inset, 24px))', top: '0',
 		bottom: 'calc(var(--paraflow-callout-rail-tail) * var(--paraflow-callout-padding, 12px))', width: '4px',
-		padding: '0 !important', margin: '0 !important', border: '0 !important', borderRadius: '0', background: 'var(--callout-color)' },
+		padding: '0', margin: '0', border: '0', borderRadius: '0', background: 'var(--callout-color)' },
 	'.paraflow-callout-rails > .paraflow-quote-rail': { width: 'max(4px, var(--paraflow-quote-border-width, 4px))', background: 'var(--paraflow-quote-border, var(--background-modifier-border))' },
 	'.cm-content > .paraflow-container-block': { position: 'relative', boxSizing: 'border-box', margin: '0', overflow: 'visible',
 		'--paraflow-container-inset': containerInset,

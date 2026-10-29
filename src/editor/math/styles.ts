@@ -4,11 +4,11 @@ export const mathEditorStyles = `
 .cm-editor.paraflow-math-active .paraflow-math-draft,
 .cm-editor.paraflow-math-active .paraflow-math-draft * {
   color: var(--text-normal) !important;
-  background: transparent !important;
-  text-decoration: none !important;
-  box-shadow: none !important;
-  font-family: var(--font-text) !important;
-  font-size: var(--font-text-size, 16px) !important;
+  background: transparent;
+  text-decoration: none;
+  box-shadow: none;
+  font-family: var(--font-text);
+  font-size: var(--font-text-size, 16px);
   font-weight: 400 !important;
   font-style: normal !important;
 }
@@ -36,25 +36,27 @@ export const mathEditorStyles = `
 .cm-editor.paraflow-math-active .cm-line.paraflow-math-source-block {
   position: relative;
   box-sizing: border-box;
-  height: auto !important;
-  min-height: calc(1em * var(--line-height-normal, 1.5)) !important;
+  height: auto;
+  min-height: calc(1em * var(--line-height-normal, 1.5));
   line-height: var(--line-height-normal, 1.5) !important;
-  white-space: pre-wrap !important;
+  white-space: pre-wrap;
   text-indent: 0 !important;
-  padding: 0 .5em 0 4.5ch !important;
-  margin: 0 !important;
+  padding-block: 0;
+  padding-left: 4.5ch !important;
+  padding-right: .5em !important;
+  margin: 0;
   border-inline: 1px solid var(--paraflow-border-color);
   background: var(--paraflow-surface-color);
   font-family: var(--font-monospace);
 }
 .cm-editor.paraflow-math-active .cm-line.paraflow-math-source-block,
 .cm-editor.paraflow-math-active .paraflow-math-source-block[data-paraflow-math-line]::before {
-  display: block !important;
+  display: block;
 }
 /* Container rails have their own spans; native quote pseudo-borders must not paint the gutter. */
-.cm-editor.paraflow-math-active .cm-line.paraflow-math-source-block::before { border-inline-start: 0 !important; }
+.cm-editor.paraflow-math-active .cm-line.paraflow-math-source-block::before { border-inline-start: 0; }
 .cm-editor.paraflow-math-active .paraflow-math-source-block[data-paraflow-math-line]::before {
-  content: attr(data-paraflow-math-line) !important;
+  content: attr(data-paraflow-math-line);
   position: absolute;
   inset-block: 0;
   inset-inline-start: 0;
@@ -72,11 +74,11 @@ export const mathEditorStyles = `
 .cm-editor.paraflow-math-active .cm-line.paraflow-math-source-start {
   border-block-start: 1px solid var(--paraflow-border-color);
   border-radius: 3px 3px 0 0;
-  padding-block-start: .4em !important;
-  overflow: visible !important;
+  padding-block-start: .4em;
+  overflow: visible;
 }
 .cm-editor.paraflow-math-active .paraflow-math-source-block:not([data-paraflow-math-line]) {
-  min-height: 1em !important;
+  min-height: 1em;
   line-height: 1 !important;
 }
 .cm-editor.paraflow-math-active .paraflow-math-boundary {
@@ -95,7 +97,7 @@ export const mathEditorStyles = `
 }
 .cm-editor.paraflow-math-active .paraflow-math-boundary-open { inset-block-start: .4em; }
 .cm-editor.paraflow-math-active .paraflow-math-boundary-close { inset-block-end: .4em; }
-.cm-editor.paraflow-math-active .cm-line.paraflow-math-source-end { padding-block-end: .4em !important; }
+.cm-editor.paraflow-math-active .cm-line.paraflow-math-source-end { padding-block-end: .4em; }
 .cm-editor.paraflow-math-active .cm-line.paraflow-callout-line.paraflow-math-source-start {
   border-block-start: 0;
 }
@@ -113,8 +115,8 @@ export const mathEditorStyles = `
   border-block-start: 1px solid var(--paraflow-border-color);
   border-radius: 3px 3px 0 0;
 }
-.cm-editor.paraflow-math-active .cm-line.paraflow-math-source-start-inline { padding-block-start: 1.4em !important; }
-.cm-editor.paraflow-math-active .cm-line.paraflow-math-source-end-inline { padding-block-end: 1.4em !important; }
+.cm-editor.paraflow-math-active .cm-line.paraflow-math-source-start-inline { padding-block-start: 1.4em; }
+.cm-editor.paraflow-math-active .cm-line.paraflow-math-source-end-inline { padding-block-end: 1.4em; }
 .cm-editor.paraflow-math-active .paraflow-math-source-start-inline::before { inset-block-start: 1.4em; }
 .cm-editor.paraflow-math-active .paraflow-math-source-end-inline::before { inset-block-end: 1.4em; }
 .paraflow-math-rendered, .paraflow-math-tooltip { font-weight: normal; font-style: normal; }

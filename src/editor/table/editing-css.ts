@@ -29,7 +29,10 @@ export const TABLE_EDITING_CSS=`
 .paraflow-html-table-editor[data-pf-track-hover] :is(td,th) { cursor:inherit; }
 .paraflow-html-table-editor[data-pf-track-drag="row"],.paraflow-html-table-editor[data-pf-track-drag="row"] * { cursor:row-resize !important; user-select:none; }
 .paraflow-html-table-editor[data-pf-track-drag="column"],.paraflow-html-table-editor[data-pf-track-drag="column"] * { cursor:col-resize !important; user-select:none; }
-.cm-table-widget.paraflow-table-controls .is-selected::after,.cm-table-widget.paraflow-table-controls.is-selected table::after { inset:0 !important; }
+.cm-table-widget.paraflow-table-controls .is-selected::after,
+.cm-table-widget.paraflow-table-controls.is-selected table::after,
+.markdown-source-view.mod-cm6 .cm-table-widget.paraflow-table-controls .is-selected::after,
+.markdown-source-view.mod-cm6 .cm-table-widget.paraflow-table-controls.is-selected table::after { inset:0; }
 .cm-table-widget.paraflow-table-controls .table-drag-target.mod-col::after { right:0; }
 .cm-table-widget.paraflow-table-controls .table-drag-target.mod-row::after { bottom:0; }
 .paraflow-table-drag-preview-layer { position:fixed; overflow:hidden; pointer-events:none; contain:strict; z-index:calc(var(--layer-menu,1000) - 3); }

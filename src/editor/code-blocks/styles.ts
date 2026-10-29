@@ -2,7 +2,7 @@ import { LIST_BLOCK_GEOMETRY_CSS } from '../paragraph/list-block-geometry.js';
 
 export const CODE_BLOCK_CSS = LIST_BLOCK_GEOMETRY_CSS + `
 .paraflow-code-plain { color:var(--paraflow-block-code-color,var(--code-normal)); }
-.paraflow-code-syntax-line .cm-hmd-codeblock { color:inherit!important; }
+.markdown-source-view.mod-cm6 .cm-editor .paraflow-code-syntax-line .cm-hmd-codeblock { color:inherit; }
 .paraflow-code-heading.paraflow-code-heading--indented { height:0;border:0;background:transparent;overflow:visible; }
 .paraflow-code-ending.paraflow-code-ending--indented { height:0;border:0;background:transparent; }
 .paraflow-code-heading {
@@ -18,10 +18,9 @@ export const CODE_BLOCK_CSS = LIST_BLOCK_GEOMETRY_CSS + `
   border-bottom: 0;
   box-sizing: content-box;
 }
-.cm-content > .paraflow-code-heading,
-.cm-content > .paraflow-container-block > .paraflow-code-heading,
-.markdown-source-view.mod-cm6 .cm-editor .cm-content > .paraflow-code-heading {
-  display: flex !important;
+.markdown-source-view.mod-cm6 .cm-editor .cm-content > .paraflow-code-heading,
+.markdown-source-view.mod-cm6 .cm-editor .cm-content > .paraflow-container-block > .paraflow-code-heading {
+  display: flex;
   contain: none !important;
   z-index: 2;
 }
@@ -42,33 +41,35 @@ export const CODE_BLOCK_CSS = LIST_BLOCK_GEOMETRY_CSS + `
   font-size: var(--paraflow-block-code-size, 0.9em);
 }
 .cm-line.paraflow-code-draft,
-.cm-line.paraflow-code-draft span:not(.paraflow-callout-rails):not(.paraflow-callout-rail) {
-  color: var(--text-faint) !important;
-  font-family: inherit !important;
-  font-size: inherit !important;
-  font-style: normal !important;
-  font-weight: normal !important;
+.cm-line.paraflow-code-draft span:not(.paraflow-callout-rails):not(.paraflow-callout-rail) { color: var(--text-faint) !important; }
+.markdown-source-view.mod-cm6 .cm-editor .cm-line.paraflow-code-draft,
+.markdown-source-view.mod-cm6 .cm-editor .cm-line.paraflow-code-draft span:not(.paraflow-callout-rails):not(.paraflow-callout-rail) {
+  color: var(--text-faint);
+  font-family: inherit;
+  font-size: inherit;
+  font-style: normal;
+  font-weight: normal;
 }
-.cm-line.paraflow-code-draft,
-.cm-line.paraflow-code-draft span:not(.paraflow-callout-rails):not(.paraflow-callout-rail),
-.cm-content > .cm-line.paraflow-code-draft { background: transparent !important; }
-.cm-content > .cm-line.paraflow-code-draft {
-  border: 0 !important;
-  border-radius: 0 !important;
+.markdown-source-view.mod-cm6 .cm-editor .cm-line.paraflow-code-draft,
+.markdown-source-view.mod-cm6 .cm-editor .cm-line.paraflow-code-draft span:not(.paraflow-callout-rails):not(.paraflow-callout-rail),
+.markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-code-draft { background: transparent; }
+.markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-code-draft {
+  border: 0;
+  border-radius: 0;
 }
-.cm-content > .cm-line.paraflow-code-draft:not(.HyperMD-list-line):not(.paraflow-list-owned-line) {
-  font: inherit !important;
-  line-height: inherit !important;
+.markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-code-draft:not(.HyperMD-list-line):not(.paraflow-list-owned-line) {
+  font: inherit;
+  line-height: inherit;
 }
-.cm-content > .cm-line.paraflow-code-draft:not(.paraflow-callout-line):not(.HyperMD-list-line):not(.paraflow-list-owned-line) {
-  padding: 0 !important;
-  text-indent: 0 !important;
+.markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-code-draft:not(.paraflow-callout-line):not(.HyperMD-list-line):not(.paraflow-list-owned-line) {
+  padding: 0;
+  text-indent: 0;
 }
-.cm-line.paraflow-code-draft::before { display: none !important; }
+.markdown-source-view.mod-cm6 .cm-editor .cm-line.paraflow-code-draft::before { display: none; }
 .markdown-source-view.mod-cm6.is-live-preview .cm-content > :is(.paraflow-code-heading,.paraflow-code-ending-space,.paraflow-code-ending,.paraflow-code-scroll),
-.cm-content > :is(.paraflow-code-heading,.paraflow-code-ending-space,.paraflow-code-ending,.paraflow-code-scroll),
-.cm-content > .paraflow-container-block > :is(.paraflow-code-heading,.paraflow-code-ending-space,.paraflow-code-ending,.paraflow-code-scroll),
-.cm-content > .cm-line.paraflow-code-fenced-list:not(.paraflow-callout-line) {
+.markdown-source-view.mod-cm6 .cm-editor .cm-content > :is(.paraflow-code-heading,.paraflow-code-ending-space,.paraflow-code-ending,.paraflow-code-scroll),
+.markdown-source-view.mod-cm6 .cm-editor .cm-content > .paraflow-container-block > :is(.paraflow-code-heading,.paraflow-code-ending-space,.paraflow-code-ending,.paraflow-code-scroll),
+.markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-code-fenced-list:not(.paraflow-callout-line) {
   margin-inline-start: var(--paraflow-code-list-inset, 0px) !important;
 }
 .paraflow-code-heading .paraflow-code-edit-syntax {
@@ -151,43 +152,48 @@ export const CODE_BLOCK_CSS = LIST_BLOCK_GEOMETRY_CSS + `
   --paraflow-code-text-gap: calc(var(--paraflow-code-number-text-gap, 0.65em) + var(--paraflow-code-inner-padding-left, 0px));
   --paraflow-code-gutter: calc(var(--paraflow-code-number-digits, 1) * 1ch + var(--paraflow-code-number-gap) + var(--paraflow-code-number-padding-left, 0px) + 1px);
 }
-.cm-line.paraflow-code-line,
+.markdown-source-view.mod-cm6 .cm-editor .cm-line.paraflow-code-line { white-space: pre; }
 pre.paraflow-code-display,
 pre.paraflow-code-display > code { white-space: pre !important; }
-.cm-line.paraflow-code-line,
+.markdown-source-view.mod-cm6 .cm-editor .cm-line.paraflow-code-line {
+  overflow-wrap: normal;
+  word-break: normal;
+}
 pre.paraflow-code-display > code {
   overflow-wrap: normal !important;
   word-break: normal !important;
 }
-.cm-line.paraflow-code-line,
+.markdown-source-view.mod-cm6 .cm-editor .cm-line.paraflow-code-line {
+  line-height: var(--paraflow-block-code-line-height, var(--code-line-height, 1.6));
+}
 pre.paraflow-code-display {
   line-height: var(--paraflow-block-code-line-height, var(--code-line-height, 1.6)) !important;
 }
-.cm-line.paraflow-code-line {
+.markdown-source-view.mod-cm6 .cm-editor .cm-line.paraflow-code-line {
   --paraflow-code-inset: var(--paraflow-block-code-padding-left, 0.65em);
   position: relative;
-  overflow-x: hidden !important;
+  overflow-x: hidden;
   max-width: 100%;
   box-sizing: border-box;
-  text-indent: 0 !important;
+  text-indent: 0;
   font-family: var(--paraflow-block-code-font, var(--font-monospace));
   font-size: var(--paraflow-block-code-size, 0.9em);
   padding-inline-start: var(--paraflow-code-inset) !important;
-  padding-inline-end: var(--paraflow-block-code-padding-right, .65em) !important;
-  padding-block: 0 !important;
-  border-inline: var(--paraflow-block-code-border, 1px solid var(--background-modifier-border)) !important;
+  padding-inline-end: var(--paraflow-block-code-padding-right, .65em);
+  padding-block: 0;
+  border-inline: var(--paraflow-block-code-border, 1px solid var(--background-modifier-border));
   border-block: 0;
   border-radius: 0;
-  background: var(--paraflow-block-code-background, var(--code-background, var(--background-secondary))) !important;
-  min-height: 1lh !important;
-  height: auto !important;
+  background: var(--paraflow-block-code-background, var(--code-background, var(--background-secondary)));
+  min-height: 1lh;
+  height: auto;
 }
 /* An inline gutter changes Chromium's caret rounding next to the virtual glyph. */
-.cm-line.paraflow-code-line:is(.paraflow-code-wrap,.paraflow-code-virtual)[data-paraflow-line] {
+.markdown-source-view.mod-cm6 .cm-editor .cm-line.paraflow-code-line:is(.paraflow-code-wrap,.paraflow-code-virtual)[data-paraflow-line] {
   padding-inline-start: calc(var(--paraflow-code-inset) + var(--paraflow-code-gutter) + var(--paraflow-code-text-gap)) !important;
   text-indent: 0;
 }
-.cm-line.paraflow-code-line[data-paraflow-line] {
+.markdown-source-view.mod-cm6 .cm-editor .cm-line.paraflow-code-line[data-paraflow-line] {
   --paraflow-code-local-inset: var(--paraflow-code-numbered-inset, var(--paraflow-block-code-padding-left, 0.65em));
   --paraflow-code-inset: var(--paraflow-code-local-inset);
 }
@@ -195,16 +201,19 @@ pre.paraflow-code-display {
   padding-inline-start: calc(var(--paraflow-code-gutter) + var(--paraflow-code-text-gap));
   text-indent: 0;
 }
-.cm-line.paraflow-code-line.paraflow-code-wrap,
+.markdown-source-view.mod-cm6 .cm-editor .cm-line.paraflow-code-line.paraflow-code-wrap {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 pre.paraflow-code-display.paraflow-code-wrap > code {
   white-space: pre-wrap !important;
   overflow-wrap: anywhere !important;
 }
-.cm-content > .cm-line.paraflow-callout-line.paraflow-code-line {
+.markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-callout-line.paraflow-code-line {
   --paraflow-code-inset: calc(var(--paraflow-container-inset) + var(--paraflow-code-frame-border-left, 0px) + var(--paraflow-code-local-inset, var(--paraflow-block-code-padding-left, .65em)));
   --paraflow-container-end-inset: calc(var(--paraflow-container-callouts) * var(--paraflow-callout-padding, 12px));
   border-inline: 0 !important;
-  padding-inline-end: calc(var(--paraflow-container-end-inset) + var(--paraflow-code-frame-border-right, 0px) + var(--paraflow-block-code-padding-right, .65em)) !important;
+  padding-inline-end: calc(var(--paraflow-container-end-inset) + var(--paraflow-code-frame-border-right, 0px) + var(--paraflow-block-code-padding-right, .65em));
   background: linear-gradient(to right, transparent var(--paraflow-container-inset), var(--paraflow-block-code-background, var(--code-background, var(--background-secondary))) var(--paraflow-container-inset), var(--paraflow-block-code-background, var(--code-background, var(--background-secondary))) calc(100% - var(--paraflow-container-end-inset)), transparent calc(100% - var(--paraflow-container-end-inset))) !important;
 }
 .cm-line.paraflow-code-indented {
@@ -213,20 +222,20 @@ pre.paraflow-code-display.paraflow-code-wrap > code {
   color: var(--code-normal);
 }
 /* The host resets direct content-child margins with !important. */
-.cm-content > .cm-line.paraflow-code-indented:not(.paraflow-callout-line) {
+.markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-code-indented:not(.paraflow-callout-line) {
   margin-inline-start: var(--paraflow-code-list-inset) !important;
 }
-.cm-line.paraflow-code-indented.paraflow-code-start:not(.paraflow-callout-line) {
+.markdown-source-view.mod-cm6 .cm-editor .cm-line.paraflow-code-indented.paraflow-code-start:not(.paraflow-callout-line) {
   border-top: var(--paraflow-block-code-border, 1px solid var(--background-modifier-border));
   border-start-start-radius: var(--paraflow-block-code-radius, 3px);
   border-start-end-radius: var(--paraflow-block-code-radius, 3px);
 }
-.cm-line.paraflow-code-indented.paraflow-code-end:not(.paraflow-callout-line) {
+.markdown-source-view.mod-cm6 .cm-editor .cm-line.paraflow-code-indented.paraflow-code-end:not(.paraflow-callout-line) {
   border-bottom: var(--paraflow-block-code-border, 1px solid var(--background-modifier-border));
   border-end-start-radius: var(--paraflow-block-code-radius, 3px);
   border-end-end-radius: var(--paraflow-block-code-radius, 3px);
 }
-.cm-content > .cm-line.paraflow-callout-line:is(.paraflow-code-indented,.paraflow-code-fenced-list) {
+.markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-callout-line:is(.paraflow-code-indented,.paraflow-code-fenced-list) {
   margin-inline-start: 0;
   --paraflow-code-inset: calc(var(--paraflow-container-inset) + var(--paraflow-code-list-inset) + var(--paraflow-code-frame-border-left, 0px) + var(--paraflow-code-local-inset, var(--paraflow-block-code-padding-left, .65em)));
   background: linear-gradient(to right, transparent calc(var(--paraflow-container-inset) + var(--paraflow-code-list-inset)), var(--paraflow-block-code-background, var(--code-background, var(--background-secondary))) calc(var(--paraflow-container-inset) + var(--paraflow-code-list-inset)), var(--paraflow-block-code-background, var(--code-background, var(--background-secondary))) calc(100% - var(--paraflow-container-end-inset)), transparent calc(100% - var(--paraflow-container-end-inset))) !important;
@@ -254,7 +263,7 @@ pre.paraflow-code-display.paraflow-code-wrap > code {
   border-end-start-radius: var(--paraflow-block-code-radius, 3px);
   border-end-end-radius: var(--paraflow-block-code-radius, 3px);
 }
-.cm-line.paraflow-code-line .cm-inline-code {
+.markdown-source-view.mod-cm6 .cm-editor .cm-line.paraflow-code-line .cm-inline-code {
   background: transparent !important;
   padding: 0 !important;
   border: 0 !important;
@@ -262,7 +271,7 @@ pre.paraflow-code-display.paraflow-code-wrap > code {
   font: inherit !important;
   color: inherit !important;
 }
-.cm-line.paraflow-code-indented .cm-indent::before { display: none !important; }
+.markdown-source-view.mod-cm6 .cm-editor .cm-line.paraflow-code-indented .cm-indent::before { display: none; }
 .paraflow-code-line[data-paraflow-line]::before,
 .markdown-source-view.mod-cm6.is-live-preview .cm-line.paraflow-code-line[data-paraflow-line]::before,
 .paraflow-code-row[data-paraflow-line]::before {
@@ -310,8 +319,8 @@ pre.paraflow-code-display.paraflow-code-wrap > code {
   height: 14px;
   background: var(--paraflow-block-code-background, var(--code-background, var(--background-secondary)));
 }
-.paraflow-code-scroll[hidden],
-.paraflow-container-block.paraflow-code-scroll-container[hidden] { display: none !important; }
+.markdown-source-view.mod-cm6 .cm-editor .paraflow-code-scroll[hidden],
+.markdown-source-view.mod-cm6 .cm-editor .paraflow-container-block.paraflow-code-scroll-container[hidden] { display: none; }
 .paraflow-code-scroll-track { height: 1px; }
 .paraflow-code-extent { display: inline-block; height: 0; pointer-events: none; user-select: none; }
 pre.paraflow-code-display {
@@ -366,7 +375,7 @@ pre.paraflow-code-display.paraflow-code-wrap > code {
   pointer-events: none;
 }
 @media print {
-  .cm-line.paraflow-code-line[data-paraflow-line] {
+  .markdown-source-view.mod-cm6 .cm-editor .cm-line.paraflow-code-line[data-paraflow-line] {
     padding-inline-start: calc(var(--paraflow-code-inset) + var(--paraflow-code-gutter) + var(--paraflow-code-text-gap)) !important;
     text-indent: 0;
   }
@@ -374,7 +383,7 @@ pre.paraflow-code-display.paraflow-code-wrap > code {
   .paraflow-code-ending-space { padding-bottom: 0; }
   .paraflow-code-display-frame { padding-bottom: 0; }
   .paraflow-code-language { display: none; }
-  .cm-line.paraflow-code-line,
+  .markdown-source-view.mod-cm6 .cm-editor .cm-line.paraflow-code-line,
   pre.paraflow-code-display,
   pre.paraflow-code-display > code {
     white-space: pre-wrap !important;

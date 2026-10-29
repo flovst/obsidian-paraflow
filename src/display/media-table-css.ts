@@ -32,7 +32,10 @@ img.paraflow-display-image-center { display: block; margin-inline: auto; }
 .image-embed > .image-wrapper.paraflow-display-image-frame { display: block; width: fit-content; max-width: 100%; margin-inline: auto; }
 .paraflow-display-table-viewport { max-width: 100%; overflow-x: auto; }
 .markdown-source-view.mod-cm6.is-live-preview .cm-table-widget .table-wrapper.paraflow-display-table-wrapper { width: 100%; }
-.cm-table-widget table.paraflow-display-table .is-selected::after,.cm-table-widget.is-selected table.paraflow-display-table::after { inset: 0 !important; }
+.cm-table-widget table.paraflow-display-table .is-selected::after,
+.cm-table-widget.is-selected table.paraflow-display-table::after,
+.markdown-source-view.mod-cm6 .cm-table-widget table.paraflow-display-table .is-selected::after,
+.markdown-source-view.mod-cm6 .cm-table-widget.is-selected table.paraflow-display-table::after { inset: 0; }
 table.paraflow-display-table { width: 100%; table-layout: auto; border-collapse: collapse; }
 :is(.markdown-source-view.mod-cm6.is-live-preview, .markdown-reading-view) table.paraflow-display-table { line-height: var(--paraflow-line-height, var(--line-height-normal, 1.6)); }
 .markdown-source-view.mod-cm6 table.paraflow-display-table > :where(thead, tbody, tfoot) > tr > :is(td, th),
@@ -50,8 +53,11 @@ table.paraflow-table-wrap > :is(thead, tbody, tfoot) > tr > .paraflow-table-cell
 table.paraflow-table-nowrap > :is(thead, tbody, tfoot) > tr > :is(td,th),
 .markdown-source-view.mod-cm6.is-live-preview :is(.cm-table-widget,.paraflow-html-table-editor) table.paraflow-table-nowrap .table-cell-wrapper { white-space:nowrap; overflow-wrap:normal; word-break:normal; }
 .markdown-source-view.mod-cm6.is-live-preview :is(.cm-table-widget,.paraflow-html-table-editor) table.paraflow-table-nowrap :is(.cm-scroller,.cm-content,.cm-line) { white-space:pre; overflow-wrap:normal; word-break:normal; }
-table.paraflow-display-table > :where(thead, tbody, tfoot) > tr > .paraflow-display-cell-base:where(:not([style*="background" i])) { background-color: var(--paraflow-table-base-background, var(--background-primary)) !important; }
-table.paraflow-display-table > :where(thead, tbody, tfoot) > tr > .paraflow-display-cell-stripe:where(:not([style*="background" i])) { background-color: var(--paraflow-table-stripe-background, var(--paraflow-surface-color, var(--background-secondary))) !important; }
-table.paraflow-display-table > :where(thead, tbody, tfoot) > tr > .paraflow-display-header:where(:not([style*="background" i])) { background-color: var(--paraflow-table-header-background, var(--paraflow-surface-color, var(--background-secondary))) !important; }
+table.paraflow-display-table > :where(thead, tbody, tfoot) > tr > .paraflow-display-cell-base:where(:not([style*="background" i])),
+:is(.markdown-source-view.mod-cm6.is-live-preview, .markdown-reading-view, .markdown-rendered) table.paraflow-display-table > :where(thead, tbody, tfoot) > tr > :is(td, th).paraflow-display-cell-base:where(:not([style*="background" i])) { background-color: var(--paraflow-table-base-background, var(--background-primary)); }
+table.paraflow-display-table > :where(thead, tbody, tfoot) > tr > .paraflow-display-cell-stripe:where(:not([style*="background" i])),
+:is(.markdown-source-view.mod-cm6.is-live-preview, .markdown-reading-view, .markdown-rendered) table.paraflow-display-table > :where(thead, tbody, tfoot) > tr > :is(td, th).paraflow-display-cell-stripe:where(:not([style*="background" i])) { background-color: var(--paraflow-table-stripe-background, var(--paraflow-surface-color, var(--background-secondary))); }
+table.paraflow-display-table > :where(thead, tbody, tfoot) > tr > .paraflow-display-header:where(:not([style*="background" i])),
+:is(.markdown-source-view.mod-cm6.is-live-preview, .markdown-reading-view, .markdown-rendered) table.paraflow-display-table > :where(thead, tbody, tfoot) > tr > :is(td, th).paraflow-display-header:where(:not([style*="background" i])) { background-color: var(--paraflow-table-header-background, var(--paraflow-surface-color, var(--background-secondary))); }
 table.paraflow-display-table > :is(thead, tbody, tfoot) > tr > .paraflow-display-header-weight { font-weight: var(--font-bold, 700); }
 `;
