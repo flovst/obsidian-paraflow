@@ -1,6 +1,7 @@
+import { BLOCK_SOURCE_RESET_CSS } from '../block-source-reset-css.js';
 import { LIST_BLOCK_GEOMETRY_CSS } from '../paragraph/list-block-geometry.js';
 
-export const CODE_BLOCK_CSS = LIST_BLOCK_GEOMETRY_CSS + `
+export const codeBlockLayoutStyles = LIST_BLOCK_GEOMETRY_CSS + `
 .paraflow-code-plain { color:var(--paraflow-block-code-color,var(--code-normal)); }
 .markdown-source-view.mod-cm6 .cm-editor .paraflow-code-syntax-line .cm-hmd-codeblock { color:inherit; }
 .paraflow-code-heading.paraflow-code-heading--indented { height:0;border:0;background:transparent;overflow:visible; }
@@ -69,7 +70,8 @@ export const CODE_BLOCK_CSS = LIST_BLOCK_GEOMETRY_CSS + `
 .markdown-source-view.mod-cm6.is-live-preview .cm-content > :is(.paraflow-code-heading,.paraflow-code-ending-space,.paraflow-code-ending,.paraflow-code-scroll),
 .markdown-source-view.mod-cm6 .cm-editor .cm-content > :is(.paraflow-code-heading,.paraflow-code-ending-space,.paraflow-code-ending,.paraflow-code-scroll),
 .markdown-source-view.mod-cm6 .cm-editor .cm-content > .paraflow-container-block > :is(.paraflow-code-heading,.paraflow-code-ending-space,.paraflow-code-ending,.paraflow-code-scroll),
-.markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-code-fenced-list:not(.paraflow-callout-line) {
+.markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-code-fenced-list:not(.paraflow-callout-line),
+.markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-code-indented:not(.paraflow-callout-line) {
   margin-inline-start: var(--paraflow-code-list-inset, 0px) !important;
 }
 .paraflow-code-heading .paraflow-code-edit-syntax {
@@ -226,10 +228,6 @@ pre.paraflow-code-display.paraflow-code-wrap > code {
   background: var(--code-background, var(--background-secondary));
   color: var(--code-normal);
 }
-/* The host resets direct content-child margins with !important. */
-.markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-code-indented:not(.paraflow-callout-line) {
-  margin-inline-start: var(--paraflow-code-list-inset) !important;
-}
 .markdown-source-view.mod-cm6 .cm-editor .cm-line.paraflow-code-indented.paraflow-code-start:not(.paraflow-callout-line) {
   border-top: var(--paraflow-block-code-border, 1px solid var(--background-modifier-border));
   border-start-start-radius: var(--paraflow-block-code-radius, 3px);
@@ -271,14 +269,6 @@ pre.paraflow-code-display.paraflow-code-wrap > code {
   border-bottom: var(--paraflow-block-code-border, 1px solid var(--background-modifier-border));
   border-end-start-radius: var(--paraflow-block-code-radius, 3px);
   border-end-end-radius: var(--paraflow-block-code-radius, 3px);
-}
-.markdown-source-view.mod-cm6 .cm-editor .cm-line.paraflow-code-line .cm-inline-code {
-  background: transparent !important;
-  padding: 0 !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  font: inherit !important;
-  color: inherit !important;
 }
 .markdown-source-view.mod-cm6 .cm-editor .cm-line.paraflow-code-indented .cm-indent::before { display: none; }
 .paraflow-code-line[data-paraflow-line]::before,
@@ -412,3 +402,6 @@ pre.paraflow-code-display.paraflow-code-wrap > code {
   .markdown-source-view.mod-cm6.is-live-preview .cm-line.paraflow-code-line[data-paraflow-line]::before { left: var(--paraflow-code-inset); }
 }
 `;
+
+/** Complete surface for isolated editor consumers; production composes the shared reset once. */
+export const CODE_BLOCK_CSS = BLOCK_SOURCE_RESET_CSS + codeBlockLayoutStyles;

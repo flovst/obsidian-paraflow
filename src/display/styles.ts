@@ -1,11 +1,12 @@
 import { MEDIA_TABLE_CSS } from './media-table-css.js';
-import { CODE_BLOCK_CSS } from '../editor/code-blocks/styles.js';
+import { BLOCK_SOURCE_RESET_CSS } from '../editor/block-source-reset-css.js';
+import { codeBlockLayoutStyles } from '../editor/code-blocks/styles.js';
 import { FOOTNOTE_CSS } from '../editor/footnotes/styles.js';
 import { COMMENT_CSS } from '../editor/comments-css.js';
 import { SHORTHAND_CSS } from '../editor/shorthand/styles.js';
 import { TABLE_EDITING_CSS } from '../editor/table/editing-css.js';
 import { mathEditorStyles } from '../editor/math/styles.js';
-import { renderedBlockEditorStyles } from '../editor/rendered-blocks/styles.js';
+import { renderedBlockLayoutStyles } from '../editor/rendered-blocks/styles.js';
 import { semanticBlockRhythmCss } from '../editor/paragraph/rhythm-css.js';
 import { LIST_RHYTHM_CSS } from '../editor/structured-list/rhythm-css.js';
 import { READING_TAB_CSS } from '../reading/tabs-css.js';
@@ -16,8 +17,8 @@ import { CALLOUT_STYLE_CSS } from '../editor/callout/style.js';
 
 /** Build-time stylesheet order follows the editor/display cascade. */
 export const enhancementCss = [
- MEDIA_TABLE_CSS, CODE_BLOCK_CSS, FOOTNOTE_CSS, TABLE_EDITING_CSS, COMMENT_CSS, SHORTHAND_CSS,
+ MEDIA_TABLE_CSS, BLOCK_SOURCE_RESET_CSS, codeBlockLayoutStyles, FOOTNOTE_CSS, TABLE_EDITING_CSS, COMMENT_CSS, SHORTHAND_CSS,
  mathEditorStyles, LIST_RHYTHM_CSS,
  semanticBlockRhythmCss('.markdown-source-view.mod-cm6.is-live-preview > .cm-editor:is(.paraflow-paragraph-editing-active,.paraflow-callout-active)'),
- renderedBlockEditorStyles, READING_TAB_CSS, READING_BLANK_PARAGRAPH_CSS, READING_DETAILS_CSS, SOURCE_VIEW_CSS, CALLOUT_STYLE_CSS,
+ renderedBlockLayoutStyles, READING_TAB_CSS, READING_BLANK_PARAGRAPH_CSS, READING_DETAILS_CSS, SOURCE_VIEW_CSS, CALLOUT_STYLE_CSS,
 ].join('\n');

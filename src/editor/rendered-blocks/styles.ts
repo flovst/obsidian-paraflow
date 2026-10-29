@@ -1,4 +1,5 @@
-export const renderedBlockEditorStyles = `
+import { BLOCK_SOURCE_RESET_CSS } from '../block-source-reset-css.js';
+export const renderedBlockLayoutStyles = `
 .paraflow-rendered-block-preview {
   position: relative;
   box-sizing: border-box;
@@ -50,14 +51,6 @@ export const renderedBlockEditorStyles = `
 .paraflow-rendered-block-content > :last-child { margin-block-end: 0; }
 .paraflow-rendered-block-preview[data-render-state="error"] .paraflow-rendered-block-content { color: var(--text-error); }
 .markdown-source-view.mod-cm6 .cm-editor .paraflow-rendered-block-badge,
-.markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-rendered-source-line::before,
-.markdown-source-view.mod-cm6 .cm-editor .cm-content > .paraflow-rendered-source-line .cm-inline-code {
-  border: 0 !important;
-  border-radius: 0 !important;
-}
-.markdown-source-view.mod-cm6 .cm-editor .paraflow-rendered-block-badge,
-.markdown-source-view.mod-cm6 .cm-editor .cm-content > .paraflow-rendered-source-line .cm-inline-code { box-shadow: none !important; }
-.markdown-source-view.mod-cm6 .cm-editor .paraflow-rendered-block-badge,
 .markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-rendered-source-line { height: auto; }
 .markdown-source-view.mod-cm6 .cm-editor .paraflow-rendered-block-badge {
   position: absolute;
@@ -84,7 +77,6 @@ export const renderedBlockEditorStyles = `
   line-height: var(--code-line-height, 1.6) !important;
   text-indent: 0;
   white-space: pre-wrap;
-  margin: 0 !important;
   padding: 0 .5em 0 4.5ch;
   font-family: var(--paraflow-block-code-font, var(--font-monospace));
   font-size: var(--paraflow-block-code-size, .9em);
@@ -110,12 +102,6 @@ export const renderedBlockEditorStyles = `
   user-select: none;
 }
 .cm-editor .cm-content > .cm-line.paraflow-rendered-source-line.is-first::before { padding-block-start: .3em; }
-.markdown-source-view.mod-cm6 .cm-editor .cm-content > .paraflow-rendered-source-line .cm-inline-code {
-  padding: 0 !important;
-  margin: 0 !important;
-  background: none !important;
-  font: inherit !important;
-}
 .paraflow-rendered-source-line .cm-indent { display: none; }
 .paraflow-rendered-block-fence { height: 0; min-height: 0; padding: 0; margin: 0; }
 .paraflow-rendered-block-fence.paraflow-rendered-block-empty { height: auto; padding: .5em; }
@@ -134,3 +120,6 @@ export const renderedBlockEditorStyles = `
   .paraflow-rendered-block-preview, .markdown-source-view.mod-cm6 .cm-editor .paraflow-rendered-block-badge { transition: none; }
 }
 `;
+
+/** Complete surface for isolated editor consumers; production composes the shared reset once. */
+export const renderedBlockEditorStyles = BLOCK_SOURCE_RESET_CSS + renderedBlockLayoutStyles;

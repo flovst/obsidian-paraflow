@@ -354,7 +354,9 @@ body[data-paraflow-theme] .tooltip.mod-left .tooltip-arrow { top: calc(50% - 4px
 
 /* Projected body prefixes are already replaced; remaining whitespace is user text. */
 .markdown-source-view.mod-cm6.is-live-preview .cm-indent:has(> .paraflow-body-tab) {
-	display: contents;
+	display: inline;
+	width: auto;
+	min-width: 0;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview .cm-indent:has(> .paraflow-body-tab)::before {
@@ -718,7 +720,6 @@ body[data-paraflow-theme] .tooltip.mod-left .tooltip-arrow { top: calc(50% - 4px
 .markdown-source-view.mod-cm6.is-live-preview
 	> .cm-editor
 	.paraflow-html-break-hint * {
-	color: var(--paraflow-source-color, var(--text-faint)) !important;
 	font-family: var(--font-text) !important;
 	font-size: 1em !important;
 	font-style: normal !important;
@@ -728,6 +729,23 @@ body[data-paraflow-theme] .tooltip.mod-left .tooltip-arrow { top: calc(50% - 4px
 	margin: 0;
 	padding: 0;
 	border: 0;
+}
+
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor
+	.paraflow-html-break-hint,
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor
+	.paraflow-html-break-hint *,
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor.paraflow-inline-active .cm-content[contenteditable] .cm-line
+	.paraflow-inline-source-active,
+.markdown-source-view.mod-cm6.is-live-preview
+	.cm-table-widget .cm-content[contenteditable] .cm-line .cm-formatting:is(.cm-formatting-code, .cm-formatting-strong, .cm-formatting-em, .cm-formatting-strikethrough, .cm-formatting-highlight, .cm-formatting-link, .cm-formatting-link-string),
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor.paraflow-inline-active .cm-content[contenteditable] .cm-line
+	.paraflow-inline-source-active * {
+	color: var(--paraflow-source-color, var(--text-faint)) !important;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview .paraflow-inline-body--strikethrough {
@@ -857,7 +875,7 @@ body[data-paraflow-theme] .tooltip.mod-left .tooltip-arrow { top: calc(50% - 4px
 .markdown-source-view.mod-cm6.is-live-preview
 	> .cm-editor.paraflow-inline-active .cm-content[contenteditable] .cm-line
 	.paraflow-inline-source-active * {
-	color: var(--paraflow-source-color, var(--text-faint)) !important;
+
 	font-family: var(--font-text);
 	font-size: 1em;
 	font-style: normal;
@@ -1596,6 +1614,19 @@ table.paraflow-display-table > :where(thead, tbody, tfoot) > tr > .paraflow-disp
 table.paraflow-display-table > :is(thead, tbody, tfoot) > tr > .paraflow-display-header-weight { font-weight: var(--font-bold, 700); }
 
 
+.markdown-source-view.mod-cm6 .cm-editor .cm-line.paraflow-code-line .cm-inline-code,
+.markdown-source-view.mod-cm6 .cm-editor .cm-content > .paraflow-rendered-source-line .cm-inline-code,
+.markdown-source-view.mod-cm6 .cm-editor .paraflow-rendered-block-badge,
+.markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-rendered-source-line::before { border: 0 !important; border-radius: 0 !important; }
+.markdown-source-view.mod-cm6 .cm-editor .cm-line.paraflow-code-line .cm-inline-code,
+.markdown-source-view.mod-cm6 .cm-editor .cm-content > .paraflow-rendered-source-line .cm-inline-code { background: transparent !important; padding: 0 !important; font: inherit !important; }
+.markdown-source-view.mod-cm6 .cm-editor .cm-line.paraflow-code-line .cm-inline-code { color: inherit !important; }
+.markdown-source-view.mod-cm6 .cm-editor .cm-content > .paraflow-rendered-source-line .cm-inline-code,
+.markdown-source-view.mod-cm6 .cm-editor .paraflow-rendered-block-badge { box-shadow: none !important; }
+.markdown-source-view.mod-cm6 .cm-editor .cm-content > .paraflow-rendered-source-line .cm-inline-code,
+.markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-rendered-source-line { margin: 0 !important; }
+
+
 @property --paraflow-body-list-base { syntax: "<length>"; inherits: true; initial-value: 0px; }
 @property --paraflow-body-list-offset { syntax: "<length>"; inherits: true; initial-value: 0px; }
 @property --paraflow-body-list-step { syntax: "<length>"; inherits: true; initial-value: 0px; }
@@ -1673,7 +1704,8 @@ table.paraflow-display-table > :is(thead, tbody, tfoot) > tr > .paraflow-display
 .markdown-source-view.mod-cm6.is-live-preview .cm-content > :is(.paraflow-code-heading,.paraflow-code-ending-space,.paraflow-code-ending,.paraflow-code-scroll),
 .markdown-source-view.mod-cm6 .cm-editor .cm-content > :is(.paraflow-code-heading,.paraflow-code-ending-space,.paraflow-code-ending,.paraflow-code-scroll),
 .markdown-source-view.mod-cm6 .cm-editor .cm-content > .paraflow-container-block > :is(.paraflow-code-heading,.paraflow-code-ending-space,.paraflow-code-ending,.paraflow-code-scroll),
-.markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-code-fenced-list:not(.paraflow-callout-line) {
+.markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-code-fenced-list:not(.paraflow-callout-line),
+.markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-code-indented:not(.paraflow-callout-line) {
   margin-inline-start: var(--paraflow-code-list-inset, 0px) !important;
 }
 .paraflow-code-heading .paraflow-code-edit-syntax {
@@ -1830,10 +1862,6 @@ pre.paraflow-code-display.paraflow-code-wrap > code {
   background: var(--code-background, var(--background-secondary));
   color: var(--code-normal);
 }
-/* The host resets direct content-child margins with !important. */
-.markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-code-indented:not(.paraflow-callout-line) {
-  margin-inline-start: var(--paraflow-code-list-inset) !important;
-}
 .markdown-source-view.mod-cm6 .cm-editor .cm-line.paraflow-code-indented.paraflow-code-start:not(.paraflow-callout-line) {
   border-top: var(--paraflow-block-code-border, 1px solid var(--background-modifier-border));
   border-start-start-radius: var(--paraflow-block-code-radius, 3px);
@@ -1875,14 +1903,6 @@ pre.paraflow-code-display.paraflow-code-wrap > code {
   border-bottom: var(--paraflow-block-code-border, 1px solid var(--background-modifier-border));
   border-end-start-radius: var(--paraflow-block-code-radius, 3px);
   border-end-end-radius: var(--paraflow-block-code-radius, 3px);
-}
-.markdown-source-view.mod-cm6 .cm-editor .cm-line.paraflow-code-line .cm-inline-code {
-  background: transparent !important;
-  padding: 0 !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  font: inherit !important;
-  color: inherit !important;
 }
 .markdown-source-view.mod-cm6 .cm-editor .cm-line.paraflow-code-indented .cm-indent::before { display: none; }
 .paraflow-code-line[data-paraflow-line]::before,
@@ -2064,10 +2084,12 @@ pre.paraflow-code-display.paraflow-code-wrap > code {
 .cm-editor .cm-content[contenteditable] .cm-line .paraflow-footnote-definition-source * {
   font-weight: 600;
   color: var(--text-muted) !important;
+  font-size: inherit;
+  line-height: inherit;
+  vertical-align: baseline;
+  position: static;
+  top: auto;
 }
-.cm-editor .cm-content .cm-line.paraflow-footnote-row :is(.cm-footref, .cm-hmd-footnote):has(:is(.paraflow-footnote-definition-source, .paraflow-footnote-definition)),
-.cm-editor .cm-content[contenteditable] .cm-line .paraflow-footnote-definition-source,
-.cm-editor .cm-content[contenteditable] .cm-line .paraflow-footnote-definition-source *,
 .cm-editor .cm-content .cm-line :is(.cm-footref, .cm-hmd-footnote):has(:is(.paraflow-footnote-reference-source, .paraflow-footnote-reference)),
 .cm-editor .cm-content[contenteditable] .cm-line .paraflow-footnote-reference-source,
 .cm-editor .cm-content[contenteditable] .cm-line .paraflow-footnote-reference-source * {
@@ -2200,7 +2222,6 @@ pre.paraflow-code-display.paraflow-code-wrap > code {
 .paraflow-shorthand-reading, .paraflow-tilde-reading > sub { font-size: .75em; line-height: 0; position: relative; vertical-align: baseline; }
 .paraflow-inline-body--subscript, sub.paraflow-shorthand-reading, .paraflow-tilde-reading > sub { bottom: -.25em; }
 .paraflow-inline-body--superscript, sup.paraflow-shorthand-reading { top: -.5em; }
-.cm-s-obsidian .cm-blockid:is(.paraflow-shorthand-blockid-conflict, :has(.paraflow-shorthand-blockid-conflict)),
 .cm-s-obsidian .paraflow-shorthand-blockid-conflict .cm-blockid { font-size: inherit; vertical-align: baseline; top: auto; position: static; color: inherit; }
 
 
@@ -2523,14 +2544,6 @@ pre.paraflow-code-display.paraflow-code-wrap > code {
 .paraflow-rendered-block-content > :last-child { margin-block-end: 0; }
 .paraflow-rendered-block-preview[data-render-state="error"] .paraflow-rendered-block-content { color: var(--text-error); }
 .markdown-source-view.mod-cm6 .cm-editor .paraflow-rendered-block-badge,
-.markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-rendered-source-line::before,
-.markdown-source-view.mod-cm6 .cm-editor .cm-content > .paraflow-rendered-source-line .cm-inline-code {
-  border: 0 !important;
-  border-radius: 0 !important;
-}
-.markdown-source-view.mod-cm6 .cm-editor .paraflow-rendered-block-badge,
-.markdown-source-view.mod-cm6 .cm-editor .cm-content > .paraflow-rendered-source-line .cm-inline-code { box-shadow: none !important; }
-.markdown-source-view.mod-cm6 .cm-editor .paraflow-rendered-block-badge,
 .markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-rendered-source-line { height: auto; }
 .markdown-source-view.mod-cm6 .cm-editor .paraflow-rendered-block-badge {
   position: absolute;
@@ -2557,7 +2570,6 @@ pre.paraflow-code-display.paraflow-code-wrap > code {
   line-height: var(--code-line-height, 1.6) !important;
   text-indent: 0;
   white-space: pre-wrap;
-  margin: 0 !important;
   padding: 0 .5em 0 4.5ch;
   font-family: var(--paraflow-block-code-font, var(--font-monospace));
   font-size: var(--paraflow-block-code-size, .9em);
@@ -2583,12 +2595,6 @@ pre.paraflow-code-display.paraflow-code-wrap > code {
   user-select: none;
 }
 .cm-editor .cm-content > .cm-line.paraflow-rendered-source-line.is-first::before { padding-block-start: .3em; }
-.markdown-source-view.mod-cm6 .cm-editor .cm-content > .paraflow-rendered-source-line .cm-inline-code {
-  padding: 0 !important;
-  margin: 0 !important;
-  background: none !important;
-  font: inherit !important;
-}
 .paraflow-rendered-source-line .cm-indent { display: none; }
 .paraflow-rendered-block-fence { height: 0; min-height: 0; padding: 0; margin: 0; }
 .paraflow-rendered-block-fence.paraflow-rendered-block-empty { height: auto; padding: .5em; }

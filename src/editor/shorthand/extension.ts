@@ -1,5 +1,5 @@
 import { EditorSelection, EditorState, Prec, StateField, type Extension, type Range } from '@codemirror/state';
-import { Decoration, ViewPlugin, type DecorationSet, type EditorView, type ViewUpdate } from '@codemirror/view';
+import { Decoration, EditorView, ViewPlugin, type DecorationSet, type ViewUpdate } from '@codemirror/view';
 import { classifyCurrentSelectionMode, createInputStateExtension, recognizedNormalSelectionTransaction, requireCompositionState } from '../runtime/input-state.js';
 import { createInlineRevealPointerExtension, inlineEndpointOwners, inlineRevealPointerHeld, type InlineBodyOwner } from '../runtime/inline-reveal.js';
 import { shorthandAnalysis, type ShorthandRange, type ShorthandSettings } from './syntax.js';
@@ -53,11 +53,12 @@ export function createShorthandExtension(options: { isActive(view: EditorView): 
 			userEvent: released ? 'select.pointer' : 'select' }];
 	});
 	function project(view: EditorView, previousActive: readonly InlineBodyOwner[], frozenActive?: readonly InlineBodyOwner[]): {
-		decorations: DecorationSet; active: readonly InlineBodyOwner[];
+		decorations: DecorationSet; nativeOwners: DecorationSet; active: readonly InlineBodyOwner[];
 	} {
-		if (!options.isActive(view)) return { decorations: Decoration.none, active: [] };
+		if (!options.isActive(view)) return { decorations: Decoration.none, nativeOwners: Decoration.none, active: [] };
 		const settings = options.getSettings();
 		const ranges: Range<Decoration>[] = [];
+		const nativeOwners: Range<Decoration>[] = [];
 		const visible = (item: { from: number; to: number }) => view.visibleRanges.some(range => range.from <= item.to && range.to >= item.from);
 		const owners: InlineBodyOwner[] = [
 			...view.state.field(shorthandRanges).filter(item => settings[item.kind] && visible(item)).map(item => ({
@@ -110,7 +111,7 @@ export function createShorthandExtension(options: { isActive(view: EditorView): 
 				const line = view.state.doc.lineAt(item.to);
 				// HyperMD can mistake this owned closing marker and its suffix for a block ID.
 				if (/^[a-zA-Z0-9-]+$/u.test(view.state.sliceDoc(item.to, line.to))) {
-					ranges.push(Decoration.mark({ class: 'paraflow-shorthand-blockid-conflict' }).range(item.to - 1, line.to));
+					nativeOwners.push(Decoration.mark({ class: 'paraflow-shorthand-blockid-conflict' }).range(item.to - 1, line.to));
 				}
 			}
 			const isRevealed = revealed(item);
@@ -126,7 +127,7 @@ export function createShorthandExtension(options: { isActive(view: EditorView): 
 				}
 			}
 		}
-		return { decorations: Decoration.set(ranges, true), active };
+		return { decorations: Decoration.set(ranges, true), nativeOwners: Decoration.set(nativeOwners, true), active };
 	}
 	return [createInputStateExtension(), createInlineRevealPointerExtension(), createRenderedSourceClickExtension(), createNativeDecorationOwnership(), normalizeRenderedEdges,
 		nativeInlineOwnership.of((state, view) => {
@@ -136,6 +137,7 @@ export function createShorthandExtension(options: { isActive(view: EditorView): 
 			return (from, to, decoration) => isNativeReplacement(decoration) && owned.some(item => item.from <= from && to <= item.to);
 		}), shorthandSettings.of(() => options.getSettings()), shorthandRanges, tildeRuns, Prec.highest(ViewPlugin.fromClass(class {
 		decorations: DecorationSet;
+		nativeOwners: DecorationSet;
 		destroyed = false;
 		pointerHeld = false;
 		activeOwners: readonly InlineBodyOwner[] = [];
@@ -145,6 +147,7 @@ export function createShorthandExtension(options: { isActive(view: EditorView): 
 			this.pointerHeld = inlineRevealPointerHeld(view.state);
 			const projection = project(view, [], this.pointerHeld ? [] : undefined);
 			this.decorations = projection.decorations;
+			this.nativeOwners = projection.nativeOwners;
 			this.activeOwners = projection.active;
 			presentation.set(view.state, { active: this.activeOwners, view });
 			this.clickCleanups = (['subscript', 'superscript', 'strikethrough'] as const).map(kind => bindRenderedSourceClick(view, view.contentDOM, (node, offset) => {
@@ -171,16 +174,19 @@ export function createShorthandExtension(options: { isActive(view: EditorView): 
 			// Keep the established DOM boundaries while the native IME owns its text range.
 			if (options.isActive(this.view) && (this.view.compositionStarted || this.view.composing || requireCompositionState(update.state))) {
 				this.decorations = this.decorations.map(update.changes);
+				this.nativeOwners = this.nativeOwners.map(update.changes);
 				presentation.set(update.state, { active: this.activeOwners, view: this.view });
 				return;
 			}
 			const projection = project(this.view, this.activeOwners, pointerHeld ? this.frozenOwners : undefined);
 			this.decorations = projection.decorations; this.activeOwners = projection.active;
+			this.nativeOwners = projection.nativeOwners;
 			presentation.set(update.state, { active: this.activeOwners, view: this.view });
 			if (pointerHeld) this.frozenOwners = projection.active;
 		}
 		destroy(): void { this.destroyed = true; for (const cleanup of this.clickCleanups) cleanup(); }
-	}, { decorations: value => value.decorations }))];
+	}, { decorations: value => value.decorations,
+		provide: plugin => EditorView.outerDecorations.of(view => view.plugin(plugin)!.nativeOwners) }))];
 }
 
 export { SHORTHAND_CSS } from './styles.js';
