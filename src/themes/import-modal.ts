@@ -1,6 +1,5 @@
 import { Modal, Notice, Setting, type App } from 'obsidian';
-import { convertTyporaTheme } from './converter.js';
-import { nextTyporaThemeId, prepareThemeImport, readImportFiles, themeEntries } from './import-files.js';
+import { materializeThemeImport, nextTyporaThemeId, prepareThemeImport, readImportFiles, themeEntries } from './import-files.js';
 import type { ConvertedTheme } from './model.js';
 import { translate as t } from '../settings-ui/i18n.js';
 
@@ -14,9 +13,10 @@ export class ImportTyporaThemeModal extends Modal {
 	private files = new Map<string, Uint8Array>();
 	private entry = '';
 	private themeName = '';
-	private converted: ConvertedTheme | null = null;
+	private converted: (ConvertedTheme & { overrides: string }) | null = null;
 	private overrides = '';
 	private exportedAssets = new Map<string, Uint8Array>();
+	private packaged: ConvertedTheme | undefined;
 	constructor(app: App, private readonly save: (theme: ConvertedTheme, overrides?: string) => Promise<void>,
 		private readonly existingIds: () => Iterable<string>) { super(app); }
 
@@ -45,8 +45,8 @@ export class ImportTyporaThemeModal extends Modal {
 		new Setting(this.contentEl).addButton(button => button.setButtonText(t('previewConversion')).onClick(() => {
 			try {
 				const id = nextTyporaThemeId(this.themeName, this.entry, this.existingIds());
-				const converted = convertTyporaTheme({ entry: this.entry, files: this.files }, { id, name: this.themeName.trim() || t('importedTheme') });
-				this.converted = { ...converted, assets: new Map([...this.exportedAssets, ...converted.assets]) };
+				this.converted = materializeThemeImport({ entry: this.entry, files: this.files, name: this.themeName,
+					overrides: this.overrides, assets: this.exportedAssets, packaged: this.packaged }, id, this.themeName.trim() || t('importedTheme'));
 				this.render();
 			} catch (error) { new Notice(String(error)); }
 		}));
@@ -62,7 +62,7 @@ export class ImportTyporaThemeModal extends Modal {
 		new Setting(this.contentEl).setDesc(t('saveThemeHelp')).addButton(button => button.setButtonText(t('saveTheme')).setCta().onClick(async () => {
 			if (!this.converted) return;
 			button.buttonEl.disabled = true;
-			try { await this.save(this.converted, this.overrides || undefined); this.close(); new Notice(t('themeImported')); }
+			try { await this.save(this.converted, this.converted.overrides || undefined); this.close(); new Notice(t('themeImported')); }
 			catch (error) { new Notice(String(error)); button.buttonEl.disabled = false; }
 		}));
 	}
@@ -72,6 +72,7 @@ export class ImportTyporaThemeModal extends Modal {
 			const input = prepareThemeImport(await readImportFiles(files));
 			this.files = input.files; this.converted = null; this.overrides = input.overrides;
 			this.exportedAssets = input.assets; this.entry = input.entry; this.themeName = input.name;
+			this.packaged = input.packaged;
 			this.render();
 		} catch (error) { new Notice(String(error)); }
 	}

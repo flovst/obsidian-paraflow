@@ -14,8 +14,8 @@ export function semanticBlockRhythmCss(scope: string): string {
 	return `
 ${gap}{
  --paraflow-occupied-gap:0px;
- font-size:var(--font-text-size,16px)!important;
- min-height:${height}!important;line-height:${height}!important;padding-block:0!important;
+ font-size:var(--font-text-size,16px);
+ min-height:${height}!important;line-height:${height}!important;padding-block:0;
 }
 ${blockTags.map(tag => `${gap}[data-paraflow-before="${tag}"]{--paraflow-gap-before:var(--paraflow-${tag}-margin-bottom,var(--paraflow-block-gap,.8em))}
 ${gap}[data-paraflow-after="${tag}"]{--paraflow-gap-after:var(--paraflow-${tag}-margin-top,var(--paraflow-block-gap,.8em))}`).join('\n')}
@@ -27,6 +27,12 @@ ${gap}[data-paraflow-after="table"]{--paraflow-gap-after:var(--paraflow-table-ma
 ${gap}[data-paraflow-before="table"]{--paraflow-gap-before:var(--paraflow-table-margin-bottom,1.2em)}
 ${gap}[data-paraflow-before="code-block"]{--paraflow-gap-before:var(--paraflow-code-block-margin-bottom,.9375em)}
 ${gap}[data-paraflow-after="code-block"]{--paraflow-gap-after:var(--paraflow-code-block-margin-top,.9375em)}
+`;
+}
+
+/** Theme list rhythm starts at the source view, not a nested editor root. */
+export function listSiblingRhythmCss(scope: string): string {
+	return `
 ${scope}>.cm-editor>.cm-scroller>.cm-sizer>.cm-contentContainer>.cm-content>.cm-line[data-paraflow-list-sibling-gap]:is(.paraflow-paragraph-gap-head,.paraflow-list-blank-gap-head,.paraflow-callout-gap:not(.paraflow-callout-gap-tail)){
  height:var(--paraflow-list-sibling-gap,var(--paraflow-block-gap,.8em))!important;
  min-height:var(--paraflow-list-sibling-gap,var(--paraflow-block-gap,.8em))!important;

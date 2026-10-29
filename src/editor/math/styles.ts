@@ -1,21 +1,21 @@
 export const mathEditorStyles = `
-.cm-editor.paraflow-math-active .paraflow-math-pending,
-.cm-editor.paraflow-math-active .paraflow-math-pending .cm-math,
-.cm-editor.paraflow-math-active .paraflow-math-draft,
-.cm-editor.paraflow-math-active .paraflow-math-draft * {
-  color: var(--text-normal) !important;
+.markdown-source-view.mod-cm6.is-live-preview .cm-editor.paraflow-math-active .cm-content[contenteditable] .cm-line.paraflow-math-pending,
+.markdown-source-view.mod-cm6.is-live-preview .cm-editor.paraflow-math-active .cm-content[contenteditable] .cm-line.paraflow-math-pending .cm-math,
+.markdown-source-view.mod-cm6.is-live-preview .cm-editor.paraflow-math-active .cm-content[contenteditable] .cm-line .paraflow-math-draft,
+.markdown-source-view.mod-cm6.is-live-preview .cm-editor.paraflow-math-active .cm-content[contenteditable] .cm-line .paraflow-math-draft * {
+  color: var(--text-normal);
   background: transparent;
   text-decoration: none;
   box-shadow: none;
   font-family: var(--font-text);
   font-size: var(--font-text-size, 16px);
-  font-weight: 400 !important;
-  font-style: normal !important;
+  font-weight: 400;
+  font-style: normal;
 }
 /* Native end widgets survive higher-precedence replacements at their boundary. */
 .cm-editor.paraflow-math-active > .cm-scroller > .cm-content > :is(.math-block, .cm-math-block):not(.paraflow-math-rendered),
 .cm-editor.paraflow-math-active > .cm-scroller > .cm-sizer > .cm-contentContainer > .cm-content > :is(.math-block, .cm-math-block):not(.paraflow-math-rendered) {
-  display: none !important;
+  display: none;
 }
 .cm-editor.paraflow-math-active .paraflow-math-source,
 .cm-editor.paraflow-math-active .paraflow-math-source * {
@@ -38,7 +38,7 @@ export const mathEditorStyles = `
   box-sizing: border-box;
   height: auto;
   min-height: calc(1em * var(--line-height-normal, 1.5));
-  line-height: var(--line-height-normal, 1.5) !important;
+
   white-space: pre-wrap;
   text-indent: 0 !important;
   padding-block: 0;
@@ -49,6 +49,7 @@ export const mathEditorStyles = `
   background: var(--paraflow-surface-color);
   font-family: var(--font-monospace);
 }
+.markdown-source-view.mod-cm6.is-live-preview .cm-editor.paraflow-math-active .cm-content[contenteditable] .cm-line.paraflow-math-source-block { line-height: var(--line-height-normal, 1.5); }
 .cm-editor.paraflow-math-active .cm-line.paraflow-math-source-block,
 .cm-editor.paraflow-math-active .paraflow-math-source-block[data-paraflow-math-line]::before {
   display: block;
@@ -64,7 +65,7 @@ export const mathEditorStyles = `
   width: 3.5ch;
   padding-inline-end: .7ch;
   border-inline-end: 1px solid var(--paraflow-border-color);
-  color: var(--text-faint) !important;
+  color: var(--text-faint);
   text-align: end;
   pointer-events: none;
   user-select: none;
@@ -77,9 +78,9 @@ export const mathEditorStyles = `
   padding-block-start: .4em;
   overflow: visible;
 }
-.cm-editor.paraflow-math-active .paraflow-math-source-block:not([data-paraflow-math-line]) {
+.markdown-source-view.mod-cm6.is-live-preview .cm-editor.paraflow-math-active .cm-content[contenteditable] .paraflow-math-source-block:not([data-paraflow-math-line]) {
   min-height: 1em;
-  line-height: 1 !important;
+  line-height: 1;
 }
 .cm-editor.paraflow-math-active .paraflow-math-boundary {
   font-size: inherit;

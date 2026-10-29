@@ -315,7 +315,7 @@ export function createFootnoteExtension(options: FootnoteOptions): Extension {
 				if (definition) {
 					const hint = dom.appendChild(createDetachedEl(dom.ownerDocument, 'p'));
 					hint.className = 'paraflow-footnote-tooltip-hint';
-					hint.textContent = '按住 Ctrl/Cmd + 单击 跳转到脚注定义';
+					hint.textContent = '按住控制键或命令键并单击，跳转到脚注定义';
 				}
 				return footnoteTooltipView(dom);
 			} };

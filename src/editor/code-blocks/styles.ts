@@ -153,16 +153,17 @@ export const CODE_BLOCK_CSS = LIST_BLOCK_GEOMETRY_CSS + `
   --paraflow-code-gutter: calc(var(--paraflow-code-number-digits, 1) * 1ch + var(--paraflow-code-number-gap) + var(--paraflow-code-number-padding-left, 0px) + 1px);
 }
 .markdown-source-view.mod-cm6 .cm-editor .cm-line.paraflow-code-line { white-space: pre; }
+pre.paraflow-code-display { --paraflow-code-reading-white-space: pre; }
 pre.paraflow-code-display,
-pre.paraflow-code-display > code { white-space: pre !important; }
+pre.paraflow-code-display > code,
+pre.paraflow-code-display.paraflow-code-wrap > code { white-space: var(--paraflow-code-reading-white-space) !important; }
 .markdown-source-view.mod-cm6 .cm-editor .cm-line.paraflow-code-line {
   overflow-wrap: normal;
   word-break: normal;
 }
-pre.paraflow-code-display > code {
-  overflow-wrap: normal !important;
-  word-break: normal !important;
-}
+pre.paraflow-code-display > code { --paraflow-code-reading-overflow-wrap: normal; word-break: normal !important; }
+pre.paraflow-code-display > code,
+pre.paraflow-code-display.paraflow-code-wrap > code { overflow-wrap: var(--paraflow-code-reading-overflow-wrap) !important; }
 .markdown-source-view.mod-cm6 .cm-editor .cm-line.paraflow-code-line {
   line-height: var(--paraflow-block-code-line-height, var(--code-line-height, 1.6));
 }
@@ -171,6 +172,7 @@ pre.paraflow-code-display {
 }
 .markdown-source-view.mod-cm6 .cm-editor .cm-line.paraflow-code-line {
   --paraflow-code-inset: var(--paraflow-block-code-padding-left, 0.65em);
+  --paraflow-code-line-padding-start: var(--paraflow-code-inset);
   position: relative;
   overflow-x: hidden;
   max-width: 100%;
@@ -178,7 +180,6 @@ pre.paraflow-code-display {
   text-indent: 0;
   font-family: var(--paraflow-block-code-font, var(--font-monospace));
   font-size: var(--paraflow-block-code-size, 0.9em);
-  padding-inline-start: var(--paraflow-code-inset) !important;
   padding-inline-end: var(--paraflow-block-code-padding-right, .65em);
   padding-block: 0;
   border-inline: var(--paraflow-block-code-border, 1px solid var(--background-modifier-border));
@@ -190,8 +191,12 @@ pre.paraflow-code-display {
 }
 /* An inline gutter changes Chromium's caret rounding next to the virtual glyph. */
 .markdown-source-view.mod-cm6 .cm-editor .cm-line.paraflow-code-line:is(.paraflow-code-wrap,.paraflow-code-virtual)[data-paraflow-line] {
-  padding-inline-start: calc(var(--paraflow-code-inset) + var(--paraflow-code-gutter) + var(--paraflow-code-text-gap)) !important;
+  --paraflow-code-line-padding-start: calc(var(--paraflow-code-inset) + var(--paraflow-code-gutter) + var(--paraflow-code-text-gap));
   text-indent: 0;
+}
+.markdown-source-view.mod-cm6 .cm-editor .cm-line.paraflow-code-line,
+.markdown-source-view.mod-cm6 .cm-editor .cm-line.paraflow-code-line:is(.paraflow-code-wrap,.paraflow-code-virtual)[data-paraflow-line] {
+  padding-inline-start: var(--paraflow-code-line-padding-start) !important;
 }
 .markdown-source-view.mod-cm6 .cm-editor .cm-line.paraflow-code-line[data-paraflow-line] {
   --paraflow-code-local-inset: var(--paraflow-code-numbered-inset, var(--paraflow-block-code-padding-left, 0.65em));
@@ -206,15 +211,15 @@ pre.paraflow-code-display {
   overflow-wrap: anywhere;
 }
 pre.paraflow-code-display.paraflow-code-wrap > code {
-  white-space: pre-wrap !important;
-  overflow-wrap: anywhere !important;
+  --paraflow-code-reading-white-space: pre-wrap;
+  --paraflow-code-reading-overflow-wrap: anywhere;
 }
 .markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-callout-line.paraflow-code-line {
+  --paraflow-code-surface-start: var(--paraflow-container-inset);
   --paraflow-code-inset: calc(var(--paraflow-container-inset) + var(--paraflow-code-frame-border-left, 0px) + var(--paraflow-code-local-inset, var(--paraflow-block-code-padding-left, .65em)));
   --paraflow-container-end-inset: calc(var(--paraflow-container-callouts) * var(--paraflow-callout-padding, 12px));
   border-inline: 0 !important;
   padding-inline-end: calc(var(--paraflow-container-end-inset) + var(--paraflow-code-frame-border-right, 0px) + var(--paraflow-block-code-padding-right, .65em));
-  background: linear-gradient(to right, transparent var(--paraflow-container-inset), var(--paraflow-block-code-background, var(--code-background, var(--background-secondary))) var(--paraflow-container-inset), var(--paraflow-block-code-background, var(--code-background, var(--background-secondary))) calc(100% - var(--paraflow-container-end-inset)), transparent calc(100% - var(--paraflow-container-end-inset))) !important;
 }
 .cm-line.paraflow-code-indented {
   --paraflow-code-list-inset: calc(var(--paraflow-code-list-depth, 0) * var(--paraflow-live-list-indent, 30px));
@@ -236,9 +241,13 @@ pre.paraflow-code-display.paraflow-code-wrap > code {
   border-end-end-radius: var(--paraflow-block-code-radius, 3px);
 }
 .markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-callout-line:is(.paraflow-code-indented,.paraflow-code-fenced-list) {
+  --paraflow-code-surface-start: calc(var(--paraflow-container-inset) + var(--paraflow-code-list-inset));
   margin-inline-start: 0;
   --paraflow-code-inset: calc(var(--paraflow-container-inset) + var(--paraflow-code-list-inset) + var(--paraflow-code-frame-border-left, 0px) + var(--paraflow-code-local-inset, var(--paraflow-block-code-padding-left, .65em)));
-  background: linear-gradient(to right, transparent calc(var(--paraflow-container-inset) + var(--paraflow-code-list-inset)), var(--paraflow-block-code-background, var(--code-background, var(--background-secondary))) calc(var(--paraflow-container-inset) + var(--paraflow-code-list-inset)), var(--paraflow-block-code-background, var(--code-background, var(--background-secondary))) calc(100% - var(--paraflow-container-end-inset)), transparent calc(100% - var(--paraflow-container-end-inset))) !important;
+}
+.markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-callout-line.paraflow-code-line,
+.markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-callout-line:is(.paraflow-code-indented,.paraflow-code-fenced-list) {
+  background: linear-gradient(to right, transparent var(--paraflow-code-surface-start), var(--paraflow-block-code-background, var(--code-background, var(--background-secondary))) var(--paraflow-code-surface-start), var(--paraflow-block-code-background, var(--code-background, var(--background-secondary))) calc(100% - var(--paraflow-container-end-inset)), transparent calc(100% - var(--paraflow-container-end-inset))) !important;
 }
 .cm-content > .cm-line.paraflow-callout-line.paraflow-code-line::after {
   content: '';
@@ -324,6 +333,7 @@ pre.paraflow-code-display.paraflow-code-wrap > code {
 .paraflow-code-scroll-track { height: 1px; }
 .paraflow-code-extent { display: inline-block; height: 0; pointer-events: none; user-select: none; }
 pre.paraflow-code-display {
+  --paraflow-code-reading-padding-left: var(--paraflow-block-code-padding-left, .65em);
   position: relative;
   font-family: var(--paraflow-block-code-font, var(--font-monospace));
   font-size: var(--paraflow-block-code-size, .9em);
@@ -332,13 +342,14 @@ pre.paraflow-code-display {
   overflow-x: auto !important;
   padding-top: var(--paraflow-block-code-padding-top, max(.65em, calc(var(--font-text-size, 1rem) * .6875 - 1px))) !important;
   padding-bottom: var(--paraflow-block-code-padding-bottom, max(.65em, calc(var(--font-text-size, 1rem) * .6875 - 1px))) !important;
-  padding-left: var(--paraflow-block-code-padding-left, .65em) !important;
   padding-right: var(--paraflow-block-code-padding-right, .65em) !important;
   border: var(--paraflow-block-code-border, 1px solid var(--background-modifier-border));
 }
 pre.paraflow-code-display.paraflow-code-numbered-lines {
-  padding-left: var(--paraflow-code-numbered-inset, var(--paraflow-block-code-padding-left, .65em)) !important;
+  --paraflow-code-reading-padding-left: var(--paraflow-code-numbered-inset, var(--paraflow-block-code-padding-left, .65em));
 }
+pre.paraflow-code-display,
+pre.paraflow-code-display.paraflow-code-numbered-lines { padding-left: var(--paraflow-code-reading-padding-left) !important; }
 pre.paraflow-code-display > code {
   display: block;
   font: inherit;

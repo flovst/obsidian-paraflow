@@ -24,7 +24,7 @@ export function validateRelativePath(path: string): string {
 	return path;
 }
 
-function parseManifest(text: string, id: string): ThemeManifest {
+export function parseManifest(text: string, id: string): ThemeManifest {
 	const value = JSON.parse(text) as Partial<ThemeManifest> | null;
 	if (!value || value.schemaVersion !== 1 || value.id !== id || typeof value.name !== 'string'
 		|| !value.name.trim() || !['builtin', 'imported'].includes(value.origin ?? '')

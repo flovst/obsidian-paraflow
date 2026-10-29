@@ -32,7 +32,7 @@ const bundledThemes = JSON.parse(readFileSync('themes/bundled.json', 'utf8')).ma
 		css: readFileSync(`${directory}/theme.css`, 'utf8'),
 		overrides: readFileSync(`${directory}/overrides.css`, 'utf8'),
 		assets: themeFiles(`${directory}/assets`),
-		sources: [...themeFiles(`${directory}/source`), ['THIRD-PARTY-NOTICE.txt', readFileSync(`${directory}/THIRD-PARTY-NOTICE.txt`).toString('base64')]],
+		sources: [['THIRD-PARTY-NOTICE.txt', readFileSync(`${directory}/THIRD-PARTY-NOTICE.txt`).toString('base64')]],
 		diagnostics: JSON.parse(readFileSync(`${directory}/conversion-report.json`, 'utf8')),
 	};
 });

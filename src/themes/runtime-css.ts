@@ -3,7 +3,7 @@ import { validateRelativePath, validateThemeId } from './store.js';
 import { themeRoots } from './appearance.js';
 import type { ThemeOverrides } from './appearance.js';
 import type { ThemeManifest } from './model.js';
-import { semanticBlockRhythmCss, readingBlockRhythmCss } from '../editor/paragraph/rhythm-css.js';
+import { semanticBlockRhythmCss, listSiblingRhythmCss, readingBlockRhythmCss } from '../editor/paragraph/rhythm-css.js';
 import { projectHeadingThemeSelectors } from './heading-selectors.js';
 import { projectSourceThemeTokens } from './width-selectors.js';
 import { isolateDiagramParagraphs, projectContentThemeSelectors, projectLinkAccentOverride } from './content-selectors.js';
@@ -147,6 +147,8 @@ ${live} .paraflow-rendered-block-html .paraflow-rendered-block-content p{
 ${reading} li${exclude},${reading} :is(ul,ol):has(>li)${exclude},${live} .HyperMD-list-line:not(.paraflow-code-line)${exclude}{
  font-family:var(--paraflow-list-font,var(--font-text));font-size:var(--paraflow-list-size,var(--font-text-size));
  font-weight:var(--paraflow-list-weight,var(--paraflow-paragraph-weight,var(--paraflow-content-weight,400)));
+}
+${reading} li${exclude},${reading} :is(ul,ol):has(>li)${exclude},${live} .HyperMD-list-line:not(.paraflow-code-line):not(:where(.paraflow-list-blank-gap-head,.paraflow-list-blank-editable,.paraflow-list-blank-folded))${exclude}{
  line-height:var(--paraflow-list-line-height,var(--paraflow-line-height));
 }
 ${live} .cm-link .cm-underline${exclude},${live} .cm-url${exclude},${reading} a${exclude}{color:var(--link-color)}
@@ -167,6 +169,7 @@ ${live} .metadata-container,${reading} .metadata-container{
  margin-block-end:${metadataGap ?? -6}px;
 }
 ${semanticBlockRhythmCss(live)}
+${listSiblingRhythmCss(live)}
 ${readingBlockRhythmCss(reading)}
 ${live} :is(.metadata-property-key,.metadata-property-value,.metadata-property-key-input,.metadata-input-longtext),
 ${reading} :is(.metadata-property-key,.metadata-property-value,.metadata-property-key-input,.metadata-input-longtext){

@@ -138,7 +138,7 @@ body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-liv
 	> .cm-sizer
 	> .cm-contentContainer
 	> .cm-content
-	> .cm-line:not(.HyperMD-codeblock):not(.paraflow-code-line):has(> br:only-child) {
+	> .cm-line:not(.HyperMD-codeblock):not(.paraflow-code-line):not(:where(.paraflow-paragraph-empty-row,.paraflow-paragraph-folded-row,.paraflow-list-body-separator,.paraflow-list-blank-gap-head,.paraflow-list-blank-editable,.paraflow-list-blank-folded)):has(> br:only-child) {
 	min-height: var(--paraflow-blank-line-height);
 	padding-block: 0;
 	line-height: var(--paraflow-blank-line-height);

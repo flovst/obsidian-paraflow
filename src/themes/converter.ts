@@ -45,7 +45,7 @@ function brightness(value: string): number | null {
 }
 
 // css-tree's parser intentionally recovers missing closing delimiters. Imports reject them.
-function validateDelimiters(source: string): void {
+export function validateDelimiters(source: string): void {
 	const tokenizer = css as typeof css & {
 		tokenTypes: Record<string, number>;
 		tokenize: (text: string, callback: (type: number) => void) => void;
