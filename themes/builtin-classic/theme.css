@@ -138,7 +138,7 @@ body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-liv
 	> .cm-sizer
 	> .cm-contentContainer
 	> .cm-content
-	> .cm-line:not(.HyperMD-codeblock):not(.paraflow-code-line):not(:where(.paraflow-paragraph-empty-row,.paraflow-paragraph-folded-row,.paraflow-list-body-separator,.paraflow-list-blank-gap-head,.paraflow-list-blank-editable,.paraflow-list-blank-folded)):has(> br:only-child) {
+	> div.cm-line:not(.HyperMD-codeblock):not(.paraflow-code-line):not(:where(.paraflow-paragraph-empty-row,.paraflow-paragraph-folded-row,.paraflow-list-body-separator,.paraflow-list-blank-gap-head,.paraflow-list-blank-editable,.paraflow-list-blank-folded))[data-paraflow-empty-line] {
 	min-height: var(--paraflow-blank-line-height);
 	padding-block: 0;
 	line-height: var(--paraflow-blank-line-height);
@@ -305,7 +305,7 @@ body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='m
 	> .markdown-preview-view
 	> .markdown-preview-sizer
 	code:not(pre code):not(:is(.callout *, .markdown-embed *)),
-body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview span.cm-inline-code:not(:has(:is(.paraflow-inline-body--inline-code,.paraflow-inline-source-active,.paraflow-literal-inline-marker))):not(:where(.paraflow-literal-inline-marker,.paraflow-inline-source-active,.paraflow-inline-source-active *,.paraflow-code-line *,.paraflow-rendered-source-line *)) {
+body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview span.cm-inline-code:not(:is(.paraflow-inline-owner--inline-code *, .paraflow-inline-source-active *, .paraflow-literal-inline-marker *)):not(:where(.paraflow-literal-inline-marker,.paraflow-inline-source-active,.paraflow-inline-source-active *,.paraflow-code-line *,.paraflow-rendered-source-line *)) {
 	border: 1px solid var(--paraflow-border-color);
 	border-radius: 3px;
 	background: var(--paraflow-code-background);
@@ -356,7 +356,6 @@ body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-liv
 body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview .cm-table-widget {
 	width: 100%;
 	padding: 0;
-	margin-inline: 0 !important;
 }
 
 /* Native add controls are hidden; the editor enhancement owns outside placement. */

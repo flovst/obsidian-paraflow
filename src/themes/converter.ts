@@ -7,9 +7,9 @@ import { projectQuoteThemeTokens } from './quote-selectors.js';
 import { cssName, themeResource } from './resource-policy.js';
 import { normalizePaddingDeclarations } from './padding-declarations.js';
 import { normalizeBackgroundDeclarations } from './background-declarations.js';
-import { normalizeNamedColors } from './named-colors.mjs';
+import { normalizeNamedColors, normalizeTyporaForegroundToken } from './named-colors.mjs';
 
-export const CONVERTER_VERSION = '10';
+export const CONVERTER_VERSION = '11';
 interface SourceRule { node: css.Rule | css.Atrule; file: string; media: string[] }
 
 const lengthValue = (value: string): string => /^[+-]?0(?:\.0+)?$/u.test(value) ? '0px' : value;
@@ -225,6 +225,7 @@ export function convertTyporaTheme(input: ThemeInput, options: { id: string; nam
 	const rewriteValue = (declaration: css.Declaration, source: SourceRule, fontFace = false): string | null => {
 		const value = css.clone(declaration.value);
 		normalizeNamedColors(declaration.property, value);
+		normalizeTyporaForegroundToken(declaration.property, value);
 		let usable = true;
 		css.walk(value, node => {
 			const resource = themeResource(node);
@@ -412,6 +413,18 @@ export function convertTyporaTheme(input: ThemeInput, options: { id: string; nam
 	projectHeadingThemeSelectors(stylesheet);
 	projectContentThemeSelectors(stylesheet);
 	projectQuoteThemeTokens(stylesheet);
+	// Adjacent identical blocks share declaration ownership after selector projection.
+	css.walk(stylesheet, node => {
+		if (node.type !== 'StyleSheet' && node.type !== 'Block') return;
+		let previous: css.Rule | undefined;
+		node.children.forEach((child, item, list) => {
+			if (child.type !== 'Rule' || child.prelude.type !== 'SelectorList') { previous = undefined; return; }
+			if (previous?.prelude.type === 'SelectorList' && css.generate(previous.block) === css.generate(child.block)) {
+				previous.prelude.children.appendList(child.prelude.children);
+				list.remove(item);
+			} else previous = child;
+		});
+	});
 	return {
 		manifest: { schemaVersion: 1, id: options.id, name: options.name, origin: 'imported', colorScheme, converterVersion: CONVERTER_VERSION, sourceEntry: input.entry, ...(options.sourceVersion ? { sourceVersion: options.sourceVersion } : {}) },
 		css: css.generate(stylesheet), assets, sources: files, diagnostics,

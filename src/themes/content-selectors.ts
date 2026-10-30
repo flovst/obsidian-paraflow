@@ -75,6 +75,107 @@ export function projectContentThemeSelectors(ast: css.CssNode): void {
 			node.block.children.appendData(css.parse(`--paraflow-marker-size:${size}${background.important ? '!important' : ''}`, { context: 'declaration' }));
 		}
 	});
+	isolateSourceInlineTokens(ast);
+	isolateExplicitHighlightBackground(ast);
+}
+
+/** Explicit highlight colors own background paint while retaining theme text styles. */
+function isolateExplicitHighlightBackground(ast: css.CssNode): void {
+	const exclusion = ':where(:not(mark:is([data-highlight="red"],[data-highlight="orange"],[data-highlight="yellow"],[data-highlight="green"],[data-highlight="blue"],[data-highlight="purple"])))';
+	const replacements: Array<{list: css.List<css.CssNode>; item: css.ListItem<css.CssNode>; rules: css.Rule[]}> = [];
+	css.walk(ast, (node, item, list) => {
+		if (node.type !== 'Rule' || node.prelude.type !== 'SelectorList' || !item || !list) return;
+		const backgrounds = (part: css.CssNode) => part.type === 'Declaration' && ['background', 'background-color', '--paraflow-highlight-background'].includes(part.property);
+		if (!node.block.children.toArray().some(backgrounds)) return;
+		if (node.block.children.toArray().some(part => part.type === 'Declaration' && part.property === 'all')) return;
+		const scoped = node.prelude.children.toArray().filter(selector => {
+			if (selector.type !== 'Selector') return false;
+			const text = css.generate(selector);
+			if (text.includes('data-highlight') || !/\.(?:markdown-reading-view|is-live-preview)\b/u.test(text)) return false;
+			const parts = selector.children.toArray();
+			const target = parts.slice(parts.findLastIndex(part => part.type === 'Combinator') + 1);
+			// A mark ancestor or its pseudo-element does not paint the mark's background.
+			if (target.some(part => part.type === 'PseudoElementSelector')) return false;
+			const targetsMark = (part: css.CssNode): boolean => part.type === 'TypeSelector' ? part.name === 'mark' :
+				part.type === 'Selector' || part.type === 'SelectorList' ? part.children.toArray().some(targetsMark) :
+				part.type === 'PseudoClassSelector' && ['is', 'where'].includes(part.name) && Boolean(part.children?.toArray().some(targetsMark));
+			return target.some(targetsMark);
+		});
+		if (!scoped.length) return;
+		const parts = node.block.children.toArray();
+		const groups = [
+			{background: false, parts: parts.filter(part => !backgrounds(part))},
+			{background: true, parts: parts.filter(backgrounds)},
+		].filter(group => group.parts.length);
+		const rules = groups.map(group => {
+			const rule = css.clone(node) as css.Rule;
+			rule.block.children.fromArray(group.parts);
+			if (group.background && rule.prelude.type === 'SelectorList') for (const selector of rule.prelude.children) {
+				if (selector.type !== 'Selector' || !scoped.some(target => css.generate(target) === css.generate(selector))) continue;
+				const guard = css.parse(exclusion, {context: 'selector'}) as css.Selector;
+				selector.children.appendData(guard.children.first!);
+			}
+			return rule;
+		});
+		replacements.push({list,item,rules});
+	});
+	for (const {list,item,rules} of replacements) {
+		for (const rule of rules) {
+			if (rule.prelude.type === 'SelectorList') {
+				const seen = new Set<string>();
+				rule.prelude.children.forEach((selector, entry, selectors) => {
+					const key = css.generate(selector);
+					if (seen.has(key)) selectors.remove(entry); else seen.add(key);
+				});
+			}
+			list.insertData(rule,item);
+		}
+		list.remove(item);
+	}
+}
+
+/** Raw source tokens use their source owner's paint, not rendered-inline theme paint. */
+function isolateSourceInlineTokens(ast: css.CssNode): void {
+	const tableMarkers = ['code', 'strong', 'em', 'strikethrough', 'highlight', 'link', 'link-string']
+		.map(kind => `.cm-table-widget .cm-formatting.cm-formatting-${kind}`);
+	const exclusion = `:where(:not(.paraflow-code-line *,.paraflow-rendered-source-line *,.paraflow-footnote-definition-owner *,.paraflow-footnote-reference-owner *,.paraflow-inline-source-active *,.paraflow-literal-inline-marker *,.paraflow-literal-reference *,.paraflow-html-break-hint *,.paraflow-comment-visible *,${tableMarkers.join(',')}))`;
+	const targetsInline = (node: css.CssNode): boolean => {
+		if (node.type === 'TypeSelector') return Object.hasOwn(inlineTargets, node.name) || ['del', 's', 'sup', 'sub'].includes(node.name);
+		if (node.type === 'ClassSelector') return Object.hasOwn(nativeInline, node.name) ||
+			['cm-link', 'cm-url', 'cm-underline', 'cm-strikethrough'].includes(node.name) || node.name.startsWith('paraflow-inline-body--');
+		if (node.type === 'Selector' || node.type === 'SelectorList') return node.children.toArray().some(targetsInline);
+		return node.type === 'PseudoClassSelector' && ['is', 'where'].includes(node.name) && Boolean(node.children?.toArray().some(targetsInline));
+	};
+	const liveRoot = (node: css.CssNode): boolean => node.type === 'ClassSelector' ? node.name === 'is-live-preview' :
+		node.type === 'Selector' || node.type === 'SelectorList' ? node.children.toArray().some(liveRoot) :
+		node.type === 'PseudoClassSelector' && ['is', 'where'].includes(node.name) && Boolean(node.children?.toArray().some(liveRoot));
+	css.walk(ast, node => {
+		if (node.type !== 'Rule' || node.prelude.type !== 'SelectorList') return;
+		for (const selector of node.prelude.children) {
+			if (selector.type !== 'Selector') continue;
+			const parts = selector.children.toArray();
+			if (!parts.some(liveRoot)) continue;
+			const blockExclusion = ':where(:not(.paraflow-rendered-source-line,.paraflow-code-draft))';
+			if (parts.some(part => part.type === 'ClassSelector' && part.name === 'HyperMD-codeblock') && !css.generate(selector).includes(blockExclusion)) {
+				const guard = css.parse(blockExclusion, { context: 'selector' }) as css.Selector;
+				parts.push(guard.children.first!);
+				selector.children.fromArray(parts);
+			}
+			if (!parts.some(targetsInline)) continue;
+			const oldGuard = parts.findIndex(part => css.generate(part) === exclusion);
+			if (oldGuard >= 0) parts.splice(oldGuard, 1);
+			const pseudoElement = parts.findIndex(part => part.type === 'PseudoElementSelector' ||
+				(part.type === 'PseudoClassSelector' && css.generate(part).includes('data-highlight')));
+			const guard = css.parse(exclusion, { context: 'selector' }) as css.Selector;
+			parts.splice(pseudoElement < 0 ? parts.length : pseudoElement, 0, guard.children.first!);
+			selector.children.fromArray(parts);
+		}
+		const seen = new Set<string>();
+		node.prelude.children.forEach((selector, item, list) => {
+			const key = css.generate(selector);
+			if (seen.has(key)) list.remove(item); else seen.add(key);
+		});
+	});
 }
 
 /** Text inside rendered diagrams has its own measured typography. */

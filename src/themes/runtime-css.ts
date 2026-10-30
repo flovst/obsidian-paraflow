@@ -83,7 +83,7 @@ ${source}>.cm-editor>.cm-scroller>.cm-sizer>.cm-contentContainer>.cm-content{
 }
 /* The content owner sets the width once for text, widgets and selection paint. */
 ${live}>.cm-editor>.cm-scroller>.cm-sizer>.cm-contentContainer>.cm-content>.cm-line,
-${source}>.cm-editor>.cm-scroller>.cm-sizer>.cm-contentContainer>.cm-content>.cm-line{max-width:none}
+${source}>.cm-editor>.cm-scroller>.cm-sizer>.cm-contentContainer>.cm-content>.cm-line{max-width:var(--paraflow-line-max-width,none)}
 ${reading}>.markdown-preview-view,${live}>.cm-editor>.cm-scroller,${source}>.cm-editor>.cm-scroller{
  font-family:var(--font-text);font-size:var(--font-text-size);
  color:var(--paraflow-content-color,var(--text-normal));
@@ -130,7 +130,7 @@ ${reading} p${exclude}{
  line-height:var(--paraflow-line-height);
 }
 ${reading} blockquote.paraflow-display-quote > *:not(.markdown-embed){margin-block:0}
-${reading} blockquote.paraflow-display-quote > * + *:not(.markdown-embed){margin-block-start:var(--paraflow-callout-gap,calc(.8 * var(--font-text-size,1rem)))}
+${reading} blockquote.paraflow-display-quote > * + *:not(.markdown-embed,.paraflow-reading-blank-paragraphs){margin-block-start:var(--paraflow-callout-gap,calc(.8 * var(--font-text-size,1rem)))}
 ${reading} :is(ul,ol)>li:has(+li):not(.markdown-embed *)>p:last-child{
  margin-block-end:var(--paraflow-list-sibling-gap,var(--paraflow-p-margin-bottom,var(--paraflow-block-gap,.8em)));
 }
@@ -181,12 +181,14 @@ ${reading} .metadata-property-value :is(input,textarea,.multi-select-pill-conten
  font-family:inherit;font-size:inherit;font-weight:inherit;line-height:normal;
 }
 ${live} .metadata-property,${reading} .metadata-property{align-items:center}
-${live} .HyperMD-codeblock:not(.paraflow-code-draft)${exclude}{
- background:var(--paraflow-block-code-background,var(--code-background));
+${live} .HyperMD-codeblock:not(:is(.paraflow-code-draft,.paraflow-rendered-source-line))${exclude}{
  color:var(--paraflow-block-code-color,var(--code-normal));
  font-family:var(--paraflow-block-code-font,var(--font-monospace));
  font-size:var(--paraflow-block-code-size,.9em);
  line-height:var(--paraflow-block-code-line-height,var(--code-line-height,1.6));
+}
+${live} .HyperMD-codeblock:not(:is(.paraflow-code-draft,.paraflow-rendered-source-line,.paraflow-callout-line))${exclude}{
+ background:var(--paraflow-block-code-background,var(--code-background));
  border-left:var(--paraflow-block-code-border,1px solid var(--paraflow-border-color,var(--background-modifier-border)));border-right:var(--paraflow-block-code-border,1px solid var(--paraflow-border-color,var(--background-modifier-border)));
  border-top:0;border-bottom:0;border-radius:0;
 }
@@ -198,7 +200,7 @@ ${reading} pre${exclude}{
  line-height:var(--paraflow-block-code-line-height,var(--code-line-height,1.6));
 }
 ${reading} pre code${exclude}{font:inherit;color:inherit;background:transparent;border:0;padding:0}
-${reading} :not(pre)>code${exclude},${live} .cm-inline-code:not(:has(:is(.paraflow-inline-body--inline-code,.paraflow-inline-source-active,.paraflow-literal-inline-marker))):not(:where(.paraflow-literal-inline-marker,.paraflow-inline-source-active,.paraflow-inline-source-active *,.paraflow-code-line *,.paraflow-rendered-source-line *))${exclude}{
+${reading} :not(pre)>code${exclude},${live} .cm-inline-code:not(:is(.paraflow-inline-owner--inline-code *, .paraflow-inline-source-active *, .paraflow-literal-inline-marker *)):not(:where(.paraflow-literal-inline-marker,.paraflow-inline-source-active,.paraflow-inline-source-active *,.paraflow-code-line *,.paraflow-rendered-source-line *))${exclude}{
  color:var(--paraflow-inline-code-color,var(--code-normal));
  background:var(--paraflow-inline-code-background,var(--code-background));
  font-family:var(--paraflow-inline-code-font,var(--font-monospace));font-size:var(--paraflow-inline-code-size,.9em);

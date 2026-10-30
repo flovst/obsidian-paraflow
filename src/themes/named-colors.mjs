@@ -5,6 +5,14 @@ const palette = new Map([
 	['black', '000'], ['white', 'fff'], ['blue', '00f'], ['red', 'f00'], ['yellow', 'ff0'],
 ]);
 
+// Typora UI foreground tokens have color semantics in imported packages.
+const typoraForegroundTokens = new Set(['--active-file-text-color', '--select-text-font-color', '--item-hover-text-color']);
+
+/** @param {string} property @param {import('css-tree').CssNode} value */
+export function normalizeTyporaForegroundToken(property, value) {
+	if (typoraForegroundTokens.has(property)) normalizeNamedColors('color', value);
+}
+
 /**
  * Canonicalize proven color tokens; custom properties retain their untyped token stream.
  * @param {string} property
