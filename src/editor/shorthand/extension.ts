@@ -88,11 +88,11 @@ export function createShorthandExtension(options: { isActive(view: EditorView): 
 		if (settings.subscript) for (const run of view.state.field(tildeRuns)) {
 			if (!view.visibleRanges.some(visible => visible.from <= run.to && visible.to >= run.from)) continue;
 			// Source-backed bodies let CM paint and hit-test every character independently.
-			ranges.push(Decoration.mark({ class: 'paraflow-invalid-native-strike' }).range(run.from, run.to));
+			nativeOwners.push(Decoration.mark({ class: 'paraflow-invalid-native-strike' }).range(run.from, run.to));
 			for (const part of run.parts) {
 				const isRevealed = revealed(part);
 				const marker = isRevealed ? Decoration.mark({ class: 'paraflow-inline-source-active' }) : Decoration.replace({});
-				ranges.push(marker.range(part.from, part.bodyFrom), marker.range(part.bodyTo, part.to));
+				(isRevealed ? nativeOwners : ranges).push(marker.range(part.from, part.bodyFrom), marker.range(part.bodyTo, part.to));
 				ranges.push(Decoration.mark({ class: `paraflow-inline-body paraflow-inline-body--${part.kind}` })
 					.range(part.kind === 'subscript' ? part.from : part.bodyFrom, part.kind === 'subscript' ? part.to : part.bodyTo));
 				if (!isRevealed) {
@@ -116,7 +116,7 @@ export function createShorthandExtension(options: { isActive(view: EditorView): 
 			}
 			const isRevealed = revealed(item);
 			const marker = isRevealed ? Decoration.mark({ class: 'paraflow-inline-source-active' }) : Decoration.replace({});
-			ranges.push(marker.range(item.from, item.from + 1), marker.range(item.to - 1, item.to));
+			(isRevealed ? nativeOwners : ranges).push(marker.range(item.from, item.from + 1), marker.range(item.to - 1, item.to));
 			ranges.push(Decoration.mark({ class: `paraflow-inline-body paraflow-inline-body--${item.kind}` }).range(item.from, item.to));
 			if (!isRevealed) {
 				const body = view.state.sliceDoc(item.from + 1, item.to - 1);

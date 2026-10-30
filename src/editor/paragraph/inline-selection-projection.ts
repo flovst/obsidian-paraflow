@@ -1075,7 +1075,7 @@ function projectionDecorations(
 	frozenActive: readonly InlineSemanticConstruct[] | undefined,
 	isOwnerActive: () => boolean,
 	renderInlineHtml?: InlineHtmlRenderer,
-): { readonly decorations: DecorationSet; readonly active: readonly InlineSemanticConstruct[] } {
+): { readonly decorations: DecorationSet; readonly nativeOwners: DecorationSet; readonly active: readonly InlineSemanticConstruct[] } {
 	const visibleSelections = visibleRanges.map(({ from, to }) => EditorSelection.range(from, to));
 	const strikeCorrections = malformedNativeStrikeRanges(state, visibleRanges);
 	const discovered = discoverInlineSemanticConstructs(state, visibleSelections)
@@ -1101,8 +1101,10 @@ function projectionDecorations(
 	}))).map(owner => owner.item);
 	const active = frozenActive !== undefined ? frozenActive.map(matchingConstruct).filter((item): item is InlineSemanticConstruct => item !== null)
 		: endpoints.length > 0 ? endpoints : synchronizedActive.map(matchingConstruct).filter((item): item is InlineSemanticConstruct => item !== null);
+	const nativeOwners: ReturnType<Decoration['range']>[] = [];
 	const ranges = constructs.flatMap((item) => {
 		const revealed = active.includes(item);
+		nativeOwners.push(Decoration.mark({ class: `paraflow-inline-owner--${item.kind}` }).range(item.editFrom, item.editTo));
 		if (item.kind === 'literal-strike' && !revealed) {
 			return [Decoration.replace({ widget: new LiteralStrikeWidget(item.editFrom,
 				state.sliceDoc(item.editFrom, item.editTo), isOwnerActive) }).range(item.editFrom, item.editTo)];
@@ -1117,18 +1119,19 @@ function projectionDecorations(
 				? Decoration.mark({ class: ACTIVE_INLINE_SOURCE_CLASS + (item.kind === 'strikethrough' ? ' paraflow-inline-source-active--strikethrough' : '') })
 				: Decoration.replace({}))
 				.range(range.from, range.to));
-		return [...source, ...bodyDecorations(item)];
+		if (revealed) nativeOwners.push(...source);
+		return [...(revealed ? [] : source), ...bodyDecorations(item)];
 	});
 	for (const range of strikeCorrections) {
-		ranges.push(Decoration.mark({ class: 'paraflow-invalid-native-strike' }).range(range.from, range.to));
+		nativeOwners.push(Decoration.mark({ class: 'paraflow-invalid-native-strike' }).range(range.from, range.to));
 	}
 	for (const range of literalFormattingMarkers(state, visibleRanges)) {
-		ranges.push(Decoration.mark({ class: 'paraflow-literal-inline-marker' }).range(range.from, range.to));
+		nativeOwners.push(Decoration.mark({ class: 'paraflow-literal-inline-marker' }).range(range.from, range.to));
 	}
 	for (const range of unresolvedShortcutReferences(state, visibleRanges)) {
-		ranges.push(Decoration.mark({ class: 'paraflow-literal-reference' }).range(range.from, range.to));
+		nativeOwners.push(Decoration.mark({ class: 'paraflow-literal-reference' }).range(range.from, range.to));
 	}
-	return { active, decorations: Decoration.set(ranges, true) };
+	return { active, decorations: Decoration.set(ranges, true), nativeOwners: Decoration.set(nativeOwners, true) };
 }
 
 function unpairedCodeBody(state: EditorState, marker: SyntaxNode, constructs: readonly InlineSemanticConstruct[]) {
@@ -1209,13 +1212,10 @@ export function createInlineSelectionProjection(
 		return (from: number, to: number, decoration: Decoration) => isNativeReplacement(decoration) &&
 			html.some(item => item.editFrom <= from && to <= item.editTo);
 	};
-	return [EditorView.baseTheme({
-		'.cm-link:has(.paraflow-literal-reference), .paraflow-literal-reference, .paraflow-literal-reference .cm-link': {
-			color: 'inherit !important', textDecoration: 'none !important', cursor: 'text',
-		},
-	}), createInlineRevealPointerExtension(), createRenderedSourceClickExtension(), createNativeDecorationOwnership(),
+	return [createInlineRevealPointerExtension(), createRenderedSourceClickExtension(), createNativeDecorationOwnership(),
 		nativeBlockOwnership.of(htmlOwner), nativeInlineOwnership.of(htmlOwner), nativeInlineOwnership.of(literalMarkerOwner), Prec.highest(ViewPlugin.fromClass(class {
 		decorations: DecorationSet;
+		nativeOwners: DecorationSet = Decoration.none;
 		private active: boolean;
 		private activeConstructs: readonly InlineSemanticConstruct[] = [];
 		private frozenConstructs: readonly InlineSemanticConstruct[] = [];
@@ -1258,6 +1258,7 @@ export function createInlineSelectionProjection(
 
 		private build(active: boolean): DecorationSet {
 			if (!active) {
+				this.nativeOwners = Decoration.none;
 				this.activeConstructs = [];
 				this.frozenConstructs = [];
 				return Decoration.none;
@@ -1271,9 +1272,11 @@ export function createInlineSelectionProjection(
 				renderInlineHtml,
 			);
 			this.activeConstructs = projection.active;
+			this.nativeOwners = projection.nativeOwners;
 			return projection.decorations;
 		}
 	}, {
 		decorations: (value) => value.decorations,
+		provide: plugin => EditorView.outerDecorations.of(view => view.plugin(plugin)!.nativeOwners),
 	}))];
 }

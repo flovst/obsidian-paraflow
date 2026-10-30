@@ -41,18 +41,18 @@ export const FOOTNOTE_CSS = `
   vertical-align: baseline;
   color: var(--text-muted);
 }
-.cm-editor .cm-content .cm-line.paraflow-footnote-row :is(.cm-footref, .cm-hmd-footnote):has(:is(.paraflow-footnote-definition-source, .paraflow-footnote-definition)),
+.cm-editor .cm-content .cm-line.paraflow-footnote-row .paraflow-footnote-definition-owner :is(.cm-footref, .cm-hmd-footnote),
 .cm-editor .cm-content[contenteditable] .cm-line .paraflow-footnote-definition-source,
 .cm-editor .cm-content[contenteditable] .cm-line .paraflow-footnote-definition-source * {
   font-weight: 600;
-  color: var(--text-muted) !important;
+  color: var(--text-muted);
   font-size: inherit;
   line-height: inherit;
   vertical-align: baseline;
   position: static;
   top: auto;
 }
-.cm-editor .cm-content .cm-line :is(.cm-footref, .cm-hmd-footnote):has(:is(.paraflow-footnote-reference-source, .paraflow-footnote-reference)),
+.cm-editor .cm-content .cm-line .paraflow-footnote-reference-owner :is(.cm-footref, .cm-hmd-footnote),
 .cm-editor .cm-content[contenteditable] .cm-line .paraflow-footnote-reference-source,
 .cm-editor .cm-content[contenteditable] .cm-line .paraflow-footnote-reference-source * {
   font-size: inherit;
@@ -69,10 +69,10 @@ export const FOOTNOTE_CSS = `
 }
 .markdown-reading-view .markdown-preview-view .footnotes.paraflow-reading-footnotes :is(ol,ul,li,p) {
   font-size: inherit;
-  line-height: inherit !important;
+  line-height: inherit;
 }
 .cm-editor .cm-content[contenteditable] .cm-line .paraflow-footnote-marker,
-.cm-editor .cm-content[contenteditable] .cm-line .paraflow-footnote-marker * { color: var(--paraflow-source-color, var(--text-faint)) !important; }
+.cm-editor .cm-content[contenteditable] .cm-line .paraflow-footnote-marker * { color: var(--paraflow-source-color, var(--text-faint)); }
 .paraflow-footnote-marker-hidden { visibility: hidden; }
 .paraflow-footnote-reference[data-footnote-status="missing"],
 .paraflow-footnote-reference[data-footnote-status="duplicate"],

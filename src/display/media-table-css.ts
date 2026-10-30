@@ -1,10 +1,14 @@
-export const MEDIA_TABLE_CSS = `
+import { NATIVE_BLOCK_INSET_CSS } from '../editor/native-block-inset-css.js';
+export const MEDIA_TABLE_LAYOUT_CSS = `
 .paraflow-table-terminal-break::after { content:''; display:inline-block; width:0; height:1lh; vertical-align:top; }
 /* Native block replacement leaves an empty source carrier before the rendered table. */
-.markdown-source-view.mod-cm6.is-live-preview .paraflow-table-display-active .cm-line.HyperMD-table-row:has(>br:only-child):has(+.cm-table-widget) { height:0!important; min-height:0!important; line-height:0!important; padding-block:0!important; }
+.markdown-source-view.mod-cm6.is-live-preview .paraflow-table-display-active .cm-content > div.cm-line.HyperMD-table-row[data-paraflow-table-carrier] { height:0; min-height:0; line-height:0; padding-block:0; }
 /* Native cells freeze their dimensions before the display observer runs. */
 .markdown-source-view.mod-cm6:where(.is-live-preview) :where(.paraflow-table-display-active) .cm-table-widget,
-.markdown-source-view.mod-cm6.is-live-preview .cm-table-widget.paraflow-display-table-widget { padding:0; margin-inline:0 !important; }
+.markdown-source-view.mod-cm6.is-live-preview .cm-table-widget.paraflow-display-table-widget { padding:0; }
+.markdown-source-view.mod-cm6:where(.is-live-preview) :where(.paraflow-table-display-active) .cm-table-widget,
+.markdown-source-view.mod-cm6.is-live-preview .cm-table-widget.paraflow-display-table-widget,
+body[data-paraflow-theme="builtin-classic"] .markdown-source-view.mod-cm6.is-live-preview .cm-table-widget { --paraflow-native-block-inset:0px; }
 .markdown-source-view.mod-cm6:where(.is-live-preview) :where(.paraflow-table-display-active) .cm-table-widget .table-wrapper { width:100%; }
 .markdown-source-view.mod-cm6:where(.is-live-preview) :where(.paraflow-table-display-active) .cm-table-widget .table-cell-wrapper { padding:0; height:auto; }
 .markdown-source-view.mod-cm6:where(.is-live-preview) :where(.paraflow-table-display-active) .cm-table-widget .table-cell-wrapper :is(.cm-scroller,.cm-content) { line-height:inherit; }
@@ -25,7 +29,7 @@ export const MEDIA_TABLE_CSS = `
 .markdown-source-view.mod-cm6.is-live-preview .paraflow-table-nowrap-active :is(table.table-editor,table.paraflow-editable-table) :is(.cm-scroller,.cm-content,.cm-line) { white-space:pre; overflow-wrap:normal; word-break:normal; }
 img.paraflow-display-image { max-width: 100%; }
 img.paraflow-display-image-natural-height { height: auto; }
-img.paraflow-display-image-constrained { height: var(--paraflow-image-constrained-height) !important; }
+img.paraflow-display-image-constrained { height: var(--paraflow-image-constrained-height); }
 img.paraflow-display-image-center { display: block; margin-inline: auto; }
 .paraflow-display-image-container { display: block; max-width: 100%; }
 .cm-content .image-embed.paraflow-display-image-container { display: inline-block; width: 100%; vertical-align: bottom; }
@@ -61,3 +65,4 @@ table.paraflow-display-table > :where(thead, tbody, tfoot) > tr > .paraflow-disp
 :is(.markdown-source-view.mod-cm6.is-live-preview, .markdown-reading-view, .markdown-rendered) table.paraflow-display-table > :where(thead, tbody, tfoot) > tr > :is(td, th).paraflow-display-header:where(:not([style*="background" i])) { background-color: var(--paraflow-table-header-background, var(--paraflow-surface-color, var(--background-secondary))); }
 table.paraflow-display-table > :is(thead, tbody, tfoot) > tr > .paraflow-display-header-weight { font-weight: var(--font-bold, 700); }
 `;
+export const MEDIA_TABLE_CSS = NATIVE_BLOCK_INSET_CSS + MEDIA_TABLE_LAYOUT_CSS;

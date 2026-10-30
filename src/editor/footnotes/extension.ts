@@ -133,25 +133,28 @@ class BacklinksWidget extends WidgetType {
 }
 
 function project(view: EditorView, options: FootnoteOptions,
-	onKeydown: (event: KeyboardEvent) => void, activeSource: FootnoteRange | null, isOwnerActive: () => boolean): DecorationSet {
-	if (!options.isActive(view)) return Decoration.none;
+	onKeydown: (event: KeyboardEvent) => void, activeSource: FootnoteRange | null, isOwnerActive: () => boolean): { decorations: DecorationSet; nativeOwners: DecorationSet } {
+	if (!options.isActive(view)) return { decorations: Decoration.none, nativeOwners: Decoration.none };
 	const index = view.state.field(footnoteIndexField);
 	const ranges: Range<Decoration>[] = [];
+	const nativeOwners: Range<Decoration>[] = [];
 	const hiddenSource = Decoration.mark({ class: 'paraflow-footnote-source', attributes: { 'aria-hidden': 'true' } });
 	for (const reference of index.references) {
+		nativeOwners.push(Decoration.mark({ class: 'paraflow-footnote-reference-owner', inclusive: true }).range(reference.from, reference.to));
 		if (editing(activeSource, reference)) {
 			ranges.push(Decoration.mark({ class: 'paraflow-footnote-reference-source' }).range(reference.from, reference.to));
 			continue;
 		}
 		ranges.push(hiddenSource.range(reference.from, reference.to),
-			Decoration.widget({ widget: new LabelWidget(reference, true, onKeydown, isOwnerActive), side: -1 }).range(reference.from));
+			Decoration.widget({ widget: new LabelWidget(reference, true, onKeydown, isOwnerActive), side: 1 }).range(reference.from));
 	}
 	for (const definition of index.definitions) {
+		nativeOwners.push(Decoration.mark({ class: 'paraflow-footnote-definition-owner', inclusive: true }).range(definition.from, definition.to));
 		ranges.push(Decoration.line({ class: 'paraflow-footnote-row' }).range(view.state.doc.lineAt(definition.from).from));
 		if (!editing(activeSource, definition)) {
 			ranges.push(hiddenSource.range(definition.from, definition.to),
 				Decoration.widget({ widget: new LabelWidget(definition, false, onKeydown, isOwnerActive,
-					!(options.hideDefinitionMarkers?.() ?? true)), side: -1 }).range(definition.from));
+					!(options.hideDefinitionMarkers?.() ?? true)), side: 1 }).range(definition.from));
 		} else {
 			const marker = Decoration.mark({ class: 'paraflow-footnote-marker' });
 			ranges.push(Decoration.mark({ class: 'paraflow-footnote-definition-source' }).range(definition.from, definition.to),
@@ -182,13 +185,14 @@ function project(view: EditorView, options: FootnoteOptions,
 	} });
 	const target = view.state.field(highlightField);
 	if (target && target.from < target.to) ranges.push(Decoration.mark({ class: 'paraflow-footnote-target' }).range(target.from, target.to));
-	return Decoration.set(ranges, true);
+	return { decorations: Decoration.set(ranges, true), nativeOwners: Decoration.set(nativeOwners, true) };
 }
 
 /** Display original IDs and navigation while leaving native definition rows in place. */
 export function createFootnoteExtension(options: FootnoteOptions): Extension {
 	const projection = ViewPlugin.fromClass(class {
 		decorations: DecorationSet;
+		nativeOwners: DecorationSet = Decoration.none;
 		destroyed = false;
 		timer: number | undefined;
 		activeSource: FootnoteRange | null = null;
@@ -210,6 +214,7 @@ export function createFootnoteExtension(options: FootnoteOptions): Extension {
 		update(update: ViewUpdate): void {
 			if (options.isActive(this.view) && (this.view.compositionStarted || this.view.composing || requireCompositionState(update.state))) {
 				this.decorations = this.decorations.map(update.changes);
+				this.nativeOwners = this.nativeOwners.map(update.changes);
 				const map = (range: FootnoteRange | null): FootnoteRange | null => range && ({ ...range,
 					from: update.changes.mapPos(range.from, 1), to: update.changes.mapPos(range.to, -1) });
 				this.activeSource = map(this.activeSource); this.frozenSource = map(this.frozenSource);
@@ -241,7 +246,9 @@ export function createFootnoteExtension(options: FootnoteOptions): Extension {
 				else if (mode !== 'unknown' || state.selection.ranges.length !== 1 || !caret.empty ||
 					!this.activeSource || caret.head < this.activeSource.from || caret.head > this.activeSource.to) this.activeSource = null;
 			}
-			return project(this.view, options, this.handleKeydown, this.activeSource, this.isOwnerActive);
+			const result = project(this.view, options, this.handleKeydown, this.activeSource, this.isOwnerActive);
+			this.nativeOwners = result.nativeOwners;
+			return result.decorations;
 		}
 		destroy(): void { this.destroyed = true; this.view.dom.ownerDocument.defaultView!.clearTimeout(this.timer); }
 		navigationTarget(event: MouseEvent | KeyboardEvent): NavigationTarget | null {
@@ -292,7 +299,8 @@ export function createFootnoteExtension(options: FootnoteOptions): Extension {
 			this.timer = ownerWindow.setTimeout(() => { this.view.dispatch({ effects: highlightEffect.of(null) }); }, 900);
 			return true;
 		}
-	}, { decorations: plugin => plugin.decorations });
+	}, { decorations: plugin => plugin.decorations,
+		provide: plugin => EditorView.outerDecorations.of(view => view.plugin(plugin)!.nativeOwners) });
 	return [createInputStateExtension(), createSelectionPresentationSessionExtension(), createRenderedSourceClickExtension(),
 		createNativeDecorationOwnership(), nativeInlineOwnership.of((state, view) => {
 			if (!options.isActive(view)) return null;

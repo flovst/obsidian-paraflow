@@ -14,8 +14,9 @@ export function semanticBlockRhythmCss(scope: string): string {
 	return `
 ${gap}{
  --paraflow-occupied-gap:0px;
+ --paraflow-semantic-gap-height:${height};
  font-size:var(--font-text-size,16px);
- min-height:${height}!important;line-height:${height}!important;padding-block:0;
+ min-height:var(--paraflow-semantic-gap-height);line-height:var(--paraflow-semantic-gap-height);padding-block:0;
 }
 ${blockTags.map(tag => `${gap}[data-paraflow-before="${tag}"]{--paraflow-gap-before:var(--paraflow-${tag}-margin-bottom,var(--paraflow-block-gap,.8em))}
 ${gap}[data-paraflow-after="${tag}"]{--paraflow-gap-after:var(--paraflow-${tag}-margin-top,var(--paraflow-block-gap,.8em))}`).join('\n')}

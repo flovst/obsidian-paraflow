@@ -197,9 +197,15 @@ export class MediaTableDisplayController {
 	private observeImageSizes(images: Array<{ image: HTMLImageElement; block: HTMLElement }>): void {
 		const ownerWindow = this.root.ownerDocument.defaultView!;
 		const states = images.map(({ image, block }) => ({ image, block, original: image.style.getPropertyValue(IMAGE_HEIGHT),
-			priority: image.style.getPropertyPriority(IMAGE_HEIGHT), hadStyle: image.hasAttribute('style'), applied: null as string | null }));
+			priority: image.style.getPropertyPriority(IMAGE_HEIGHT), hadStyle: image.hasAttribute('style'), applied: null as string | null,
+			authoredHeight: '' }));
 		let frame: number | null = null;
+		const releaseHeight = (state: typeof states[number]) => {
+			if (state.authoredHeight && !state.image.style.height) state.image.style.setProperty('height', state.authoredHeight);
+			state.authoredHeight = '';
+		};
 		const restore = (state: typeof states[number]) => {
+			releaseHeight(state);
 			if (state.applied === null) return;
 			if (state.image.style.getPropertyValue(IMAGE_HEIGHT) === state.applied) {
 				if (state.original) state.image.style.setProperty(IMAGE_HEIGHT, state.original, state.priority);
@@ -216,6 +222,7 @@ export class MediaTableDisplayController {
 				// and geometry reads before restoring projections in this same frame.
 				for (const state of states) {
 					if (state.applied !== null) this.remove(state.image, CONSTRAINED_IMAGE);
+					releaseHeight(state);
 				}
 				const heights = states.map(({ image, block }) => constrainedHeight(image, block,
 					declaredDimension(image, 'width'), declaredDimension(image, 'height')));
@@ -225,6 +232,10 @@ export class MediaTableDisplayController {
 						restore(state);
 						this.remove(state.image, CONSTRAINED_IMAGE);
 					} else {
+						if (!state.image.style.getPropertyPriority('height')) {
+							state.authoredHeight = state.image.style.height;
+							state.image.style.removeProperty('height');
+						}
 						if (height !== state.applied) state.image.style.setProperty(IMAGE_HEIGHT, height);
 						state.applied = height;
 						this.add(state.image, CONSTRAINED_IMAGE);

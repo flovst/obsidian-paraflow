@@ -27,8 +27,9 @@ export const TABLE_EDITING_CSS=`
 .paraflow-html-table-editor[data-pf-track-hover="row"] { cursor:row-resize; }
 .paraflow-html-table-editor[data-pf-track-hover="column"] { cursor:col-resize; }
 .paraflow-html-table-editor[data-pf-track-hover] :is(td,th) { cursor:inherit; }
-.paraflow-html-table-editor[data-pf-track-drag="row"],.paraflow-html-table-editor[data-pf-track-drag="row"] * { cursor:row-resize !important; user-select:none; }
-.paraflow-html-table-editor[data-pf-track-drag="column"],.paraflow-html-table-editor[data-pf-track-drag="column"] * { cursor:col-resize !important; user-select:none; }
+.paraflow-html-table-editor[data-pf-track-drag="row"] { --paraflow-track-drag-cursor:row-resize; }
+.paraflow-html-table-editor[data-pf-track-drag="column"] { --paraflow-track-drag-cursor:col-resize; }
+.paraflow-html-table-editor[data-pf-track-drag],.paraflow-html-table-editor[data-pf-track-drag] * { cursor:var(--paraflow-track-drag-cursor) !important; user-select:none; }
 .cm-table-widget.paraflow-table-controls .is-selected::after,
 .cm-table-widget.paraflow-table-controls.is-selected table::after,
 .markdown-source-view.mod-cm6 .cm-table-widget.paraflow-table-controls .is-selected::after,
@@ -38,7 +39,7 @@ export const TABLE_EDITING_CSS=`
 .paraflow-table-drag-preview-layer { position:fixed; overflow:hidden; pointer-events:none; contain:strict; z-index:calc(var(--layer-menu,1000) - 3); }
 .paraflow-table-drag-preview { position:absolute; left:0; top:0; opacity:.55; background:var(--background-primary); }
 .paraflow-table-drag-preview-table { display:block; position:relative; margin:0; padding:0; border:0; border-collapse:collapse; }
-.paraflow-table-drag-preview-table :is(tbody,tr) { display:contents; }
+.paraflow-table-drag-preview-table :is(tbody,tr) { display:block; }
 .paraflow-table-drag-preview-table :is(td,th) { position:absolute; box-sizing:border-box; overflow:hidden; }
 .paraflow-table-drag-cue { position:absolute; pointer-events:none; background:var(--interactive-accent); z-index:1; }
 .paraflow-table-drag-cue[data-pf-axis="column"] { width:2px; }

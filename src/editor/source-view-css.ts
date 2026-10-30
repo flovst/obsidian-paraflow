@@ -1,16 +1,17 @@
+import { SOURCE_TEXT_ORIGIN_CSS, sourceContentSelector } from './source-text-origin-css.js';
 const scope = '.markdown-source-view.mod-cm6:not(.is-live-preview) > .cm-editor.paraflow-source-view';
-const content = `:is(${scope} > .cm-scroller > .cm-content,${scope} > .cm-scroller > .cm-sizer > .cm-contentContainer > .cm-content)`;
+const content = sourceContentSelector;
 const gutters = (suffix: string): string => `:is(${scope}${suffix} > .cm-scroller > .cm-gutters,${scope}${suffix} > .cm-scroller > .cm-sizer > .cm-gutters,${scope}${suffix} > .cm-scroller > .cm-sizer > .cm-contentContainer > .cm-gutters)`;
 // The fixed-size head and stop are right-aligned; short tab stops clip only the shaft.
 const tabSymbol = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='12' viewBox='0 0 48 12'%3E%3Cpath d='M0 5.5H45.5M42 3.5L44 5.5L42 7.5M45.5 3V8' fill='none' stroke='black' stroke-width='1'/%3E%3C/svg%3E";
-export const SOURCE_VIEW_CSS = `
+export const SOURCE_VIEW_LAYOUT_CSS = `
 .markdown-source-view.mod-cm6:not(.is-live-preview) > .cm-editor.paraflow-source-scroll-limit > .cm-scroller,
 .markdown-source-view.mod-cm6:not(.is-live-preview) > .cm-editor.paraflow-source-scroll-limit > .cm-scroller :is(.cm-sizer,.cm-contentContainer) { padding-bottom:0; }
 .markdown-source-view.mod-cm6:not(.is-live-preview) > .cm-editor.paraflow-source-scroll-limit > .cm-scroller .cm-content { padding-bottom:var(--file-margins,32px); }
 ${scope} > .cm-scroller { font-family:var(--paraflow-source-font,var(--paraflow-font-family,var(--font-text))); font-size:var(--font-text-size,16px); line-height:var(--paraflow-line-height,1.6); }
 ${content} > .cm-line {
  min-height:0;height:auto;margin-block:0;padding-block:0;
- padding-inline-start:0;text-indent:0;
+ padding-inline-start:0;
 }
 ${content} > .cm-line:is(.HyperMD-header-1,.HyperMD-header-2),
 ${content} > .cm-line .cm-header-1,${content} > .cm-line .cm-header-2 { font-family:inherit; }
@@ -49,3 +50,6 @@ ${scope} .paraflow-source-newline:not(.paraflow-source-hard-break) { color:var(-
 ${scope} .paraflow-source-hard-break { position:relative; }
 ${scope} .paraflow-source-hard-break::before { content:'↓';position:absolute;left:0;font-family:LetterGothicStd,monospace;font-weight:400;font-style:normal;color:inherit;opacity:.3;pointer-events:none; }
 `;
+
+/** Complete source surface for isolated editor consumers. */
+export const SOURCE_VIEW_CSS = SOURCE_TEXT_ORIGIN_CSS + SOURCE_VIEW_LAYOUT_CSS;

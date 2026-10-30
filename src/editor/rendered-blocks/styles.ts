@@ -10,12 +10,6 @@ export const renderedBlockLayoutStyles = `
   overflow: visible;
 }
 .paraflow-rendered-block-preview:hover { background: var(--paraflow-surface-color, var(--background-secondary)); }
-/* Keep the external source button visible and hit-testable under native CSS. */
-.markdown-source-view.mod-cm6 .cm-editor .paraflow-rendered-block-preview,
-.markdown-source-view.mod-cm6 .cm-editor .cm-content .paraflow-rendered-block-preview,
-.markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-rendered-source-line {
-  contain: none !important;
-}
 .paraflow-rendered-block-preview.is-editing {
   margin-block: 0 .8em;
   border: 1px solid var(--paraflow-border-color, var(--background-modifier-border));
@@ -74,18 +68,18 @@ export const renderedBlockLayoutStyles = `
   position: relative;
   box-sizing: border-box;
   min-height: 1lh;
-  line-height: var(--code-line-height, 1.6) !important;
-  text-indent: 0;
+  line-height: var(--code-line-height, 1.6);
   white-space: pre-wrap;
   padding: 0 .5em 0 4.5ch;
   font-family: var(--paraflow-block-code-font, var(--font-monospace));
   font-size: var(--paraflow-block-code-size, .9em);
-  background: var(--paraflow-surface-color, var(--background-secondary)) !important;
-  border-inline: 1px solid var(--paraflow-border-color, var(--background-modifier-border));
+  color: var(--paraflow-block-code-color, var(--code-normal));
+  background: var(--paraflow-surface-color, var(--background-secondary));
+  border-inline: var(--paraflow-block-code-border, 1px solid var(--paraflow-border-color, var(--background-modifier-border)));
   overflow: visible;
 }
 .markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-rendered-source-line.is-first { margin-block-start: 1.25em !important; padding-block-start: .3em; }
-.markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-rendered-source-mermaid.is-first:not(.paraflow-callout-line) { border-block-start: var(--paraflow-block-code-border, 1px solid var(--paraflow-border-color, var(--background-modifier-border))) !important; }
+.markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-rendered-source-mermaid.is-first:not(.paraflow-callout-line) { border-block-start: var(--paraflow-block-code-border, 1px solid var(--paraflow-border-color, var(--background-modifier-border))); }
 .markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-rendered-source-line.is-last { padding-block-end: .3em; }
 .markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-rendered-source-line::before {
   content: attr(data-paraflow-rendered-line);
@@ -96,7 +90,7 @@ export const renderedBlockLayoutStyles = `
   box-sizing: border-box;
   padding-inline-end: .7ch;
   text-align: end;
-  border-inline-end: 1px solid var(--paraflow-border-color, var(--background-modifier-border)) !important;
+  border-inline-end: 1px solid var(--paraflow-border-color, var(--background-modifier-border));
   color: var(--text-faint);
   pointer-events: none;
   user-select: none;

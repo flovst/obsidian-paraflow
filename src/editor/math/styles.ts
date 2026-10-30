@@ -1,4 +1,6 @@
-export const mathEditorStyles = `
+import { WIDGET_OVERFLOW_CSS } from '../widget-overflow-css.js';
+import { SOURCE_TEXT_ORIGIN_CSS } from '../source-text-origin-css.js';
+export const mathLayoutStyles = `
 .markdown-source-view.mod-cm6.is-live-preview .cm-editor.paraflow-math-active .cm-content[contenteditable] .cm-line.paraflow-math-pending,
 .markdown-source-view.mod-cm6.is-live-preview .cm-editor.paraflow-math-active .cm-content[contenteditable] .cm-line.paraflow-math-pending .cm-math,
 .markdown-source-view.mod-cm6.is-live-preview .cm-editor.paraflow-math-active .cm-content[contenteditable] .cm-line .paraflow-math-draft,
@@ -40,14 +42,16 @@ export const mathEditorStyles = `
   min-height: calc(1em * var(--line-height-normal, 1.5));
 
   white-space: pre-wrap;
-  text-indent: 0 !important;
   padding-block: 0;
-  padding-left: 4.5ch !important;
-  padding-right: .5em !important;
+  padding-inline: var(--paraflow-math-inline-start, 4.5ch) var(--paraflow-math-inline-end, .5em) !important;
   margin: 0;
   border-inline: 1px solid var(--paraflow-border-color);
   background: var(--paraflow-surface-color);
   font-family: var(--font-monospace);
+}
+.cm-editor.paraflow-math-active .cm-line.paraflow-math-source-block:dir(rtl) {
+  --paraflow-math-inline-start: .5em;
+  --paraflow-math-inline-end: 4.5ch;
 }
 .markdown-source-view.mod-cm6.is-live-preview .cm-editor.paraflow-math-active .cm-content[contenteditable] .cm-line.paraflow-math-source-block { line-height: var(--line-height-normal, 1.5); }
 .cm-editor.paraflow-math-active .cm-line.paraflow-math-source-block,
@@ -131,12 +135,6 @@ export const mathEditorStyles = `
   padding: .4em .5em;
   overflow: visible;
 }
-/* The host paint-containment rule would clip the label above this widget. */
-.cm-editor.paraflow-math-active .cm-line.paraflow-math-source-start,
-.cm-editor .paraflow-math-block-preview,
-.markdown-source-view.mod-cm6 .cm-editor .cm-content .paraflow-math-block-preview {
-  contain: none !important;
-}
 .paraflow-math-rendered.paraflow-math-block-preview > .paraflow-math-output[display="true"] {
   margin: 0;
   margin-block: 0;
@@ -202,3 +200,5 @@ export const mathEditorStyles = `
 .cm-editor .paraflow-math-tooltip .cm-tooltip-arrow::before { border-bottom-color: #111; border-top-color: #111; }
 .cm-editor .paraflow-math-tooltip .cm-tooltip-arrow::after { border: 0; }
 `;
+
+export const mathEditorStyles = SOURCE_TEXT_ORIGIN_CSS + WIDGET_OVERFLOW_CSS + mathLayoutStyles;

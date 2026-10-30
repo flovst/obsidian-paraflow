@@ -241,6 +241,13 @@ export function createModeScrollAlignment() {
 				const container = this.previewMode.containerEl, parent = container.parentElement!;
 				const positioned = container.ownerDocument.defaultView!.getComputedStyle(parent).position === 'static';
 				if (positioned) parent.classList.add('paraflow-mode-stage-host');
+				const hadStyle = container.hasAttribute('style');
+				const originalStyle = container.getAttribute('style');
+				const inlineDisplay = container.style.getPropertyValue('display');
+				const ownDisplay = !!inlineDisplay && !container.style.getPropertyPriority('display');
+				// A staged preview must participate in layout before the host reveals it.
+				if (ownDisplay) container.style.removeProperty('display');
+				const stagedStyle = container.getAttribute('style');
 				container.classList.add('paraflow-mode-stage');
 				let resolve!: (ready: boolean) => void;
 				const ready = new Promise<boolean>(done => { resolve = done; });
@@ -248,6 +255,11 @@ export function createModeScrollAlignment() {
 				const cleanup = () => {
 					if (cleaned) return; cleaned = true;
 					container.classList.remove('paraflow-mode-stage');
+					if (ownDisplay && !container.style.getPropertyValue('display')) {
+						if (container.getAttribute('style') === stagedStyle) container.setAttribute('style', originalStyle!);
+						else container.style.setProperty('display', inlineDisplay);
+					}
+					if (!hadStyle && !container.style.length) container.removeAttribute('style');
 					if (positioned) parent.classList.remove('paraflow-mode-stage-host');
 				};
 				const check = () => {

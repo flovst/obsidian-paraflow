@@ -8,6 +8,35 @@ function hasNativeCopy(pre: HTMLElement): boolean {
 		/copy|复制|複製/iu.test(`${flair.getAttribute('aria-label') ?? ''} ${flair.getAttribute('title') ?? ''}`));
 }
 
+/** The display surface owns normal inline layout; explicit author priorities remain authoritative. */
+function ownCodeLayout(element: HTMLElement, properties: readonly string[]): () => void {
+	const original = element.getAttribute('style');
+	const captured = properties.flatMap(property => {
+		const value = element.style.getPropertyValue(property);
+		return value && !element.style.getPropertyPriority(property) ? [{ property, value }] : [];
+	});
+	for (const { property } of captured) element.style.removeProperty(property);
+	const owned = element.getAttribute('style');
+	return () => {
+		if (element.getAttribute('style') === owned) {
+			if (original === null) element.removeAttribute('style');
+			else element.setAttribute('style', original);
+		} else {
+			for (const { property, value } of captured) {
+				if (element.style.getPropertyValue(property)) continue;
+				if (property === 'padding') {
+					const updatedEdges = ['top', 'right', 'bottom', 'left'].flatMap(edge => {
+						const name = `padding-${edge}`, current = element.style.getPropertyValue(name);
+						return current ? [{ name, current, priority: element.style.getPropertyPriority(name) }] : [];
+					});
+					element.style.setProperty(property, value);
+					for (const { name, current, priority } of updatedEdges) element.style.setProperty(name, current, priority);
+				} else element.style.setProperty(property, value);
+			}
+		}
+	};
+}
+
 function wrapLogicalLines(code: HTMLElement): HTMLElement[] {
 	const doc=code.ownerDocument;
 	const source=code.textContent ?? '';
@@ -57,6 +86,8 @@ export function createCodeBlockDisplay(root: HTMLElement, options: CodeBlockOpti
 		const language=[...code.classList].find(name=>name.startsWith('language-'))?.slice(9) ?? '';
 		if(isRenderedCodeLanguage(language))continue;
 		const hadClass=pre.hasAttribute('class');
+		const restorePreLayout = ownCodeLayout(pre, ['white-space', 'line-height', 'overflow-x', 'padding', 'padding-top', 'padding-right', 'padding-bottom', 'padding-left']);
+		const restoreCodeLayout = ownCodeLayout(code, ['white-space', 'word-break', 'overflow-wrap']);
 		const classes=['paraflow-code-display',...(codeWordWrap ? ['paraflow-code-wrap'] : []),...(codeLineNumbers ? ['paraflow-code-numbers'] : [])];
 		pre.classList.add(...classes);
 		const original=[...code.childNodes];
@@ -65,7 +96,9 @@ export function createCodeBlockDisplay(root: HTMLElement, options: CodeBlockOpti
 		const ownedMarkup=code.innerHTML;
 		let label: HTMLElement | null=null;
 		let frame: HTMLElement | null=null;
+		let restoreFrameMargin: (() => void) | null = null;
 		if(language && language!=='none' && !pre.querySelector('.code-block-flair,.code-block-language')) {
+			restoreFrameMargin = ownCodeLayout(pre, ['margin-top', 'margin-bottom', 'margin-block-start', 'margin-block-end']);
 			frame=createDetachedEl(pre.ownerDocument, 'div');frame.className='paraflow-code-display-frame';
 			pre.before(frame);frame.append(pre);
 			label=createDetachedEl(pre.ownerDocument, 'span');label.className='paraflow-code-language';label.textContent=language;frame.append(label);
@@ -83,6 +116,7 @@ export function createCodeBlockDisplay(root: HTMLElement, options: CodeBlockOpti
 			},()=>{if(button)button.textContent='复制失败';});
 		}
 		cleanups.push(()=>{
+			restoreFrameMargin?.();restorePreLayout();restoreCodeLayout();
 			pre.classList.remove(...classes);
 			if(!hadClass && !pre.className)pre.removeAttribute('class');
 			// Preserve host replacements and edits inside our wrappers during asynchronous highlighting.

@@ -9,6 +9,7 @@ import { createParagraphExtension, type ParagraphExtensionOptions } from './para
 import { createLineBreakProjection } from './paragraph/line-break-projection.js';
 import { createStructuredListExtension, createStructuredListRuntimeServiceFactory } from './structured-list/extension.js';
 import { listSiblingGapProjection } from './structured-list/sibling-gaps.js';
+import { renderedDOMOwnership } from './runtime/rendered-dom-ownership.js';
 import { createCalloutExtension } from './callout/extension.js';
 import { createCalloutPresentation, type CalloutPresentationOptions } from './callout/presentation.js';
 import { createRenderedBlockEditing, type RenderedBlockEditingOptions } from './rendered-blocks/extension.js';
@@ -136,6 +137,7 @@ export function createEditorComposition(host: EditorExtensionLifecycleHost, depe
 				notify: dependencies.notify,
 			}),
 		];
+		extensions.push(renderedDOMOwnership);
 		if (getSettings().paragraphEditingEnabled || getSettings().structuredListEditingEnabled || enhancements.callout) extensions.push(listSiblingGapProjection);
 		if (enhancements.headings) extensions.push(createHeadingEditing(isActive, isLivePreview));
 		if (enhancements.htmlBlocks || enhancements.mermaid) extensions.push(renderedBlocks);
