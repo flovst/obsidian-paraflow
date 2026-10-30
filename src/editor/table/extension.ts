@@ -1,4 +1,5 @@
 import { createDetachedEl } from '../../dom';
+import { blockWidgetShell, blockWidgetContent } from '../runtime/block-widget-shell.js';
 import {clearTableActivationResume,clearTableFocus,hasTableActivationRequest,hasTableFocusRequest,resumeHtmlActivationFocus,restoreTableFocus,tableFocusOwner,type TableFocusBookmark} from './focus-handoff';
 import {Prec,StateEffect,StateField,type EditorState,type Extension,type Range} from '@codemirror/state';
 import {Decoration,EditorView,ViewPlugin,WidgetType} from '@codemirror/view';
@@ -68,12 +69,13 @@ class TableWidget extends WidgetType {
 			root=createDetachedEl(view.dom.ownerDocument, 'div');root.className='paraflow-list-table-container';root.contentEditable='false';
 			this.listStyle(root);root.append(controller.dom);
 		}
-		domControllers.set(root,controller);return root;
+		root=blockWidgetShell(root);domControllers.set(root,controller);return root;
 	}
 	updateDOM(dom:HTMLElement,view:EditorView):boolean {
-		if(dom.dataset.paraflowContainerFrame!==this.frame?.key)return false;
-		if(dom.classList.contains('paraflow-list-table-container')!==(this.session.target.container?.kind==='list'))return false;
-		this.listStyle(dom);
+		const content=blockWidgetContent(dom);
+		if(content.dataset.paraflowContainerFrame!==this.frame?.key)return false;
+		if(content.classList.contains('paraflow-list-table-container')!==(this.session.target.container?.kind==='list'))return false;
+		this.listStyle(content);
 		const controller=domControllers.get(dom);if(!controller||controller.view!==view)return false;controller.update(this.session);return true;
 	}
 	destroy(dom:HTMLElement):void {
@@ -107,7 +109,7 @@ export function createTableEditingExtension(options:TableEditingOptions):Extensi
 			return {tables,active:enabled,containers,...build(tr.state,tables,enabled,containers,value.models)};
 		},provide:field=>Prec.highest(EditorView.decorations.from(field,value=>value.decorations)),
 	});
-	return [tableFocusOwner.of(view=>options.isActive(view)&&options.isActiveView?.(view)!==false),EditorView.editorAttributes.of(view=>({class:hasTableActivationRequest(view)?'paraflow-table-focus-pending':''})),EditorView.baseTheme({'&.paraflow-table-focus-pending > .cm-scroller .cm-cursorLayer':{visibility:'hidden'},'&.paraflow-table-focus-pending > .cm-scroller .cm-content':{caretColor:'transparent'},'.cm-content > .paraflow-list-table-container':{boxSizing:'border-box',
+	return [tableFocusOwner.of(view=>options.isActive(view)&&options.isActiveView?.(view)!==false),EditorView.editorAttributes.of(view=>({class:hasTableActivationRequest(view)?'paraflow-table-focus-pending':''})),EditorView.baseTheme({'&.paraflow-table-focus-pending > .cm-scroller .cm-cursorLayer':{visibility:'hidden'},'&.paraflow-table-focus-pending > .cm-scroller .cm-content':{caretColor:'transparent'},'.paraflow-block-widget-shell > .paraflow-list-table-container':{boxSizing:'border-box',
 		paddingInlineStart:'calc(var(--paraflow-live-list-base-indent, .5em) + var(--paraflow-table-list-depth) * var(--paraflow-live-list-indent, 30px) + var(--paraflow-live-list-content-offset, .75em) + var(--paraflow-table-list-hanging))'},
 		'.paraflow-list-table-container > .paraflow-html-table-editor':{marginBlock:'0'}}),
 		createNativeTableTailOwner(options),createNativeTableKeyboardExit(options),createTableKeyboardBoundaries(options,(view,cell)=>{

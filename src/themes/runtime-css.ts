@@ -110,9 +110,11 @@ ${live}:not(.markdown-embed *)>.cm-editor>.cm-scroller,
 ${reading}:not(.markdown-embed *):not(.cm-table-widget *)>.markdown-preview-view{
  padding-bottom:0!important;
 }
-${live}:not(.markdown-embed *)>.cm-editor>.cm-scroller>.cm-sizer>.cm-contentContainer>.cm-content,
-${reading}:not(.markdown-embed *):not(.cm-table-widget *)>.markdown-preview-view>.markdown-preview-sizer{
+${live}:not(.markdown-embed *)>.cm-editor>.cm-scroller>.cm-sizer>.cm-contentContainer>.cm-content{
  padding-bottom:120px!important;
+}
+${reading}:not(.markdown-embed *):not(.cm-table-widget *)>.markdown-preview-view>.markdown-preview-sizer{
+ padding-bottom:var(--paraflow-reading-end-spacing,120px)!important;
 }
 ${live}:not(.markdown-embed *)>.cm-editor>.cm-scroller>.cm-sizer>.cm-contentContainer>.cm-content{
  /* Match the Reading renderer's stable fractional pusher origin. */

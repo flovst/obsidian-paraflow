@@ -29,7 +29,7 @@ export const TABLE_EDITING_CSS=`
 .paraflow-html-table-editor[data-pf-track-hover] :is(td,th) { cursor:inherit; }
 .paraflow-html-table-editor[data-pf-track-drag="row"] { --paraflow-track-drag-cursor:row-resize; }
 .paraflow-html-table-editor[data-pf-track-drag="column"] { --paraflow-track-drag-cursor:col-resize; }
-.paraflow-html-table-editor[data-pf-track-drag],.paraflow-html-table-editor[data-pf-track-drag] * { cursor:var(--paraflow-track-drag-cursor) !important; user-select:none; }
+.paraflow-html-table-editor[data-pf-track-drag],.paraflow-html-table-editor[data-pf-track-drag] * { cursor:var(--paraflow-track-drag-cursor); user-select:none; }
 .cm-table-widget.paraflow-table-controls .is-selected::after,
 .cm-table-widget.paraflow-table-controls.is-selected table::after,
 .markdown-source-view.mod-cm6 .cm-table-widget.paraflow-table-controls .is-selected::after,

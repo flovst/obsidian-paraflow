@@ -17,6 +17,7 @@ import type { CodeBlockOptions } from './model.js';
 import {setVirtualTail, isVirtualTailActive} from '../runtime/virtual-tail.js';
 import { blockContinuationPrefix, blockLineContentFrom, planBlockBodyKey } from '../runtime/block-body.js';
 import { deleteAdjacentCode } from './operations.js';
+import { blockWidgetShell } from '../runtime/block-widget-shell.js';
 
 class EmptyCodeCaret extends WidgetType {
 	eq():boolean{return true;}
@@ -40,10 +41,10 @@ class CodeEnding extends WidgetType {
 			space.className = 'paraflow-code-ending-space';
 			space.style.setProperty('--paraflow-code-list-inset',this.listInset);
 			space.append(ending);
-			return wrapContainerBlock(view, space, this.frame);
+			return blockWidgetShell(wrapContainerBlock(view, space, this.frame));
 		}
 		ending.style.setProperty('--paraflow-code-list-inset',this.listInset);
-		return wrapContainerBlock(view, ending, this.frame);
+		return blockWidgetShell(wrapContainerBlock(view, ending, this.frame));
 	}
 	ignoreEvent(): boolean { return false; }
 }
@@ -68,7 +69,7 @@ class CodeHeading extends WidgetType {
 			edit.addEventListener('pointerenter', () => this.open(view, this.from, edit, false));
 			heading.append(edit);
 		}
-		return wrapContainerBlock(view, heading, this.frame);
+		return blockWidgetShell(wrapContainerBlock(view, heading, this.frame));
 	}
 	ignoreEvent(event: Event): boolean { return (event.target as Element).closest('button') !== null; }
 }

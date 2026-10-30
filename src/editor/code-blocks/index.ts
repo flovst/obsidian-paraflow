@@ -1,5 +1,5 @@
 import { createDetachedEl } from '../../dom';
-import { StateEffect, StateField, type EditorState, type Extension, type Range } from '@codemirror/state';
+import { Prec, StateEffect, StateField, type EditorState, type Extension, type Range } from '@codemirror/state';
 import { syntaxTree } from '@codemirror/language';
 import { Decoration, EditorView, ViewPlugin, WidgetType, type DecorationSet, type ViewUpdate } from '@codemirror/view';
 import { discoverCodeBlocks, type CodeBlockOptions } from './model.js';
@@ -16,6 +16,8 @@ import {createCodeSyntaxColors,type CodePrism} from './syntax-colors.js';
 import { createCodeParserSource } from './parser-source.js';
 import { createSharedMathParser } from '../math/shared-parser.js';
 import { createCodeBodySelection } from './selection.js';
+import { blockWidgetShell } from '../runtime/block-widget-shell.js';
+import { projectLineLayout } from '../runtime/line-layout.js';
 export { CODE_BLOCK_CSS } from './styles.js';
 export type { CodeBlockOptions } from './model.js';
 
@@ -46,7 +48,7 @@ class CodeScrollWidget extends WidgetType {
 		const track=createDetachedEl(view.dom.ownerDocument, 'div');track.className='paraflow-code-scroll-track';bar.append(track);
 		const scroll=()=>scrollBlock(view,this.id,bar.scrollLeft);
 		bar.addEventListener('scroll',scroll);
-		const dom=wrapContainerBlock(view,bar,this.frame);dom.hidden=true;
+		const dom=blockWidgetShell(wrapContainerBlock(view,bar,this.frame));dom.hidden=true;
 		if(dom!==bar)dom.classList.add('paraflow-code-scroll-container');
 		this.listeners.set(dom,()=>bar.removeEventListener('scroll',scroll));
 		return dom;
@@ -133,7 +135,8 @@ export function createCodeBlockExtension(config: {
 			const blocks=tr.docChanged || syntaxChanged ? discoverCodeBlocks(tr.state) : value.blocks;
 			return {active,blocks,byId:blocks===value.blocks ? value.byId : new Map(blocks.map(block=>[block.from,block])),options:{...options},decorations:active ? decorate(tr.state,blocks,options) : Decoration.none};
 		},
-		provide: value=>EditorView.decorations.from(value,state=>state.decorations),
+		provide: value=>[EditorView.decorations.from(value,state=>state.decorations),
+			Prec.lowest(EditorView.decorations.from(value,state=>projectLineLayout(state.decorations,'paraflow-code-line','padding-inline-start:var(--paraflow-code-line-padding-start)')))],
 	});
 	return [createSharedMathParser(), createCodeParserSource(), config.loadPrism ? createCodeSyntaxColors({...config,loadPrism:config.loadPrism}) : [],createNativeDecorationOwnership(),nativeBlockOwnership.of((state,view)=>{
 		if(!config.isActive(view))return null;
@@ -223,6 +226,7 @@ export function createCodeBlockExtension(config: {
 					for(const extent of entry.extents)extent.element.style.width=`${extent.width}px`;
 					if(entry.bar) {
 						entry.bar.hidden=!entry.overflowing;
+						entry.bar.closest<HTMLElement>('.paraflow-block-widget-shell')!.hidden=!entry.overflowing;
 						const frame=entry.bar.closest<HTMLElement>('.paraflow-container-block');
 						if(frame)frame.hidden=!entry.overflowing;
 						const track=entry.bar.firstElementChild as HTMLElement;

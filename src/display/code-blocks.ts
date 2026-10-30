@@ -37,6 +37,30 @@ function ownCodeLayout(element: HTMLElement, properties: readonly string[]): () 
 	};
 }
 
+/** Printing owns available line width; screen restores the author's dimensions. */
+function ownPrintCodeWidth(pre: HTMLElement): () => void {
+	const window = pre.ownerDocument.defaultView!;
+	const media = window.matchMedia('print');
+	let printing = false;
+	let restore: (() => void) | null = null;
+	const update = (): void => {
+		if (printing || media.matches) restore ??= ownCodeLayout(pre, ['width', 'inline-size']);
+		else { restore?.(); restore = null; }
+	};
+	const before = (): void => { printing = true; update(); };
+	const after = (): void => { printing = false; update(); };
+	media.addEventListener('change', update);
+	window.addEventListener('beforeprint', before);
+	window.addEventListener('afterprint', after);
+	update();
+	return () => {
+		media.removeEventListener('change', update);
+		window.removeEventListener('beforeprint', before);
+		window.removeEventListener('afterprint', after);
+		restore?.();
+	};
+}
+
 function wrapLogicalLines(code: HTMLElement): HTMLElement[] {
 	const doc=code.ownerDocument;
 	const source=code.textContent ?? '';
@@ -88,6 +112,7 @@ export function createCodeBlockDisplay(root: HTMLElement, options: CodeBlockOpti
 		const hadClass=pre.hasAttribute('class');
 		const restorePreLayout = ownCodeLayout(pre, ['white-space', 'line-height', 'overflow-x', 'padding', 'padding-top', 'padding-right', 'padding-bottom', 'padding-left']);
 		const restoreCodeLayout = ownCodeLayout(code, ['white-space', 'word-break', 'overflow-wrap']);
+		const restorePrintWidth = ownPrintCodeWidth(pre);
 		const classes=['paraflow-code-display',...(codeWordWrap ? ['paraflow-code-wrap'] : []),...(codeLineNumbers ? ['paraflow-code-numbers'] : [])];
 		pre.classList.add(...classes);
 		const original=[...code.childNodes];
@@ -116,7 +141,7 @@ export function createCodeBlockDisplay(root: HTMLElement, options: CodeBlockOpti
 			},()=>{if(button)button.textContent='复制失败';});
 		}
 		cleanups.push(()=>{
-			restoreFrameMargin?.();restorePreLayout();restoreCodeLayout();
+			restorePrintWidth();restoreFrameMargin?.();restorePreLayout();restoreCodeLayout();
 			pre.classList.remove(...classes);
 			if(!hadClass && !pre.className)pre.removeAttribute('class');
 			// Preserve host replacements and edits inside our wrappers during asynchronous highlighting.

@@ -9,6 +9,9 @@ import { createParagraphExtension, type ParagraphExtensionOptions } from './para
 import { createLineBreakProjection } from './paragraph/line-break-projection.js';
 import { createStructuredListExtension, createStructuredListRuntimeServiceFactory } from './structured-list/extension.js';
 import { listSiblingGapProjection } from './structured-list/sibling-gaps.js';
+import { createListLineLayout, ownedLineOrigins } from './structured-list/line-layout.js';
+import { LIST_LAYOUT_ROW_SELECTOR } from './structured-list/layout-css.js';
+import { createNativeIndentOwnership } from './runtime/native-indent-ownership.js';
 import { renderedDOMOwnership } from './runtime/rendered-dom-ownership.js';
 import { createCalloutExtension } from './callout/extension.js';
 import { createCalloutPresentation, type CalloutPresentationOptions } from './callout/presentation.js';
@@ -66,7 +69,11 @@ export function createEditorComposition(host: EditorExtensionLifecycleHost, depe
 	const isCurrentSourceEditor = (view: EditorView) => isPrimarySourceEditor(view) && dependencies.currentEditor() === view;
 	const navigationCore = createEditorRuntimeExtension({ isSelectionPresentationActive: isPrimaryLivePreviewEditor, isSelectionPresentationStateActive: isLivePreview });
 	// Host registration and removal must keep every owner together with its shared runtime.
-	const extensionRoot: Extension[] = [mathSemanticParseCache, navigationCore, sourceBlockScroll];
+	const extensionRoot: Extension[] = [mathSemanticParseCache, navigationCore, sourceBlockScroll,
+		createListLineLayout(isActive, () => getSettings().structuredListEditingEnabled, () => getSettings().enhancements.callout),
+		createNativeIndentOwnership((view, row) => isActive(view) &&
+			(row.matches(LIST_LAYOUT_ROW_SELECTOR) || row.matches('.cm-line.paraflow-code-line, .cm-editor.paraflow-math-active .cm-line.paraflow-math-source-block')),
+			view => isActive(view) ? ownedLineOrigins(view, getSettings().structuredListEditingEnabled, getSettings().enhancements.callout) : new Set())];
 	const moduleHost: EditorExtensionLifecycleHost = { registerEditorExtension: extension => { extensionRoot.push(extension); }, updateOptions: () => host.updateOptions() };
 	const renderedBlocks = createRenderedBlockEditing({
 		isStateActive: isLivePreview, isActive, isViewSupported: isPrimarySourceEditor,

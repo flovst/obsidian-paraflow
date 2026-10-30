@@ -19,8 +19,8 @@ export const codeBlockLayoutStyles = LIST_BLOCK_GEOMETRY_CSS + `
   border-bottom: 0;
   box-sizing: content-box;
 }
-.markdown-source-view.mod-cm6 .cm-editor .cm-content > .paraflow-code-heading,
-.markdown-source-view.mod-cm6 .cm-editor .cm-content > .paraflow-container-block > .paraflow-code-heading {
+.markdown-source-view.mod-cm6 .cm-editor :is(.cm-content,.paraflow-block-widget-shell) > .paraflow-code-heading,
+.markdown-source-view.mod-cm6 .cm-editor :is(.cm-content,.paraflow-block-widget-shell) > .paraflow-container-block > .paraflow-code-heading {
   display: flex;
   z-index: 2;
 }
@@ -63,9 +63,9 @@ export const codeBlockLayoutStyles = LIST_BLOCK_GEOMETRY_CSS + `
   padding: 0;
 }
 .markdown-source-view.mod-cm6 .cm-editor .cm-line.paraflow-code-draft::before { display: none; }
-.markdown-source-view.mod-cm6.is-live-preview .cm-content > :is(.paraflow-code-heading,.paraflow-code-ending-space,.paraflow-code-ending,.paraflow-code-scroll),
-.markdown-source-view.mod-cm6 .cm-editor .cm-content > :is(.paraflow-code-heading,.paraflow-code-ending-space,.paraflow-code-ending,.paraflow-code-scroll),
-.markdown-source-view.mod-cm6 .cm-editor .cm-content > .paraflow-container-block > :is(.paraflow-code-heading,.paraflow-code-ending-space,.paraflow-code-ending,.paraflow-code-scroll),
+.markdown-source-view.mod-cm6.is-live-preview :is(.cm-content,.paraflow-block-widget-shell) > :is(.paraflow-code-heading,.paraflow-code-ending-space,.paraflow-code-ending,.paraflow-code-scroll),
+.markdown-source-view.mod-cm6 .cm-editor :is(.cm-content,.paraflow-block-widget-shell) > :is(.paraflow-code-heading,.paraflow-code-ending-space,.paraflow-code-ending,.paraflow-code-scroll),
+.markdown-source-view.mod-cm6 .cm-editor :is(.cm-content,.paraflow-block-widget-shell) > .paraflow-container-block > :is(.paraflow-code-heading,.paraflow-code-ending-space,.paraflow-code-ending,.paraflow-code-scroll),
 .markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-code-fenced-list:not(.paraflow-callout-line),
 .markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-code-indented:not(.paraflow-callout-line) {
   --paraflow-native-block-inset: var(--paraflow-code-list-inset, 0px);
@@ -192,7 +192,7 @@ pre.paraflow-code-display {
 }
 .markdown-source-view.mod-cm6 .cm-editor .cm-line.paraflow-code-line,
 .markdown-source-view.mod-cm6 .cm-editor .cm-line.paraflow-code-line:is(.paraflow-code-wrap,.paraflow-code-virtual)[data-paraflow-line] {
-  padding-inline-start: var(--paraflow-code-line-padding-start) !important;
+  padding-inline-start: var(--paraflow-code-line-padding-start);
 }
 .markdown-source-view.mod-cm6 .cm-editor .cm-line.paraflow-code-line[data-paraflow-line] {
   --paraflow-code-local-inset: var(--paraflow-code-numbered-inset, var(--paraflow-block-code-padding-left, 0.65em));
@@ -386,7 +386,7 @@ pre.paraflow-code-display.paraflow-code-wrap > code {
     overflow-wrap: anywhere;
     word-break: normal;
     overflow: visible;
-    width: auto !important;
+    width: auto;
     max-width: 100%;
   }
   .paraflow-code-scroll, .paraflow-code-copy, .paraflow-code-extent, .paraflow-code-language-popup,

@@ -1,4 +1,5 @@
 import { createDetachedEl } from '../../dom';
+import { blockWidgetShell, blockWidgetContent } from '../runtime/block-widget-shell.js';
 import { containerBlockFrame, wrapContainerBlock, type ContainerFrame } from '../callout/container-surface.js';
 import { isolateHistory } from '@codemirror/commands';
 import { EditorState, Prec, StateEffect, StateField, type Extension, type Range } from '@codemirror/state';
@@ -45,6 +46,17 @@ class BadgeWidget extends WidgetType {
 	toDOM(view: EditorView): HTMLElement { return badge(view, this.block); }
 	ignoreEvent(): boolean { return true; }
 }
+/** Keep badge clearance in CodeMirror's height map so vertical motion sees the source rows. */
+class SourceGapWidget extends WidgetType {
+	eq(): boolean { return true; }
+	toDOM(view: EditorView): HTMLElement {
+		const element = createDetachedEl(view.dom.ownerDocument, 'div');
+		element.className = 'paraflow-rendered-source-gap';
+		element.setAttribute('aria-hidden', 'true');
+		return element;
+	}
+	ignoreEvent(): boolean { return true; }
+}
 class FenceWidget extends WidgetType {
 	constructor(readonly block: RenderedBlock, readonly opening: boolean) { super(); }
 	eq(other: FenceWidget): boolean { return this.opening === other.opening && this.block.from === other.block.from && this.block.lines.length === other.block.lines.length; }
@@ -89,9 +101,10 @@ class PreviewWidget extends WidgetType {
 			language.dataset.paraflowRenderedFrom = String(this.block.from); element.append(language);
 		}
 		this.render(element, view);
-		return wrapContainerBlock(view, element, this.frame);
+		return blockWidgetShell(wrapContainerBlock(view, element, this.frame));
 	}
 	updateDOM(root: HTMLElement, view: EditorView): boolean {
+		root = blockWidgetContent(root);
 		if (root.dataset.paraflowContainerFrame !== this.frame?.key) return false;
 		const element = root.classList.contains('paraflow-container-block') ? root.lastElementChild as HTMLElement : root;
 		if (previewWidgets.get(element)?.languagePosition !== this.languagePosition) return false;
@@ -142,6 +155,7 @@ class PreviewWidget extends WidgetType {
 		cleanup.set(element, () => { alive = false; render?.destroy(); });
 	}
 	destroy(root: HTMLElement): void {
+		root = blockWidgetContent(root);
 		const element = root.classList.contains('paraflow-container-block') ? root.lastElementChild as HTMLElement : root;
 		cleanup.get(element)!(); cleanup.delete(element); mermaidCurrent.delete(element);
 	}
@@ -196,7 +210,9 @@ function project(state: EditorState, options: RenderedBlockEditingOptions, previ
 			ranges.push(Decoration.replace({ block: true, widget: new FenceWidget(block, true) }).range(block.from, block.fence.openingTo),
 				Decoration.replace({ block: true, widget: new FenceWidget(block, false) }).range(block.fence.closingFrom, block.to));
 		}
-		if (block.lines.length) ranges.push(Decoration.widget({ widget: new BadgeWidget(block), side: -1 }).range(block.lines[0]!.contentFrom));
+		if (block.lines.length) ranges.push(
+			Decoration.widget({ widget: new SourceGapWidget(), block: true, side: -1 }).range(block.lines[0]!.from),
+			Decoration.widget({ widget: new BadgeWidget(block), side: -1 }).range(block.lines[0]!.contentFrom));
 		if (block.kind === 'html') for (const token of htmlSourceTokens(state.sliceDoc(block.from, block.to))) {
 			ranges.push(Decoration.mark({ class: `paraflow-html-${token.kind}` }).range(block.from + token.from, block.from + token.to));
 		}

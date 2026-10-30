@@ -43,7 +43,7 @@ export const mathLayoutStyles = `
 
   white-space: pre-wrap;
   padding-block: 0;
-  padding-inline: var(--paraflow-math-inline-start, 4.5ch) var(--paraflow-math-inline-end, .5em) !important;
+  padding-inline: var(--paraflow-math-inline-start, 4.5ch) var(--paraflow-math-inline-end, .5em);
   margin: 0;
   border-inline: 1px solid var(--paraflow-border-color);
   background: var(--paraflow-surface-color);
@@ -142,8 +142,8 @@ export const mathLayoutStyles = `
   overflow-x: auto;
   overflow-y: hidden;
 }
-.cm-editor.paraflow-math-active .paraflow-math-source-end + .paraflow-container-block > .paraflow-math-block-preview,
-.cm-editor.paraflow-math-active .paraflow-math-source-end + .paraflow-math-block-preview {
+.cm-editor.paraflow-math-active .paraflow-math-source-end + .paraflow-block-widget-shell .paraflow-math-block-preview,
+.cm-editor.paraflow-math-active .paraflow-math-source-end + .paraflow-block-widget-shell > .paraflow-math-block-preview {
   margin-block-start: 0;
   border: 1px solid var(--paraflow-border-color);
   border-block-end-color: var(--paraflow-math-preview-divider, var(--text-faint));
@@ -184,8 +184,8 @@ export const mathLayoutStyles = `
   background: var(--paraflow-surface-color);
 }
 .paraflow-math-block-preview:hover::before { opacity: 1; }
-.paraflow-math-source-end + .paraflow-container-block > .paraflow-math-block-preview::before,
-.paraflow-math-source-end + .paraflow-math-block-preview::before { content: none; }
+.paraflow-math-source-end + .paraflow-block-widget-shell .paraflow-math-block-preview::before,
+.paraflow-math-source-end + .paraflow-block-widget-shell > .paraflow-math-block-preview::before { content: none; }
 .cm-editor.paraflow-math-active .cm-tooltip.paraflow-math-tooltip {
   background: #111;
   color: #fff;

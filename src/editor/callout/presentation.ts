@@ -1,3 +1,4 @@
+import { LIST_LAYOUT_ROW_SELECTOR } from '../structured-list/layout-css.js';
 import { createDetachedEl, createDetachedSvg } from '../../dom';
 import { codeFolding, foldEffect, foldedRanges, unfoldEffect } from '@codemirror/language';
 import { EditorSelection, EditorState, Prec, RangeSet, StateEffect, StateField, type Extension, type Range as CMRange } from '@codemirror/state';
@@ -24,6 +25,7 @@ import {createEmptyBodies,registerEmptyBody} from '../runtime/empty-body-state.j
 import { containerBodyLineProviders } from '../runtime/container-body-boundaries.js';
 import { calloutBodyLine } from './body-boundaries.js';
 import { emptyVisualLineAnchor } from '../runtime/navigation-core.js';
+import { blockWidgetShell } from '../runtime/block-widget-shell.js';
 
 export interface CalloutPresentationOptions {
 	readonly isActive: (view: EditorView) => boolean;
@@ -261,7 +263,7 @@ class ContainerBoundaryGap extends Rails {
 		gap.dataset.paraflowAfter = this.after;
 		gap.setAttribute('aria-hidden', 'true');
 		gap.append(super.toDOM(view));
-		return gap;
+		return blockWidgetShell(gap);
 	}
 	ignoreEvent(): boolean { return false; }
 }
@@ -503,12 +505,13 @@ export function createCalloutPresentation(options: CalloutPresentationOptions): 
 			background: 'linear-gradient(to right, transparent var(--paraflow-container-inset), var(--paraflow-surface-color, var(--background-secondary)) var(--paraflow-container-inset), var(--paraflow-surface-color, var(--background-secondary)) calc(100% - var(--paraflow-container-end-inset)), transparent calc(100% - var(--paraflow-container-end-inset))) !important' },
 		'.cm-content > .cm-line.paraflow-callout-line.paraflow-rendered-source-line::before, .cm-content > .cm-line.paraflow-callout-line.paraflow-math-source-block::before': { insetInlineStart: 'var(--paraflow-container-inset) !important' },
 		'.cm-content > .cm-line.paraflow-callout-line.paraflow-rendered-source-html.is-last': { paddingBlockEnd: 'calc(.3em + var(--paraflow-callout-ends) * var(--paraflow-callout-padding, 12px)) !important' },
-		'.cm-content > .cm-line.paraflow-callout-line:not(.paraflow-callout-list-row):not(.paraflow-code-line):not(.paraflow-rendered-source-line):not(.paraflow-math-source-block)': {
-			paddingInlineStart: 'var(--paraflow-container-inset) !important', textIndent: '0 !important' },
+		'.cm-content > .cm-line.paraflow-callout-line:not(.paraflow-callout-list-row):not(.paraflow-code-line):not(.paraflow-rendered-source-line):not(.paraflow-math-source-block)': { textIndent: '0 !important' },
+		[`.cm-content > .cm-line.paraflow-callout-line:not(.paraflow-callout-list-row):not(.paraflow-code-line):not(.paraflow-rendered-source-line):not(.paraflow-math-source-block):not(${LIST_LAYOUT_ROW_SELECTOR})`]: {
+			paddingInlineStart: 'var(--paraflow-container-inset) !important' },
 		'.cm-content > .cm-line.paraflow-callout-line:not(.paraflow-heading-line):not(.paraflow-callout-list-row):not(.paraflow-callout-first):not(.paraflow-callout-last):not(.paraflow-code-line):not(.paraflow-rendered-source-line):not(.paraflow-math-source-block)': { paddingBlock: '0 !important' },
 		'.cm-content > .cm-line.paraflow-callout-line:not(.paraflow-code-line):not(.paraflow-rendered-source-line):not(.paraflow-math-source-block)::before': { display: 'none !important' },
 		...containerSurfaceStyles,
-		'.cm-content > .paraflow-container-boundary-gap': { position: 'relative', fontSize: 'var(--font-text-size, 1rem)', height: 'var(--paraflow-callout-gap, .8em)', contain: 'none !important' },
+		'.cm-content > .paraflow-block-widget-shell > .paraflow-container-boundary-gap': { position: 'relative', fontSize: 'var(--font-text-size, 1rem)', height: 'var(--paraflow-callout-gap, .8em)' },
 		'.cm-content > .cm-line.paraflow-callout-list-row:not(.paraflow-code-line):not(.paraflow-rendered-source-line):not(.paraflow-math-source-block)': { '--paraflow-container-row-padding': 'var(--paraflow-list-row-padding, .25em)' },
 		'.cm-content > .cm-line.paraflow-callout-line.paraflow-callout-first:not(.paraflow-code-line):not(.paraflow-rendered-source-line):not(.paraflow-math-source-block)': { paddingTop: 'var(--paraflow-callout-padding, 12px) !important', borderRadius: 'var(--callout-radius, 4px) var(--callout-radius, 4px) 0 0' },
 		'.cm-content > .cm-line.paraflow-callout-first:not(.paraflow-callout-last):not(.paraflow-callout-collapsed)': { paddingBottom: 'var(--paraflow-callout-title-body-gap, 1em) !important' },
@@ -520,7 +523,7 @@ export function createCalloutPresentation(options: CalloutPresentationOptions): 
 		'.cm-content > .cm-line.paraflow-callout-last:not(.paraflow-callout-first):not(.paraflow-callout-list-row):not(.paraflow-code-line):not(.paraflow-rendered-source-line):not(.paraflow-math-source-block)': { paddingBottom: 'calc(var(--paraflow-container-row-padding, 0px) + var(--paraflow-callout-ends) * var(--paraflow-callout-padding, 12px)) !important' },
 		'.cm-content > .cm-line.paraflow-callout-last.paraflow-callout-list-row:not(.paraflow-code-line):not(.paraflow-rendered-source-line):not(.paraflow-math-source-block)': { paddingBottom: 'var(--paraflow-container-row-padding, 0px) !important', borderRadius: '0 0 var(--callout-radius, 4px) var(--callout-radius, 4px)' },
 		'.cm-content > .cm-line.paraflow-callout-gap:not(.paraflow-code-line):not(.paraflow-rendered-source-line):not(.paraflow-math-source-block)': { lineHeight: 'var(--paraflow-semantic-gap-height, 0px) !important', fontSize: 'var(--font-text-size, 1rem)', height: 'var(--paraflow-callout-gap, .8em) !important', minHeight: 'var(--paraflow-callout-gap, .8em) !important' },
-		'.cm-content > :is(.paraflow-container-boundary-gap, .cm-line.paraflow-callout-gap):is([data-paraflow-before="code-block"], [data-paraflow-after="code-block"], [data-paraflow-before="table"], [data-paraflow-after="table"]):not(.paraflow-code-line):not(.paraflow-rendered-source-line):not(.paraflow-math-source-block)': { height: `${semanticBlockGapHeight} !important`, minHeight: `${semanticBlockGapHeight} !important` },
+		':is(.cm-content > .paraflow-block-widget-shell > .paraflow-container-boundary-gap, .cm-content > .cm-line.paraflow-callout-gap):is([data-paraflow-before="code-block"], [data-paraflow-after="code-block"], [data-paraflow-before="table"], [data-paraflow-after="table"]):not(.paraflow-code-line):not(.paraflow-rendered-source-line):not(.paraflow-math-source-block)': { height: `${semanticBlockGapHeight} !important`, minHeight: `${semanticBlockGapHeight} !important` },
 		'.cm-content > .cm-line.paraflow-callout-gap:not(.paraflow-code-line):not(.paraflow-rendered-source-line):not(.paraflow-math-source-block) > .cm-widgetBuffer': { height: '0 !important' },
 		'.cm-content > .cm-line.paraflow-callout-gap-tail:not(.paraflow-code-line):not(.paraflow-rendered-source-line):not(.paraflow-math-source-block)': { height: '0 !important', minHeight: '0 !important' },
 		'.paraflow-callout-title': { display: 'inline-flex', verticalAlign: 'top', alignItems: 'center', gap: '.25em', paddingInlineEnd: 'var(--paraflow-callout-title-gap, .375em)', height: 'calc(var(--paraflow-callout-title-leading, 1.3) * 1em)', lineHeight: '1', userSelect: 'none' },

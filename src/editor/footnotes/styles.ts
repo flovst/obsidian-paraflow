@@ -77,8 +77,17 @@ export const FOOTNOTE_CSS = `
 .paraflow-footnote-reference[data-footnote-status="missing"],
 .paraflow-footnote-reference[data-footnote-status="duplicate"],
 .paraflow-footnote-definition[data-footnote-status="duplicate"] {
-  text-decoration: underline dotted;
-  text-decoration-color: var(--text-warning);
+  background-image: radial-gradient(circle, var(--text-warning, currentColor) .06em, transparent .06em);
+  background-position: left bottom;
+  background-size: .25em .125em;
+  background-repeat: repeat-x;
+}
+@media (forced-colors: active) {
+  .paraflow-footnote-reference[data-footnote-status="missing"],
+  .paraflow-footnote-reference[data-footnote-status="duplicate"],
+  .paraflow-footnote-definition[data-footnote-status="duplicate"] {
+    outline: 1px dotted Highlight;
+  }
 }
 .paraflow-footnote-backlinks { margin-inline-start: .4em; }
 .paraflow-footnote-backlinks .paraflow-footnote-backlink {

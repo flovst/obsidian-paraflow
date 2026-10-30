@@ -2,7 +2,7 @@
 export const INLINE_PROJECTION_CSS = `
 .paraflow-inline-body--link,
 .paraflow-inline-body--wikilink {
-	text-decoration-line: underline;
+	text-decoration: underline;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview
@@ -64,7 +64,7 @@ export const INLINE_PROJECTION_CSS = `
 	.paraflow-inline-source-active--strikethrough .cm-formatting-strikethrough.cm-strikethrough,
 .markdown-source-view.mod-cm6.is-live-preview .paraflow-invalid-native-strike,
 .markdown-source-view.mod-cm6.is-live-preview .paraflow-invalid-native-strike .cm-strikethrough {
-	text-decoration-line: none;
+	text-decoration: none;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview

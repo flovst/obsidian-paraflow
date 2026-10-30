@@ -1,3 +1,44 @@
+/** Exact rows whose list layout owns the inline-start inset. */
+export const LIST_LAYOUT_ROW_SELECTOR = `.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	:where(.paraflow-structured-list-active *, .paraflow-callout-line).HyperMD-list-line-1:not(.paraflow-code-line, .paraflow-math-source-block):not(.paraflow-list-owned-line),
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	:where(.paraflow-structured-list-active *, .paraflow-callout-line).HyperMD-list-line-2:not(.paraflow-code-line, .paraflow-math-source-block):not(.paraflow-list-owned-line),
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	:where(.paraflow-structured-list-active *, .paraflow-callout-line).HyperMD-list-line-3:not(.paraflow-code-line, .paraflow-math-source-block):not(.paraflow-list-owned-line),
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	:where(.paraflow-structured-list-active *, .paraflow-callout-line).HyperMD-list-line-4:not(.paraflow-code-line, .paraflow-math-source-block):not(.paraflow-list-owned-line),
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	:where(.paraflow-structured-list-active *, .paraflow-callout-line).HyperMD-list-line-5:not(.paraflow-code-line, .paraflow-math-source-block):not(.paraflow-list-owned-line),
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	:where(.paraflow-structured-list-active *, .paraflow-callout-line).HyperMD-list-line-6:not(.paraflow-code-line, .paraflow-math-source-block):not(.paraflow-list-owned-line),
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	:where(.paraflow-structured-list-active *, .paraflow-callout-line).paraflow-list-marker-line:not(.paraflow-code-line, .paraflow-math-source-block):not(.paraflow-list-owned-line),
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	.paraflow-list-owned-line-1:not(.paraflow-math-source-block),
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	.paraflow-list-owned-line-2:not(.paraflow-math-source-block),
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	.paraflow-list-owned-line-3:not(.paraflow-math-source-block),
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	.paraflow-list-owned-line-4:not(.paraflow-math-source-block),
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	.paraflow-list-owned-line-5:not(.paraflow-math-source-block),
+.markdown-source-view.mod-cm6.is-live-preview
+	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+	.paraflow-list-owned-line-6:not(.paraflow-math-source-block)`;
+
 /** Live Preview list rows, native prefixes, markers and task carets share one layout surface. */
 export const LIST_LAYOUT_CSS = `
 .markdown-source-view.mod-cm6.is-live-preview .cm-editor.paraflow-callout-active .cm-callout .callout-content :is(ul, ol) {
@@ -621,45 +662,7 @@ export const LIST_LAYOUT_CSS = `
  padding-block: 0;
 }
 /* Native and projected rows share the inline padding owner; row tokens retain their geometry. */
-.markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
-	:where(.paraflow-structured-list-active *, .paraflow-callout-line).HyperMD-list-line-1:not(.paraflow-code-line, .paraflow-math-source-block):not(.paraflow-list-owned-line),
-.markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
-	:where(.paraflow-structured-list-active *, .paraflow-callout-line).HyperMD-list-line-2:not(.paraflow-code-line, .paraflow-math-source-block):not(.paraflow-list-owned-line),
-.markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
-	:where(.paraflow-structured-list-active *, .paraflow-callout-line).HyperMD-list-line-3:not(.paraflow-code-line, .paraflow-math-source-block):not(.paraflow-list-owned-line),
-.markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
-	:where(.paraflow-structured-list-active *, .paraflow-callout-line).HyperMD-list-line-4:not(.paraflow-code-line, .paraflow-math-source-block):not(.paraflow-list-owned-line),
-.markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
-	:where(.paraflow-structured-list-active *, .paraflow-callout-line).HyperMD-list-line-5:not(.paraflow-code-line, .paraflow-math-source-block):not(.paraflow-list-owned-line),
-.markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
-	:where(.paraflow-structured-list-active *, .paraflow-callout-line).HyperMD-list-line-6:not(.paraflow-code-line, .paraflow-math-source-block):not(.paraflow-list-owned-line),
-.markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
-	:where(.paraflow-structured-list-active *, .paraflow-callout-line).paraflow-list-marker-line:not(.paraflow-code-line, .paraflow-math-source-block):not(.paraflow-list-owned-line),
-.markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
-	.paraflow-list-owned-line-1:not(.paraflow-math-source-block),
-.markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
-	.paraflow-list-owned-line-2:not(.paraflow-math-source-block),
-.markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
-	.paraflow-list-owned-line-3:not(.paraflow-math-source-block),
-.markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
-	.paraflow-list-owned-line-4:not(.paraflow-math-source-block),
-.markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
-	.paraflow-list-owned-line-5:not(.paraflow-math-source-block),
-.markdown-source-view.mod-cm6.is-live-preview
-	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
-	.paraflow-list-owned-line-6:not(.paraflow-math-source-block) {
-	padding-inline-start: calc(var(--paraflow-container-inset, 0px) + var(--paraflow-live-list-base-indent) + var(--paraflow-list-layout-depth) * var(--paraflow-live-list-indent) + var(--paraflow-live-list-content-offset) + var(--paraflow-list-layout-hanging)) !important;
+${LIST_LAYOUT_ROW_SELECTOR} {
+	padding-inline-start: calc(var(--paraflow-container-inset, 0px) + var(--paraflow-live-list-base-indent) + var(--paraflow-list-layout-depth) * var(--paraflow-live-list-indent) + var(--paraflow-live-list-content-offset) + var(--paraflow-list-layout-hanging));
 }
 `;

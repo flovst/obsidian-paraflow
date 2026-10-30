@@ -68,16 +68,15 @@ export function wrapContainerBlock(view: EditorView, content: HTMLElement, frame
 export const containerInset = 'calc(var(--paraflow-callout-list-inset, 0px) + var(--paraflow-container-callouts) * var(--paraflow-callout-inset, 24px) + (var(--paraflow-callout-depth) + 1 - var(--paraflow-container-callouts)) * var(--paraflow-quote-inset, 24px))';
 
 export const containerSurfaceStyles = {
-	'.markdown-source-view.mod-cm6 & .cm-content > .paraflow-container-block, .cm-content > .paraflow-container-block': { contain: 'none !important' },
 	'.paraflow-callout-rails': { position: 'absolute', inset: '0', pointerEvents: 'none' },
 	'.paraflow-callout-rails > .paraflow-callout-rail': { display: 'block', position: 'absolute',
 		insetInlineStart: 'calc(var(--paraflow-callout-list-inset, 0px) + var(--paraflow-rail-callouts) * var(--paraflow-callout-inset, 24px) + (var(--paraflow-callout-rail-depth) - var(--paraflow-rail-callouts)) * var(--paraflow-quote-inset, 24px))', top: '0',
 		bottom: 'calc(var(--paraflow-callout-rail-tail) * var(--paraflow-callout-padding, 12px))', width: '4px',
 		padding: '0', margin: '0', border: '0', borderRadius: '0', background: 'var(--callout-color)' },
 	'.paraflow-callout-rails > .paraflow-quote-rail': { width: 'max(4px, var(--paraflow-quote-border-width, 4px))', background: 'var(--paraflow-quote-border, var(--background-modifier-border))' },
-	'.cm-content > .paraflow-container-block': { position: 'relative', boxSizing: 'border-box', margin: '0', overflow: 'visible',
+	':is(.cm-content,.paraflow-block-widget-shell) > .paraflow-container-block': { position: 'relative', boxSizing: 'border-box', margin: '0', overflow: 'visible',
 		'--paraflow-container-inset': containerInset,
 		paddingInlineStart: 'var(--paraflow-container-inset)', paddingInlineEnd: 'calc(var(--paraflow-container-callouts) * var(--paraflow-callout-padding, 12px))',
 		paddingBlockEnd: 'calc(var(--paraflow-callout-ends) * var(--paraflow-callout-padding, 12px))' },
-	'.cm-content > .paraflow-container-block > :is(.paraflow-rendered-block-preview, .paraflow-math-block-preview)': { marginBlock: '0 !important' },
+	':is(.cm-content,.paraflow-block-widget-shell) > .paraflow-container-block > :is(.paraflow-rendered-block-preview, .paraflow-math-block-preview)': { marginBlock: '0' },
 };

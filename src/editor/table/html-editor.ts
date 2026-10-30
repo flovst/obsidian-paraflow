@@ -21,6 +21,7 @@ import {deleteMarkdownTracks,insertMarkdownTrack,moveMarkdownTracks} from './too
 import {readTrackGeometry,trackDropTarget,type TrackGeometry} from './track-geometry';
 import {TableDragPreview} from './drag-preview';
 import {TableOuterDragCursor} from './outer-drag-cursor';
+import {TableTrackDragCursor} from './track-drag-cursor';
 import {exitHtmlTableDown} from './html-keyboard-exit';
 import {blockExitPlan} from '../block-exit';
 import {compositionStateField} from '../runtime/input-state';
@@ -56,7 +57,7 @@ export class HtmlTableController implements TableActionTarget {
 	private sourceSelection:{session:TableEditSession;map:HtmlTableSourceSelection}|null=null;
 	private readonly linkPresentation=new TableLinkPresentation();
 	private addControls:TableAddControls|null=null;
-	private trackDrag:{axis:'row'|'column';first:number;last:number;source:string;geometry:TrackGeometry;preview:TableDragPreview;cue:HTMLElement;point:{x:number;y:number}}|null=null;
+	private trackDrag:{axis:'row'|'column';first:number;last:number;source:string;geometry:TrackGeometry;cursor:TableTrackDragCursor;preview:TableDragPreview;cue:HTMLElement;point:{x:number;y:number}}|null=null;
 	private dragFrame:number|null=null;
 	private readonly outerCursor:TableOuterDragCursor;
 	constructor(readonly view:EditorView,session:TableEditSession,readonly options:TableEditingOptions){
@@ -101,7 +102,7 @@ export class HtmlTableController implements TableActionTarget {
 		return {cell:this.position(cell),...bookmarkRange(cell,range)};
 	}
 	cellElement(position:CellPosition):HTMLElement|null{return this.dom.querySelector(`[data-pf-row="${position.row}"][data-pf-column="${position.column}"]`);}
-	get focusBookmark():TableFocusBookmark {const cell=this.cellElement(this.current)!;return {...captureTableFocus(cell,this.current,cell.innerHTML),rectangle:this.selecting?this.rectangle:undefined};}
+	get focusBookmark():TableFocusBookmark {const cell=this.cellElement(this.current)!;return {...captureTableFocus(cell,this.current,this.readCellHtml(cell)),rectangle:this.selecting?this.rectangle:undefined};}
 	restoreTextSelection(bookmark:TextBookmark):void {
 		if(this.destroyed){updateTableFocusBookmark(this.view,bookmark);return;}
 		const cell=this.cellElement(bookmark.cell);if(!cell)return;cell.focus();const range=rangeFromBookmark(cell,bookmark);const selection=cell.ownerDocument.getSelection();selection?.removeAllRanges();selection?.addRange(range);this.publishSourceSelection();
@@ -189,6 +190,7 @@ export class HtmlTableController implements TableActionTarget {
 		if(this.view.contentDOM.contains(target))this.releaseSelection();
 	};
 	private copy=(event:ClipboardEvent):void=>{
+		this.trackDrag?.cursor.clear();
 		const doc=this.dom.ownerDocument,selection=this.view.state.selection.main,target=event.target as Node|null;
 		const textRange=doc.getSelection();
 		if(this.ownsSelection&&textRange&&!textRange.isCollapsed&&textRange.rangeCount&&event.clipboardData){
@@ -253,7 +255,7 @@ export class HtmlTableController implements TableActionTarget {
 			const table=this.dom.querySelector('table')!,point={x:event.clientX,y:event.clientY};
 			const preview=new TableDragPreview(table,Array.from(table.querySelectorAll<HTMLElement>('[aria-selected="true"]')),axis,point);
 			const cue=createDetachedEl(this.dom.ownerDocument, 'div');cue.className='paraflow-table-drag-cue';cue.dataset.pfAxis=axis;cue.hidden=true;preview.dom.append(cue);
-			this.trackDrag={axis,first,last,source:this.session.target.source,geometry:readTrackGeometry(table,this.session.table,axis),preview,cue,point};this.dom.dataset.pfTrackDrag=axis;
+			this.trackDrag={axis,first,last,source:this.session.target.source,geometry:readTrackGeometry(table,this.session.table,axis),cursor:new TableTrackDragCursor(this.dom,axis),preview,cue,point};this.dom.dataset.pfTrackDrag=axis;this.trackDrag.cursor.move(event.target);
 	}
 	private outerPointerDown=(event:PointerEvent):void=>{
 		if(event.button!==0)return;const hit=this.outerHit(event);if(!hit)return;
@@ -293,7 +295,7 @@ export class HtmlTableController implements TableActionTarget {
 		return target?{...target,boundary:target.boundary+shift}:null;
 	}
 	private dragMove=(event:PointerEvent):void=>{
-		const drag=this.trackDrag;if(!drag)return;drag.point={x:event.clientX,y:event.clientY};drag.preview.update(drag.point);
+		const drag=this.trackDrag;if(!drag)return;drag.cursor.move(event.target);drag.point={x:event.clientX,y:event.clientY};drag.preview.update(drag.point);
 		this.scheduleDrag();
 	};
 	private scheduleDrag=():void=>{
@@ -307,7 +309,7 @@ export class HtmlTableController implements TableActionTarget {
 			else{drag.cue.style.left=`${box.left-left}px`;drag.cue.style.top=`${Math.max(box.top,Math.min(target.boundary-1,box.bottom-2))-top}px`;drag.cue.style.width=`${box.width}px`;}
 		});
 	};
-	private cancelDrag=():void=>{this.pointerAnchor=null;if(this.dragFrame!==null){this.dom.ownerDocument.defaultView!.cancelAnimationFrame(this.dragFrame);this.dragFrame=null;}this.trackDrag?.preview.destroy();this.trackDrag=null;delete this.dom.dataset.pfTrackDrag;delete this.dom.dataset.pfTrackHover;};
+	private cancelDrag=():void=>{this.pointerAnchor=null;if(this.dragFrame!==null){this.dom.ownerDocument.defaultView!.cancelAnimationFrame(this.dragFrame);this.dragFrame=null;}this.trackDrag?.cursor.destroy();this.trackDrag?.preview.destroy();this.trackDrag=null;delete this.dom.dataset.pfTrackDrag;delete this.dom.dataset.pfTrackHover;};
 	private dragKeyDown=(event:KeyboardEvent):void=>{if(this.trackDrag&&event.key==='Escape'){event.preventDefault();this.cancelDrag();this.select(this.current,this.current,false);}};
 	private pointerUp=(event:PointerEvent):void=>{
 		this.pointerAnchor=null;const drag=this.trackDrag;if(!drag)return;const target=this.dragTarget(drag,{x:event.clientX,y:event.clientY});this.cancelDrag();
@@ -320,8 +322,9 @@ export class HtmlTableController implements TableActionTarget {
 			else this.commit(next,true,drag.axis==='row'?{kind:'move',first:drag.first,last:drag.last,direction:destination-drag.first}:undefined);
 		}catch(error){this.options.notify(error instanceof Error?error.message:String(error));}
 	};
+	private readCellHtml(cell:HTMLElement):string {return this.trackDrag?this.trackDrag.cursor.read(()=>cell.innerHTML):cell.innerHTML;}
 	private cellHtml(cell:HTMLElement):string {
-		const content=this.linkPresentation.cloneCell(cell);
+		const content=this.trackDrag?this.trackDrag.cursor.read(()=>this.linkPresentation.cloneCell(cell)):this.linkPresentation.cloneCell(cell);
 		for(const placeholder of content.querySelectorAll('[data-paraflow-cell-placeholder]'))placeholder.remove();
 		return content.innerHTML;
 	}
@@ -374,7 +377,7 @@ export class HtmlTableController implements TableActionTarget {
 		const focused=!!focus||this.dom.contains(this.dom.ownerDocument.activeElement);
 		if(nextSource===this.session.target.source)return;
 		const transaction=this.view.state.update(this.session.replace(this.view.state,nextSource??'',change));
-		if(nextSource!==null&&focused){const cell=selectedCell??this.cellElement(this.current)!;requestTableFocus(this.view,transaction,this.session.target.from,focus??{...captureTableFocus(cell,this.current,cell.innerHTML),rectangle:this.selecting?this.rectangle:undefined});}
+		if(nextSource!==null&&focused){const cell=selectedCell??this.cellElement(this.current)!;requestTableFocus(this.view,transaction,this.session.target.from,focus??{...captureTableFocus(cell,this.current,this.readCellHtml(cell)),rectangle:this.selecting?this.rectangle:undefined});}
 		const previousSession=this.session;
 		const replacementSession=nextSource===null?null:new TableEditSession(findEditableTableSources(transaction.state).find(target=>target.from===previousSession.target.from)!);
 		this.writingSource=replacementSession;

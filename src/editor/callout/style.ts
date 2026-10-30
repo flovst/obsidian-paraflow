@@ -1,6 +1,7 @@
 /** Both projections use the same type color and retain their existing editing surfaces. */
 export const CALLOUT_STYLE_CSS = `
-.cm-editor[data-paraflow-callout-style="obsidian"] .cm-content > :is(.paraflow-callout-line, .paraflow-container-block, .paraflow-container-boundary-gap) { isolation: isolate; }
+.cm-editor[data-paraflow-callout-style="obsidian"] .cm-content > .paraflow-callout-line,
+.cm-editor[data-paraflow-callout-style="obsidian"] .cm-content > .paraflow-block-widget-shell > :is(.paraflow-container-block, .paraflow-container-boundary-gap) { isolation: isolate; }
 .cm-editor[data-paraflow-callout-style="obsidian"] .paraflow-callout-rails { z-index: -1; }
 .cm-editor[data-paraflow-callout-style="obsidian"] .paraflow-callout-rails > .paraflow-callout-rail.callout {
   width: auto;

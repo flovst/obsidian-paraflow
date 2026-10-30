@@ -441,8 +441,7 @@ body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='m
 	> .view-content.markdown-reading-view
 	> .markdown-preview-view
 	> .markdown-preview-sizer {
-	min-height: 0 !important;
-	padding-bottom: var(--paraflow-end-spacing) !important;
+	--paraflow-reading-end-spacing: var(--paraflow-end-spacing);
 }
 
 @media (min-width: 1400px)  {

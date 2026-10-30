@@ -78,7 +78,8 @@ export const renderedBlockLayoutStyles = `
   border-inline: var(--paraflow-block-code-border, 1px solid var(--paraflow-border-color, var(--background-modifier-border)));
   overflow: visible;
 }
-.markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-rendered-source-line.is-first { margin-block-start: 1.25em !important; padding-block-start: .3em; }
+.paraflow-rendered-source-gap { height: 1.25em; font-size: var(--paraflow-block-code-size, .9em); pointer-events: none; }
+.markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-rendered-source-line.is-first { padding-block-start: .3em; }
 .markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-rendered-source-mermaid.is-first:not(.paraflow-callout-line) { border-block-start: var(--paraflow-block-code-border, 1px solid var(--paraflow-border-color, var(--background-modifier-border))); }
 .markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-rendered-source-line.is-last { padding-block-end: .3em; }
 .markdown-source-view.mod-cm6 .cm-editor .cm-content > .cm-line.paraflow-rendered-source-line::before {

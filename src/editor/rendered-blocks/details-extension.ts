@@ -9,6 +9,7 @@ import { containerBlockFrame, containerInset, wrapContainerBlock, type Container
 import { listBlockInset } from '../paragraph/list-block-geometry.js';
 import { normalizeParagraphSelectionEndpoint } from '../paragraph/selection-protection.js';
 import type { DetailsOpenState } from '../../display/details-open-state.js';
+import { blockWidgetShell } from '../runtime/block-widget-shell.js';
 
 const toggle = StateEffect.define<{ from: number; open: boolean }>();
 const edit = StateEffect.define<number | null>();
@@ -54,7 +55,7 @@ class Summary extends WidgetType {
 		sourceIcon.setAttribute('fill', 'none'); sourceIcon.setAttribute('stroke', 'currentColor'); sourceIcon.setAttribute('stroke-width', '.8');
 		sourceIcon.setAttribute('stroke-linecap', 'round'); sourceIcon.setAttribute('stroke-linejoin', 'round');
 		source.append('HTML ', sourceIcon); source.addEventListener('click', editSummary);
-		return wrapContainerBlock(view, root, this.frame);
+		return blockWidgetShell(wrapContainerBlock(view, root, this.frame));
 	}
 	ignoreEvent(): boolean { return true; }
 }

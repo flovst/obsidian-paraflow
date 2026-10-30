@@ -4,6 +4,7 @@ import { EditorSelection, EditorState, Prec, StateEffect, StateField, type Exten
 import { Decoration, EditorView, keymap, showTooltip, ViewPlugin, WidgetType, type DecorationSet, type Tooltip } from '@codemirror/view';
 import { isolateHistory } from '@codemirror/commands';
 import { createNativeDecorationOwnership, nativeBlockOwnership } from '../runtime/native-decoration-ownership.js';
+import { projectLineLayout } from '../runtime/line-layout.js';
 import { classifyCurrentSelectionMode, selectionModeAnnotation } from '../runtime/input-state.js';
 import { createInlineRevealPointerExtension, inlineEndpointOwners, inlineRevealPointerHeld } from '../runtime/inline-reveal.js';
 import { paragraphNavigationAnnotation } from '../paragraph/edit-plan.js';
@@ -20,6 +21,7 @@ import { clampMathBody, projectMathSource, type MathSource } from './source.js';
 import { deleteAdjacentMath, deleteEmptyMath, editMathBody, insertMathTab, mathBlockEdit } from './operations.js';
 import { mathDraftRanges, mathNativeOwnership } from './native-ownership.js';
 import { createBlockBodySelection } from '../runtime/block-selection.js';
+import { blockWidgetShell } from '../runtime/block-widget-shell.js';
 import { blockContinuationPrefix } from '../runtime/block-body.js';
 import { mathEditingActivation } from './activation.js';
 import { setMathPreviewReplacementOwner } from './preview-owner.js';
@@ -144,7 +146,8 @@ class MathWidget extends WidgetType {
 	toDOM(view: EditorView): HTMLElement {
 		const result = renderPreview(view, this.source, this.display,
 			'paraflow-math-rendered' + (this.display ? ' paraflow-math-block-preview' : ' math-inline'), this.options, true);
-		const dom = wrapContainerBlock(view, result.dom, this.frame);
+		const content = wrapContainerBlock(view, result.dom, this.frame);
+		const dom = this.display ? blockWidgetShell(content) : content;
 		setMathPreviewReplacementOwner(result.dom, this.owner);
 		previews.set(dom, result);
 		previewWidgets.set(dom, this);
@@ -381,6 +384,7 @@ export function createMathEditingExtension(options: MathEditingOptions): Extensi
 			return buildProjection(transaction.state, options, { ...value, active }, frozen, inlineFrozen, revision);
 		},
 		provide: field => [Prec.highest(EditorView.decorations.from(field, value => value.decorations)),
+			Prec.lowest(EditorView.decorations.from(field, value => projectLineLayout(value.decorations, 'paraflow-math-source-block', 'padding-inline:var(--paraflow-math-inline-start, 4.5ch) var(--paraflow-math-inline-end, .5em)'))),
 			showTooltip.from(field, value => value.tooltip)],
 	});
 	const pointerEntry = ViewPlugin.define(view => {
