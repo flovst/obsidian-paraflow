@@ -1,6 +1,7 @@
 import { EditorSelection, Prec, Transaction, type Extension, type StateEffect } from '@codemirror/state';
 import { EditorView, ViewPlugin } from '@codemirror/view';
 import { beginSourcePointer } from './selection-session.js';
+import { renderedDOMCaretAtPoint } from './dom-caret.js';
 
 interface SourceHit {
 	readonly position: number;
@@ -24,9 +25,23 @@ export function renderedSourceClickPosition(event: Pick<MouseEvent, 'clientX' | 
 	const doc = element.ownerDocument;
 	let caret: { offsetNode: Node; offset: number } | null | undefined = doc.caretPositionFromPoint?.(event.clientX, event.clientY);
 	if (!caret) {
-		// iOS WebKit before 26.2 has no standard caretPositionFromPoint API.
-		const range = doc.caretRangeFromPoint?.(event.clientX, event.clientY);
-		if (range) caret = { offsetNode: range.startContainer, offset: range.startOffset };
+		const hit = renderedDOMCaretAtPoint(element, event.clientX, event.clientY);
+		if (hit) {
+			const owner = hit.node.parentElement?.closest('[contenteditable="false"]');
+			let node = hit.node, offset = hit.offset;
+			if (owner?.parentNode) {
+				const range = doc.createRange();
+				range.selectNodeContents(owner); range.setEnd(node, offset);
+				const atStart = range.toString().length === 0;
+				range.selectNodeContents(owner); range.setStart(node, offset);
+				const atEnd = range.toString().length === 0;
+				if (atStart || atEnd) {
+					node = owner.parentNode;
+					offset = Array.from(node.childNodes).indexOf(owner) + (atStart ? 0 : 1);
+				}
+			}
+			caret = { offsetNode: node, offset };
+		}
 	}
 	return caret && element.contains(caret.offsetNode) ? resolve(caret.offsetNode, caret.offset) : null;
 }
