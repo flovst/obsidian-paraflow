@@ -2,7 +2,7 @@
 
 [文档索引](../../README.zh.md) · [English](../EN/inline-and-media.en.md)
 
-ParaFlow 在 Live Preview 中提供行内格式的源码隐藏/显示，以及链接、图片和脚注的编辑等。
+ParaFlow 控制实时预览中的行内格式标记显示，支持上下标、链接操作、图片源码编辑和脚注导航。
 
 
 
@@ -10,9 +10,13 @@ ParaFlow 在 Live Preview 中提供行内格式的源码隐藏/显示，以及�
 
 <video src="../assets/videos/inline/inlinecode.mp4" controls=""></video>
 
-主要是将显示的源码符号（比如`*`、`~` 等）改为灰色，修复部分情况下删除线的显示，以及增加对上下标的支持。
+https://github.com/user-attachments/assets/f73e8fd2-655f-4e50-b128-5c2c2cc92a65
+
+主要是将显示的源码符号（比如`*`、`~` 等）改为灰色，修复部分情况下删除线的显示，增加对上下标的支持。
 
 <video src="../assets/videos/inline/edit-image.mp4" controls=""></video>
+
+https://github.com/user-attachments/assets/b77afa61-4353-4d44-917e-0a778b52080f
 
 对于图片，则是添加了 “单击显示图片源码” 的功能，并默认设置了居中。
 

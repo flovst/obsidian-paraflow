@@ -2,15 +2,19 @@
 
 [Documentation](../../README.md) · [中文](../zh-CN/inline-and-media.zh.md)
 
-In Live Preview, ParaFlow manages source visibility for inline formatting and provides editing enhancements for links, images, and footnotes.
+In Live Preview, ParaFlow controls the display of inline formatting markers and supports subscript, superscript, link actions, image source editing, and footnote navigation.
 
 ## Use
 
 <video src="../assets/videos/inline/inlinecode.mp4" controls=""></video>
 
+https://github.com/user-attachments/assets/f73e8fd2-655f-4e50-b128-5c2c2cc92a65
+
 The main changes are gray source markers such as `*` and `~`, fixes for strikethrough display in some cases, and support for subscript and superscript.
 
 <video src="../assets/videos/inline/edit-image.mp4" controls=""></video>
+
+https://github.com/user-attachments/assets/b77afa61-4353-4d44-917e-0a778b52080f
 
 Images are centered by default. Click an image to reveal its source for editing.
 

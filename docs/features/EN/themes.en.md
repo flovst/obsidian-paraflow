@@ -6,8 +6,6 @@ ParaFlow currently includes five of Typora's default themes, which you can selec
 
 The settings also offer an experimental Typora theme importer, which is still unstable. The source repository includes a Skill for importing Typora themes. If you have a particular theme in mind, I recommend letting your agent try that approach.
 
-ParaFlow settings use three native sub-pages: **Theme**, **Editing**, and **Other**. Obsidian's settings search can find individual options by their names and descriptions, including options within a disabled module.
-
 ## Importing a Typora theme (experimental)
 
 1. Click “Import theme” and choose a CSS file, ZIP archive, or theme folder.
@@ -40,11 +38,11 @@ h1 { color: #225588; }
 
 Use `url(assets/filename)` for local resources. Overrides support ordinary rules, `@media`, and `@supports`; font registration is handled by importing the source theme.
 
-Check the result in both Reading view and Live Preview. Theme management scopes these additional styles to the content area.
+Overrides apply only to the content area. Check changes in Reading view and Live Preview.
 
 ### Exporting
 
-“Export” packages an imported theme's source files, assets, overrides, and report as a ZIP. Importing it again runs conversion again. Local font, width, and similar adjustments from the theme settings are stored separately in plugin settings and are excluded from the theme export.
+“Export” packages an imported theme's source files, assets, overrides, and report as a ZIP. Importing it again runs conversion again.
 
 ## Examples
 

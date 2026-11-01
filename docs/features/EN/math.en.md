@@ -8,16 +8,16 @@ ParaFlow provides inline math previews and Typora-like editing for math blocks.
 
 <video src="../assets/videos/math/edit-math.mp4" controls=""></video>
 
+https://github.com/user-attachments/assets/1c39197c-d40d-4bac-ad59-6111b55baa35
+
 The main changes are syntax colors, previews, and editing improvements. The default red-and-green palette was a little too much for me.
 
-- **Inline math:** adds a preview for inline formulas.
-- **Block math:** hides the `$$` boundaries to prevent accidental edits. Switch to Source mode when you need to change them.
+- **Inline math:** displays a formula preview.
+- **Block math:** hides the `$$` boundaries to reduce accidental edits. Edit the boundaries in Source mode.
 
 ## Settings
 
 Under **Settings → ParaFlow → Editing → Math**, toggle math enhancements and choose a syntax palette: One Light, Solarized, Light+, Follow Obsidian, or Typora.
-
-When adjusting the content theme, observe the baseline and spacing of inline math alongside body text, as well as spacing around math blocks.
 
 ## Examples
 

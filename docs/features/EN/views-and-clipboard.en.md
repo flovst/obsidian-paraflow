@@ -12,6 +12,8 @@ ParaFlow enhances all three Obsidian views:
 
 <video src="../assets/videos/views/change-view.mp4" controls=""></video>
 
+https://github.com/user-attachments/assets/6ba2c5a7-daff-4623-bcb0-692d9bbbee16
+
 The video demonstrates switching between the three views with keyboard shortcuts:
 
 - `Ctrl+E`: Live Preview ↔ Reading view.
@@ -21,7 +23,7 @@ Reading view and Live Preview look almost identical in this example. Source mode
 
 ## Copying and pasting
 
-By default, Live Preview uses Smart paste and completes boundaries for content such as code and math blocks. Source mode uses Exact text to preserve the original characters when copying and pasting.
+By default, Live Preview uses Smart paste and completes boundaries for code and math blocks. Source mode uses Exact text.
 
 Configure this under **Editing → Copy & paste**:
 

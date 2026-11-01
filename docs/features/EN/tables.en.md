@@ -8,6 +8,8 @@ ParaFlow provides Typora-like table styling and a floating toolbar, along with H
 
 <video src="../assets/videos/table/edit-table.mp4" controls=""></video>
 
+https://github.com/user-attachments/assets/44d94da5-6032-467e-87d7-92210ccba373
+
 For Markdown tables, the main additions are visual improvements and a toolbar above the table:
 
 - **Display:** alternating rows, automatic layout, and automatic width adjustments.
@@ -27,7 +29,9 @@ ParaFlow supports HTML table editing, keeping the experience consistent with Mar
 
 <video src="../assets/videos/table/merge-cell.mp4" controls=""></video>
 
-HTML table support includes:
+https://github.com/user-attachments/assets/713e93fb-78d1-4bae-aeff-f35cd1f4ddc2
+
+HTML tables also support:
 
 - Vertical alignment.
 - Merging and splitting cells, with behavior modeled mainly on Excel.

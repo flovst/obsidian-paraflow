@@ -14,6 +14,8 @@ ParaFlow 对 Obsidian 中的三个视图都进行了对应的优化：
 
 <video src="../assets/videos/views/change-view.mp4" controls=""></video>
 
+https://github.com/user-attachments/assets/6ba2c5a7-daff-4623-bcb0-692d9bbbee16
+
 视频中是用快捷键在 3 种 view 种切换了一下：
 
 + Ctrl + E： Live Preview ↔ Reading View
@@ -25,7 +27,7 @@ ParaFlow 对 Obsidian 中的三个视图都进行了对应的优化：
 
 ## 复制与粘贴
 
-在默认情况下，Live Preview 中的复制/粘贴会自动不全 code block、math 等的边界（智能粘贴），而 Source Mode 中则会完全按照原本的字符进行复制/粘贴（精确文本）。
+默认情况下，实时预览使用智能粘贴，并自动补全代码块、公式块等边界；源码视图使用精确文本。
 具体配置可以在设置的  **编辑 → 复制 & 粘贴** 中进行调整。
 
 | 方式 | 行为 |

@@ -14,6 +14,8 @@ Paragraph layout also offers first-line indentation, paragraph spacing, and tab 
 
 <video src="../assets/videos/paragraph/paragraph.mp4" controls=""></video>
 
+https://github.com/user-attachments/assets/fa9055ab-8fc5-4547-abe0-1da0e7e2e28e
+
 The default behavior is:
 
 - **Enter:** insert two newlines.
@@ -24,6 +26,8 @@ A single blank line between paragraphs is rendered as non-editable paragraph spa
 ### Headings
 
 <video src="../assets/videos/paragraph/heading.mp4" controls=""></video>
+
+https://github.com/user-attachments/assets/24bfa96b-71e7-46b6-96c6-9bdf0b6db6d4
 
 As in Typora, a heading keeps its formatting during subsequent editing. To change its level, use a shortcut such as `Ctrl + num`, or edit the markers in Source mode.
 

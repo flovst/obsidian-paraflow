@@ -21,6 +21,8 @@ For Mermaid diagrams, it offers a Typora-like editing experience: click a diagra
 
 <video src="../assets/videos/codeblock/create.mp4" controls=""></video>
 
+https://github.com/user-attachments/assets/6a585651-0a82-421d-8e2b-fc940c904221
+
 Once a code block is created, its triple-backtick fences are hidden. Change the language using the floating control at the bottom right, or press `Ctrl+/` to edit it in Source mode:
 
 ![Code block language control and source editing](../assets/images/image-20261028020205826.png)
@@ -53,7 +55,7 @@ Click a diagram to reveal its source and a live preview:
 
 Under **Settings → ParaFlow → Editing → Code blocks**, adjust wrapping, line numbers, language control position, and syntax colors.
 
-The language control can appear at the top right, bottom right, or be turned off. Syntax colors can follow Obsidian or use One Light, Solarized, or Light+; the latter three suit light backgrounds. Palette selection preserves language detection, code content, and the block background.
+The language control can appear at the top right, bottom right, or be turned off. Syntax colors can follow Obsidian or use One Light, Solarized, or Light+; the latter three suit light backgrounds.
 
 **Editing → Mermaid diagrams** controls diagram enhancements. **Copy & paste → Complete code fences** controls the related paste aid. See [Views, copying, and pasting](views-and-clipboard.en.md) for paste modes.
 

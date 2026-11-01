@@ -20,6 +20,8 @@
 
 <video src="../assets/videos/quotes-and-callouts/create-quote.mp4" controls=""></video>
 
+https://github.com/user-attachments/assets/b5103216-713b-4e5e-9f35-a3e61619a3d8
+
 输入 `>` + `enter` 来创建引用块。
 
 ![image-20261028023454132](../assets/images/image-20261028023454132.png)
@@ -31,6 +33,8 @@
 **容器内编辑**
 
 <video src="../assets/videos/quotes-and-callouts/edit-callout.mp4" controls=""></video>
+
+https://github.com/user-attachments/assets/0429202e-6e59-4e51-b279-85c7cff445f6
 
 容器内可以包含多个段落、嵌套列表等。
 
@@ -52,17 +56,17 @@
 
 <video src="../assets/videos/html/details.mp4" controls=""></video>
 
+https://github.com/user-attachments/assets/db30436a-ffb8-44dd-b021-a2c191d95ac5
+
 ParaFlow 支持 `<div>`、`<details>` 等 HTML 块的源码编辑与预览；`<details>` 内部也可以嵌套普通 Markdown 内容（使用 `Ctrl`+`Click` 来编辑 details 块的标题）。
 
 ## 设置
 
 在 **设置 → ParaFlow → 编辑** 中分别开关 **引用 & Callout** 与 **HTML 预览**。容器中的文字样式由当前[内容主题](themes.zh.md)控制。
 
-在 **引用 & Callout** 设置组中，可选择 `default` 竖条样式或 `obsidian` 带背景的块样式。两种样式共用标题编辑、折叠和点击操作。
+在 **引用 & Callout** 设置组中，可选择 `default` 竖条样式或 `obsidian` 带背景的块样式。
 
 在 **HTML 预览** 设置组中，可开关 **Details 悬浮背景**。开启后，鼠标移入折叠区域时整个区域同步渐显半透明背景，保留所在 Callout 的底色。
-
-需要检查结构时，切换到源码视图查看引用前缀、Callout 类型和 HTML 标签。编辑 HTML 内容时使用对应的 HTML 标记。
 
 ## 示例
 

@@ -8,6 +8,8 @@ ParaFlow 提供类似 Typora 中的表格样式与悬浮窗，此外还添加了
 
 <video src="../assets/videos/table/edit-table.mp4" controls=""></video>
 
+https://github.com/user-attachments/assets/44d94da5-6032-467e-87d7-92210ccba373
+
 对于 Markdown 表格，主要是做了视觉优化与顶部的快捷浮窗：
 
 + 视觉优化：条纹样式、自动布局、宽度自动调整等
@@ -27,7 +29,9 @@ ParaFlow 支持 HTML 表格的编辑等，尽可能让其编辑体验与 Markdow
 
 <video src="../assets/videos/table/merge-cell.mp4" controls=""></video>
 
-对于 HTML，ParaFlow 主要支持了：
+https://github.com/user-attachments/assets/713e93fb-78d1-4bae-aeff-f35cd1f4ddc2
+
+HTML 表格还支持：
 
 + 垂直对齐
 + 单元格合并 / 拆分（主要参考 excel 中的行为）

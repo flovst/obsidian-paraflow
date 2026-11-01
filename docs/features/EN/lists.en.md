@@ -12,6 +12,8 @@ Edit a list in Live Preview:
 
 <video src="../assets/videos/list/edit-list.mp4" controls=""></video>
 
+https://github.com/user-attachments/assets/5ff81929-f33c-49f9-bc60-6c8eef2a404c
+
 ParaFlow manages list marker appearance and indentation, so everyday editing keeps the structural source out of the way. Switch to Source mode when you need to edit it directly.
 
 Keyboard behavior closely follows Typora:
@@ -28,7 +30,7 @@ Enable or disable list editing under **Settings → ParaFlow → Editing → Lis
 
 **Editing → Misc → Automatic source cleanup** offers four options: Never, On manual save, On view change, and On manual save or view change.
 
-- Manual save: press `Ctrl+S` in the main editor to supplement list continuation indentation and missing zero-width separators whose ownership was established during editing. Autosave and the Save menu do not trigger this document scan.
+- Manual save: press `Ctrl+S` in the main editor to supplement list continuation indentation and missing zero-width separators in list prefixes identified during editing. Autosave and the Save menu do not trigger this document scan.
 - View change: when switching the same file between Live Preview, Source, and Reading views with an editor available, supplement structural indentation. This operation only adjusts indentation.
 - Cleanup changes can be undone. A scan that makes no changes adds no undo entry.
 

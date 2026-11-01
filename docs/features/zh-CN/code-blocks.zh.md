@@ -21,6 +21,8 @@ ParaFlow 会为代码块提供：
 
 <video src="../assets/videos/codeblock/create.mp4" controls=""></video>
 
+https://github.com/user-attachments/assets/6a585651-0a82-421d-8e2b-fc940c904221
+
 创建代码块以后，边界的三反引号会被隐藏，语言可以通过右下角的浮窗来修改；也可以用 `ctrl+/` 进入源码模式来修改：
 
 ![image-20261028020205826](../assets/images/image-20261028020205826.png)
@@ -52,7 +54,7 @@ Mermaid 图表默认提供居中显示，在鼠标悬浮时有范围提示：
 
 在 **设置 → ParaFlow → 编辑 → 代码块** 中调整自动换行、显示行号、语言输入控件的位置和语法高亮。
 
-语言控件可以放在右上角、右下角或关闭。语法配色可以跟随 Obsidian，也可以选择 One Light、Solarized 或 Light+；后三种配色适合浅色背景。配色选择保留语言识别、代码内容与代码块背景。
+语言控件可以放在右上角、右下角或关闭。语法配色可以跟随 Obsidian，也可以选择 One Light、Solarized 或 Light+；后三种配色适合浅色背景。
 
 **编辑 → Mermaid 图表** 控制图表增强；**复制 & 粘贴 → 粘贴时补全代码块边界** 控制相关粘贴辅助。粘贴方式见[视图与复制粘贴](views-and-clipboard.zh.md)。
 
