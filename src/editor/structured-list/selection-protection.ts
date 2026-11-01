@@ -235,7 +235,8 @@ function selectionFilter(
 	if (selectionModeExcluded(transaction)) return transaction;
 	if (!recognizedNormalSelectionTransaction(transaction)) return transaction;
 	const selection = mappedSelection(transaction);
-	return selection ? [transaction, { selection, sequential: true }] : transaction;
+	return selection && !selection.eq(transaction.newSelection, true)
+		? [transaction, { selection, sequential: true }] : transaction;
 }
 
 export interface SelectionProtectionOptions {

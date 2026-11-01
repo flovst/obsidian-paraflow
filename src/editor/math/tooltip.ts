@@ -16,13 +16,14 @@ export function centeredTooltipLeft(center: number, width: number, space: Pick<R
 	return Math.max(space.left, Math.min(center - width / 2, space.right - width));
 }
 
-export function mathTooltipPosition(view: EditorView, math: MathExpression, dom: HTMLElement):
+export function mathTooltipPosition(view: EditorView, math: MathExpression | (() => MathExpression), dom: HTMLElement):
 	Pick<TooltipView, 'getCoords' | 'positioned'> {
 	let anchor: Rect;
 	return {
 		getCoords() {
-			const start = view.domAtPos(math.from);
-			const end = view.domAtPos(math.to);
+			const expression = typeof math === 'function' ? math() : math;
+			const start = view.domAtPos(expression.from);
+			const end = view.domAtPos(expression.to);
 			const range = view.dom.ownerDocument.createRange();
 			range.setStart(start.node, start.offset);
 			range.setEnd(end.node, end.offset);
@@ -36,7 +37,8 @@ export function mathTooltipPosition(view: EditorView, math: MathExpression, dom:
 		},
 		positioned(space) {
 			const rect = dom.getBoundingClientRect();
-			const left = centeredTooltipLeft(anchor.left, rect.width, space);
+			const scroller = view.scrollDOM.getBoundingClientRect();
+			const left = centeredTooltipLeft(anchor.left, rect.width, { left: Math.max(space.left, scroller.left), right: Math.min(space.right, scroller.right) });
 			// The delta works for CM's fixed and transformed/absolute tooltip parents.
 			dom.style.left = `${parseFloat(dom.style.left) + (left - rect.left) / view.scaleX}px`;
 			const arrow = dom.querySelector<HTMLElement>('.cm-tooltip-arrow');

@@ -17,14 +17,16 @@ export function createBlankPointerExtension(isActive:(view:EditorView)=>boolean,
 		const down=(event:MouseEvent)=>{
 			if(forwarding||event.defaultPrevented||!active()||event.button!==0||event.ctrlKey||event.metaKey||event.altKey||event.detail>1||view.composing||view.state.field(compositionStateField,false))return;
 			const target=event.target as Element;
-			if(target.closest('.cm-editor')!==view.dom||target.closest('button,input,select,textarea,a,table,[role="button"]'))return;
+			if(target.closest('.cm-editor')!==view.dom||target.closest('button,input,select,textarea,a,table,[role="button"],.metadata-property,.metadata-add-button'))return;
 			const editable=target.closest('[contenteditable="true"]');
 			if(editable&&editable!==view.contentDOM)return;
 			pressed=true;
 			const tail=view.contentDOM.querySelector<HTMLElement>('.paraflow-virtual-tail');
 			const first=view.contentDOM.querySelector<HTMLElement>('.paraflow-virtual-head');
 			const firstBox=first?.getBoundingClientRect();
-			const before=edgeEnabled(view)&&(!!target.closest('.paraflow-virtual-head')||!!firstBox&&firstBox.width>0&&event.clientY<=firstBox.bottom+2&&event.clientY>=view.scrollDOM.getBoundingClientRect().top&&!target.closest('.metadata-container'));
+			const metadata=view.dom.querySelector<HTMLElement>('.metadata-container');
+			const metadataBottom=metadata?(metadata.querySelector<HTMLElement>('.metadata-content')??metadata).getBoundingClientRect().bottom:-Infinity;
+			const before=edgeEnabled(view)&&event.clientY>=metadataBottom&&(!!target.closest('.paraflow-virtual-head')||!!firstBox&&firstBox.width>0&&event.clientY<=firstBox.bottom+2&&event.clientY>=view.scrollDOM.getBoundingClientRect().top);
 			const exactTail=!!target.closest('.paraflow-virtual-tail');
 			let outside=exactTail;
 			if(tail&&(target===view.contentDOM||target===view.scrollDOM)){

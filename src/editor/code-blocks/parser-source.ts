@@ -1,5 +1,5 @@
 import { Facet, type EditorState, type Extension, type Text } from '@codemirror/state';
-import { parser } from '@lezer/markdown';
+import { sourceMarkdownTree } from '../runtime/source-markdown.js';
 import { Parser, type Input, type TreeFragment } from '@lezer/common';
 import { codeDraft, codeDraftState, type CodeDraft } from './draft-state.js';
 
@@ -41,7 +41,7 @@ export function scanCodeParserSource(source: string, draft: CodeDraft | null): C
 	// Keep command ownership on the literal opener, without exposing its backticks to native styling.
 	const masks = [...codeDraftMask(source, draft)], opaque: CodeParserRange[] = [...masks];
 	const normalized = maskCodeSource(source, masks);
-	parser.parse(normalized).iterate({ enter(ref) {
+	sourceMarkdownTree(normalized).iterate({ enter(ref) {
 		if (ref.name !== 'FencedCode') return;
 		let quoted = false;
 		for (let node = ref.node.parent; node; node = node.parent) if (node.name === 'Blockquote') quoted = true;

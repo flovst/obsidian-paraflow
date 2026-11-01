@@ -87,6 +87,8 @@ function renderPreview(view: EditorView, source: string, display: boolean,
 	}
 	let alive = true;
 	let revision = 0;
+	let rendering = false;
+	let queued: (() => void) | null = null;
 	const rendered = (): void => {
 		queueMicrotask(() => { if (alive) view.plugin(previewUpdates)!.schedule(() => alive, contentWidget); });
 	};
@@ -97,12 +99,17 @@ function renderPreview(view: EditorView, source: string, display: boolean,
 		dom.dataset.renderState = 'loading';
 		dom.setAttribute('aria-busy', 'true');
 		dom.classList.remove('paraflow-math-error');
+		dom.removeAttribute('title');
 		const showError = (error: unknown): void => {
 			if (!current()) return;
 			dom.dataset.renderState = 'error';
 			dom.removeAttribute('aria-busy');
 			dom.classList.add('paraflow-math-error');
-			dom.textContent = `无法预览此公式${error instanceof Error ? `：${error.message}` : ''}`;
+			const message = error instanceof Error ? error.message : 'Unable to preview formula';
+			if (className === 'paraflow-math-tooltip' && dom.querySelector('.paraflow-math-output')) {
+				dom.setAttribute('aria-description', message);
+				dom.title = message;
+			} else dom.textContent = message;
 			rendered();
 		};
 		const ready = (): void => {
@@ -118,13 +125,23 @@ function renderPreview(view: EditorView, source: string, display: boolean,
 			if (!cached && options.finishRenderMath) void options.finishRenderMath().then(ready, showError);
 			else ready();
 		};
-		try {
+		const convert = (): void => { try {
 			const cached = options.getCachedMath?.(source, display, view.dom.ownerDocument);
 			if (cached) { attach(cached, true); return; }
 			const result = options.renderMath(source, display, view.dom.ownerDocument);
-			if ('then' in result) void result.then(result => attach(result), showError);
+			if ('then' in result) {
+				rendering = true;
+				void result.then(result => attach(result), showError).finally(() => {
+					rendering = false;
+					const next = queued; queued = null;
+					if (alive) next?.();
+				});
+			}
 			else attach(result);
-		} catch (error) { showError(error); }
+		} catch (error) { showError(error); } };
+		// A tooltip has one active conversion and only the newest waiting input.
+		if (className === 'paraflow-math-tooltip' && rendering) queued = convert;
+		else convert();
 	};
 	render(source);
 	return { dom, render, destroy: () => { alive = false; } };
@@ -304,13 +321,25 @@ function buildProjection(state: EditorState, options: MathEditingOptions,
 		}
 	}
 	const activeSource = active ? projectMathSource(state, active).source : null;
-	const tooltip: Tooltip | null = active && !active.display ?
-		previous?.tooltip && matching([active], previous.active) && previous.activeSource === activeSource
-			? previous.tooltip : {
+	const tooltip: Tooltip | null = active && !active.display ? {
 		pos: active.from, end: active.to, above: false, strictSide: false, arrow: true,
-		create: view => {
-			const preview = renderPreview(view, activeSource!, false, 'paraflow-math-tooltip', options);
-			return { ...preview, ...mathTooltipPosition(view, active, preview.dom) };
+		// Tooltip factories are closures; retaining their identity reuses CodeMirror's view.
+		// eslint-disable-next-line @typescript-eslint/unbound-method -- Tooltip factory closes over its owner and never reads this.
+		create: previous?.tooltip && matching([active], previous.active) ? previous.tooltip.create : view => {
+			let expression = active;
+			let source = activeSource!;
+			const preview = renderPreview(view, source, false, 'paraflow-math-tooltip', options);
+			return { ...preview, ...mathTooltipPosition(view, () => expression, preview.dom),
+				update(update) {
+					if (!update.docChanged && !update.selectionSet) return;
+					const head = update.state.selection.main.head;
+					const next = discoverMath(update.state).find(math => !math.display && math.from <= head && head <= math.to);
+					if (!next) return;
+					expression = next;
+					const nextSource = projectMathSource(update.state, next).source;
+					if (source !== nextSource) { source = nextSource; preview.render(source); }
+				},
+			};
 		},
 	} : null;
 	return { previewRevision, active, activeSource, frozen, pressed, held, inlineActive, inlineFrozen: focused ? inlineFrozen : [],

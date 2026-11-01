@@ -80,8 +80,7 @@ export function planHeadingEnter(state: EditorState, operation: ParagraphEnterOp
 			selection: EditorSelection.create([EditorSelection.cursor((atStart ? position : from) + insert.length)]) });
 	}
 	const headingProjection = getHeadingProjectionState(state);
-	const heading = headingProjection?.headings.find(candidate => candidate.contentFrom <= position && position <= candidate.to &&
-		candidate.from !== headingProjection.editSession?.lineFrom);
+	const heading = headingProjection?.headings.find(candidate => candidate.contentFrom <= position && position <= candidate.to);
 	if (heading) {
 		const atStart = position === heading.contentFrom;
 		const from = atStart ? heading.from : position;

@@ -202,15 +202,47 @@ export function recognizedNormalSelectionTransaction(transaction: Transaction): 
 		hasTrustedUserEvent(transaction, trustedSelectionUserEvents);
 }
 
-const compositionPlugin = ViewPlugin.define(() => ({destroyed:false,destroy(){this.destroyed=true;}}), {
+const compositionPlugin = ViewPlugin.define(() => ({
+	destroyed: false,
+	pendingEnd: false,
+	destroy() {
+		this.destroyed = true;
+	},
+}), {
+	eventObservers: {
+		keydown(event, view) {
+			// CM flushes native DOM input before running non-IME key observers.
+			// Complete ownership before a rapid follow-up editing command.
+			if (this.pendingEnd && !['Process', 'Unidentified', 'Dead'].includes(event.key) &&
+				!event.isComposing && !view.compositionStarted) {
+				this.pendingEnd = false;
+				if (view.state.field(compositionStateField, false)) {
+					view.dispatch({ effects: compositionEnded.of(null) });
+				}
+			}
+		},
+	},
 	eventHandlers: {
 		compositionend(_event, view) {
-			// Native CM queues its final DOM flush before invoking custom handlers.
-			// A synchronous redraw here can overwrite that still-pending composition commit.
-			queueMicrotask(()=>{if(!this.destroyed&&!view.compositionStarted&&view.state.field(compositionStateField,false))view.dispatch({effects:compositionEnded.of(null)});});
+			this.pendingEnd = true;
+			// Native input may flush on the next frame. CM measures after that flush;
+			// complete ownership once its measurement cycle has also finished.
+			view.requestMeasure({
+				key: this,
+				read: () => null,
+				write: () => queueMicrotask(() => {
+					if (!this.destroyed && this.pendingEnd && !view.compositionStarted) {
+						this.pendingEnd = false;
+						if (view.state.field(compositionStateField, false)) {
+							view.dispatch({ effects: compositionEnded.of(null) });
+						}
+					}
+				}),
+			});
 			return false;
 		},
 		compositionstart(_event, view) {
+			this.pendingEnd = false;
 			view.dispatch({ effects: compositionStarted.of(null) });
 			return false;
 		},

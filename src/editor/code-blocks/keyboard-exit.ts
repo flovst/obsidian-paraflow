@@ -29,7 +29,9 @@ export function createCodeKeyboardExit(isActive:(view:EditorView)=>boolean):Exte
 			const goal=store.read()??selection.main.goalColumn??caret.left-view.contentDOM.getBoundingClientRect().left;
 			const plan=blockExitPlan(view.state,block.to,codeExitPrefix(view.state,block.to),event.key==='ArrowDown'?goal:undefined);
 			if(view.state.readOnly&&plan.changes)return;
-			const target=(plan.selection as EditorSelection).main.head;
+			let target=(plan.selection as EditorSelection).main.head;
+			const followingCode=discoverCodeBlocks(view.state).find(candidate=>candidate.from<=target&&target<codeBodyStart(view.state,candidate));
+			if(followingCode)target=codeBodyStart(view.state,followingCode);
 			const table=findEditableTableSources(view.state).find(table=>table.from<=target&&target<=table.to);
 			if(table) {
 				if(!enterFollowingTable(view,table.from,true,event.key==='ArrowDown'?goal:undefined))return;

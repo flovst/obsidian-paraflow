@@ -5,6 +5,7 @@ import {isolateHistory} from '@codemirror/commands';
 import {assertTableSourceCurrent,withTablePrefixes,type TableSource} from './edit-session';
 import type {TableModel} from './model';
 import {deleteTrack,insertTrack} from './operations';
+import {preservesListOwnership} from '../structured-list/numbering-intent';
 
 const markdownParser=parser.configure(GFM);
 
@@ -117,5 +118,7 @@ export function resizeHtmlTable(table:TableModel,rows:number,columns:number):Tab
 }
 export function replaceTableSource(state:EditorState,target:TableSource,insert:string):TransactionSpec {
 	assertTableSourceCurrent(state,target);insert=withTablePrefixes(target,insert);
-	return {changes:{from:target.from,to:target.to,insert},selection:{anchor:target.from},annotations:[Transaction.userEvent.of('input.table'),isolateHistory.of('full')]};
+	const table=target.kind==='markdown'&&!target.container?markdownParser.parse(insert).topNode.firstChild:null;
+	const opaque=table?.name==='Table'&&!table.nextSibling;
+	return {changes:{from:target.from,to:target.to,insert},selection:{anchor:target.from},annotations:[Transaction.userEvent.of('input.table'),isolateHistory.of('full'),...(opaque?[preservesListOwnership.of({from:target.from,to:target.to,insert})]:[])]};
 }

@@ -212,6 +212,16 @@ export function createVisualNavigationAdapter(view: EditorView): VisualNavigatio
 		moveVertically(position, forward, goalX) {
 			const origin = visibleGeometry(position);
 			let candidate = point(view.moveVertically(cursor(origin.position, goalX), forward));
+			const listPrefix = getStructuredListProjectionState(view.state)?.rangeIndex.protectedRanges.find(range =>
+				range.from <= candidate.position && candidate.position < range.to);
+			if (listPrefix) {
+				const prefix = view.coordsAtPos(candidate.position, 1);
+				const body = view.coordsAtPos(listPrefix.to, 1);
+				if (prefix && prefix.top < prefix.bottom && body && body.top < body.bottom && origin.coordinates &&
+					(forward ? body.top >= origin.coordinates.bottom : body.bottom <= origin.coordinates.top)) {
+					return this.alignGoalOnVisualLine!({ position: listPrefix.to, assoc: 1 }, goalX);
+				}
+			}
 			const direction = forward ? 1 : -1;
 			const lastLine = view.state.doc.lineAt(candidate.position).number;
 			// Native atomic skipping may cross an empty body's prefix and its preceding gap together.

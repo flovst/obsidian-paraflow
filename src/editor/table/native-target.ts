@@ -4,12 +4,17 @@ import {mapRenderedTextSelection} from './markdown-selection';
 import type {CellPosition,CellRectangle,TableModel} from './model';
 import {closeSelection} from './grid';
 import {findEditableTableSources,TableEditSession,type TableSource} from './edit-session';
-import {replaceTableSource} from './toolbar-source';
+import {formatMarkdownTable,replaceTableSource} from './toolbar-source';
 import {bookmarkRange,rangeFromBookmark,type TableActionTarget,type TextBookmark} from './action-target';
 import {showTextPreview} from './text-preview';
 import type {RowStructureChange} from './group-reconciliation';
 
-/** The host still owns pipe-table DOM, text editing, selection and row/column drag. */
+/** Native activation must not add a separate padding edit after a table action. */
+function nativeActionSource(source:string):string {
+	return !source||/^\s*<table(?:\s|>)/iu.test(source)?source:formatMarkdownTable(source);
+}
+
+/** The host owns pipe-table DOM, text editing and cell selection. */
 export class NativeTableTarget implements TableActionTarget {
 	readonly rectangle:CellRectangle;
 	get trackRectangle():CellRectangle{return this.rectangle;}
@@ -22,6 +27,7 @@ export class NativeTableTarget implements TableActionTarget {
 		this.rectangle=closeSelection(session.table,{row:Math.min(...rows),column:Math.min(...columns)},{row:Math.max(...rows),column:Math.max(...columns)});
 	}
 	static replaceMarkdownSource(view:EditorView,source:TableSource,cell:HTMLElement|null,next:string,focus?:TableFocusBookmark,to=source.to):void {
+		next=nativeActionSource(next);
 		const bookmark=focus??(cell&&next?NativeTableTarget.captureSourceFocus(cell):undefined);
 		// Host transaction filters can destroy the active native cell editor.
 		const plan=replaceTableSource(view.state,source,next);
@@ -75,6 +81,7 @@ export class NativeTableTarget implements TableActionTarget {
 	commit(table:TableModel|null,structural=false,change?:RowStructureChange):void {this.clearPreview();this.dispatch(table?this.session.serializeAction(table,structural,change):'',table===null,change);}
 	replaceSource(source:string,change?:RowStructureChange,focus?:TableFocusBookmark):void {this.clearPreview();this.dispatch(source,!source,change,focus);}
 	private dispatch(source:string,deleted:boolean,change?:RowStructureChange,focus=this.focusBookmark):void {
+		source=nativeActionSource(source);
 		const transaction=this.view.state.update(this.session.replace(this.view.state,source,change));
 		if(!deleted)requestTableFocus(this.view,transaction,this.session.target.from,focus);
 		this.view.dispatch(transaction);

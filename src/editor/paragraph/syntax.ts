@@ -15,6 +15,7 @@ import type {
 import { capabilitiesForTopLevelBlock } from './model.js';
 import { isSeparatorlessListMarkerLine, markdownColumns, prefixPolicy } from '../structured-list/prefix.js';
 import { enumerateListItems, isObsidianListLineName, listParagraphContinuations } from '../structured-list/syntax.js';
+import type { ListItemSyntax } from '../structured-list/model.js';
 import { standaloneMediaKind } from './media.js';
 import { htmlBlockExtents } from '../table/html-table-range.js';
 import { emptyBodies } from '../runtime/empty-body-state.js';
@@ -51,8 +52,24 @@ function confirmedBlocks(state: EditorState, blocks: readonly TopLevelBlockBound
 	});
 }
 
+const tokenNames = new Map<string, readonly string[]>();
 function nodeNameTokens(name: string): readonly string[] {
-	return name.split(/[\s_]+/u);
+	let tokens = tokenNames.get(name);
+	if (!tokens) tokenNames.set(name, tokens = name.split(/[\s_]+/u));
+	return tokens;
+}
+
+/** Facets belong to the state; parser coverage may still advance within that state. */
+function syntaxMemo<Value>(compute: (state: EditorState) => Value): (state: EditorState) => Value {
+	const cache = new WeakMap<EditorState, { tree: Tree; native: Tree; end: number; value: Value }>();
+	return state => {
+		const tree = syntaxTree(state), native = nativeSyntaxTree(state), end = confirmedSyntaxEnd(state);
+		const cached = cache.get(state);
+		if (cached?.tree === tree && cached.native === native && cached.end === end) return cached.value;
+		const value = compute(state);
+		cache.set(state, { tree, native, end, value });
+		return value;
+	};
 }
 
 function isHypermdBlockNode(node: SyntaxNode): boolean {
@@ -112,7 +129,12 @@ function htmlGrammarBoundaries(state: EditorState): readonly TopLevelBlockBounda
 	const cached = htmlBoundaryCache.get(state.doc);
 	if (cached?.end === end) return cached.blocks;
 	const blocks: TopLevelBlockBoundary[] = [];
-	const source=detailsMarkdownSource(state.sliceDoc(0, end)),tree = htmlBoundaryGrammar.parse(source);
+	const source=detailsMarkdownSource(state.sliceDoc(0, end));
+	if (!source.includes('<')) {
+		htmlBoundaryCache.set(state.doc, { end, blocks });
+		return blocks;
+	}
+	const tree = htmlBoundaryGrammar.parse(source);
 	let extents:ReturnType<typeof htmlBlockExtents>|undefined;
 	let consumed=0;
 	for (let node = tree.topNode.firstChild; node; node = node.nextSibling) {
@@ -138,7 +160,7 @@ function isHypermdHeadingName(name: string): boolean {
 		tokens.some((token) => token.startsWith('HyperMD-header-'));
 }
 
-function isHypermdState(state: EditorState): boolean {
+const isHypermdState = syntaxMemo((state: EditorState): boolean => {
 	if (state.facet(language)?.name === 'hypermd') return true;
 	let found = false;
 	// Shared math tokens do not change the underlying Markdown parser's identity.
@@ -148,7 +170,7 @@ function isHypermdState(state: EditorState): boolean {
 		},
 	});
 	return found;
-}
+});
 
 function lineContentEdge(
 	state: EditorState,
@@ -160,7 +182,7 @@ function lineContentEdge(
 	return line.to - (/[ \t]*$/u.exec(line.text)?.[0].length ?? 0);
 }
 
-function hypermdDelimitedBoundaries(state: EditorState): readonly TopLevelBlockBoundary[] {
+const hypermdDelimitedBoundaries = syntaxMemo((state: EditorState): readonly TopLevelBlockBoundary[] => {
 	const boundaries: TopLevelBlockBoundary[] = [];
 	let mathStartLine: number | null = null;
 	const admittedHtml = new Set<number>();
@@ -200,9 +222,9 @@ function hypermdDelimitedBoundaries(state: EditorState): readonly TopLevelBlockB
 		});
 	}
 	return boundaries;
-}
+});
 
-function blockedHypermdLines(state: EditorState): ReadonlySet<number> {
+const blockedHypermdLines = syntaxMemo((state: EditorState): ReadonlySet<number> => {
 	const blocked = new Set<number>();
 	syntaxTree(state).iterate({
 		enter: (node) => {
@@ -218,7 +240,7 @@ function blockedHypermdLines(state: EditorState): ReadonlySet<number> {
 		for (let line = fromLine; line <= toLine; line += 1) blocked.add(line);
 	}
 	return blocked;
-}
+});
 
 interface HypermdBlockRange extends ParagraphGap {
 	readonly name: string;
@@ -275,9 +297,9 @@ function hypermdBlockFamily(name: string): string | null {
 	return '*';
 }
 
-function hypermdBlockFamilyLines(
+const hypermdBlockFamilyLines = syntaxMemo((
 	state: EditorState,
-): ReadonlyMap<string, ReadonlySet<number>> {
+): ReadonlyMap<string, ReadonlySet<number>> => {
 	const lines = new Map<string, Set<number>>();
 	syntaxTree(state).iterate({
 		enter: (node) => {
@@ -294,7 +316,7 @@ function hypermdBlockFamilyLines(
 		},
 	});
 	return lines;
-}
+});
 
 export function hypermdBlockRangesAround(
 	state: EditorState,
@@ -474,6 +496,23 @@ export interface ParagraphAuthoritySlice {
 	readonly coveredRanges: readonly ParagraphGap[];
 }
 
+function outerListItems(items: readonly ListItemSyntax[]): readonly ListItemSyntax[] {
+	const sorted = [...items].sort((a, b) => a.itemNode.from - b.itemNode.from);
+	const contained = new Set<ListItemSyntax>();
+	let precedingEnd = -1;
+	for (let index = 0; index < sorted.length;) {
+		let next = index, groupEnd = precedingEnd;
+		while (next < sorted.length && sorted[next]!.itemNode.from === sorted[index]!.itemNode.from) {
+			const item = sorted[next++]!;
+			if (item.itemNode.to <= precedingEnd) contained.add(item);
+			groupEnd = Math.max(groupEnd, item.itemNode.to);
+		}
+		precedingEnd = groupEnd;
+		index = next;
+	}
+	return items.filter(item => !contained.has(item));
+}
+
 function standardBoundaryBlocks(state:EditorState,nodes: readonly SyntaxNode[]): readonly TopLevelBlockBoundary[] {
 	const boundaries: TopLevelBlockBoundary[] = [];
 	const htmlBlocks=htmlGrammarBoundaries(state);
@@ -516,7 +555,7 @@ function standardBoundaryBlocks(state:EditorState,nodes: readonly SyntaxNode[]):
 		}
 		if (node.name !== 'BulletList' && node.name !== 'OrderedList') continue;
 		const items = enumerateListItems(state, [{from:node.from,to:node.to}]);
-		for (const item of items.filter(item => !items.some(parent => parent.itemNode.from < item.itemNode.from && parent.itemNode.to >= item.itemNode.to))) {
+		for (const item of outerListItems(items)) {
 			boundaries.push({from:state.doc.lineAt(item.markerLine.from).from,kind:'list-item',to:item.itemNode.to});
 		}
 	}
@@ -775,8 +814,7 @@ function hypermdListBoundaries(state: EditorState): readonly TopLevelBlockBounda
 		},
 	});
 	const allItems = enumerateListItems(state);
-	const items = allItems
-		.filter((item) => !allItems.some(parent => parent.itemNode.from < item.itemNode.from && parent.itemNode.to >= item.itemNode.to))
+	const items = [...outerListItems(allItems)]
 		.sort((left, right) => left.markerLine.from - right.markerLine.from);
 	if (items.length === 0) return [];
 	const confirmedOwners = new Map(allItems.map(item => [state.doc.lineAt(item.markerLine.from).number, item]));
@@ -1250,6 +1288,7 @@ function discoverRuns(
 function authorityFromBlocks(
 	state: EditorState,
 	blocks: readonly TopLevelBlockBoundary[],
+	knownRuns?: readonly ParagraphRun[],
 ): ParagraphAuthority {
 	const boundaries = blocks
 		.filter(({ kind }) => capabilitiesForTopLevelBlock(kind).gapBoundary);
@@ -1261,7 +1300,7 @@ function authorityFromBlocks(
 		boundaries: boundaries.map(({from,to})=>({from,to})),
 		complete: syntaxTreeAvailable(state, state.doc.length),
 		paragraphs,
-		runs: discoverRuns(state, boundaries)
+		runs: (knownRuns ?? discoverRuns(state, boundaries))
 			.filter(run => syntaxTreeAvailable(state, run.to)),
 	};
 }
@@ -1272,6 +1311,12 @@ const authorities = new WeakMap<EditorState, {
 	readonly confirmedTo: number;
 	readonly authority: ParagraphAuthority;
 }>();
+
+/** Share an authority whose unchanged structure was proved by the projection's edit guard. */
+export function retainParagraphAuthority(state: EditorState, authority: ParagraphAuthority): void {
+	authorities.set(state, { nativeTree: nativeSyntaxTree(state), semanticTree: syntaxTree(state),
+		confirmedTo: confirmedSyntaxEnd(state), authority });
+}
 
 /** Code ownership needs whole definition bodies, not paragraph spacing or marker-only footnote indexes. */
 export function discoverFootnoteDefinitionBoundaries(state: EditorState): readonly TopLevelBlockBoundary[] {
@@ -1328,9 +1373,18 @@ export function discoverParagraphAuthorityWithin(
 	const nodes = hypermd ? [] : topLevelNodesAround(state, ranges);
 	const coveredRanges = hypermd?.coveredRanges ??
 		nodes.map((node) => ({ from: node.from, to: node.to }));
-	const blocks = hypermd
-		? topLevelBoundaries(state, coveredRanges)
-		: standardBoundariesForNodes(state, nodes, false);
+	if (hypermd) {
+		const complete = discoverParagraphAuthority(state);
+		const blocks = boundaryNeighborhood(complete.blocks, coveredRanges);
+		const starts = new Set(blocks.map(block => block.from));
+		const ends = new Set(blocks.map(block => block.to));
+		// A local neighborhood cannot establish new document-edge run ownership.
+		const runs = complete.runs.filter(run =>
+			(run.kind === 'leading' || ends.has(run.from)) &&
+			(run.kind === 'trailing' || starts.has(run.to)));
+		return { authority: authorityFromBlocks(state, blocks, runs), coveredRanges };
+	}
+	const blocks = standardBoundariesForNodes(state, nodes, false);
 	return {
 		authority: authorityFromBlocks(state, blocks),
 		coveredRanges,

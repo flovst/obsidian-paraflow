@@ -61,6 +61,12 @@ function navigationServices(
 	};
 }
 
+function inheritVerticalGoal(view: EditorView, operation: NavigationOperationId, services: ReturnType<typeof navigationServices>): void {
+	if (operation === 'up-down' && services.goalX.read() === null && view.state.selection.main.goalColumn !== undefined) {
+		services.goalX.write(view.state.selection.main.goalColumn);
+	}
+}
+
 function dispatchNavigation<K extends NavigationOperationId>(
 	view: EditorView,
 	intent: NavigationIntent<K>,
@@ -70,6 +76,7 @@ function dispatchNavigation<K extends NavigationOperationId>(
 	const context = buildNavigationContext(view.state, view.state.selection.main.head, runtime);
 	if (!context) return false;
 	const executionServices = navigationServices(view, runtime, services);
+	inheritVerticalGoal(view, intent.operation, executionServices);
 	if (exitCollapsedCallout(view, intent, executionServices)) return true;
 	const result = executeRegisteredOperation({ context, intent, services: executionServices });
 	if (result.kind === 'selection') {

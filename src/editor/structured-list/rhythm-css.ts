@@ -4,8 +4,9 @@ const item = ':is(.HyperMD-list-line,.paraflow-list-owned-line):not(.paraflow-li
 /** Source body and containers consume the same list row geometry. */
 export const LIST_RHYTHM_CSS = `
 ${listOwner}{--paraflow-live-list-content-offset:.75em}
-${listOwner} .paraflow-list-continuation-line:not(.paraflow-list-empty-body-line){padding-block:0}
-${listOwner} .cm-line.paraflow-list-owned-line.paraflow-list-continuation-line:not(.paraflow-list-empty-body-line){padding-block-start:0}
+${listOwner} .paraflow-list-continuation-line{padding-block:0}
+${listOwner} .cm-line.paraflow-list-owned-line.paraflow-list-continuation-line{padding-block-start:0}
+${listOwner} .paraflow-list-body-separator:not(.paraflow-list-paragraph-separator) + .cm-line.paraflow-list-empty-body-line.paraflow-list-continuation-line{padding-block-start:var(--paraflow-list-row-padding,.3em)}
 ${listOwner} ${item}[data-paraflow-list-rhythm~="continuation-before"][data-paraflow-list-rhythm]{padding-block-end:0}
 ${listOwner} .paraflow-list-continuation-line[data-paraflow-list-rhythm~="continuation-end"][data-paraflow-list-rhythm]{
  padding-block-end:var(--paraflow-list-row-padding,.25em);

@@ -1,7 +1,7 @@
 import { syntaxTree, syntaxTreeAvailable } from '@codemirror/language';
 import type { EditorState, Text } from '@codemirror/state';
 import type { Tree } from '@lezer/common';
-import { GFM, parser } from '@lezer/markdown';
+import { sourceGfmTree } from '../runtime/source-markdown.js';
 import { classifyWhitespaceLine } from './context-analysis.js';
 import { listGroupBoundary } from './group-boundary.js';
 import { emptyBodies, createdBodyOwnership } from '../runtime/empty-body-state.js';
@@ -23,12 +23,11 @@ interface ObsidianSyntaxLine {
 	readonly range: SourceRange;
 }
 
-const sourceGrammar = parser.configure(GFM);
 const sourceTrees = new WeakMap<Text, Tree>();
 export function sourceListTree(state: EditorState): Tree {
 	let tree = sourceTrees.get(state.doc);
 	if (!tree) {
-		tree = sourceGrammar.parse(detailsMarkdownSource(state.doc.toString()));
+		tree = sourceGfmTree(detailsMarkdownSource(state.doc.toString()));
 		sourceTrees.set(state.doc, tree);
 	}
 	return tree;
@@ -57,7 +56,9 @@ export function listParagraphContinuations(state: EditorState): readonly ListPar
 	return facts;
 }
 
-function missingBodyLines(state: EditorState, lines: readonly ObsidianSyntaxLine[]): ReadonlySet<number> {
+type ParseAvailable = (to: number) => boolean;
+
+function missingBodyLines(state: EditorState, lines: readonly ObsidianSyntaxLine[], available: ParseAvailable): ReadonlySet<number> {
 	const known = new Map(lines.map(line => [line.lineNumber, line]));
 	const missing = new Set<number>();
 	let active = lines[0]!.syntax !== null;
@@ -69,7 +70,7 @@ function missingBodyLines(state: EditorState, lines: readonly ObsidianSyntaxLine
 		}
 		const line = state.doc.line(number);
 		if (!line.text.trim()) { active = false; continue; }
-		if (active && syntaxTreeAvailable(state, line.to)) missing.add(number);
+		if (active && available(line.to)) missing.add(number);
 	}
 	return missing;
 }
@@ -78,19 +79,19 @@ function shallowerBody(line: ObsidianSyntaxLine, ownerLevel: number | null): boo
 	return line.isNoBullet && !line.isWhitespace && line.level !== null && ownerLevel !== null && line.level < ownerLevel;
 }
 
-function shallowBodyLines(state: EditorState, lines: readonly ObsidianSyntaxLine[]): readonly number[] {
+function shallowBodyLines(lines: readonly ObsidianSyntaxLine[], available: ParseAvailable): readonly number[] {
 	let ownerLevel: number | null = null;
 	const candidates: number[] = [];
 	for (const line of lines) {
 		if (line.syntax) ownerLevel = line.level;
-		if (shallowerBody(line, ownerLevel) && syntaxTreeAvailable(state, line.range.to)) candidates.push(line.lineNumber);
+		if (shallowerBody(line, ownerLevel) && available(line.range.to)) candidates.push(line.lineNumber);
 	}
 	return candidates;
 }
 
-function includeMissingLazyLines(state: EditorState, lines: readonly ObsidianSyntaxLine[]): readonly ObsidianSyntaxLine[] {
+function includeMissingLazyLines(state: EditorState, lines: readonly ObsidianSyntaxLine[], available: ParseAvailable): readonly ObsidianSyntaxLine[] {
 	if (lines.length === 0) return lines;
-	const missing = new Set([...missingBodyLines(state, lines), ...shallowBodyLines(state, lines)]);
+	const missing = new Set([...missingBodyLines(state, lines, available), ...shallowBodyLines(lines, available)]);
 	if (missing.size === 0) return lines;
 	const normalized = new Map(lines.map(line => [line.lineNumber, line]));
 	for (const fact of listParagraphContinuations(state)) {
@@ -199,6 +200,7 @@ function fencedListLevels(state: EditorState, facts: readonly SyntaxNodeFact[]):
 function obsidianListLines(
 	state: EditorState,
 	facts: readonly SyntaxNodeFact[],
+	available: ParseAvailable,
 ): readonly ObsidianSyntaxLine[] {
 	const lines = new Map<number, ObsidianSyntaxLine>();
 	const codeLevels = fencedListLevels(state, facts);
@@ -219,7 +221,7 @@ function obsidianListLines(
 		const existing = lines.get(lineNumber);
 		if (!existing || (!existing.syntax && syntax)) lines.set(lineNumber, candidate);
 	}
-	return includeMissingLazyLines(state, [...lines.values()].sort((left, right) => left.lineNumber - right.lineNumber));
+	return includeMissingLazyLines(state, [...lines.values()].sort((left, right) => left.lineNumber - right.lineNumber), available);
 }
 
 function continuesObsidianItem(
@@ -331,12 +333,39 @@ function runtimeOwnedEnd(state: EditorState, item: ListItemSyntax, originalTo: n
 	return to;
 }
 
+interface NormalizedItems {
+	readonly tree: Tree;
+	readonly items: readonly ListItemSyntax[];
+	readonly availableThrough: number | null;
+	readonly unavailableFrom: number | null;
+}
+const normalizedItems = new WeakMap<EditorState, NormalizedItems>();
+
 function allListItems(state: EditorState): readonly ListItemSyntax[] {
-	const facts = collectSyntaxFacts(syntaxTree(state));
+	const tree = syntaxTree(state);
+	const cached = normalizedItems.get(state);
+	// Availability covers a document prefix and can change without replacing state/tree.
+	// Its two observed extremes validate every availability query used by normalization.
+	if (cached?.tree === tree &&
+		(cached.availableThrough === null || syntaxTreeAvailable(state, cached.availableThrough)) &&
+		(cached.unavailableFrom === null || !syntaxTreeAvailable(state, cached.unavailableFrom))) return cached.items;
+	let availableThrough: number | null = null, unavailableFrom: number | null = null;
+	const available: ParseAvailable = to => {
+		const value = syntaxTreeAvailable(state, to);
+		if (value) availableThrough = Math.max(availableThrough ?? to, to);
+		else unavailableFrom = Math.min(unavailableFrom ?? to, to);
+		return value;
+	};
+	const items = normalizeListItems(state, collectSyntaxFacts(tree), available);
+	normalizedItems.set(state, { tree, items, availableThrough, unavailableFrom });
+	return items;
+}
+
+function normalizeListItems(state: EditorState, facts: readonly SyntaxNodeFact[], available: ParseAvailable): readonly ListItemSyntax[] {
 	const standard = standardItems(state, facts);
 	const items = standard.length > 0
 		? standard
-		: normalizedObsidianItems(state, obsidianListLines(state, facts));
+		: normalizedObsidianItems(state, obsidianListLines(state, facts, available));
 	const latestStartByEnd = new Map<number, number>();
 	const boundaries: { markerFrom: number; to: number }[] = [];
 	for (const item of items) {

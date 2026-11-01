@@ -69,7 +69,16 @@ export const codeDraftHistoryInversion=invertedEffects.of(tr=>tr.effects.filter(
 
 export const rememberCodeDraft=EditorState.transactionExtender.of(tr=>{
 	if(!tr.docChanged||tr.isUserEvent('undo')||tr.isUserEvent('redo')||tr.effects.some(effect=>effect.is(codeDraftHistory)||effect.is(virtualBodyEdit)))return null;
-	const before=tr.startState.facet(codeDraft),after=tr.state.facet(codeDraft);
+	const before=tr.startState.facet(codeDraft);
+	// Only plain typing can create a typed opener; other edits need history only
+	// when leaving an existing typed draft or activating draft ownership.
+	if(!before?.typed&&(!tr.isUserEvent('input.type')||tr.isUserEvent('input.type.compose'))&&
+		!tr.effects.some(effect=>effect.is(activateCodeDraft)))return null;
+	// Extenders also run for intermediate filter results. Only an existing typed
+	// draft or a possible fence opener needs the resulting state for history.
+	if(!before?.typed&&!tr.effects.some(effect=>effect.is(activateCodeDraft))&&
+		!/`{3,}|~{3,}/u.test(tr.newDoc.lineAt(tr.newSelection.main.head).text))return null;
+	const after=tr.state.facet(codeDraft);
 	if(!before&&after?.typed)return {effects:codeDraftHistory.of({from:after.from,typed:true,created:false})};
 	if(before?.typed&&!after)return {effects:codeDraftHistory.of({from:tr.changes.mapPos(before.from,-1),typed:true,created:true})};
 	return null;

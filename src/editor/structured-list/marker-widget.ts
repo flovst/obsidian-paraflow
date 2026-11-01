@@ -168,6 +168,8 @@ function taskPrefixBoundaryX(dom: HTMLElement, after: boolean): number | null {
 	return after ? rect.right : rect.left;
 }
 
+const taskWidgets = new WeakMap<HTMLElement, TaskPrefixWidget>();
+
 export class TaskPrefixWidget extends WidgetType {
 	constructor(
 		readonly marker: StructuredListMarker,
@@ -216,10 +218,17 @@ export class TaskPrefixWidget extends WidgetType {
 		checkbox.checked = this.checked;
 		checkbox.tabIndex = -1;
 		checkbox.dataset.task = this.checked ? 'x' : '';
-		checkbox.addEventListener('click', (event) => {
+		// Checkbox gestures do not start an editor selection/reveal transaction.
+		checkbox.addEventListener('mousedown', event => {
 			event.preventDefault();
 			event.stopPropagation();
-			dispatchTaskCheckboxToggle(view, this.taskTokenFrom);
+		});
+		checkbox.addEventListener('click', (event) => {
+			event.stopPropagation();
+			dispatchTaskCheckboxToggle(view, taskWidgets.get(prefix)!.taskTokenFrom);
+			// Native checkbox activation runs before click; keep the source projection
+			// authoritative without cancelling activation and rolling it back afterward.
+			checkbox.checked = taskWidgets.get(prefix)!.checked;
 		});
 		const separator = createDetachedEl(view.dom.ownerDocument, 'span');
 		separator.className = 'paraflow-task-content-separator';
@@ -230,6 +239,20 @@ export class TaskPrefixWidget extends WidgetType {
 		caretMetric.setAttribute('aria-hidden', 'true');
 		caretMetric.textContent = '\u200b';
 		prefix.append(marker, markerSeparator, checkbox, separator, caretMetric);
+		taskWidgets.set(prefix, this);
 		return prefix;
+	}
+
+	updateDOM(dom: HTMLElement): boolean {
+		if (!taskWidgets.has(dom)) return false;
+		dom.className = `paraflow-task-prefix paraflow-task-prefix--${this.marker.label === null ? 'unordered' : 'ordered'}`;
+		updateOwnedMarker(dom.querySelector<HTMLElement>('.paraflow-list-marker')!, this.marker);
+		dom.querySelector<HTMLElement>('.paraflow-task-marker-separator')!.textContent = this.markerSeparator;
+		dom.querySelector<HTMLElement>('.paraflow-task-content-separator')!.textContent = this.contentSeparator;
+		const checkbox = dom.querySelector<HTMLInputElement>('.paraflow-task-checkbox')!;
+		checkbox.checked = this.checked;
+		checkbox.dataset.task = this.checked ? 'x' : '';
+		taskWidgets.set(dom, this);
+		return true;
 	}
 }

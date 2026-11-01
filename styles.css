@@ -642,7 +642,7 @@ body .workspace-leaf-content[data-type="markdown"] .markdown-reading-view .markd
 }
 
 /* Native HTML embeds lack Obsidian's markdown-rendered ancestor. */
-.markdown-source-view.mod-cm6.is-live-preview :where(mark) {
+:is(.markdown-source-view.mod-cm6.is-live-preview, .markdown-reading-view) :where(mark) {
 	background: var(--paraflow-highlight-background, var(--highlight-background, var(--text-highlight-bg)));
 	color: var(--paraflow-highlight-color, inherit);
 }
@@ -1357,6 +1357,13 @@ body .workspace-leaf-content[data-type="markdown"] .markdown-reading-view .markd
  line-height: 0;
  padding-block: 0;
 }
+.markdown-source-view.mod-cm6.is-live-preview
+ > .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+ .cm-content[contenteditable] .paraflow-list-body-separator.paraflow-list-paragraph-separator {
+ height: calc(2 * var(--paraflow-list-row-padding, .25em));
+ min-height: calc(2 * var(--paraflow-list-row-padding, .25em));
+ line-height: calc(2 * var(--paraflow-list-row-padding, .25em));
+}
 /* Native and projected rows share the inline padding owner; row tokens retain their geometry. */
 .markdown-source-view.mod-cm6.is-live-preview
 	> .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
@@ -1522,7 +1529,7 @@ body .workspace-leaf-content[data-type="markdown"] .markdown-reading-view .markd
 	background: var(--paraflow-inline-code-background, var(--paraflow-code-background, var(--code-background)));
 	border: var(--paraflow-inline-code-border, 1px solid var(--paraflow-border-color, var(--background-modifier-border)));
 	border-radius: var(--paraflow-inline-code-radius, 3px);
-	padding: var(--paraflow-inline-code-padding, 0 0.2em);
+	padding: var(--paraflow-inline-code-padding, var(--paraflow-inline-code-padding-top, 0) var(--paraflow-inline-code-padding-right, .2em) var(--paraflow-inline-code-padding-bottom, 0) var(--paraflow-inline-code-padding-left, .2em));
 	font-family: var(--paraflow-inline-code-font, var(--font-monospace));
 	font-size: var(--paraflow-inline-code-size, 0.9em);
 }
@@ -1634,11 +1641,11 @@ table.paraflow-table-nowrap > :is(thead, tbody, tfoot) > tr > :is(td,th),
 .markdown-source-view.mod-cm6.is-live-preview :is(.cm-table-widget,.paraflow-html-table-editor) table.paraflow-table-nowrap .table-cell-wrapper { white-space:nowrap; overflow-wrap:normal; word-break:normal; }
 .markdown-source-view.mod-cm6.is-live-preview :is(.cm-table-widget,.paraflow-html-table-editor) table.paraflow-table-nowrap :is(.cm-scroller,.cm-content,.cm-line) { white-space:pre; overflow-wrap:normal; word-break:normal; }
 table.paraflow-display-table > :where(thead, tbody, tfoot) > tr > .paraflow-display-cell-base:where(:not([style*="background" i])),
-:is(.markdown-source-view.mod-cm6.is-live-preview, .markdown-reading-view, .markdown-rendered) table.paraflow-display-table > :where(thead, tbody, tfoot) > tr > :is(td, th).paraflow-display-cell-base:where(:not([style*="background" i])) { background-color: var(--paraflow-table-base-background, var(--background-primary)); }
+body :is(.markdown-source-view.mod-cm6.is-live-preview, .markdown-reading-view, .markdown-rendered) table.paraflow-display-table > :where(thead, tbody, tfoot) > tr.paraflow-display-row-neutral > :is(td, th).paraflow-display-cell-base:not([style*="background" i]) { background-color: var(--paraflow-table-base-background, var(--background-primary)); }
 table.paraflow-display-table > :where(thead, tbody, tfoot) > tr > .paraflow-display-cell-stripe:where(:not([style*="background" i])),
-:is(.markdown-source-view.mod-cm6.is-live-preview, .markdown-reading-view, .markdown-rendered) table.paraflow-display-table > :where(thead, tbody, tfoot) > tr > :is(td, th).paraflow-display-cell-stripe:where(:not([style*="background" i])) { background-color: var(--paraflow-table-stripe-background, var(--paraflow-surface-color, var(--background-secondary))); }
+body :is(.markdown-source-view.mod-cm6.is-live-preview, .markdown-reading-view, .markdown-rendered) table.paraflow-display-table > :where(thead, tbody, tfoot) > tr.paraflow-display-row-neutral > :is(td, th).paraflow-display-cell-stripe:not([style*="background" i]) { background-color: var(--paraflow-table-stripe-background, var(--paraflow-surface-color, var(--background-secondary))); }
 table.paraflow-display-table > :where(thead, tbody, tfoot) > tr > .paraflow-display-header:where(:not([style*="background" i])),
-:is(.markdown-source-view.mod-cm6.is-live-preview, .markdown-reading-view, .markdown-rendered) table.paraflow-display-table > :where(thead, tbody, tfoot) > tr > :is(td, th).paraflow-display-header:where(:not([style*="background" i])) { background-color: var(--paraflow-table-header-background, var(--paraflow-surface-color, var(--background-secondary))); }
+body :is(.markdown-source-view.mod-cm6.is-live-preview, .markdown-reading-view, .markdown-rendered) table.paraflow-display-table > :where(thead, tbody, tfoot) > tr.paraflow-display-row-neutral > :is(td, th).paraflow-display-header:not([style*="background" i]) { background-color: var(--paraflow-table-header-background, var(--paraflow-surface-color, var(--background-secondary))); }
 table.paraflow-display-table > :is(thead, tbody, tfoot) > tr > .paraflow-display-header-weight { font-weight: var(--font-bold, 700); }
 
 
@@ -2225,11 +2232,11 @@ pre.paraflow-code-display.paraflow-code-wrap > code {
 .paraflow-html-table-editor p { margin-block:0.35em; }
 .paraflow-html-table-editor p:first-child { margin-top:0; }
 .paraflow-html-table-editor p:last-child { margin-bottom:0; }
-.paraflow-html-table-editor[data-pf-track-hover="row"] { cursor:row-resize; }
-.paraflow-html-table-editor[data-pf-track-hover="column"] { cursor:col-resize; }
+.paraflow-html-table-editor[data-pf-track-hover="row"] { cursor:ns-resize; }
+.paraflow-html-table-editor[data-pf-track-hover="column"] { cursor:ew-resize; }
 .paraflow-html-table-editor[data-pf-track-hover] :is(td,th) { cursor:inherit; }
-.paraflow-html-table-editor[data-pf-track-drag="row"] { --paraflow-track-drag-cursor:row-resize; }
-.paraflow-html-table-editor[data-pf-track-drag="column"] { --paraflow-track-drag-cursor:col-resize; }
+.paraflow-html-table-editor[data-pf-track-drag="row"] { --paraflow-track-drag-cursor:ns-resize; }
+.paraflow-html-table-editor[data-pf-track-drag="column"] { --paraflow-track-drag-cursor:ew-resize; }
 .paraflow-html-table-editor[data-pf-track-drag],.paraflow-html-table-editor[data-pf-track-drag] * { cursor:var(--paraflow-track-drag-cursor); user-select:none; }
 .cm-table-widget.paraflow-table-controls .is-selected::after,
 .cm-table-widget.paraflow-table-controls.is-selected table::after,
@@ -2246,11 +2253,21 @@ pre.paraflow-code-display.paraflow-code-wrap > code {
 .paraflow-table-drag-cue[data-pf-axis="column"] { width:2px; }
 .paraflow-table-drag-cue[data-pf-axis="row"] { height:2px; }
 .paraflow-table-drag-cue[hidden],.paraflow-table-drag-preview-layer[hidden] { display:none; }
-.cm-table-widget.paraflow-table-controls .table-col-drag-handle { left:0; top:0; width:100%; height:.35em; padding:0; opacity:1; border:0; background:transparent; cursor:col-resize; }
-.cm-table-widget.paraflow-table-controls .table-row-drag-handle { left:0; top:0; height:100%; width:.35em; padding:0; opacity:1; border:0; background:transparent; cursor:row-resize; }
+.markdown-source-view.mod-cm6 .cm-table-widget.paraflow-table-controls .table-col-drag-handle { inset:auto; inset-inline:auto; inset-block:auto; left:0; top:0; font-size:inherit; pointer-events:none; width:100%; height:.35em; padding:0; opacity:1; border:0; background:transparent; cursor:ew-resize; }
+.markdown-source-view.mod-cm6 .cm-table-widget.paraflow-table-controls .table-row-drag-handle { inset:auto; inset-inline:auto; inset-block:auto; left:0; top:0; font-size:inherit; pointer-events:none; height:100%; width:.35em; padding:0; opacity:1; border:0; background:transparent; cursor:ns-resize; }
+.markdown-source-view.mod-cm6 .cm-table-widget.paraflow-table-controls .table-col-drag-handle:is(:hover,:active) { background:transparent; box-shadow:none; cursor:ew-resize; }
+.markdown-source-view.mod-cm6 .cm-table-widget.paraflow-table-controls .table-row-drag-handle:is(:hover,:active) { background:transparent; box-shadow:none; cursor:ns-resize; }
 .cm-table-widget.paraflow-table-controls :is(.table-col-drag-handle,.table-row-drag-handle) :is(svg,.table-drag-handle),.cm-table-widget.paraflow-table-controls :is(.table-col-drag-handle,.table-row-drag-handle)::before,.cm-table-widget.paraflow-table-controls :is(.table-col-drag-handle,.table-row-drag-handle)::after { display:none; }
 .markdown-source-view.mod-cm6 .cm-table-widget.paraflow-table-controls :is(.table-col-btn,.table-row-btn) { display:none; }
 .paraflow-table-add-controls[hidden] { display:none; }
+.paraflow-table-edge-host { position:relative; }
+.paraflow-table-edge-control { position:absolute; pointer-events:auto; background:transparent; z-index:calc(var(--layer-menu,1000) - 4); }
+.paraflow-table-edge-control[hidden] { display:none; }
+.paraflow-table-edge-control.is-passthrough { pointer-events:none; }
+.paraflow-table-edge-control[data-pf-table-edge="column"] { cursor:ew-resize; }
+.paraflow-table-edge-control[data-pf-table-edge="row"] { cursor:ns-resize; z-index:calc(var(--layer-menu,1000) - 3); }
+.paraflow-table-edge-control[data-pf-table-drag-axis="column"] { cursor:ew-resize; }
+.paraflow-table-edge-control[data-pf-table-drag-axis="row"] { cursor:ns-resize; }
 .paraflow-table-add-controls button { position:fixed; z-index:calc(var(--layer-menu,1000) - 3); display:flex; align-items:center; justify-content:center; padding:0; margin:0; min-width:0; min-height:0; border:0; box-shadow:none; border-radius:.15em; font:inherit; color:var(--text-muted); background:var(--background-modifier-hover); cursor:pointer; }
 .paraflow-table-add-controls [data-pf-add="row"] { height:1em; }
 .paraflow-table-add-controls [data-pf-add="column"] { width:1em; }
@@ -2273,13 +2290,16 @@ pre.paraflow-code-display.paraflow-code-wrap > code {
 .paraflow-table-toolbar button[aria-pressed="true"] { color:var(--interactive-accent); background:var(--background-modifier-hover); }
 .paraflow-table-toolbar button:hover,.paraflow-table-toolbar button:focus-visible { background:var(--background-modifier-hover); color:var(--text-normal); }
 .paraflow-table-toolbar button:focus-visible { outline:1px solid var(--interactive-accent); outline-offset:-1px; }
-.paraflow-table-size-popup { position:fixed; z-index:var(--layer-menu,1000); padding:12px; width:17em; max-width:calc(100vw - 16px); border:1px solid var(--background-modifier-border); border-radius:var(--radius-m,6px); background:var(--background-primary); box-shadow:var(--shadow-s); font-size:var(--font-ui-small); }
-.paraflow-table-size-grid { display:grid; grid-template-columns:repeat(8,1fr); gap:3px; margin-bottom:12px; }
+.paraflow-table-size-popup { position:fixed; z-index:var(--layer-menu,1000); padding:12px; width:14em; max-width:calc(100vw - 16px); border:1px solid var(--background-modifier-border); border-radius:var(--radius-m,6px); background:var(--background-primary); box-shadow:var(--shadow-s); font-size:var(--font-ui-small); }
+.paraflow-table-size-grid { display:grid; grid-template-columns:repeat(10,1fr); gap:2px; margin-bottom:12px; }
 .paraflow-table-size-grid button { padding:0; height:auto; aspect-ratio:1; border:1px solid var(--background-modifier-border); border-radius:2px; background:transparent; box-shadow:none; }
+.paraflow-table-size-grid .is-current { background:var(--text-faint); }
 .paraflow-table-size-grid .is-active { background:color-mix(in srgb,var(--interactive-accent) 25%,transparent); border-color:var(--interactive-accent); }
-.paraflow-table-size-inputs { display:flex; gap:12px; }
+.paraflow-table-size-inputs { display:flex; align-items:center; gap:4px; padding-top:8px; border-top:1px solid var(--background-modifier-border); }
 .paraflow-table-size-inputs label { flex:1; min-width:0; }
-.paraflow-table-size-inputs input { display:block; width:100%; margin-top:4px; }
+.paraflow-table-size-inputs input { display:block; width:100%; margin-top:0; padding:2px; }
+.paraflow-table-size-popup > .paraflow-table-dialog-error { min-height:0; margin:8px 0 0; }
+.paraflow-table-size-popup > .paraflow-table-dialog-error:empty { display:none; }
 @media print { .paraflow-table-toolbar,.paraflow-table-size-popup { display:none; } }
 
 
@@ -2495,8 +2515,9 @@ pre.paraflow-code-display.paraflow-code-wrap > code {
 
 
 .markdown-source-view.mod-cm6.is-live-preview > .cm-editor:is(.paraflow-structured-list-active,.paraflow-callout-active){--paraflow-live-list-content-offset:.75em}
-.markdown-source-view.mod-cm6.is-live-preview > .cm-editor:is(.paraflow-structured-list-active,.paraflow-callout-active) .paraflow-list-continuation-line:not(.paraflow-list-empty-body-line){padding-block:0}
-.markdown-source-view.mod-cm6.is-live-preview > .cm-editor:is(.paraflow-structured-list-active,.paraflow-callout-active) .cm-line.paraflow-list-owned-line.paraflow-list-continuation-line:not(.paraflow-list-empty-body-line){padding-block-start:0}
+.markdown-source-view.mod-cm6.is-live-preview > .cm-editor:is(.paraflow-structured-list-active,.paraflow-callout-active) .paraflow-list-continuation-line{padding-block:0}
+.markdown-source-view.mod-cm6.is-live-preview > .cm-editor:is(.paraflow-structured-list-active,.paraflow-callout-active) .cm-line.paraflow-list-owned-line.paraflow-list-continuation-line{padding-block-start:0}
+.markdown-source-view.mod-cm6.is-live-preview > .cm-editor:is(.paraflow-structured-list-active,.paraflow-callout-active) .paraflow-list-body-separator:not(.paraflow-list-paragraph-separator) + .cm-line.paraflow-list-empty-body-line.paraflow-list-continuation-line{padding-block-start:var(--paraflow-list-row-padding,.3em)}
 .markdown-source-view.mod-cm6.is-live-preview > .cm-editor:is(.paraflow-structured-list-active,.paraflow-callout-active) :is(.HyperMD-list-line,.paraflow-list-owned-line):not(.paraflow-list-owned-blank-line)[data-paraflow-list-rhythm~="continuation-before"][data-paraflow-list-rhythm]{padding-block-end:0}
 .markdown-source-view.mod-cm6.is-live-preview > .cm-editor:is(.paraflow-structured-list-active,.paraflow-callout-active) .paraflow-list-continuation-line[data-paraflow-list-rhythm~="continuation-end"][data-paraflow-list-rhythm]{
  padding-block-end:var(--paraflow-list-row-padding,.25em);

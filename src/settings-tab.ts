@@ -231,8 +231,14 @@ export class ParaFlowSettingTab extends PluginSettingTab {
 	}
 
 	private defineOther(): void {
+		this.section('temporaryLines');
+		this.group.heading = undefined;
+		this.row('temporaryLines', setting => setting.setHeading());
+		this.toggle('virtualLineKeyboard');
+		this.toggle('virtualLinePointer');
 		this.section('other');
-		for (const key of OTHER_ENHANCEMENTS) this.toggle(key);
+		this.toggle('sourceScrollLimit');
+		this.toggle('readingBlankParagraphs');
 		this.row('resetOther', setting => setting.addButton(button => button.setButtonText(t('resetOther')).onClick(() => this.save(async () => {
 			for (const key of OTHER_ENHANCEMENTS) await this.paraFlow.setEnhancement(key, DEFAULT_ENHANCEMENTS[key]);
 		}, true))));

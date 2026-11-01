@@ -207,7 +207,7 @@ ${reading} :not(pre)>code${exclude},${live} .cm-inline-code:not(:is(.paraflow-in
  background:var(--paraflow-inline-code-background,var(--code-background));
  font-family:var(--paraflow-inline-code-font,var(--font-monospace));font-size:var(--paraflow-inline-code-size,.9em);
  border:var(--paraflow-inline-code-border,1px solid var(--paraflow-border-color,var(--background-modifier-border)));
- border-radius:var(--paraflow-inline-code-radius,3px);padding:var(--paraflow-inline-code-padding,0 .2em);
+ border-radius:var(--paraflow-inline-code-radius,3px);padding:var(--paraflow-inline-code-padding, var(--paraflow-inline-code-padding-top, 0) var(--paraflow-inline-code-padding-right, .2em) var(--paraflow-inline-code-padding-bottom, 0) var(--paraflow-inline-code-padding-left, .2em));
 }
 `;
 }

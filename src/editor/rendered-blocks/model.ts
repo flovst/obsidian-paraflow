@@ -22,6 +22,12 @@ export function discoverRenderedBlocks(state: EditorState): RenderedBlock[] {
 	const draft = state.facet(codeDraft);
 	if (cached?.draft === draft) return cached.blocks;
 	const rawSource = state.doc.toString();
+	// HTML blocks require '<'; the only rendered fence owned here is Mermaid.
+	// Avoid table discovery and a full grammar pass for ordinary editing documents.
+	if (!rawSource.includes('<') && !/mermaid/iu.test(rawSource)) {
+		cache.set(state.doc, { draft, blocks: [] });
+		return [];
+	}
 	const source = maskCodeSource(rawSource, codeDraftMask(rawSource, draft));
 	const blocks: RenderedBlock[] = [];
 	const tables = findTableSources(source);

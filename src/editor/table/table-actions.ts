@@ -11,7 +11,7 @@ import type {TableMenuItem} from './popup';
 import type {EditorView} from '@codemirror/view';
 import {moveTableTracks} from './track-movement';
 import type {RowStructureChange} from './group-reconciliation';
-import {alignMarkdownColumns,deleteMarkdownTracks,formatMarkdownTable,insertMarkdownTrack} from './toolbar-source';
+import {alignMarkdownColumns,deleteMarkdownTracks,insertMarkdownTrack} from './toolbar-source';
 import type {TableFocusBookmark} from './focus-handoff';
 import {tableMergeActions} from './merge-actions';
 import {tableSourceActions} from './source-actions';
@@ -36,7 +36,7 @@ export function buildTableActions(target:TableActionTarget,options:TableEditingO
 	const session=target.session;const table=session.table;const positions=[...target.positions];const rectangle={...target.rectangle};const tracks={...target.trackRectangle};const bookmark=target.focusBookmark.rectangle?null:target.textBookmark;
 	const selected=table.cells.filter(cell=>positions.some(position=>cell.row===position.row&&cell.column===position.column));
 	const textMode=!!bookmark||!target.focusBookmark.rectangle;
-	const replaceSource=(source:string,change?:RowStructureChange,focus?:TableFocusBookmark)=>target.replaceSource(source&&session.target.kind==='markdown'&&!session.target.container?formatMarkdownTable(source):source,change,focus);
+	const replaceSource=(source:string,change?:RowStructureChange,focus?:TableFocusBookmark)=>target.replaceSource(source,change,focus);
 	const movementTarget={...target,replaceSource};
 	const run=(action:()=>void|Promise<void>,mutates=true)=>()=>{try{check();if(mutates&&target.view.state.readOnly)return;void Promise.resolve(action()).catch(error=>options.notify(error instanceof Error?error.message:String(error)));}catch(error){options.notify(error instanceof Error?error.message:String(error));}};
 	const apply=(next:TableModel|null,structural=false,change?:RowStructureChange)=>{check();if(next&&!structural&&textMode)target.replaceSource(session.target.kind==='markdown'?session.serializeAction(next,false):session.serialize(next,false),change,target.focusBookmark);else target.commit(next,structural,change);if(bookmark&&!structural&&next)target.restoreTextSelection(bookmark);};

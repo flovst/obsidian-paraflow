@@ -18,6 +18,7 @@ import {setVirtualTail, isVirtualTailActive} from '../runtime/virtual-tail.js';
 import { blockContinuationPrefix, blockLineContentFrom, planBlockBodyKey } from '../runtime/block-body.js';
 import { deleteAdjacentCode } from './operations.js';
 import { blockWidgetShell } from '../runtime/block-widget-shell.js';
+import { codeBodyPointerSelection } from './pointer-selection.js';
 
 class EmptyCodeCaret extends WidgetType {
 	eq():boolean{return true;}
@@ -274,7 +275,7 @@ export function createCodeMarkerExtension(isActive: (view: EditorView) => boolea
 			const target = event.target as Element;
 			if (target.closest('button')) return null;
 			const edge = target.closest<HTMLElement>('.paraflow-code-heading,.paraflow-code-ending,.paraflow-code-ending-space');
-			if (!edge) return null;
+			if (!edge) return codeBodyPointerSelection(view, event, view.state.field(field).blocks);
 			const marker = edge.matches('.paraflow-code-ending-space') ? edge.firstElementChild as HTMLElement : edge;
 			const block = view.state.field(field).blocks.find(candidate => String(candidate.from) === marker.dataset.paraflowCodeBlock)!;
 			let anchor = marker.matches('.paraflow-code-heading') ? codeBodyStart(view.state, block) : block.lines.at(-1)?.to ?? codeBodyStart(view.state, block);

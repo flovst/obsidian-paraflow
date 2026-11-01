@@ -1,4 +1,4 @@
-import { parser, GFM } from '@lezer/markdown';
+import { sourceGfmTree } from '../runtime/source-markdown.js';
 import { createRangeQuery } from './range-query.js';
 import { detailsMarkdownSource } from '../rendered-blocks/details-source.js';
 
@@ -15,7 +15,6 @@ export interface MathRangeIndex {
 	readonly candidates: readonly MathRange[];
 	readonly opaque: readonly MathRange[];
 }
-const grammar = parser.configure(GFM);
 
 function escaped(source: string, at: number): boolean {
 	let count = 0;
@@ -34,7 +33,7 @@ export function scanMathRanges(source: string): MathRangeIndex {
 	let opaqueQuery = createRangeQuery(opaque), containerQuery = createRangeQuery(containers);
 	function contexts(input: string): void {
 		opaque.length = containers.length = 0;
-		grammar.parse(detailsMarkdownSource(input)).iterate({ enter(node) {
+		sourceGfmTree(detailsMarkdownSource(input)).iterate({ enter(node) {
 			if (/^(?:InlineCode|FencedCode|CodeBlock|HTMLBlock|HTMLTag|CommentBlock|Comment)$/u.test(node.name)) opaque.push({ from: node.from, to: node.to });
 			if (node.name === 'ListItem') containers.push({ from: node.from, to: node.to });
 		} });
@@ -52,6 +51,15 @@ export function scanMathRanges(source: string): MathRangeIndex {
 		opaque.sort((a, b) => a.from - b.from);
 		opaqueQuery = createRangeQuery(opaque);
 		containerQuery = createRangeQuery(containers);
+	}
+	if (!source.includes('$')) {
+		// Most callers need only formulas. Preserve the public opaque index, but
+		// parse Markdown contexts only when a caller actually requests it.
+		let initialized = false;
+		return { expressions: [], candidates: [], get opaque() {
+			if (!initialized) { contexts(source); initialized = true; }
+			return opaque;
+		} };
 	}
 	contexts(source);
 	let contextSource = source;

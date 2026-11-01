@@ -2,7 +2,19 @@ import bidiFactory from 'bidi-js';
 
 const bidi = bidiFactory();
 const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
-interface Part { readonly index: number; readonly segment: string; }
+type Part = number;
+// Text content owns segmentation; direction, wrapping and geometry are recomputed for every hit.
+const graphemeBoundaries = new WeakMap<Text, { readonly text: string; readonly parts: readonly Part[] }>();
+
+function partsFor(node: Text): readonly Part[] {
+	const text = node.data;
+	const cached = graphemeBoundaries.get(node);
+	if (cached?.text === text) return cached.parts;
+	const parts: number[] = [];
+	for (const part of segmenter.segment(text)) parts.push(part.index);
+	graphemeBoundaries.set(node, { text, parts });
+	return parts;
+}
 interface Distance { readonly dx: number; readonly dy: number; }
 interface TextEntry { readonly node: Text; readonly from: number; }
 interface Glyph { readonly node: Text; readonly from: number; readonly to: number; readonly rects: readonly DOMRect[]; }
@@ -67,17 +79,17 @@ function pickGlyph(element: HTMLElement, x: number, y: number, partsFor: (node: 
 	let from = 0, to = parts.length;
 	while (to - from > 1) {
 		const middle = Math.floor((from + to) / 2);
-		const offset = parts[middle]!.index;
-		range.setStart(text, parts[from]!.index); range.setEnd(text, offset);
+		const offset = parts[middle]!;
+		range.setStart(text, parts[from]!); range.setEnd(text, offset);
 		const left = score(range.getClientRects());
-		range.setStart(text, offset); range.setEnd(text, to === parts.length ? text.length : parts[to]!.index);
+		range.setStart(text, offset); range.setEnd(text, to === parts.length ? text.length : parts[to]!);
 		const right = score(range.getClientRects());
 		if (!right || left && (left.dy < right.dy || left.dy === right.dy && left.dx <= right.dx)) to = middle;
 		else from = middle;
 	}
-	const part = parts[from]!;
-	range.setStart(text, part.index); range.setEnd(text, part.index + part.segment.length);
-	return { node: text, from: part.index, to: part.index + part.segment.length, rects: [...range.getClientRects()] };
+	const start = parts[from]!, end = parts[from + 1] ?? text.length;
+	range.setStart(text, start); range.setEnd(text, end);
+	return { node: text, from: start, to: end, rects: [...range.getClientRects()] };
 }
 
 /** Keep the bidi paragraph local when a caller supplies an entire editor root. */
@@ -110,12 +122,6 @@ function createCaretContext(element: HTMLElement): CaretContext {
 	const win = doc.defaultView!;
 	const rtl = win.getComputedStyle(element).direction === 'rtl';
 	const range = doc.createRange();
-	const partsCache = new Map<Text, readonly Part[]>();
-	const partsFor = (node: Text): readonly Part[] => {
-		let parts = partsCache.get(node);
-		if (!parts) { parts = [...segmenter.segment(node.data)]; partsCache.set(node, parts); }
-		return parts;
-	};
 	const entries: TextEntry[] = [];
 	let text = '';
 	const visit = (node: Node): void => {
@@ -180,8 +186,8 @@ function textBoxRun(context: CaretContext, box: TextBox | undefined): Run | unde
 	const parts = partsFor(box.node);
 	const intersects = (from: number, to: number): boolean => {
 		if (from === to) return false;
-		range.setStart(box.node, parts[from]!.index);
-		range.setEnd(box.node, to === parts.length ? box.node.length : parts[to]!.index);
+		range.setStart(box.node, parts[from]!);
+		range.setEnd(box.node, to === parts.length ? box.node.length : parts[to]!);
 		return [...range.getClientRects()].some(item => item.width > 0 && Math.abs(item.top - box.rect.top) < 2
 			&& Math.min(item.right, box.rect.right) - Math.max(item.left, box.rect.left) > Math.min(item.width, box.rect.width) * .5);
 	};
@@ -191,19 +197,19 @@ function textBoxRun(context: CaretContext, box: TextBox | undefined): Run | unde
 	low = from; high = parts.length;
 	while (low < high) { const middle = Math.floor((low + high) / 2); if (intersects(middle, parts.length)) low = middle + 1; else high = middle; }
 	const to = low;
-	const first = parts[from], last = parts[to - 1];
-	if (!first || !last) throw new Error('Rendered text box has no grapheme boundary');
-	let level = levels[box.base + first.index]!;
-	if (parts.slice(from, to).every(part => /^\s+$/u.test(part.segment))) {
-		range.setStart(box.node, first.index); range.collapse(true);
+	const first = parts[from], end = parts[to] ?? box.node.length;
+	if (first === undefined || to <= from) throw new Error('Rendered text box has no grapheme boundary');
+	let level = levels[box.base + first]!;
+	if (/^\s+$/u.test(box.node.data.slice(first, end))) {
+		range.setStart(box.node, first); range.collapse(true);
 		const start = range.getBoundingClientRect();
-		range.setStart(box.node, last.index + last.segment.length); range.collapse(true);
-		const end = range.getBoundingClientRect();
+		range.setStart(box.node, end); range.collapse(true);
+		const endRect = range.getBoundingClientRect();
 		const direction = Math.abs(start.left - box.rect.right) < 1.1 ? true : Math.abs(start.left - box.rect.left) < 1.1 ? false
-			: Math.abs(end.left - box.rect.left) < 1.1 ? true : Math.abs(end.left - box.rect.right) < 1.1 ? false : null;
+			: Math.abs(endRect.left - box.rect.left) < 1.1 ? true : Math.abs(endRect.left - box.rect.right) < 1.1 ? false : null;
 		if (direction !== null && direction !== !!(level % 2)) level = rtl ? 1 : 0;
 	}
-	return box.run = { node: box.node, from: box.base + first.index, to: box.base + last.index + last.segment.length, level };
+	return box.run = { node: box.node, from: box.base + first, to: box.base + end, level };
 }
 
 function resolveBidiEdge(context: CaretContext, boxes: readonly TextBox[], hit: GlyphHit, x: number): DOMCaret | null {

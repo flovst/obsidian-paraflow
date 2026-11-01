@@ -1,6 +1,7 @@
 import { syntaxTree, syntaxTreeAvailable } from '@codemirror/language';
 import {
 	Facet,
+	MapMode,
 	RangeSet,
 	RangeValue,
 	StateField,
@@ -14,6 +15,7 @@ import type { Tree } from '@lezer/common';
 import { createEmptyBodies, emptyBodies } from '../runtime/empty-body-state.js';
 import { codeDraft } from '../code-blocks/draft-state.js';
 import { pendingMathRanges } from '../math/candidate-ranges.js';
+import { isNumberingIntentEffect } from '../structured-list/numbering-intent.js';
 import type {
 	ParagraphAuthority,
 	ParagraphBlock,
@@ -29,6 +31,7 @@ import {
 	discoverParagraphAuthority,
 	discoverParagraphAuthorityWithin,
 	hypermdBlockRangesAround,
+	retainParagraphAuthority,
 	type ParagraphAuthoritySlice,
 } from './syntax.js';
 
@@ -276,15 +279,15 @@ function buildEntry(
 	});
 }
 
-function mapRun(run: ParagraphRun, transaction: Transaction): ParagraphRun {
+function mapRun(run: ParagraphRun, transaction: Transaction, paragraphEndEdit = false): ParagraphRun {
 	const map = (position: number, association: -1 | 1): number =>
 		transaction.changes.mapPos(position, association);
 	const mapped = Object.freeze({
 		kind: run.kind,
-		from: map(run.from, -1),
+		from: map(run.from, paragraphEndEdit ? 1 : -1),
 		to: map(run.to, 1),
 		gaps: Object.freeze(run.gaps.map((gap) => Object.freeze({
-			from: map(gap.from, -1),
+			from: map(gap.from, paragraphEndEdit ? 1 : -1),
 			to: map(gap.to, 1),
 		}))),
 		editableAnchors: Object.freeze(run.editableAnchors.map((anchor) => map(anchor, 1))),
@@ -300,9 +303,10 @@ function mapEntry(
 	state: EditorState,
 	entry: ParagraphProjectionEntry,
 	transaction: Transaction,
+	paragraphEndEdit = false,
 ): ParagraphProjectionEntry {
 	recordProjectionWork(state, 'map-entry');
-	const run = mapRun(entry.run, transaction);
+	const run = mapRun(entry.run, transaction, paragraphEndEdit);
 	const envelope = {
 		from: transaction.changes.mapPos(entry.envelope.from, -1),
 		to: transaction.changes.mapPos(entry.envelope.to, 1),
@@ -546,6 +550,36 @@ function updateCompleteDocument(
 	);
 }
 
+/** Plain-text edits after the first character preserve a confirmed single-line paragraph. */
+function mapPlainParagraphEdit(
+	value: ParagraphProjectionFieldState,
+	transaction: Transaction,
+	spans: readonly ChangedSpan[],
+	syntax: ProjectionSyntaxAuthority,
+): ParagraphProjectionFieldState | null {
+	// Numbering metadata preserves source ownership; other effects may alter grammar inputs.
+	if (transaction.reconfigured || transaction.effects.some(effect => !isNumberingIntentEffect(effect))) return null;
+	const plain = (text: string): boolean => text.trim() === text && /^\p{L}[\p{L}\p{N} .,，。!?！？]*$/u.test(text);
+	for (const span of spans) {
+		const block = value.authority.blocks.find(block => block.kind === 'paragraph' &&
+			block.from < span.oldRange.from && span.oldRange.to <= block.to);
+		if (!block) return null;
+		const before = transaction.startState.doc.lineAt(block.from);
+		if (before.from !== block.from || before.to !== block.to || !plain(before.text)) return null;
+		const from = transaction.changes.mapPos(block.from, 1), to = transaction.changes.mapPos(block.to, 1);
+		const after = transaction.newDoc.lineAt(from);
+		if (after.from !== from || after.to !== to || !plain(after.text)) return null;
+	}
+	const entries = value.entries.map(entry => mapEntry(transaction.state, entry, transaction, true));
+	const mapped = stateFromEntries(transaction.state, true,
+		value.authority.blocks.map(block => Object.freeze({ ...mapBlock(block, transaction),
+			to: transaction.changes.mapPos(block.to, 1) })),
+		entries, syntax,
+		value.runDecorations.map(transaction.changes), RangeSet.of(entries.flatMap(atomicRanges), true));
+	retainParagraphAuthority(transaction.state, mapped.authority);
+	return mapped;
+}
+
 export const paragraphProjectionField = StateField.define<ParagraphProjectionFieldState>({
 	create: rebuildAll,
 	update(value, transaction) {
@@ -556,8 +590,10 @@ export const paragraphProjectionField = StateField.define<ParagraphProjectionFie
 		if (oldDraft || newDraft) {
 			if (transaction.docChanged || oldDraft?.from !== newDraft?.from || oldDraft?.to !== newDraft?.to || oldDraft?.end !== newDraft?.end) return rebuildAll(transaction.state);
 		}
-		if (emptyBodies(transaction.startState) !== emptyBodies(transaction.state) &&
-			(emptyBodies(transaction.startState).length || emptyBodies(transaction.state).length)) return rebuildAll(transaction.state);
+		const oldBodies = emptyBodies(transaction.startState), newBodies = emptyBodies(transaction.state);
+		// Moving a retained empty body with an earlier edit preserves its ownership.
+		if (oldBodies.length !== newBodies.length || oldBodies.some((anchor, index) =>
+			transaction.changes.mapPos(anchor, 1, MapMode.TrackDel) !== newBodies[index])) return rebuildAll(transaction.state);
 		if (!transaction.docChanged) {
 			if (value.syntax.tree === syntax.tree &&
 				value.syntax.complete === syntax.complete &&
@@ -570,6 +606,8 @@ export const paragraphProjectionField = StateField.define<ParagraphProjectionFie
 			return rebuildAll(transaction.state);
 		}
 		if (!value.authority.complete) return rebuildAll(transaction.state);
+		const mapped = mapPlainParagraphEdit(value, transaction, spans, syntax);
+		if (mapped) return mapped;
 		return updateCompleteDocument(value, transaction, spans, syntax);
 	},
 });

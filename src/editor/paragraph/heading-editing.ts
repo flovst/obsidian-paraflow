@@ -4,6 +4,7 @@ import { createHeadingProjection, getHeadingProjectionState, normalizeHeadingSel
 import { planHeadingBackspace, planHeadingEnter } from './operations.js';
 import { dispatchParagraphEditPlan } from './edit-plan.js';
 import { classifyCurrentSelectionMode, compositionStateField, excludedSelectionModeForTransaction, requireCompositionState, recognizedNormalSelectionTransaction } from '../runtime/input-state.js';
+import { isVirtualEdgeActive } from '../runtime/virtual-tail.js';
 
 /** Heading ownership is independent of ordinary paragraph editing. */
 export function createHeadingEditing(isActive: (view: EditorView) => boolean, isStateActive: (state: EditorState) => boolean): Extension {
@@ -18,6 +19,7 @@ export function createHeadingEditing(isActive: (view: EditorView) => boolean, is
 		} })))),
 		EditorState.transactionFilter.of(transaction => {
 			if (!isStateActive(transaction.startState) || !transaction.selection || transaction.docChanged ||
+				isVirtualEdgeActive(transaction.state) ||
 				requireCompositionState(transaction.startState) || transaction.state.field(compositionStateField, false) ||
 				excludedSelectionModeForTransaction(transaction) !== null ||
 				!recognizedNormalSelectionTransaction(transaction) || transaction.newSelection.ranges.length !== 1) return transaction;

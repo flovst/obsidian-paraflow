@@ -111,7 +111,8 @@ export function buildListContext(
 ): ListContext | null {
 	if (!caretGate(state, runtime)) return null;
 	const analysis = enumerateAnalysis(state);
-	if (containingLine(analysis.lines, position).codeLeaf) return null;
+	const line = containingLine(analysis.lines, position);
+	if (line.codeLeaf || line.mathLeaf) return null;
 	const item = itemAtPosition(analysis, position);
 	return item && discoverListItem(state, position)
 		? buildAnalyzedListContext(analysis, item, position, state, runtime)

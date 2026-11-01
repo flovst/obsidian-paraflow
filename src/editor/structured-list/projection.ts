@@ -288,10 +288,9 @@ function syntaxForSpan(state: EditorState, range: SourceRange): SpanSyntax {
 }
 
 function mapRange(transaction: Transaction, range: SourceRange): SourceRange {
-	return {
-		from: transaction.changes.mapPos(range.from, 1),
-		to: transaction.changes.mapPos(range.to, -1),
-	};
+	const from = transaction.changes.mapPos(range.from, 1);
+	const to = transaction.changes.mapPos(range.to, -1);
+	return from === range.from && to === range.to ? range : { from, to };
 }
 
 function mapContainingRange(transaction: Transaction, range: SourceRange): SourceRange {
@@ -854,6 +853,11 @@ function markerLineDecorations(entry: ProjectionEntry): Range<Decoration>[] {
 	} }).range(entry.prefix.from)];
 }
 
+function bodySeparatorClass(line: ProjectionOwnedLine): string {
+	return 'paraflow-list-body-separator' + (line.prefix.from === line.prefix.to
+		? ' paraflow-list-paragraph-separator paraflow-list-owned-blank-line' : '');
+}
+
 export function decorationsFor(entries: readonly ProjectionEntry[]): DecorationSet {
 	const blankRows = new Map(listBlankRuns(entries).flatMap(run => run.rows.map(row => [row.at, row.kind] as const)));
 	const ownedLines = entries.flatMap(entry => entry.ownedLines);
@@ -881,7 +885,7 @@ export function decorationsFor(entries: readonly ProjectionEntry[]): DecorationS
 			)]
 			: []),
 		...entry.ownedLines.map((line) =>
-			Decoration.line({ attributes: { class: bodySeparators.has(line.range.from) ? 'paraflow-list-body-separator' : ownedLineClass(line, emptyBodyLine(entry, line), entry.marker.kind === 'task' && entry.marker.label !== null) +
+			Decoration.line({ attributes: { class: bodySeparators.has(line.range.from) ? bodySeparatorClass(line) : ownedLineClass(line, emptyBodyLine(entry, line), entry.marker.kind === 'task' && entry.marker.label !== null) +
 				(emptyBodyLine(entry, line) ? ' paraflow-list-empty-body-line' : '') +
 				((line.kind === 'blank' || !line.createdBody) && blankRows.has(line.range.from) ? `${line.kind === 'blank' ? '' : ' paraflow-list-owned-blank-line'} paraflow-list-blank-${blankRows.get(line.range.from)!}` : '') } }).range(line.range.from)),
 		...entry.ownedLines.filter(line => emptyBodyLine(entry, line) && !bodySeparators.has(line.range.from)).map(line =>
@@ -1012,6 +1016,10 @@ function rangeIndexFor(entries: readonly ProjectionEntry[]): StructuredListRange
 		...entry.ownedLines.filter((line) => line.prefix.from < line.prefix.to)
 			.map((line) => line.prefix),
 	]).sort((left, right) => left.from - right.from).map((range) => Object.freeze({ ...range })));
+	return indexForProtectedRanges(protectedRanges);
+}
+
+function indexForProtectedRanges(protectedRanges: readonly SourceRange[]): StructuredListRangeIndex {
 	const containing = (position: number): SourceRange | null =>
 		protectedRanges.find((range) => range.from < position && position < range.to) ?? null;
 	return Object.freeze({
@@ -1110,15 +1118,28 @@ function mapOnlyProjectionState(
 ): ProjectionFieldState {
 	const entries = validatedEntries(
 		transaction.state,
-		value.entries.map((entry) => mapEntry(transaction, entry)),
+		value.entries.map((entry) => mappedSyntax && mapRange(transaction, entry.item) === entry.item
+			? entry : mapEntry(transaction, entry)),
 	);
-	if (analysis) return stateFromProjection(entries, analysis.authority, true);
-	if (!value.authority) return rebuildAll(transaction.state);
-	return stateFromProjection(
+	if (!analysis && !value.authority) return rebuildAll(transaction.state);
+	// The map-only decision proves list structure and rendered roles unchanged.
+	// Reuse persistent range trees instead of recreating every widget decoration.
+	const authority = analysis?.authority ?? {
+		envelopes: value.authority!.envelopes.map(envelope => ({
+			...mapRange(transaction, envelope), name: envelope.name,
+		})),
+		items: entries,
+		syntax: mappedSyntax ?? value.authority!.syntax,
+	};
+	return Object.freeze({
+		active: true,
 		entries,
-		mapAuthority(transaction, value.authority, mappedSyntax),
-		true,
-	);
+		authority,
+		decorations: value.decorations.map(transaction.changes),
+		atomicRanges: value.atomicRanges.map(transaction.changes),
+		rangeIndex: indexForProtectedRanges(Object.freeze(value.rangeIndex.protectedRanges
+			.map(range => Object.freeze(mapRange(transaction, range))))),
+	});
 }
 
 function canReuseProjectionState(

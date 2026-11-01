@@ -98,11 +98,11 @@ export function createCalloutGapProtection(isActive: (view: EditorView) => boole
 	}), EditorView.atomicRanges.of(view => isActive(view)
 		? RangeSet.of(calloutGaps(view.state).map(gap => atomic.range(gap.from, gap.to)), true) : RangeSet.empty),
 	EditorState.transactionFilter.of(transaction => {
+		if (!(recognizedNormalSelectionTransaction(transaction) || transaction.isUserEvent('move.character') || transaction.isUserEvent('move.line'))) return transaction;
 		const owners = [...views].filter(view => view.state === transaction.startState);
 		if (!owners.length || owners.some(view => !isActive(view) || view.composing) ||
 			transaction.startState.field(compositionStateField, false) || transaction.state.field(compositionStateField, false) ||
-			transaction.newSelection.ranges.length !== 1 || excludedSelectionModeForTransaction(transaction) !== null ||
-			!(recognizedNormalSelectionTransaction(transaction) || transaction.isUserEvent('move.character') || transaction.isUserEvent('move.line'))) return transaction;
+			transaction.newSelection.ranges.length !== 1 || excludedSelectionModeForTransaction(transaction) !== null) return transaction;
 		const selection = transaction.newSelection.main;
 		if (selection.from === 0 && selection.to === transaction.newDoc.length) return transaction;
 		const gaps = calloutGaps(transaction.state);

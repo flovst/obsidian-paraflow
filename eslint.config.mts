@@ -79,6 +79,20 @@ export default defineConfig(
 	},
 
 
+	{
+		// These headless runners load a local Playwright module selected by the CLI environment.
+		// Keep HTML method checks enabled; only their trusted dependency import is exempt.
+		files: [
+			'tests/editor/gap-pointer-browser.mjs', 'tests/editor/page-end-layout-browser.mjs',
+			'tests/editor/trailing-real-paragraph-browser.mjs', 'tests/editor/virtual-edge-browser.mjs',
+			'tests/editor/virtual-edge-selection-browser.mjs', 'tests/editor/virtual-tail-browser.mjs',
+			'tests/math/async-height-browser.mjs', 'tests/math/entry-geometry.mjs',
+			'tests/structured-list/created-body-geometry.mjs', 'tests/table/border-hit-browser.mjs',
+			'tests/table/drag-handle-active-browser.mjs', 'tests/table/edge-layout-browser.mjs',
+			'tests/table/native-static-edge-browser.mjs', 'tests/table/static-edge-prototype.mjs',
+		],
+		rules: { 'no-unsanitized/method': ['error', {}, { import: { properties: [] } }] },
+	},
 
 
 );

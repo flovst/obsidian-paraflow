@@ -9,6 +9,7 @@ import {createNativeTableMenuPresenter,type HostTableMenu} from './native-menu';
 import {translateMenuText} from '../menu-i18n';
 import {refreshTableToolbarOwnership} from './focus-toolbar';
 import {refreshTableAddControlOwnership} from './add-controls';
+import {refreshTableEdgeControlOwnership} from './edge-controls';
 import {bindTableCellScope} from './cell-key-scope';
 import type {TableConversionLoss} from './markdown-serialization';
 import type {NativeCellEditor,NativeClipboardAction} from './native-text-actions';
@@ -131,7 +132,7 @@ export function createTableEditingIntegration(app:App,host:TableEditingHost) {
 			contents[action]();
 		},
 	};
-	const leafChange=app.workspace.on('active-leaf-change',()=>{refreshTableToolbarOwnership();refreshTableAddControlOwnership();});
+	const leafChange=app.workspace.on('active-leaf-change',()=>{refreshTableToolbarOwnership();refreshTableAddControlOwnership();refreshTableEdgeControlOwnership();});
 	const report=(error:unknown)=>options.notify(error instanceof Error?error.message:String(error));
 	const commands:Command[]=[
 		{id:'table-actions',name:'表格操作',checkCallback:checking=>{const view=host.getView();if(!view||!canEditCurrentTable(view,options))return false;if(!checking){try{showCurrentTableMenu(view,options,undefined,false,true);}catch(error){report(error);}}return true;}},

@@ -291,10 +291,23 @@ function promoteEmptyBodyPlan(execution: ExecutionFor<EnterOperation>): EditPlan
 	return { ...plan, selection: EditorSelection.single(owned.range.from - Math.max(0, removed) + sameLevelPrefix(execution, ' ').length) };
 }
 
+function emptyParagraphContinuation(context: ListContext): boolean {
+	return context.caretZone === 'empty' && (context.caretContent.kind === 'continuation' ||
+		context.caretContent.subtreeBlockIndexes[0] !== context.caretContent.ownedBlockIndex);
+}
+
 function ownedBodyEnterPlan(execution: ExecutionFor<EnterOperation>): EditPlan {
 	const { context } = execution;
 	const owned = context.topology.ownedBlocks[context.caretContent.ownedBlockIndex!]!;
 	if (execution.intent.operation === 'shift-enter') {
+		// A second soft break ends the current paragraph; the previous empty
+		// continuation becomes its separator and the caret enters the new body.
+		if (emptyParagraphContinuation(context)) {
+			return composeEditPlan(execution.intent.operation, context.editScope,
+				[replaceOwnedBlockIndentation(context,
+					{ index: context.caretContent.ownedBlockIndex, kind: 'owned-block' }, owned,
+					'\n' + owned.indentText)]);
+		}
 		return composeEditPlan(execution.intent.operation, context.editScope,
 			[insertContentText(context, currentContentId, bodyEnterText('shift-enter', owned.indentText))]);
 	}

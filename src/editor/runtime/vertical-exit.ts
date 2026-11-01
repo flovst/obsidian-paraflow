@@ -19,5 +19,8 @@ export function alignBlockExitSelection(view:EditorView,head:number,goal:number,
   clientY:(coordinates.top+coordinates.bottom)/2},line,(node,offset)=>view.posAtDOM(node,offset)):null;
  const point=hit===null?createVisualNavigationAdapter(view).alignGoalOnVisualLine!({position:head,assoc:bias},goal):{position:hit,assoc:bias};
  const position=normalizeParagraphSelectionEndpoint(view.state,point.position,bias);
- return EditorSelection.create([EditorSelection.cursor(position,position===point.position?point.assoc:bias,undefined,goal)]);
+ let assoc=position===point.position?point.assoc:bias;
+ const caret=view.coordsAtPos(position,assoc<0?-1:1);
+ if(caret&&caret.top===caret.bottom){const opposite=view.coordsAtPos(position,assoc<0?1:-1);if(opposite&&opposite.top<opposite.bottom)assoc=assoc<0?1:-1;}
+ return EditorSelection.create([EditorSelection.cursor(position,assoc,undefined,goal)]);
 }

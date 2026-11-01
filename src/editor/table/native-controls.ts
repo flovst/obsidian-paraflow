@@ -1,26 +1,36 @@
 import {tableEdgeAxis} from './edge-hit';
 import {TableAddControls} from './add-controls';
-import {TableOuterDragCursor} from './outer-drag-cursor';
+import {TableEdgeControls,ownsTableEdgeSurface} from './edge-controls';
 
 const nativeHandleDisplay='flex';
 
 /** Native nodes retain their host listeners; a shared outer layer delegates additions. */
 export class NativeTableControls {
  private readonly widgets=new Map<HTMLElement,TableAddControls|null>();
- private cursor:TableOuterDragCursor;
+ private readonly edges=new Map<HTMLElement,TableEdgeControls>();
  private document:Document;
- constructor(private readonly root:HTMLElement,private readonly hidden:()=>boolean,private readonly isActive:()=>boolean=()=>true){this.document=root.ownerDocument;this.cursor=new TableOuterDragCursor(this.document,event=>this.outerHandle(event)?.axis??null);this.document.addEventListener('pointerdown',this.outerPointerDown,true);}
- private outerHandle(event:MouseEvent):{handle:HTMLElement;axis:'row'|'column'}|null {
+ constructor(private readonly root:HTMLElement,private readonly hidden:()=>boolean,private readonly isActive:()=>boolean=()=>true){this.document=root.ownerDocument;this.document.addEventListener('pointerdown',this.outerPointerDown,true);}
+ private outerHandle(event:PointerEvent):{handle:HTMLElement;axis:'row'|'column'}|null {
   if(!this.isActive()||event.defaultPrevented)return null;
   const target=event.target as Element;if(target.closest?.('.paraflow-table-toolbar,.paraflow-table-menu,.paraflow-table-size-popup,.menu,.modal,.modal-container,input,textarea,button,select,.table-row-drag-handle,.table-col-drag-handle'))return null;
-  const win=this.root.ownerDocument.defaultView!,edge=(Number.parseFloat(win.getComputedStyle(this.root.querySelector('.cm-content')??this.root).fontSize)||16)*.35;
+  const win=this.root.ownerDocument.defaultView!;
   const viewport=this.root.querySelector('.cm-scroller')!.getBoundingClientRect();
   if(event.clientX<viewport.left||event.clientX>viewport.right||event.clientY<viewport.top||event.clientY>viewport.bottom)return null;
   for(const widget of this.widgets.keys()){
+   if(ownsTableEdgeSurface(this.root,target)&&!ownsTableEdgeSurface(this.root,target,widget))continue;
    const table=widget.querySelector('table')!;const box=table.getBoundingClientRect(),clip=widget.getBoundingClientRect();if(!box.width||!box.height)continue;
-   const axis=tableEdgeAxis(event.clientX,event.clientY,box,clip,edge);
+   const edge=(Number.parseFloat(win.getComputedStyle(table).fontSize)||16)*.35*(table.offsetWidth?box.width/table.offsetWidth:1);
+   const surfaceAxis=ownsTableEdgeSurface(this.root,target)?(target as HTMLElement).dataset.pfTableEdge as 'row'|'column':null;
+   const axis=surfaceAxis??tableEdgeAxis(event.clientX,event.clientY,box,clip,edge);
    if(!axis)continue;
-   const handle=Array.from(widget.querySelectorAll<HTMLElement>(axis==='row'?'.table-row-drag-handle':'.table-col-drag-handle')).find(element=>{const cell=element.closest('td,th')!.getBoundingClientRect();return axis==='row'?event.clientY>=cell.top&&event.clientY<=cell.bottom:event.clientX>=cell.left&&event.clientX<=cell.right;});
+   // The outer border and collapsed cell borders belong to contiguous tracks.
+   const handles=Array.from(widget.querySelectorAll<HTMLElement>(axis==='row'?'.table-row-drag-handle':'.table-col-drag-handle'));
+   const coordinate=axis==='row'?event.clientY:event.clientX;
+   const handle=handles.find((element,index)=>{
+    if(index===handles.length-1)return true;
+    const cell=element.closest('td,th')!.getBoundingClientRect(),next=handles[index+1]!.closest('td,th')!.getBoundingClientRect();
+    return coordinate<(axis==='row'?(cell.bottom+next.top)/2:(cell.right+next.left)/2);
+   });
    if(!handle)continue;
    return {handle,axis};
   }
@@ -37,20 +47,21 @@ export class NativeTableControls {
  };
  update(enabled=true):void {
   if(this.document!==this.root.ownerDocument){
-   this.document.removeEventListener('pointerdown',this.outerPointerDown,true);this.cursor.destroy();
+   this.document.removeEventListener('pointerdown',this.outerPointerDown,true);
+   for(const controls of this.edges.values())controls.destroy();this.edges.clear();
    for(const [widget,controls] of this.widgets){controls?.destroy();widget.classList.remove('paraflow-table-controls');}this.widgets.clear();
-   this.document=this.root.ownerDocument;this.cursor=new TableOuterDragCursor(this.document,event=>this.outerHandle(event)?.axis??null);
+   this.document=this.root.ownerDocument;
    this.document.addEventListener('pointerdown',this.outerPointerDown,true);
   }
-  this.cursor.clear();
   const current=new Set(enabled?this.root.querySelectorAll<HTMLElement>('.cm-table-widget'):[]);
-  for(const [widget,controls] of this.widgets)if(!current.has(widget)){controls?.destroy();widget.classList.remove('paraflow-table-controls');this.widgets.delete(widget);}
+  for(const [widget,controls] of this.widgets)if(!current.has(widget)){controls?.destroy();this.edges.get(widget)?.destroy();this.edges.delete(widget);widget.classList.remove('paraflow-table-controls');this.widgets.delete(widget);}
   for(const widget of current){
    widget.classList.add('paraflow-table-controls');let controls=this.widgets.get(widget)??null;
    if(this.hidden()){controls?.destroy();controls=null;}
    else if(!controls&&widget.querySelector('table'))controls=new TableAddControls(widget,()=>widget.querySelector('table')!,axis=>{widget.querySelector<HTMLElement>(axis==='row'?'.table-row-btn':'.table-col-btn')!.click();},this.isActive);
    this.widgets.set(widget,controls);
+   const edge=this.edges.get(widget);if(edge)edge.position();else this.edges.set(widget,new TableEdgeControls(this.root,widget,this.isActive));
   }
  }
- destroy():void {this.update(false);this.cursor.destroy();this.document.removeEventListener('pointerdown',this.outerPointerDown,true);}
+ destroy():void {this.update(false);this.document.removeEventListener('pointerdown',this.outerPointerDown,true);}
 }

@@ -290,7 +290,7 @@ body[data-paraflow-theme="builtin-classic"] .workspace-leaf-content[data-type='m
 	.markdown-reading-view
 	> .markdown-preview-view
 	> .markdown-preview-sizer
-	li:not(:is(.callout *, .markdown-embed *)) {
+	li:not(:is(.callout *, .markdown-embed *, .paraflow-reading-footnotes *)) {
 	line-height: var(--paraflow-reading-list-line-height);
 }
 

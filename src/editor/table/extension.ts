@@ -12,7 +12,7 @@ import {NativeTableTarget} from './native-target';
 import {clearTableActions,showTableActions} from './table-actions';
 import {isTableMenuTarget} from './native-menu';
 import {TableFocusToolbar,type TableToolbarTarget} from './focus-toolbar';
-import {deleteMarkdownTracks,formatMarkdownTable,insertMarkdownTrack,markdownDimensions} from './toolbar-source';
+import {deleteMarkdownTracks,insertMarkdownTrack,markdownDimensions} from './toolbar-source';
 import {tableMergeActions} from './merge-actions';
 import type {TableMenuItem} from './popup';
 import {showTableContextMenu} from './html-context-menu';
@@ -131,8 +131,7 @@ export function createTableEditingExtension(options:TableEditingOptions):Extensi
 			const target=toolbarTarget(view,cell);if(!target)return false;
 			const row=(cell.parentElement as HTMLTableRowElement).rowIndex+1;
 			const to=Math.min(target.source.to,view.state.doc.line(view.state.doc.lineAt(target.source.from).number+cell.closest('table')!.rows.length).to);
-			// Native activation pads new cells; emit that layout in the isolated row edit.
-			const next=formatMarkdownTable(insertMarkdownTrack(view.state.doc.sliceString(target.source.from,to),'row',row));
+				const next=insertMarkdownTrack(view.state.doc.sliceString(target.source.from,to),'row',row);
 			NativeTableTarget.replaceMarkdownSource(view,target.source,cell,next,{cell:{row,column:0},from:0,to:0,text:''},to);return true;
 		},(view,cell,axis,direction)=>{
    try{const target=Array.from(controllers.get(view)??[]).find(candidate=>candidate.dom.contains(cell))??NativeTableTarget.fromView(view,cell);if(!target)return false;moveTableTracks(target,axis,direction);

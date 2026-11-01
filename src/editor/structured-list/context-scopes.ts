@@ -287,8 +287,17 @@ function emptyBodyEnterLayout(operation: HandledOperationId, current: ListBlockR
 		region('owned-block', caretContent.ownedBlockIndex, topology.ownedBlocks[caretContent.ownedBlockIndex!]!.range, 'protected-prefix')];
 }
 
+function emptyContinuationBreak(operation: HandledOperationId, caretContent: ListContext['caretContent']): boolean {
+	return operation === 'shift-enter' && caretContent.range.from === caretContent.range.to &&
+		(caretContent.kind === 'continuation' || caretContent.subtreeBlockIndexes[0] !== caretContent.ownedBlockIndex);
+}
+
 function ownedBodyContentLayout(operation: HandledOperationId, current: ListBlockRef,
 	topology: ListTopology, caretContent: ListContext['caretContent'], position: number): readonly ContextEditRegion[] | null {
+	if (emptyContinuationBreak(operation, caretContent)) {
+		return [region('owned-block', caretContent.ownedBlockIndex,
+			topology.ownedBlocks[caretContent.ownedBlockIndex!]!.range, 'protected-prefix')];
+	}
 	if (operation === 'tab') return ownedBodyTabLayout(current, topology, caretContent);
 	if (operation === 'backspace-delete-inside-content') return ownedContentDeleteLayout(current, topology, caretContent);
 	if (ownedContinuationEnter(operation, caretContent.kind)) {

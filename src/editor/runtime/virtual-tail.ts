@@ -38,7 +38,7 @@ export const virtualTailState = StateField.define<VirtualTail|null>({
 		if(effect)return tr.state.readOnly?null:effect.value;
 		const replay=tr.effects.find(effect=>effect.is(restoreVirtualTail));
 		if(replay)return tr.state.readOnly?null:replay.value.tail;
-		if(value&&!tr.docChanged&&tr.isUserEvent('select.pointer')&&!tr.newSelection.main.empty&&
+		if(value&&!tr.docChanged&&(tr.newSelection.main.empty||tr.isUserEvent('select.pointer'))&&
 			tr.newSelection.main.head===edgePosition(tr.state,value))return value;
 		if(tr.docChanged||tr.selection&&!tr.newSelection.eq(tr.startState.selection))return null;
 		return value;
@@ -49,6 +49,12 @@ export function isVirtualEdgeActive(state:EditorState):boolean {return !!state.f
 export function isVirtualTailActive(state:EditorState):boolean {return state.selection.main.empty&&isVirtualEdgeActive(state);}
 
 function terminalNewlineStart(state:EditorState):number {return state.doc.length-state.sliceDoc().match(/\n*$/u)![0].length;}
+
+/** A parsed trailing paragraph is source content, independent of virtual-edge settings. */
+function existingTrailingParagraph(state:EditorState):boolean {
+	return state.doc.length-terminalNewlineStart(state)>=2&&
+		(getParagraphProjectionState(state)?.rangeIndex.editableAnchors.includes(state.doc.length)??false);
+}
 
 /** Only root separator rows belong to the tail; block-internal blanks remain source. */
 export function documentContentEnd(state:EditorState):number {
@@ -78,10 +84,11 @@ function materializeTail(state:EditorState,text:string):TransactionSpec {
 export function enterVirtualTail(state:EditorState,options:Partial<VirtualTail>&{anchor?:number}={}):TransactionSpec {
 	const side=options.side??'after',input=options.input??'keyboard',projection=getParagraphProjectionState(state);
 	const trailingStart=terminalNewlineStart(state);
-	const real=projection?.rangeIndex.editableAnchors.filter(at=>side==='before'?at>=documentBodyStart(state)&&at<documentContentStart(state):at>trailingStart&&at>state.selection.main.head&&at<state.doc.length);
-	const position=real?.length?(side==='before'?real[0]!:real.at(-1)!):side==='before'?documentBodyStart(state):state.doc.length;
-	const selection=options.anchor===undefined?EditorSelection.create([EditorSelection.cursor(position,side==='before'?-1:1,undefined,options.goalColumn)]):EditorSelection.single(options.anchor,position);
-	if(real?.length)return {selection,effects:setVirtualTail.of(null),annotations:selectionModeAnnotation.of('normal'),userEvent:'move.line',scrollIntoView:true};
+	const existing=side==='after'&&existingTrailingParagraph(state);
+	const real=projection?.rangeIndex.editableAnchors.filter(at=>side==='before'?at>=documentBodyStart(state)&&at<documentContentStart(state):at>trailingStart&&at>state.selection.main.head&&(at<state.doc.length||existing));
+	const position=real?.length?real[0]!:side==='before'?documentBodyStart(state):state.doc.length;
+	const selection=EditorSelection.create([options.anchor===undefined?EditorSelection.cursor(position,side==='before'?-1:1,undefined,options.goalColumn):EditorSelection.range(options.anchor,position,options.goalColumn)]);
+	if(real?.length||existing)return {selection,effects:setVirtualTail.of(null),annotations:selectionModeAnnotation.of('normal'),userEvent:'move.line',scrollIntoView:true};
 	if(!entryEnabled(state,input))return {selection:state.selection,effects:setVirtualTail.of(null)};
 	return {selection,
 		effects:setVirtualTail.of({side,returnTo:options.returnTo??state.selection.main.head,goalColumn:options.goalColumn,input}),
@@ -114,6 +121,17 @@ class TailWidget extends WidgetType {
 }
 const activateTail=StateEffect.define<boolean>();
 const tailEnabled=StateField.define({create:()=>false,update:(value,tr)=>tr.effects.find(effect=>effect.is(activateTail))?.value??value});
+const disabledPointerEndpoint=EditorState.transactionFilter.of(tr=>{
+	if(!tr.startState.field(tailEnabled)||entryEnabled(tr.state,'pointer')||tr.docChanged||!tr.selection||
+		!tr.isUserEvent('select.pointer')||tr.newSelection.ranges.length!==1)return tr;
+	if(existingTrailingParagraph(tr.state))return tr;
+	const end=documentContentEnd(tr.state),range=tr.newSelection.main;
+	if(range.head<=end)return tr;
+	// Collapsed tail source is not an editable mouse destination when the
+	// temporary-line gesture is disabled. Preserve a range's original anchor.
+	return [tr,{selection:range.empty?EditorSelection.cursor(end):EditorSelection.range(range.anchor,end),
+		effects:setVirtualTail.of(null),sequential:true}];
+});
 const endpointSelection=EditorState.transactionExtender.of(tr=>{
 	const history=tr.isUserEvent('undo')||tr.isUserEvent('redo');
 	if(tr.docChanged&&!history||tr.isUserEvent('input')||tr.state.readOnly||tr.effects.some(effect=>effect.is(setVirtualTail)))return null;
@@ -130,6 +148,7 @@ const endpointSelection=EditorState.transactionExtender.of(tr=>{
 	if(!selection.main.empty&&selection.main.head===documentBodyStart(tr.state)&&documentContentStart(tr.state)>documentBodyStart(tr.state))
 		return {effects:setVirtualTail.of({side:'before',input,returnTo:tr.startState.selection.main.head})};
 	if(selection.main.head!==tr.newDoc.length)return null;
+	if(existingTrailingParagraph(tr.state))return null;
 	const end=documentContentEnd(tr.state);
 	if(end===tr.newDoc.length)return null;
 	// Source history carries a source caret, so LP must reclaim its replaced EOF destination.
@@ -142,11 +161,12 @@ const tailDecoration=StateField.define({
 		const end=tr.newDoc.length,contentEnd=documentContentEnd(tr.state),start=documentContentStart(tr.state),edge=tr.state.field(virtualTailState);
 		const blocks=getParagraphProjectionState(tr.state)?.authority.blocks;
 		const codes=codeBlocksIn(tr.newDoc),beforeTag=codes.some(block=>block.from===start)?'code-block':paragraphBoundaryTag(blocks?.[0]),afterTag=codes.some(block=>block.to===contentEnd)?'code-block':paragraphBoundaryTag(blocks?.at(-1));
-		const ranges=contentEnd<end?[Decoration.replace({block:true,inclusiveStart:false,inclusiveEnd:false}).range(contentEnd,end)]:[];
+		const existing=existingTrailingParagraph(tr.state);
+		const ranges=!existing&&contentEnd<end?[Decoration.replace({block:true,inclusiveStart:false,inclusiveEnd:false}).range(contentEnd,end)]:[];
 		const bodyStart=documentBodyStart(tr.state);
 		if(edge?.side==='before'&&start>bodyStart)ranges.push(Decoration.replace({block:true,inclusiveStart:false,inclusiveEnd:false}).range(bodyStart,start));
 		// Block endings at EOF use side 1; the outside paragraph follows those surfaces.
-		ranges.push(Decoration.widget({widget:new TailWidget(!!edge&&edge.side!=='before',getDrawSelectionConfig(tr.state).cursorBlinkRate!,'after',afterTag),block:true,side:2}).range(end));
+		if(!existing)ranges.push(Decoration.widget({widget:new TailWidget(!!edge&&edge.side!=='before',getDrawSelectionConfig(tr.state).cursorBlinkRate!,'after',afterTag),block:true,side:2}).range(end));
 		ranges.push(Decoration.widget({widget:new TailWidget(edge?.side==='before',getDrawSelectionConfig(tr.state).cursorBlinkRate!,'before',beforeTag),block:true,side:-2}).range(bodyStart));
 		return Decoration.set(ranges,true);
 	},
@@ -291,7 +311,9 @@ const tailView=ViewPlugin.define(view=>{
 				const caret=view.coordsAtPos(head),edge=view.coordsAtPos(endpoint,before?1:-1);
 				if(!caret||!edge||(before?caret.top>edge.top+1:caret.top<edge.top-1))return;
 			}
-			view.dispatch(enterVirtualTail(view.state,{side:before?'before':'after',input:'keyboard',anchor:event.shiftKey?selection.main.anchor:undefined}));
+			const vertical=event.key==='ArrowDown'||event.key==='ArrowUp';
+			const goalColumn=vertical?selection.main.goalColumn??view.coordsAtPos(head)!.left-view.contentDOM.getBoundingClientRect().left:undefined;
+			view.dispatch(enterVirtualTail(view.state,{side:before?'before':'after',input:'keyboard',anchor:event.shiftKey?selection.main.anchor:undefined,goalColumn}));
 		}
 		event.preventDefault();event.stopPropagation();
 	};
@@ -305,7 +327,7 @@ const tailView=ViewPlugin.define(view=>{
 			const retainedEnd=end<length&&end>terminalNewlineStart(view.state);
 			// An unfinished code block's empty final line remains an ordinary source destination.
 			const internalEmptyEnd=end===length&&view.state.doc.lineAt(length).length===0;
-			const ownsEnd=view.state.field(tailEnabled)&&length>0&&!internalEmptyEnd;
+			const ownsEnd=view.state.field(tailEnabled)&&length>0&&!internalEmptyEnd&&!existingTrailingParagraph(view.state);
 			let neighbor=false;
 			return Array.from(view.contentDOM.children).map(node=>{
 				const row=node as HTMLElement;
@@ -337,7 +359,7 @@ const blankPointerExtension = createBlankPointerExtension(enabled,view=>entryEna
 
 /** One input owner and one row per editor; no nested contenteditable or out-of-document positions. */
 export function createVirtualTailExtension(options:{isActive:(view:EditorView)=>boolean;getOptions?:()=>{keyboard:boolean;pointer:boolean}}):Extension {
-	return [activeOwners.of(options.isActive),options.getOptions?edgeOptions.of(options.getOptions):[],virtualTailState,tailEnabled,tailCompositionPrepared,edgePointer,tailDecoration,endpointSelection,tailInput,edgePointerSelection,nativeTailInput,compositionTailInput,tailHistory,tailView,blankPointerExtension,
+	return [activeOwners.of(options.isActive),options.getOptions?edgeOptions.of(options.getOptions):[],virtualTailState,tailEnabled,tailCompositionPrepared,edgePointer,tailDecoration,disabledPointerEndpoint,endpointSelection,tailInput,edgePointerSelection,nativeTailInput,compositionTailInput,tailHistory,tailView,blankPointerExtension,
 		EditorView.editorAttributes.of(view=>({class:isVirtualEdgeActive(view.state)?'paraflow-virtual-tail-active'+(view.state.field(virtualTailState)?.side==='before'?' paraflow-virtual-head-active':''):''})),EditorView.baseTheme({
 		'.cm-content > .paraflow-virtual-tail,.cm-content > .paraflow-virtual-head':{height:'auto',minHeight:'1lh',position:'relative',cursor:'text'},
 		'.cm-content > .paraflow-virtual-head.paraflow-virtual-edge-inactive':{height:'0',minHeight:'0',overflow:'hidden'},

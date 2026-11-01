@@ -24,11 +24,11 @@ export const TABLE_EDITING_CSS=`
 .paraflow-html-table-editor p { margin-block:0.35em; }
 .paraflow-html-table-editor p:first-child { margin-top:0; }
 .paraflow-html-table-editor p:last-child { margin-bottom:0; }
-.paraflow-html-table-editor[data-pf-track-hover="row"] { cursor:row-resize; }
-.paraflow-html-table-editor[data-pf-track-hover="column"] { cursor:col-resize; }
+.paraflow-html-table-editor[data-pf-track-hover="row"] { cursor:ns-resize; }
+.paraflow-html-table-editor[data-pf-track-hover="column"] { cursor:ew-resize; }
 .paraflow-html-table-editor[data-pf-track-hover] :is(td,th) { cursor:inherit; }
-.paraflow-html-table-editor[data-pf-track-drag="row"] { --paraflow-track-drag-cursor:row-resize; }
-.paraflow-html-table-editor[data-pf-track-drag="column"] { --paraflow-track-drag-cursor:col-resize; }
+.paraflow-html-table-editor[data-pf-track-drag="row"] { --paraflow-track-drag-cursor:ns-resize; }
+.paraflow-html-table-editor[data-pf-track-drag="column"] { --paraflow-track-drag-cursor:ew-resize; }
 .paraflow-html-table-editor[data-pf-track-drag],.paraflow-html-table-editor[data-pf-track-drag] * { cursor:var(--paraflow-track-drag-cursor); user-select:none; }
 .cm-table-widget.paraflow-table-controls .is-selected::after,
 .cm-table-widget.paraflow-table-controls.is-selected table::after,
@@ -45,11 +45,21 @@ export const TABLE_EDITING_CSS=`
 .paraflow-table-drag-cue[data-pf-axis="column"] { width:2px; }
 .paraflow-table-drag-cue[data-pf-axis="row"] { height:2px; }
 .paraflow-table-drag-cue[hidden],.paraflow-table-drag-preview-layer[hidden] { display:none; }
-.cm-table-widget.paraflow-table-controls .table-col-drag-handle { left:0; top:0; width:100%; height:.35em; padding:0; opacity:1; border:0; background:transparent; cursor:col-resize; }
-.cm-table-widget.paraflow-table-controls .table-row-drag-handle { left:0; top:0; height:100%; width:.35em; padding:0; opacity:1; border:0; background:transparent; cursor:row-resize; }
+.markdown-source-view.mod-cm6 .cm-table-widget.paraflow-table-controls .table-col-drag-handle { inset:auto; inset-inline:auto; inset-block:auto; left:0; top:0; font-size:inherit; pointer-events:none; width:100%; height:.35em; padding:0; opacity:1; border:0; background:transparent; cursor:ew-resize; }
+.markdown-source-view.mod-cm6 .cm-table-widget.paraflow-table-controls .table-row-drag-handle { inset:auto; inset-inline:auto; inset-block:auto; left:0; top:0; font-size:inherit; pointer-events:none; height:100%; width:.35em; padding:0; opacity:1; border:0; background:transparent; cursor:ns-resize; }
+.markdown-source-view.mod-cm6 .cm-table-widget.paraflow-table-controls .table-col-drag-handle:is(:hover,:active) { background:transparent; box-shadow:none; cursor:ew-resize; }
+.markdown-source-view.mod-cm6 .cm-table-widget.paraflow-table-controls .table-row-drag-handle:is(:hover,:active) { background:transparent; box-shadow:none; cursor:ns-resize; }
 .cm-table-widget.paraflow-table-controls :is(.table-col-drag-handle,.table-row-drag-handle) :is(svg,.table-drag-handle),.cm-table-widget.paraflow-table-controls :is(.table-col-drag-handle,.table-row-drag-handle)::before,.cm-table-widget.paraflow-table-controls :is(.table-col-drag-handle,.table-row-drag-handle)::after { display:none; }
 .markdown-source-view.mod-cm6 .cm-table-widget.paraflow-table-controls :is(.table-col-btn,.table-row-btn) { display:none; }
 .paraflow-table-add-controls[hidden] { display:none; }
+.paraflow-table-edge-host { position:relative; }
+.paraflow-table-edge-control { position:absolute; pointer-events:auto; background:transparent; z-index:calc(var(--layer-menu,1000) - 4); }
+.paraflow-table-edge-control[hidden] { display:none; }
+.paraflow-table-edge-control.is-passthrough { pointer-events:none; }
+.paraflow-table-edge-control[data-pf-table-edge="column"] { cursor:ew-resize; }
+.paraflow-table-edge-control[data-pf-table-edge="row"] { cursor:ns-resize; z-index:calc(var(--layer-menu,1000) - 3); }
+.paraflow-table-edge-control[data-pf-table-drag-axis="column"] { cursor:ew-resize; }
+.paraflow-table-edge-control[data-pf-table-drag-axis="row"] { cursor:ns-resize; }
 .paraflow-table-add-controls button { position:fixed; z-index:calc(var(--layer-menu,1000) - 3); display:flex; align-items:center; justify-content:center; padding:0; margin:0; min-width:0; min-height:0; border:0; box-shadow:none; border-radius:.15em; font:inherit; color:var(--text-muted); background:var(--background-modifier-hover); cursor:pointer; }
 .paraflow-table-add-controls [data-pf-add="row"] { height:1em; }
 .paraflow-table-add-controls [data-pf-add="column"] { width:1em; }
@@ -72,12 +82,15 @@ export const TABLE_EDITING_CSS=`
 .paraflow-table-toolbar button[aria-pressed="true"] { color:var(--interactive-accent); background:var(--background-modifier-hover); }
 .paraflow-table-toolbar button:hover,.paraflow-table-toolbar button:focus-visible { background:var(--background-modifier-hover); color:var(--text-normal); }
 .paraflow-table-toolbar button:focus-visible { outline:1px solid var(--interactive-accent); outline-offset:-1px; }
-.paraflow-table-size-popup { position:fixed; z-index:var(--layer-menu,1000); padding:12px; width:17em; max-width:calc(100vw - 16px); border:1px solid var(--background-modifier-border); border-radius:var(--radius-m,6px); background:var(--background-primary); box-shadow:var(--shadow-s); font-size:var(--font-ui-small); }
-.paraflow-table-size-grid { display:grid; grid-template-columns:repeat(8,1fr); gap:3px; margin-bottom:12px; }
+.paraflow-table-size-popup { position:fixed; z-index:var(--layer-menu,1000); padding:12px; width:14em; max-width:calc(100vw - 16px); border:1px solid var(--background-modifier-border); border-radius:var(--radius-m,6px); background:var(--background-primary); box-shadow:var(--shadow-s); font-size:var(--font-ui-small); }
+.paraflow-table-size-grid { display:grid; grid-template-columns:repeat(10,1fr); gap:2px; margin-bottom:12px; }
 .paraflow-table-size-grid button { padding:0; height:auto; aspect-ratio:1; border:1px solid var(--background-modifier-border); border-radius:2px; background:transparent; box-shadow:none; }
+.paraflow-table-size-grid .is-current { background:var(--text-faint); }
 .paraflow-table-size-grid .is-active { background:color-mix(in srgb,var(--interactive-accent) 25%,transparent); border-color:var(--interactive-accent); }
-.paraflow-table-size-inputs { display:flex; gap:12px; }
+.paraflow-table-size-inputs { display:flex; align-items:center; gap:4px; padding-top:8px; border-top:1px solid var(--background-modifier-border); }
 .paraflow-table-size-inputs label { flex:1; min-width:0; }
-.paraflow-table-size-inputs input { display:block; width:100%; margin-top:4px; }
+.paraflow-table-size-inputs input { display:block; width:100%; margin-top:0; padding:2px; }
+.paraflow-table-size-popup > .paraflow-table-dialog-error { min-height:0; margin:8px 0 0; }
+.paraflow-table-size-popup > .paraflow-table-dialog-error:empty { display:none; }
 @media print { .paraflow-table-toolbar,.paraflow-table-size-popup { display:none; } }
 `;

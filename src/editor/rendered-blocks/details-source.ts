@@ -6,12 +6,17 @@ export interface DetailsContainer {
 	closingFrom: number; titleFrom: number; titleTo: number; open: boolean;
 }
 const grammar = parser.configure(metadataGrammar);
-let cachedSource = '', cached: readonly DetailsContainer[] = [];
+// Raw and parser-masked sources alternate while one editor state is computed.
+const sources = new Map<string, readonly DetailsContainer[]>();
 
 /** Balanced structural tags keep Markdown body offsets in the primary document. */
 export function detailsContainers(source: string): readonly DetailsContainer[] {
 	if (!/<details(?:\s|>)/iu.test(source)) return [];
-	if (source === cachedSource) return cached;
+	const cached = sources.get(source);
+	if (cached) {
+		sources.delete(source); sources.set(source, cached);
+		return cached;
+	}
 	const result: DetailsContainer[] = [], opaque: { from: number; to: number }[] = [];
 	for (const match of source.matchAll(/<!--[\s\S]*?(?:-->|$)|%%[\s\S]*?(?:%%|$)/gu)) opaque.push({ from: match.index, to: match.index + match[0].length });
 	grammar.parse(source).iterate({ enter(node) {
@@ -56,7 +61,8 @@ export function detailsContainers(source: string): readonly DetailsContainer[] {
 		}
 	}
 	result.sort((a, b) => a.from - b.from || b.to - a.to);
-	cachedSource = source; cached = result;
+	sources.set(source, result);
+	if (sources.size > 4) sources.delete(sources.keys().next().value!);
 	return result;
 }
 

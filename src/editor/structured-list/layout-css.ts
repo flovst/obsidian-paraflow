@@ -661,6 +661,13 @@ export const LIST_LAYOUT_CSS = `
  line-height: 0;
  padding-block: 0;
 }
+.markdown-source-view.mod-cm6.is-live-preview
+ > .cm-editor:is(.paraflow-structured-list-active, .paraflow-callout-active)
+ .cm-content[contenteditable] .paraflow-list-body-separator.paraflow-list-paragraph-separator {
+ height: calc(2 * var(--paraflow-list-row-padding, .25em));
+ min-height: calc(2 * var(--paraflow-list-row-padding, .25em));
+ line-height: calc(2 * var(--paraflow-list-row-padding, .25em));
+}
 /* Native and projected rows share the inline padding owner; row tokens retain their geometry. */
 ${LIST_LAYOUT_ROW_SELECTOR} {
 	padding-inline-start: calc(var(--paraflow-container-inset, 0px) + var(--paraflow-live-list-base-indent) + var(--paraflow-list-layout-depth) * var(--paraflow-live-list-indent) + var(--paraflow-live-list-content-offset) + var(--paraflow-list-layout-hanging));

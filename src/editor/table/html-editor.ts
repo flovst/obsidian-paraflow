@@ -20,7 +20,8 @@ import {TableAddControls} from './add-controls';
 import {deleteMarkdownTracks,insertMarkdownTrack,moveMarkdownTracks} from './toolbar-source';
 import {readTrackGeometry,trackDropTarget,type TrackGeometry} from './track-geometry';
 import {TableDragPreview} from './drag-preview';
-import {TableOuterDragCursor} from './outer-drag-cursor';
+import {type TablePointerHit} from './outer-drag-cursor';
+import {TableEdgeControls,tableEdgeSurfaceAxis} from './edge-controls';
 import {TableTrackDragCursor} from './track-drag-cursor';
 import {exitHtmlTableDown} from './html-keyboard-exit';
 import {blockExitPlan} from '../block-exit';
@@ -59,14 +60,14 @@ export class HtmlTableController implements TableActionTarget {
 	private addControls:TableAddControls|null=null;
 	private trackDrag:{axis:'row'|'column';first:number;last:number;source:string;geometry:TrackGeometry;cursor:TableTrackDragCursor;preview:TableDragPreview;cue:HTMLElement;point:{x:number;y:number}}|null=null;
 	private dragFrame:number|null=null;
-	private readonly outerCursor:TableOuterDragCursor;
+	private edgeControls:TableEdgeControls|null=null;
 	constructor(readonly view:EditorView,session:TableEditSession,readonly options:TableEditingOptions){
 		this.session=session;this.current=this.anchor={row:0,column:0};this.rectangle=closeSelection(session.table,this.anchor,this.anchor);this.trackRectangle={top:0,left:0,bottom:0,right:0};
 		this.dom=createDetachedEl(view.dom.ownerDocument, 'div');this.dom.className='paraflow-html-table-editor';this.dom.dataset.pfTableFrom=String(session.target.from);this.dom.setAttribute('contenteditable','false');
 		let owners=selectionOwners.get(view);if(!owners){owners=new Set();selectionOwners.set(view,owners);}owners.add(this);
 		this.render();
 		this.refreshOptions();
-		this.outerCursor=new TableOuterDragCursor(this.dom.ownerDocument,event=>this.outerHit(event)?.axis??null);
+		this.edgeControls=new TableEdgeControls(this.view.dom,this.dom,()=>this.options.isActive(this.view)&&this.options.isActiveView?.(this.view)!==false,this.dom);
 		this.dom.addEventListener('pointerdown',this.pointerDown);this.dom.addEventListener('pointermove',this.pointerMove);
 		this.dom.ownerDocument.addEventListener('pointerup',this.pointerUp);
 		this.dom.ownerDocument.addEventListener('pointermove',this.dragMove,true);
@@ -89,6 +90,7 @@ export class HtmlTableController implements TableActionTarget {
 	}
 	get positions():CellPosition[]{return this.session.table.cells.filter(cell=>intersects(cell,this.rectangle)).map(({row,column})=>({row,column}));}
 	refreshOptions():void {
+		this.edgeControls?.position();
 		if(this.options.getHideAddControls?.()!==false){this.addControls?.destroy();this.addControls=null;return;}
 		if(!this.addControls)this.addControls=new TableAddControls(this.dom,()=>this.dom.querySelector('table')!,axis=>{
 			try{this.insert(axis,axis==='row'?this.session.table.rows:this.session.table.columns);}catch(error){this.options.notify(error instanceof Error?error.message:String(error));}
@@ -102,7 +104,7 @@ export class HtmlTableController implements TableActionTarget {
 		return {cell:this.position(cell),...bookmarkRange(cell,range)};
 	}
 	cellElement(position:CellPosition):HTMLElement|null{return this.dom.querySelector(`[data-pf-row="${position.row}"][data-pf-column="${position.column}"]`);}
-	get focusBookmark():TableFocusBookmark {const cell=this.cellElement(this.current)!;return {...captureTableFocus(cell,this.current,this.readCellHtml(cell)),rectangle:this.selecting?this.rectangle:undefined};}
+	get focusBookmark():TableFocusBookmark {const position=this.session.table.cells.find(cell=>intersects(cell,{top:this.current.row,bottom:this.current.row,left:this.current.column,right:this.current.column}))!;const cell=this.cellElement(position)!;return {...captureTableFocus(cell,position,this.readCellHtml(cell)),rectangle:this.selecting?this.rectangle:undefined};}
 	restoreTextSelection(bookmark:TextBookmark):void {
 		if(this.destroyed){updateTableFocusBookmark(this.view,bookmark);return;}
 		const cell=this.cellElement(bookmark.cell);if(!cell)return;cell.focus();const range=rangeFromBookmark(cell,bookmark);const selection=cell.ownerDocument.getSelection();selection?.removeAllRanges();selection?.addRange(range);this.publishSourceSelection();
@@ -146,7 +148,7 @@ export class HtmlTableController implements TableActionTarget {
 			element.dataset.pfStripe=String(cell.row%2);element.setAttribute('contenteditable','true');element.setAttribute('tabindex','0');
 			element.setAttribute('aria-label',`第 ${cell.row+1} 行，第 ${cell.column+1} 列`);element.spellcheck=true;
 		});
-		this.dom.replaceChildren(fragment);this.paintSelection();
+		this.dom.replaceChildren(fragment);this.paintSelection();this.edgeControls?.position();
 	}
 	update(session:TableEditSession):void {
 		// The originating edit renders once with its destination cell after dispatch.
@@ -261,13 +263,13 @@ export class HtmlTableController implements TableActionTarget {
 		if(event.button!==0)return;const hit=this.outerHit(event);if(!hit)return;
 		this.startTrackDrag(event,hit.position,hit.axis);event.stopPropagation();
 	};
-	private outerHit(event:MouseEvent):{axis:'row'|'column';position:CellPosition}|null {
+	private outerHit(event:TablePointerHit):{axis:'row'|'column';position:CellPosition}|null {
 		if(event.defaultPrevented||!this.options.isActive(this.view)||this.options.isActiveView?.(this.view)===false)return null;
 		const element=event.target as Element;if(element.closest?.('.paraflow-table-toolbar,.paraflow-table-menu,.paraflow-table-size-popup,.menu,.modal,.modal-container,input,textarea,button,select'))return null;
 		const table=this.dom.querySelector('table')!,box=table.getBoundingClientRect(),clip=this.dom.getBoundingClientRect(),viewport=this.view.scrollDOM.getBoundingClientRect();
-		const edge=(Number.parseFloat(this.dom.ownerDocument.defaultView!.getComputedStyle(this.view.contentDOM).fontSize)||16)*.35;
+		const edge=(Number.parseFloat(this.dom.ownerDocument.defaultView!.getComputedStyle(table).fontSize)||16)*.35*(table.offsetWidth?box.width/table.offsetWidth:1);
 		if(!box.width||!box.height||event.clientY<viewport.top||event.clientY>viewport.bottom||event.clientX<viewport.left||event.clientX>viewport.right)return null;
-		const axis=tableEdgeAxis(event.clientX,event.clientY,box,clip,edge);
+		const axis=tableEdgeSurfaceAxis(this.dom,element,this.dom)??tableEdgeAxis(event.clientX,event.clientY,box,clip,edge);
 		if(!axis)return null;
 		const geometry=readTrackGeometry(table,this.session.table,axis),coordinate=axis==='row'?event.clientY:event.clientX;
 		const block=geometry.blocks.find(({first,last})=>coordinate>=Math.min(geometry.edges[first]!,geometry.edges[last+1]!)&&coordinate<=Math.max(geometry.edges[first]!,geometry.edges[last+1]!));
@@ -288,7 +290,10 @@ export class HtmlTableController implements TableActionTarget {
 	};
 	private dragTarget(drag:NonNullable<HtmlTableController['trackDrag']>,point:{x:number;y:number}):{destination:number;boundary:number}|null {
 		const table=this.dom.querySelector('table')!,box=table.getBoundingClientRect();
-		if(point.x<box.left||point.x>box.right||point.y<box.top||point.y>box.bottom)return null;
+		if(point.x<box.left||point.x>box.right||point.y<box.top||point.y>box.bottom){
+			const edge=(Number.parseFloat(this.dom.ownerDocument.defaultView!.getComputedStyle(table).fontSize)||16)*.35*(table.offsetWidth?box.width/table.offsetWidth:1);
+			if(tableEdgeAxis(point.x,point.y,box,this.dom.getBoundingClientRect(),edge)!==drag.axis)return null;
+		}
 		const rtl=drag.axis==='column'&&drag.geometry.edges[0]!>drag.geometry.edges[drag.geometry.edges.length-1]!;
 		const start=drag.axis==='row'?box.top:rtl?box.right:box.left,shift=start-drag.geometry.edges[0]!;
 		const target=trackDropTarget(drag.geometry,drag.first,drag.last,(drag.axis==='row'?point.y:point.x)-shift);
@@ -318,8 +323,12 @@ export class HtmlTableController implements TableActionTarget {
 			if(drag.source!==this.session.target.source)throw new Error('表格操作目标已变化，请重新选择。');
 			const destination=target.destination;
 			const next=moveTracksTo(this.session.table,drag.axis,drag.first,drag.last,destination);
-			if(this.session.target.kind==='markdown')this.replaceSource(moveMarkdownTracks(this.session.target.source,drag.axis,drag.first,drag.last,destination),drag.axis==='row'?{kind:'move',first:drag.first,last:drag.last,direction:destination-drag.first}:undefined);
-			else this.commit(next,true,drag.axis==='row'?{kind:'move',first:drag.first,last:drag.last,direction:destination-drag.first}:undefined);
+			const direction=destination-drag.first,change=drag.axis==='row'?{kind:'move' as const,first:drag.first,last:drag.last,direction}:undefined;
+			const before=this.focusBookmark,rectangle=before.rectangle;
+			const focus={...before,cell:{...before.cell,[drag.axis]:before.cell[drag.axis]+direction},rectangle:rectangle?{...rectangle,...(drag.axis==='row'?{top:rectangle.top+direction,bottom:rectangle.bottom+direction}:{left:rectangle.left+direction,right:rectangle.right+direction})}:undefined};
+			// Drag edges prevent native focus; carry the moved selection across widget replacement.
+			const source=this.session.target.kind==='markdown'?moveMarkdownTracks(this.session.target.source,drag.axis,drag.first,drag.last,destination):this.session.serializeAction(next,true,change);
+			this.replaceSource(source,change,focus);
 		}catch(error){this.options.notify(error instanceof Error?error.message:String(error));}
 	};
 	private readCellHtml(cell:HTMLElement):string {return this.trackDrag?this.trackDrag.cursor.read(()=>cell.innerHTML):cell.innerHTML;}
@@ -540,7 +549,7 @@ export class HtmlTableController implements TableActionTarget {
 		this.view.scrollDOM.scrollTop=scroll;
 		let active=true;const undo=()=>{if(!active)return;active=false;for(const run of restore)run();this.view.scrollDOM.scrollTop=scroll;};this.previewRestore=undo;return undo;
 	}
-	destroy():void {this.destroyed=true;this.dom.ownerDocument.removeEventListener('selectionchange',this.publishSourceSelection);this.outerCursor.destroy();selectionOwners.get(this.view)?.delete(this);this.menu?.close();this.clearPreview();this.addControls?.destroy();this.cancelDrag();this.dom.ownerDocument.removeEventListener('copy',this.copy,true);this.dom.ownerDocument.removeEventListener('pointerdown',this.outerPointerDown,true);this.dom.ownerDocument.removeEventListener('pointerup',this.pointerUp);this.dom.ownerDocument.removeEventListener('pointermove',this.dragMove,true);this.dom.ownerDocument.removeEventListener('scroll',this.scheduleDrag,true);this.dom.ownerDocument.defaultView!.removeEventListener('blur',this.cancelDrag);this.dom.ownerDocument.defaultView!.removeEventListener('resize',this.cancelDrag);this.dom.ownerDocument.removeEventListener('pointercancel',this.cancelDrag);this.dom.ownerDocument.removeEventListener('keydown',this.dragKeyDown,true);this.dom.ownerDocument.removeEventListener('pointerdown',this.externalSelection,true);this.dom.ownerDocument.removeEventListener('focusin',this.externalSelection,true);}
+	destroy():void {this.destroyed=true;this.dom.ownerDocument.removeEventListener('selectionchange',this.publishSourceSelection);this.edgeControls?.destroy();selectionOwners.get(this.view)?.delete(this);this.menu?.close();this.clearPreview();this.addControls?.destroy();this.cancelDrag();this.dom.ownerDocument.removeEventListener('copy',this.copy,true);this.dom.ownerDocument.removeEventListener('pointerdown',this.outerPointerDown,true);this.dom.ownerDocument.removeEventListener('pointerup',this.pointerUp);this.dom.ownerDocument.removeEventListener('pointermove',this.dragMove,true);this.dom.ownerDocument.removeEventListener('scroll',this.scheduleDrag,true);this.dom.ownerDocument.defaultView!.removeEventListener('blur',this.cancelDrag);this.dom.ownerDocument.defaultView!.removeEventListener('resize',this.cancelDrag);this.dom.ownerDocument.removeEventListener('pointercancel',this.cancelDrag);this.dom.ownerDocument.removeEventListener('keydown',this.dragKeyDown,true);this.dom.ownerDocument.removeEventListener('pointerdown',this.externalSelection,true);this.dom.ownerDocument.removeEventListener('focusin',this.externalSelection,true);}
 	unmerge():void {this.commit(unmergeCell(this.session.table,this.current));}
 	deleteCurrent(axis:'row'|'column',resetCaret=false):void {
 		const change=axis==='row'?{kind:'delete' as const,index:this.current.row,count:1}:undefined,table=deleteTrack(this.session.table,axis,this.current[axis]);
