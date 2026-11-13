@@ -85,9 +85,16 @@ const sourceMouseSelection = Prec.highest(EditorView.mouseSelectionStyle.of((vie
 	if (!hit?.isOwnerActive()) return null;
 	pointerHits.set(view, hit);
 	view.focus();
-	view.dispatch({ selection: EditorSelection.single(hit.anchor ?? hit.position, hit.position), effects: [beginSourcePointer.of(null), ...hit.effects ?? []],
+	const groupAt = (position: number) => {
+		if (event.detail < 3) return view.state.wordAt(position) ?? EditorSelection.cursor(position);
+		const line = view.state.doc.lineAt(position);
+		return { from: line.from, to: Math.min(line.to + 1, view.state.doc.length) };
+	};
+	const group = event.detail >= 2 ? groupAt(hit.position) : null;
+	const initial = group ? EditorSelection.single(group.from, group.to) : EditorSelection.single(hit.anchor ?? hit.position, hit.position);
+	view.dispatch({ selection: initial, effects: [beginSourcePointer.of(null), ...hit.effects ?? []],
 		annotations: Transaction.userEvent.of('select.pointer') });
-	let anchor = hit.anchor ?? hit.position;
+	let anchor = initial.main.anchor;
 	let cancelled = false;
 	let dragging = false;
 	let entered = false;
@@ -102,7 +109,13 @@ const sourceMouseSelection = Prec.highest(EditorView.mouseSelectionStyle.of((vie
 				hit.onDrag?.();
 			}
 			if (hit.onDrag && !first && !dragging) return view.state.selection;
+			if (!dragging && group) return initial;
 			const head = dragging ? view.posAtCoords({ x: current.clientX, y: current.clientY }, false) : hit.position;
+			if (dragging && group && head !== null) {
+				const currentGroup = groupAt(head);
+				return head < group.from ? EditorSelection.single(group.to, currentGroup.from)
+					: EditorSelection.single(group.from, currentGroup.to);
+			}
 			return EditorSelection.single(anchor, head ?? anchor);
 		},
 		update(update) {
@@ -128,12 +141,14 @@ const sourcePointerLifecycle = ViewPlugin.define(view => {
 	};
 	const doc = view.dom.ownerDocument;
 	doc.addEventListener('mouseup', clear);
+	doc.addEventListener('pointercancel', cancel);
 	doc.defaultView!.addEventListener('blur', cancel);
 	view.dom.addEventListener('mousedown', down, true);
 	view.dom.addEventListener('click', click, true);
 	return { destroy() {
 		cancel();
 		doc.removeEventListener('mouseup', clear);
+		doc.removeEventListener('pointercancel', cancel);
 		doc.defaultView!.removeEventListener('blur', cancel);
 		view.dom.removeEventListener('mousedown', down, true);
 		view.dom.removeEventListener('click', click, true);

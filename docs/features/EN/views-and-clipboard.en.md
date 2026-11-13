@@ -5,7 +5,7 @@
 ParaFlow enhances all three Obsidian views:
 
 - **Live Preview:** the main focus of the editing enhancements. See the other feature guides for individual syntax types.
-- **Reading view:** aims to match Live Preview, with a few differences such as hiding Obsidian comments and omitting empty lines.
+- **Reading view:** follows Live Preview's paragraph and list spacing, including extra blank paragraphs. Obsidian comments remain hidden.
 - **Source mode:** provides editing aids such as line numbers, active-line highlighting, syntax highlighting, and whitespace display. Content that cannot be edited in Live Preview can be changed here.
 
 ## Switching and inspecting

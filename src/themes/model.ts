@@ -4,10 +4,18 @@ export interface ThemeManifest {
 	name: string;
 	origin: 'builtin' | 'imported';
 	colorScheme: 'light' | 'dark' | 'adaptive';
+	/** A light base palette and dark palette selected by body.theme-dark / body.theme-light. */
+	colorSchemeVariants?: 'host-class';
 	converterVersion?: string;
 	sourceVersion?: string;
 	sourceEntry?: string;
+	sourceApp?: string;
+	sourcePackage?: string;
+	/** Null explicitly keeps a theme independent; absence allows known bundled metadata. */
+	packageId?: string | null;
 }
+
+export type ThemeSourceMetadata = Pick<ThemeManifest, 'sourceApp' | 'sourcePackage' | 'packageId'>;
 
 export interface ThemeInput {
 	entry: string;

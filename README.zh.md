@@ -68,7 +68,8 @@ https://github.com/user-attachments/assets/6ba2c5a7-daff-4623-bcb0-692d9bbbee16
 其它：
 
 + 标题、行内格式、脚注、图片等显示优化
-+ 支持导入 Typora 的主题，兼容 Obsidian 的主题（大概）
++ [管理内容主题](docs/features/zh-CN/themes.zh.md)：搜索、主题包分组和导入导出，GitHub主题支持深浅配色。
++ 单击编辑链接，Ctrl/Cmd单击打开并聚焦新标签。
 + 每个功能都可以在设置中单独开关（至少在预期中是），但目前可能仍然存在问题
 
 Release 中提供了已安装 ParaFlow 的 [showcase](../../releases/tag/0.1.5) 库，可以直接试试。

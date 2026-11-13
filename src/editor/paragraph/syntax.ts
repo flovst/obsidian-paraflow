@@ -226,6 +226,9 @@ const hypermdDelimitedBoundaries = syntaxMemo((state: EditorState): readonly Top
 
 const blockedHypermdLines = syntaxMemo((state: EditorState): ReadonlySet<number> => {
 	const blocked = new Set<number>();
+	for (const item of enumerateListItems(state)) {
+		for (let number = state.doc.lineAt(item.markerLine.from).number; number <= state.doc.lineAt(item.itemNode.to).number; number++) blocked.add(number);
+	}
 	syntaxTree(state).iterate({
 		enter: (node) => {
 			if (!isHypermdBlockNodeForState(state, node.node)) return;
@@ -264,6 +267,10 @@ function directHypermdBlockRangesAround(
 		const queryTo = includeAdjacentLines && toLine.number < state.doc.lines
 			? state.doc.line(toLine.number + 1).to
 			: Math.min(state.doc.length, Math.max(to, from + 1));
+		for (const item of enumerateListItems(state, [{ from: queryFrom, to: queryTo }])) {
+			if (!includeAdjacentLines && (item.markerLine.from > to || from > item.itemNode.to)) continue;
+			blocks.set(`list:${item.markerLine.from}`, { from: item.markerLine.from, to: item.itemNode.to, name: 'HyperMD-list-line' });
+		}
 		syntaxTree(state).iterate({
 			from: queryFrom,
 			to: queryTo,
@@ -301,6 +308,11 @@ const hypermdBlockFamilyLines = syntaxMemo((
 	state: EditorState,
 ): ReadonlyMap<string, ReadonlySet<number>> => {
 	const lines = new Map<string, Set<number>>();
+	const listLines = new Set<number>();
+	for (const item of enumerateListItems(state)) {
+		for (let number = state.doc.lineAt(item.markerLine.from).number; number <= state.doc.lineAt(item.itemNode.to).number; number++) listLines.add(number);
+	}
+	lines.set('HyperMD-list-line', listLines);
 	syntaxTree(state).iterate({
 		enter: (node) => {
 			if (!isHypermdBlockNodeForState(state, node.node)) return;
@@ -814,6 +826,7 @@ function hypermdListBoundaries(state: EditorState): readonly TopLevelBlockBounda
 		},
 	});
 	const allItems = enumerateListItems(state);
+	for (const item of allItems) listLines.add(state.doc.lineAt(item.markerLine.from).number);
 	const items = [...outerListItems(allItems)]
 		.sort((left, right) => left.markerLine.from - right.markerLine.from);
 	if (items.length === 0) return [];

@@ -2,6 +2,7 @@ import type {EditorView} from '@codemirror/view';
 import type {TableConversionLoss} from './markdown-serialization';
 import type {TableMenuPresenter} from './popup';
 import type {NativeCellEditor,NativeClipboardAction} from './native-text-actions';
+import type {LinkOpenIntent} from '../../links/intent';
 
 export interface TableValueRequest {
 	readonly title: string;
@@ -41,6 +42,8 @@ export interface TableEditingOptions {
 	writeClipboardContent?: (content:TableClipboardContent) => Promise<void>;
 	readClipboard?: () => Promise<TableClipboardContent>;
 	getNativeCellEditor?: (view:EditorView,cell:HTMLElement) => NativeCellEditor|null;
-	openWikiLink?: (view:EditorView,target:string,newLeaf:boolean)=>void|Promise<void>;
+	editLinksOnPlainClick?: () => boolean;
+	openWikiLink?: (view:EditorView,target:string,intent:LinkOpenIntent)=>void|Promise<void>;
+	captureLinkNavigation?: (view:EditorView,target:string)=>(intent:LinkOpenIntent)=>void|Promise<void>;
 	nativeClipboard?: (view:EditorView,action:NativeClipboardAction) => void;
 }

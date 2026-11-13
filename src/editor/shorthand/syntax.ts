@@ -79,6 +79,7 @@ function scanTildeRuns(source: string, blocked: Uint8Array): readonly TildeRun[]
 			let part: TildePart | null = null;
 			for (const width of [2, 1]) {
 				if (!source.startsWith('~'.repeat(width), cursor)) continue;
+				if (/\s/u.test(source[cursor + width] ?? '')) continue;
 				for (let close = cursor + width + 1; close < source.length; close++) {
 					if (blocked[close] || /\s/u.test(source[close]!) || /[\r\n]/u.test(source.slice(cursor, close))) break;
 					if (source[close] === '\\') { close++; continue; }

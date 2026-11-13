@@ -5,7 +5,7 @@
 ParaFlow 对 Obsidian 中的三个视图都进行了对应的优化：
 
 + Live Preview：主要的优化部分，具体效果见其它对应语法的参考文件
-+ Reading View：除了不显示 Obsidian 注释、省略空行等少数行为以外，其它的尽量与 Live Preview 保持一致
++ Reading View：沿用 Live Preview 的段落与列表间距，保留额外空白正文；Obsidian 注释保持隐藏
 + Source Mode：提供了行号、当前行高亮、源码语法高亮、空白字符显示等编辑辅助。如果有 Live Preview 中不能编辑的部分，都可以在 Source View 中进行修改
 
 

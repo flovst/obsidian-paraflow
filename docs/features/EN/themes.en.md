@@ -4,7 +4,17 @@
 
 ParaFlow currently includes five of Typora's default themes, which you can select in the settings.
 
-The settings also offer an experimental Typora theme importer, which is still unstable. The source repository includes a Skill for importing Typora themes. If you have a particular theme in mind, I recommend letting your agent try that approach.
+The settings offer an experimental Typora theme importer. The source repository also includes the [paraflow-theme Skill](../../../skills/public/paraflow-theme/SKILL.md), which helps an agent inspect and adapt themes from Typora, MarkText, VNote, Zettlr, Joplin, and other CSS sources.
+
+Click the refresh icon to the left of the theme selector to scan installed themes and reload the current theme's files. **Manage themes** opens a separate desktop window, or a workspace tab on mobile. Search the list and filter by color scheme, package, source and installation type. Missing source information appears as “-”.
+
+Package and standalone names align and use normal weight. Child themes indent further, and a thin border encloses each expanded package. Click a package row to expand or collapse its themes. Search and filters reveal matching children; clearing them restores the saved expansion. Sorting keeps each package together. The five bundled Typora themes form one package; ParaFlow Classic is standalone.
+
+Click anywhere in a theme row to select it. Right-click for theme actions: apply, open folder, export, conversion report and theme information. In theme information, edit the source and **Package ID**: themes with the same ID group together, and an empty ID makes the theme standalone. Package rows offer expand/collapse and package information. Import and export preserve this metadata.
+
+Click anywhere in a header cell to toggle ascending or descending order. Dragging shows a floating heading and an insertion line before or after the target; release to insert the column there, or press Esc to cancel. Alt+Left/Right moves a focused heading. The workspace saves column order, sorting and package expansion. Headers align left with separators, sorting arrows reserve their width, and management controls keep accessible names without hover tooltips.
+
+Themes with both palettes, such as Typora GitHub, offer light, dark and Follow Obsidian in **Color scheme**. This setting applies to note content. The list labels known support as Dark/light, Dark or Light.
 
 ## Importing a Typora theme (experimental)
 
@@ -13,6 +23,8 @@ The settings also offer an experimental Typora theme importer, which is still un
 3. Click “Save theme,” then select it in the theme menu to apply it.
 
 Import directories use the theme name, such as `typora-github`. Import mainly processes local CSS and assets; remote resources are not downloaded.
+
+Plugin upgrades preserve existing Typora theme directories. To install an updated theme package, import its ZIP and select the newly saved theme. An existing ID receives a numeric suffix, so the old theme remains available. Copy personal rules from the old `overrides.css` as needed. The refresh icon reloads installed files.
 
 The conversion report helps locate individual rule and resource issues. No convertible body rules, missing required CSS imports, and invalid paths can block saving. Missing optional fonts or images are reported.
 
@@ -29,7 +41,7 @@ Use “Open theme folder” to locate the current theme. Its usual location is `
 | `assets/` | Local fonts and images |
 | `source/` | Imported source files |
 
-Edit `overrides.css`, then click “Reload.” Use content element selectors, Obsidian content classes, and `:root` variables. For example:
+Edit `overrides.css`, then click the refresh icon beside the theme selector. Use content element selectors, Obsidian content classes, and `:root` variables. For example:
 
 ```css
 h1 { color: #225588; }
@@ -42,7 +54,7 @@ Overrides apply only to the content area. Check changes in Reading view and Live
 
 ### Exporting
 
-“Export” packages an imported theme's source files, assets, overrides, and report as a ZIP. Importing it again runs conversion again.
+“Export” packages an imported theme's source files, assets, overrides, and report as a ZIP. Importing an ordinary theme again runs conversion again. Packages that declare paired palettes retain their converted light and dark styles.
 
 ## Examples
 

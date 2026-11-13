@@ -1,7 +1,7 @@
 import { createDetachedEl } from '../../dom';
 import {MarkdownView,Menu,Modal,Platform,Scope,editorInfoField,getLanguage,requireApiVersion,setIcon,type App,type Command,type View} from 'obsidian';
 import type {EditorView} from '@codemirror/view';
-import {canEditCurrentTable,createTableEditingExtension,insertNewTable,showCurrentTableMenu} from './extension';
+import {canEditCurrentTable,createTableEditingExtension,insertNewTable,showCurrentTableMenu,ownsTableLinkGesture} from './extension';
 import type {TableEditingOptions,TableValueRequest} from './editing-types';
 import {readClipboardData} from '../clipboard-paste';
 import {tableErrorMessage} from './error-messages';
@@ -14,6 +14,7 @@ import {bindTableCellScope} from './cell-key-scope';
 import type {TableConversionLoss} from './markdown-serialization';
 import type {NativeCellEditor,NativeClipboardAction} from './native-text-actions';
 import {createNativeCellSourceEditing,type NativeSourceCell} from './native-cell-source';
+import type {LinkOpenIntent} from '../../links/intent';
 
 interface NativeEditorOwner {cm:EditorView;editorComponent?:{cm:EditorView;tableCell?:NativeSourceCell&{cell:NativeSourceCell['cell']&{el:HTMLElement};editor:NativeCellEditor}};}
 interface ClipboardHostWindow extends Window {electron?:{remote:{getCurrentWebContents:()=>Record<NativeClipboardAction,()=>void>}};}
@@ -90,6 +91,9 @@ class DimensionsDialog extends Modal {
 }
 
 export interface TableEditingHost {
+	editLinksOnPlainClick?:()=>boolean;
+	openLink:(destination:string,view:EditorView,intent:LinkOpenIntent)=>void;
+	captureLinkNavigation?:(view:EditorView,destination:string)=>(intent:LinkOpenIntent)=>void;
 	getBreakEditingEnabled:()=>boolean;
 	getAutoWrap:()=>boolean;
 	setAutoWrap:(enabled:boolean)=>Promise<void>;
@@ -105,7 +109,7 @@ export function createTableEditingIntegration(app:App,host:TableEditingHost) {
 	const options:TableEditingOptions={...host,showMenu:createNativeTableMenuPresenter(()=>new Menu() as unknown as HostTableMenu,app,label=>translateMenuText(label,getLanguage()),Platform.isMacOS),renderMenuIcon:setIcon,notify:message=>{new FailureDialog(app,tableErrorMessage(message)).open();},
 		isActiveView:view=>host.getView()===view,
 		isSourceMode:view=>{const markdown=app.workspace.getActiveViewOfType(MarkdownView);return host.getView()===view&&markdown?.getMode()==='source'&&markdown.getState().source===true;},
-		openWikiLink:(view,target,newLeaf)=>app.workspace.openLinkText(target,view.state.field(editorInfoField).file?.path??'',newLeaf),
+		openWikiLink:(view,target,intent)=>host.openLink(target,view,intent),
 		registerKeyScope:(view,handle)=>requireApiVersion('1.5.7')?bindTableCellScope(view,()=>{
 			let owner:View|null=null;
 			app.workspace.iterateAllLeaves(leaf=>{if(leaf.view.getViewType()==='markdown'&&leaf.view.containerEl.contains(view.dom))owner=leaf.view;});
@@ -144,5 +148,5 @@ export function createTableEditingIntegration(app:App,host:TableEditingHost) {
 		return owner?.cm===view&&component?.cm===view&&active&&active.editor.cm===active.cm&&
 			typeof active.cell.text==='string'&&typeof active.cell.getAbsoluteOffsets==='function'?active:null;
 	});
-	return {options,extension:[createTableEditingExtension(options),cellSources],commands,destroy:()=>{app.workspace.offref(leafChange);}};
+	return {options,extension:[createTableEditingExtension(options),cellSources],commands,ownsLinkGesture:(target:Element)=>{const view=host.getView();return !!view&&ownsTableLinkGesture(view,target,options);},destroy:()=>{app.workspace.offref(leafChange);}};
 }

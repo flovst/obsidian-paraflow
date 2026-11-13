@@ -6,7 +6,7 @@ import { Decoration, EditorView, ViewPlugin, WidgetType, hoverTooltip, type Deco
 import { buildFootnoteIndex, footnoteDefinitionContent, type FootnoteDefinition, type FootnoteIndex, type FootnoteRange, type FootnoteReference } from './index.js';
 import { classifyCurrentSelectionMode, createInputStateExtension, requireCompositionState } from '../runtime/input-state.js';
 import { createSelectionPresentationSessionExtension, selectionPointerPressed, selectionProjectionCoverage } from '../runtime/selection-session.js';
-import { bindRenderedSourceClick, createRenderedSourceClickExtension, renderedSourcePointerPosition } from '../runtime/rendered-source-click.js';
+import { bindRenderedSourceClick, createRenderedSourceClickExtension, handoffRenderedSourceGesture, isRenderedSourceGesture, renderedSourceClickPosition, renderedSourcePointerPosition } from '../runtime/rendered-source-click.js';
 import { createNativeDecorationOwnership, nativeInlineOwnership, isNativeReplacement } from '../runtime/native-decoration-ownership.js';
 
 export interface FootnoteOptions {
@@ -16,13 +16,14 @@ export interface FootnoteOptions {
 }
 
 interface NavigationTarget {
+	readonly from: number;
 	readonly id: string;
 	readonly status: FootnoteReference['status'];
 	readonly destination: FootnoteRange | null;
 }
 
 function referenceTarget(index: FootnoteIndex, reference: FootnoteReference): NavigationTarget {
-	return { id: reference.id, status: reference.status,
+	return { from: reference.from, id: reference.id, status: reference.status,
 		destination: reference.status === 'resolved' ? index.definitions.find(def => def.id === reference.id)! : null,
 	};
 }
@@ -198,6 +199,25 @@ export function createFootnoteExtension(options: FootnoteOptions): Extension {
 		activeSource: FootnoteRange | null = null;
 		frozenSource: FootnoteRange | null = null;
 		pointerPressed: boolean;
+		pendingClick: { target: NavigationTarget; x: number; y: number } | null = null;
+		cancelClick = (): void => {
+			this.pendingClick = null;
+			this.view.dom.ownerDocument.removeEventListener('mouseup', this.release);
+		};
+		move = (event: MouseEvent): void => {
+			const pending = this.pendingClick;
+			if (pending && Math.max(Math.abs(event.clientX - pending.x), Math.abs(event.clientY - pending.y)) > 4) this.cancelClick();
+		};
+		release = (event: MouseEvent): void => {
+			this.move(event);
+			const pending = this.pendingClick;
+			this.cancelClick();
+			if (!pending || event.detail > 1 || !this.view.contentDOM.contains(event.target as Node)) return;
+			const target = this.navigationTarget(event);
+			if (target?.from !== pending.target.from || target.id !== pending.target.id ||
+				target.destination?.from !== pending.target.destination?.from || target.status !== pending.target.status) return;
+			this.navigate(event, target);
+		};
 		isOwnerActive = (): boolean => !this.destroyed && options.isActive(this.view);
 		handleKeydown = (event: KeyboardEvent): void => {
 			if (this.navigate(event)) event.stopPropagation();
@@ -206,12 +226,17 @@ export function createFootnoteExtension(options: FootnoteOptions): Extension {
 			const initiallyActive = options.isActive(view);
 			this.pointerPressed = selectionPointerPressed(view.state);
 			this.decorations = this.build();
+			const doc = view.dom.ownerDocument;
+			doc.addEventListener('mousemove', this.move, true);
+			doc.addEventListener('pointercancel', this.cancelClick, true);
+			doc.defaultView!.addEventListener('blur', this.cancelClick);
 			// CM attaches its editor classes after the first decoration pass.
 			queueMicrotask(() => {
 				if (!this.destroyed && initiallyActive !== options.isActive(view)) view.dispatch({});
 			});
 		}
 		update(update: ViewUpdate): void {
+			if (update.docChanged || update.transactions.some(transaction => transaction.reconfigured) || !options.isActive(this.view)) this.cancelClick();
 			if (options.isActive(this.view) && (this.view.compositionStarted || this.view.composing || requireCompositionState(update.state))) {
 				this.decorations = this.decorations.map(update.changes);
 				this.nativeOwners = this.nativeOwners.map(update.changes);
@@ -250,7 +275,33 @@ export function createFootnoteExtension(options: FootnoteOptions): Extension {
 			this.nativeOwners = result.nativeOwners;
 			return result.decorations;
 		}
-		destroy(): void { this.destroyed = true; this.view.dom.ownerDocument.defaultView!.clearTimeout(this.timer); }
+		destroy(): void {
+			this.destroyed = true;
+			this.cancelClick();
+			const doc = this.view.dom.ownerDocument;
+			doc.defaultView!.clearTimeout(this.timer);
+			doc.removeEventListener('mousemove', this.move, true);
+			doc.removeEventListener('pointercancel', this.cancelClick, true);
+			doc.defaultView!.removeEventListener('blur', this.cancelClick);
+		}
+		press(event: MouseEvent): boolean {
+			if (isRenderedSourceGesture(event)) return false;
+			this.cancelClick();
+			const target = this.navigationTarget(event);
+			if (!target || event.detail > 1) return false;
+			this.pendingClick = { target, x: event.clientX, y: event.clientY };
+			const element = (event.target as Element).closest<HTMLElement>('.paraflow-footnote-reference');
+			const position = element ? renderedSourceClickPosition(event, element, (node, offset) => {
+				const range = element.ownerDocument.createRange();
+				range.selectNodeContents(element); range.setEnd(node, offset);
+				return target.from + 2 + range.toString().length;
+			}) ?? target.from + 2 : this.view.posAtCoords({ x: event.clientX, y: event.clientY }) ?? target.from;
+			handoffRenderedSourceGesture(this.view, event, position, this.isOwnerActive, [], this.cancelClick);
+			// Revealing source removes the pressed widget, so browsers may omit click.
+			// Register after handoff so CM completes its mouse selection before the jump.
+			this.view.dom.ownerDocument.addEventListener('mouseup', this.release);
+			return true;
+		}
 		navigationTarget(event: MouseEvent | KeyboardEvent): NavigationTarget | null {
 			const focusedActivation = 'key' in event && (event.key === 'Enter' || event.key === ' ') &&
 				!event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey &&
@@ -267,7 +318,7 @@ export function createFootnoteExtension(options: FootnoteOptions): Extension {
 				if (reference) return referenceTarget(index, reference);
 				const definition = index.definitions.find(def => def.from === from);
 				const destination = definition?.references.find(ref => ref.from === Number(element.dataset.footnoteTarget));
-				return destination ? { id: destination.id, status: destination.status, destination } : null;
+				return destination ? { from, id: destination.id, status: destination.status, destination } : null;
 			}
 			if (!('clientX' in event)) return null;
 			// Editing removes the number mark; the source index still owns modified clicks on a reference.
@@ -275,8 +326,7 @@ export function createFootnoteExtension(options: FootnoteOptions): Extension {
 			const reference = position === null ? undefined : index.references.find(ref => ref.from <= position && position < ref.to);
 			return reference ? referenceTarget(index, reference) : null;
 		}
-		navigate(event: MouseEvent | KeyboardEvent): boolean {
-			const target = this.navigationTarget(event);
+		navigate(event: MouseEvent | KeyboardEvent, target = this.navigationTarget(event)): boolean {
 			if (!target) return false;
 			const { status } = target;
 			if (status === 'missing' || status === 'duplicate') {
@@ -329,10 +379,10 @@ export function createFootnoteExtension(options: FootnoteOptions): Extension {
 			} };
 		}),
 		footnoteIndexField, highlightField, projection, Prec.highest(EditorView.domEventHandlers({
-		mousedown: (event, view) => view.plugin(projection)!.navigate(event),
+		mousedown: (event, view) => view.plugin(projection)!.press(event),
 		click: (event, view) => {
 			if (!view.plugin(projection)!.navigationTarget(event)) return false;
-			// The mousedown already navigated or rejected an ambiguous target.
+			// Unpaired and cancelled modified clicks must not reach native footnote navigation.
 			event.preventDefault();
 			return true;
 		},

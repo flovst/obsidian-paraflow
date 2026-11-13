@@ -32,11 +32,20 @@ import {virtualTailState} from '../runtime/virtual-tail';
 import {renderedSourcePointerPosition} from '../runtime/rendered-source-click';
 import {selectionPointerPressed} from '../runtime/selection-session';
 import {moveTableTracks} from './track-movement';
+import {tableSourceRevealState} from './source-reveal';
+import {tableLinkMenuItems,tableLinkTarget} from './link-actions';
+import {NativeTableLinkInteraction} from './native-link-interaction';
 
 const controllers=new WeakMap<EditorView,Set<HtmlTableController>>();
 const domControllers=new WeakMap<HTMLElement,HtmlTableController>();
-const nativeContexts=new WeakMap<EditorView,{target:HTMLElement;point:{x:number;y:number}}>();
+const nativeContexts=new WeakMap<EditorView,{target:HTMLElement;point:{x:number;y:number};linkTarget:string|null}>();
 const actionLifecycles=new WeakMap<EditorView,symbol>();
+const nativeLinkOwners=new WeakMap<EditorView,NativeTableLinkInteraction>();
+
+export function ownsTableLinkGesture(view:EditorView,target:Element,options:TableEditingOptions):boolean {
+	if(!options.isActive(view)||options.isActiveView?.(view)===false||options.editLinksOnPlainClick?.()===false)return false;
+	return Array.from(controllers.get(view)??[]).some(controller=>controller.dom.contains(target))||nativeLinkOwners.get(view)?.owns(target)===true;
+}
 
 function toolbarTarget(view:EditorView,context:HTMLElement|null):TableToolbarTarget|null {
 	const active=view.dom.ownerDocument.activeElement as HTMLElement|null;
@@ -90,6 +99,7 @@ export function createTableEditingExtension(options:TableEditingOptions):Extensi
 		const models=new Map<string,HtmlTable>();
 		if(!active)return {decorations:Decoration.none,models};const ranges:Range<Decoration>[]=[];
 		for(const table of tables){if(table.container?table.container.kind==='quote'&&!containers:table.kind!=='html')continue;
+			if(state.field(tableSourceRevealState)?.from===table.from)continue;
 			try{const key=table.kind+':'+table.source,session=new TableEditSession(table,table.to,models.get(key)??previous.get(key)),edge=state.field(virtualTailState,false);
 				models.set(key,session.envelope);
 				const before=!!edge&&edge.side==='before'&&!table.container&&!state.sliceDoc(0,table.from).trim();
@@ -104,12 +114,12 @@ export function createTableEditingExtension(options:TableEditingOptions):Extensi
 		create(state){return {tables:findEditableTableSources(state),active:false,containers:false,decorations:Decoration.none,models:new Map<string,HtmlTable>()};},
 		update(value,tr){const active=tr.effects.find(effect=>effect.is(activation))?.value;
 			const tables=findEditableTableSources(tr.state);
-			if(tables===value.tables&&active===undefined&&!tr.reconfigured&&tr.startState.field(virtualTailState,false)===tr.state.field(virtualTailState,false))return value;
+			if(tables===value.tables&&active===undefined&&!tr.reconfigured&&tr.startState.field(virtualTailState,false)===tr.state.field(virtualTailState,false)&&tr.startState.field(tableSourceRevealState)===tr.state.field(tableSourceRevealState))return value;
 			const enabled=active?.active??value.active,containers=active?.containers??value.containers;
 			return {tables,active:enabled,containers,...build(tr.state,tables,enabled,containers,value.models)};
 		},provide:field=>Prec.highest(EditorView.decorations.from(field,value=>value.decorations)),
 	});
-	return [tableFocusOwner.of(view=>options.isActive(view)&&options.isActiveView?.(view)!==false),EditorView.editorAttributes.of(view=>({class:hasTableActivationRequest(view)?'paraflow-table-focus-pending':''})),EditorView.baseTheme({'&.paraflow-table-focus-pending > .cm-scroller .cm-cursorLayer':{visibility:'hidden'},'&.paraflow-table-focus-pending > .cm-scroller .cm-content':{caretColor:'transparent'},'.paraflow-block-widget-shell > .paraflow-list-table-container':{boxSizing:'border-box',
+	return [tableSourceRevealState,tableFocusOwner.of(view=>options.isActive(view)&&options.isActiveView?.(view)!==false),EditorView.editorAttributes.of(view=>({class:hasTableActivationRequest(view)?'paraflow-table-focus-pending':''})),EditorView.baseTheme({'&.paraflow-table-focus-pending > .cm-scroller .cm-cursorLayer':{visibility:'hidden'},'&.paraflow-table-focus-pending > .cm-scroller .cm-content':{caretColor:'transparent'},'.paraflow-block-widget-shell > .paraflow-list-table-container':{boxSizing:'border-box',
 		paddingInlineStart:'calc(var(--paraflow-live-list-base-indent, .5em) + var(--paraflow-table-list-depth) * var(--paraflow-live-list-indent, 30px) + var(--paraflow-live-list-content-offset, .75em) + var(--paraflow-table-list-hanging))'},
 		'.paraflow-list-table-container > .paraflow-html-table-editor':{marginBlock:'0'}}),
 		createNativeTableTailOwner(options),createNativeTableKeyboardExit(options),createTableKeyboardBoundaries(options,(view,cell)=>{
@@ -146,6 +156,7 @@ export function createTableEditingExtension(options:TableEditingOptions):Extensi
 		const nativeControls=new NativeTableControls(view.dom,()=>options.getHideAddControls?.()??true,()=>options.isActive(view)&&options.isActiveView?.(view)!==false);
 		const nativeDragPreview=new NativeTableDragPreview(view,()=>options.isActive(view)&&options.isActiveView?.(view)!==false);
 		const nativeTextSelection=new NativeTableTextSelection(view,()=>options.isActive(view)&&options.isActiveView?.(view)!==false,()=>!options.isActive(view)&&options.isActiveView?.(view)!==false&&(options.isSourceMode?.(view)??true));
+		const nativeLinks=new NativeTableLinkInteraction(view,options);nativeLinkOwners.set(view,nativeLinks);
 		const toolbar=new TableFocusToolbar(view,options,context=>toolbarTarget(view,context));
 		const restoreHtml=(from:number,bookmark:TableFocusBookmark)=>{
 			const controller=Array.from(controllers.get(view)??[]).find(controller=>controller.session.target.from===from);if(!controller)return false;
@@ -163,7 +174,7 @@ export function createTableEditingExtension(options:TableEditingOptions):Extensi
 			nativeContexts.delete(view);
 			const target=event.target as HTMLElement|null;
 			if(!options.isActive(view)||!target||target.nodeType!==1)return;
-			nativeContexts.set(view,{target,point:{x:event.clientX,y:event.clientY}});
+			nativeContexts.set(view,{target,point:{x:event.clientX,y:event.clientY},linkTarget:tableLinkTarget(target)});
 			if(target.closest('.cm-table-widget td,.cm-table-widget th')){
 				try{if(showCurrentTableMenu(view,options,{x:event.clientX,y:event.clientY},true)){event.preventDefault();event.stopPropagation();}}
 				catch(error){options.notify(error instanceof Error?error.message:String(error));}
@@ -208,7 +219,7 @@ export function createTableEditingExtension(options:TableEditingOptions):Extensi
 			}
 			if(update.selectionSet||!active)for(const controller of controllers.get(view)??[]){const selection=view.state.selection.main,target=controller.session.target;if(!active||selection.from<target.from||selection.to>target.to)controller.releaseSelection();}
 			nativeDragPreview.refreshOwnership();
-		},destroy(){destroyed=true;clearTableFocus(view);if(view.focus===focus){if(focusWasOwn)view.focus=originalFocus;else Reflect.deleteProperty(view,'focus');}view.dom.ownerDocument.removeEventListener('pointerdown',cancelFocus,true);view.dom.ownerDocument.removeEventListener('focusin',cancelFocus,true);view.dom.removeEventListener('keydown',cancelActivation,true);if(actionLifecycles.get(view)===lifecycle)actionLifecycles.delete(view);observer.disconnect();nativeControls.destroy();nativeDragPreview.destroy();nativeTextSelection.destroy();toolbar.destroy();view.dom.removeEventListener('contextmenu',captureContext,true);clearTableActions(view);for(const controller of controllers.get(view)??[])controller.destroy();controllers.delete(view);nativeContexts.delete(view);}};
+		},destroy(){destroyed=true;clearTableFocus(view);if(view.focus===focus){if(focusWasOwn)view.focus=originalFocus;else Reflect.deleteProperty(view,'focus');}view.dom.ownerDocument.removeEventListener('pointerdown',cancelFocus,true);view.dom.ownerDocument.removeEventListener('focusin',cancelFocus,true);view.dom.removeEventListener('keydown',cancelActivation,true);if(actionLifecycles.get(view)===lifecycle)actionLifecycles.delete(view);observer.disconnect();nativeControls.destroy();nativeDragPreview.destroy();nativeTextSelection.destroy();nativeLinks.destroy();nativeLinkOwners.delete(view);toolbar.destroy();view.dom.removeEventListener('contextmenu',captureContext,true);clearTableActions(view);for(const controller of controllers.get(view)??[])controller.destroy();controllers.delete(view);nativeContexts.delete(view);}};
 	})];
 }
 
@@ -251,7 +262,7 @@ export function showCurrentTableMenu(view:EditorView,options:TableEditingOptions
 	const controller=context?Array.from(controllers.get(view)??[]).find(controller=>controller.dom.contains(context.target)):
 		Array.from(controllers.get(view)??[]).find(controller=>controller.dom.contains(view.dom.ownerDocument.activeElement))??Array.from(controllers.get(view)??[]).find(controller=>controller.session.target.from<=position&&position<=controller.session.target.to);
 	const box=view.dom.getBoundingClientRect();const menuPoint=point??context?.point??{x:box.left+24,y:box.top+24};
-	if(controller){if(objectOnly)showTableActions(controller,options,menuPoint);else controller.showContextMenu(menuPoint);return true;}
+	if(controller){if(objectOnly)showTableActions(controller,options,menuPoint);else controller.showContextMenu(menuPoint,context?.linkTarget);return true;}
 	let target:NativeTableTarget|null;
 	try{target=NativeTableTarget.fromView(view,context?.target??null);}
 	catch(error){
@@ -260,10 +271,11 @@ export function showCurrentTableMenu(view:EditorView,options:TableEditingOptions
 		const anchor=cell?view.posAtDOM(cell.closest('.cm-table-widget')??cell):position;
 		const source=findEditableTableSources(view.state).find(source=>source.from<=anchor&&anchor<=source.to);
 		if(!source)return false;
-		options.showMenu!(view.dom.ownerDocument,menuPoint,nativeSourceMenu(view,source,cell,options,objectOnly));return true;
+		const links=objectOnly?[]:tableLinkMenuItems(view,context?.linkTarget??null,options),items=nativeSourceMenu(view,source,cell,options,objectOnly);
+		options.showMenu!(view.dom.ownerDocument,menuPoint,[...links,...items.map((item,index)=>links.length&&index===0?{...item,separatorBefore:true}:item)]);return true;
 	}
 	if(!target)return false;
-	if(objectOnly)showTableActions(target,options,menuPoint);else showTableContextMenu(target,options,menuPoint);return true;
+	if(objectOnly)showTableActions(target,options,menuPoint);else showTableContextMenu(target,options,menuPoint,undefined,context?.linkTarget);return true;
 }
 
 export async function insertNewTable(view:EditorView,options:TableEditingOptions):Promise<void> {

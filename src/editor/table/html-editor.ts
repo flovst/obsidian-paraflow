@@ -17,7 +17,7 @@ import {showTextPreview} from './text-preview';
 import type {RowStructureChange} from './group-reconciliation';
 import {moveTracksTo} from './reordering';
 import {TableAddControls} from './add-controls';
-import {deleteMarkdownTracks,insertMarkdownTrack,moveMarkdownTracks} from './toolbar-source';
+import {deleteMarkdownTracks,insertMarkdownTrack,moveMarkdownTracks,markdownCellContents,markdownCellSourceEnd} from './toolbar-source';
 import {readTrackGeometry,trackDropTarget,type TrackGeometry} from './track-geometry';
 import {TableDragPreview} from './drag-preview';
 import {type TablePointerHit} from './outer-drag-cursor';
@@ -26,11 +26,14 @@ import {TableTrackDragCursor} from './track-drag-cursor';
 import {exitHtmlTableDown} from './html-keyboard-exit';
 import {blockExitPlan} from '../block-exit';
 import {compositionStateField} from '../runtime/input-state';
-import {isWikiAnchor,readWikiAnchor} from './wiki-links';
+import {linkOpenIntent} from '../../links/intent';
+import {openTableLink,tableLinkTarget} from './link-actions';
 import {TableLinkPresentation} from './external-presentation';
 import {HtmlTableSourceSelection} from './html-source-selection';
 import {enterTableCell,tableRowCell} from './keyboard-entry';
 import {goalXStoreFor,requireGoalXStore} from '../runtime/navigation-core';
+import {mapRenderedTextSelection} from './markdown-selection';
+import {revealTableSource,tableRawSourcePosition} from './source-reveal';
 
 const selectionOwners=new WeakMap<EditorView,Set<HtmlTableController>>();
 interface CellTextSelection {cell:CellPosition;anchorNode:Node;anchorOffset:number;focusNode:Node;focusOffset:number;}
@@ -45,6 +48,7 @@ export class HtmlTableController implements TableActionTarget {
 	private selecting=false;
 	private ownsSelection=false;
 	private pointerAnchor:CellPosition|null=null;
+	private linkGesture:{anchor:Element;x:number;y:number;cancelled:boolean}|null=null;
 	private textAnchor:CellTextSelection|null=null;
 	private previewRestore:(()=>void)|undefined;
 	private menu:{close:()=>void}|undefined;
@@ -229,9 +233,15 @@ export class HtmlTableController implements TableActionTarget {
 	}
 	private pointerDown=(event:PointerEvent):void=>{
 		const cell=this.getEventCell(event);if(!cell||event.button!==0)return;
+		const link=(event.target as Element).closest('a');this.linkGesture=link?{anchor:link,x:event.clientX,y:event.clientY,cancelled:false}:null;
 		goalXStoreFor(this.view)?.write(null);
 		const position=this.position(cell);this.current=position;
-		if(event.shiftKey){event.preventDefault();this.textAnchor=null;this.select(this.anchor,position);this.dom.ownerDocument.getSelection()?.removeAllRanges();}
+		const text=event.shiftKey?this.captureText(cell):null;
+		if(text){
+			this.pointerAnchor=position;this.textAnchor=text;this.select(position,position,false);
+			const caret=this.pointerCaret(cell,event);if(caret){event.preventDefault();this.restoreText({...text,focusNode:caret.startContainer,focusOffset:caret.startOffset});}
+		}
+		else if(event.shiftKey){event.preventDefault();this.textAnchor=null;this.select(this.anchor,position);this.dom.ownerDocument.getSelection()?.removeAllRanges();}
 		else{this.pointerAnchor=position;this.textAnchor=null;this.select(position,position,false);const caret=this.pointerCaret(cell,event);if(caret)this.textAnchor={cell:position,anchorNode:caret.startContainer,anchorOffset:caret.startOffset,focusNode:caret.startContainer,focusOffset:caret.startOffset};}
 	};
 	private pointerCaret(cell:HTMLElement,event:MouseEvent):Range|null {
@@ -300,6 +310,7 @@ export class HtmlTableController implements TableActionTarget {
 		return target?{...target,boundary:target.boundary+shift}:null;
 	}
 	private dragMove=(event:PointerEvent):void=>{
+		const gesture=this.linkGesture;if(gesture&&(event.buttons&1)&&Math.hypot(event.clientX-gesture.x,event.clientY-gesture.y)>4)gesture.cancelled=true;
 		const drag=this.trackDrag;if(!drag)return;drag.cursor.move(event.target);drag.point={x:event.clientX,y:event.clientY};drag.preview.update(drag.point);
 		this.scheduleDrag();
 	};
@@ -314,7 +325,7 @@ export class HtmlTableController implements TableActionTarget {
 			else{drag.cue.style.left=`${box.left-left}px`;drag.cue.style.top=`${Math.max(box.top,Math.min(target.boundary-1,box.bottom-2))-top}px`;drag.cue.style.width=`${box.width}px`;}
 		});
 	};
-	private cancelDrag=():void=>{this.pointerAnchor=null;if(this.dragFrame!==null){this.dom.ownerDocument.defaultView!.cancelAnimationFrame(this.dragFrame);this.dragFrame=null;}this.trackDrag?.cursor.destroy();this.trackDrag?.preview.destroy();this.trackDrag=null;delete this.dom.dataset.pfTrackDrag;delete this.dom.dataset.pfTrackHover;};
+	private cancelDrag=():void=>{if(this.linkGesture)this.linkGesture.cancelled=true;this.pointerAnchor=null;if(this.dragFrame!==null){this.dom.ownerDocument.defaultView!.cancelAnimationFrame(this.dragFrame);this.dragFrame=null;}this.trackDrag?.cursor.destroy();this.trackDrag?.preview.destroy();this.trackDrag=null;delete this.dom.dataset.pfTrackDrag;delete this.dom.dataset.pfTrackHover;};
 	private dragKeyDown=(event:KeyboardEvent):void=>{if(this.trackDrag&&event.key==='Escape'){event.preventDefault();this.cancelDrag();this.select(this.current,this.current,false);}};
 	private pointerUp=(event:PointerEvent):void=>{
 		this.pointerAnchor=null;const drag=this.trackDrag;if(!drag)return;const target=this.dragTarget(drag,{x:event.clientX,y:event.clientY});this.cancelDrag();
@@ -526,16 +537,36 @@ export class HtmlTableController implements TableActionTarget {
 	};
 	private contextMenu=(event:MouseEvent):void=>{
 		const cell=this.getEventCell(event);if(!cell)return;event.preventDefault();event.stopPropagation();
+		const link=tableLinkTarget(event.target as Element);
 		const position=this.position(cell);if(!this.selecting||!intersects(this.session.table.cells.find(candidate=>candidate.row===position.row&&candidate.column===position.column)!,this.rectangle))this.select(position,position,false);
-		this.showContextMenu({x:event.clientX,y:event.clientY});
+		this.showContextMenu({x:event.clientX,y:event.clientY},link);
 	};
 	private linkClick=(event:MouseEvent):void=>{
-		const element=event.target as Element,anchor=element.closest('a');if(!anchor||!isWikiAnchor(anchor))return;
-		event.preventDefault();event.stopPropagation();if(!event.ctrlKey&&!event.metaKey)return;
-		if(!this.options.openWikiLink){this.options.notify('内部链接导航未连接到宿主。');return;}
-		try{const link=readWikiAnchor(anchor);void Promise.resolve(this.options.openWikiLink(this.view,link.target,true)).catch(error=>this.options.notify(error instanceof Error?error.message:String(error)));}catch(error){this.options.notify(error instanceof Error?error.message:String(error));}
+		const element=event.target as Element,anchor=element.closest('a'),target=tableLinkTarget(element);
+		if(!anchor||target===null||event.button!==0||this.options.editLinksOnPlainClick?.()===false||event.altKey&&!event.ctrlKey&&!event.metaKey)return;
+		event.preventDefault();event.stopPropagation();
+		const gesture=this.linkGesture;
+		if(event.detail>1||gesture&&(gesture.cancelled||gesture.anchor!==anchor))return;
+		if(event.ctrlKey||event.metaKey){openTableLink(this.view,target,linkOpenIntent(event),this.options);return;}
+		if(event.shiftKey)return;
+		try{this.revealLinkSource(event,anchor);}catch(error){this.options.notify(error instanceof Error?error.message:String(error));}
 	};
-	showContextMenu(point:{x:number;y:number}):void {this.menu?.close();this.frozenText=this.textBookmark;this.menu=showTableContextMenu(this,this.options,point,()=>{this.frozenText=null;});}
+	private revealLinkSource(event:MouseEvent,anchor:Element):void {
+		const cell=this.getNodeCell(anchor)!,selection=this.dom.ownerDocument.getSelection()!,caret=this.pointerCaret(cell,event);
+		if(caret){selection.removeAllRanges();selection.addRange(caret);}
+		if(!selection.rangeCount||!cell.contains(selection.anchorNode)||!cell.contains(selection.focusNode))return;
+		const position=this.position(cell),table=this.session.target;
+		let source:{anchor:number;head:number};
+		if(table.kind==='html')source=this.sourceMap().selection(cell,position,selection);
+		else{
+			const lexical=markdownCellContents(table.source)[position.row]![position.column]!.trim(),end=markdownCellSourceEnd(table.source,position.row,position.column),start=end-lexical.length;
+			const text=bookmarkRange(cell,selection.getRangeAt(0)),mapped=mapRenderedTextSelection(lexical,text.from,text.to,cell.textContent??'');
+			if(!mapped)throw new Error('链接文字无法映射到原始表格源码。');
+			source={anchor:tableRawSourcePosition(table,start+mapped.from),head:tableRawSourcePosition(table,start+mapped.to)};
+		}
+		this.ownsSelection=false;this.view.dispatch({selection:source,effects:revealTableSource.of(table),scrollIntoView:true});this.view.focus();
+	}
+	showContextMenu(point:{x:number;y:number},linkTarget:string|null=null):void {this.menu?.close();this.frozenText=this.textBookmark;this.menu=showTableContextMenu(this,this.options,point,()=>{this.frozenText=null;},linkTarget);}
 	showMenu(point:{x:number;y:number}):void {this.showContextMenu(point);}
 	clearPreview():void {this.previewRestore?.();this.previewRestore=undefined;}
 	preview(table:TableModel):()=>void {

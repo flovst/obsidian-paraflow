@@ -185,6 +185,7 @@ export function createParagraphExtension(options: ParagraphExtensionOptions): Ex
 			isStateActive,
 			(view) => isActive(view, options),
 			options.renderInlineHtml,
+			options.editLinksOnPlainClick,
 		),
 		options.mathRendering ? createMathEditingExtension({
 			...options.mathRendering,

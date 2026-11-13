@@ -8,6 +8,9 @@ import { decorateContextMenuItem } from './menu-shortcuts.js';
 import { bindContextMenuPointerEvents, retargetNativeCellContextMenu } from './context-menu-target.js';
 import { codeBodyAtMenuPosition } from './context-menu-code.js';
 import { translateMenuText } from './menu-i18n.js';
+import { destinationText, editableLinkAt } from './paragraph/link-interaction.js';
+import { installLinkMenuActions } from '../links/menu.js';
+import type { createObsidianLinkNavigation } from '../links/obsidian.js';
 
 const t = (label: string): string => translateMenuText(label, getLanguage());
 
@@ -32,8 +35,9 @@ class CalloutTypeDialog extends Modal {
 	onClose(): void { this.contentEl.replaceChildren(); }
 }
 
-export function registerContentMenus(plugin: Plugin): void {
+export function registerContentMenus(plugin: Plugin, links?: ReturnType<typeof createObsidianLinkNavigation>): void {
 	const events = new WeakMap<Document, MouseEvent>();
+	const linkTargets = new WeakMap<Document, { destination: string; origin: ReturnType<NonNullable<typeof links>['fromEditor']> }>();
 	const documents = new WeakSet<Document>();
 	const observe = (doc: Document) => {
 		if (documents.has(doc)) return;
@@ -47,8 +51,21 @@ export function registerContentMenus(plugin: Plugin): void {
 			if (!view) return;
 			const owner = view.state.field(editorInfoField, false)?.editor as unknown as { editorComponent?: { tableCell?: unknown } } | undefined;
 			retargetNativeCellContextMenu(view, target, { x: event.clientX, y: event.clientY }, !!owner?.editorComponent?.tableCell);
-		}, event => events.set(doc, event)));
-		plugin.registerDomEvent(doc, 'keydown', () => events.delete(doc), true);
+		}, event => {
+			events.set(doc, event);
+			linkTargets.delete(doc);
+			const target = event.target as Element | null;
+			const editorDOM = target?.closest<HTMLElement>('.cm-editor');
+			const view = editorDOM ? EditorView.findFromDOM(editorDOM) : null;
+			if (!links || !view || !target) return;
+			const position = view.posAtCoords({ x: event.clientX, y: event.clientY }) ?? view.state.selection.main.head;
+			const anchor = target.closest('a');
+			const source = editableLinkAt(view.state, position);
+			const destination = anchor?.getAttribute('data-href') ?? anchor?.getAttribute('href') ?? (source ? destinationText(source.destination, view) : undefined);
+			if (destination === undefined) { linkTargets.delete(doc); return; }
+			linkTargets.set(doc, { destination, origin: links.fromEditor(view) });
+		}));
+		plugin.registerDomEvent(doc, 'keydown', () => { events.delete(doc); linkTargets.delete(doc); }, true);
 	};
 	observe(document);
 	const observeLeaves = () => plugin.app.workspace.iterateAllLeaves(leaf => observe(leaf.view.containerEl.ownerDocument));
@@ -68,6 +85,11 @@ export function registerContentMenus(plugin: Plugin): void {
 		const codePosition = codeElement ? Number(codeElement.dataset.paraflowCodeBlock ?? codeElement.dataset.paraflowRenderedFrom) : position;
 		const code = codeBodyAtMenuPosition(state, codePosition);
 		const objectTarget = target?.closest('a,img,.internal-embed,.paraflow-table,.cm-hmd-internal-link,.cm-link,.cm-url');
+		const anchor = target?.closest('a');
+		const sourceLink = editableLinkAt(state, position);
+		const capturedLink = linkTargets.get(doc); linkTargets.delete(doc);
+		const linkDestination = capturedLink?.destination ?? anchor?.getAttribute('data-href') ?? anchor?.getAttribute('href') ?? (sourceLink ? destinationText(sourceLink.destination, cm) : undefined);
+		const linkOrigin = capturedLink?.origin ?? (links && linkDestination !== undefined ? links.fromEditor(cm) : null);
 		const card = !objectTarget && state.field(editorLivePreviewField, false) ? calloutAtMenuPosition(state, position) : null;
 		const activeDocument = () => {
 			if (cm.state.doc === state.doc) return true;
@@ -78,6 +100,8 @@ export function registerContentMenus(plugin: Plugin): void {
 		menu.sort = function () {
 			menu.sort = originalSort;
 			originalSort();
+			if (links && linkOrigin && linkDestination !== undefined) installLinkMenuActions(menu, linkDestination,
+				intent => links.open(linkDestination, linkOrigin, intent), t);
 			const hasObjectAction = contentMenuItems(menu).some(item => ['selection', 'open'].includes(item.section));
 			organizeContentMenu(menu, {
 				translate: t,

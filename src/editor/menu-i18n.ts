@@ -1,5 +1,6 @@
 /** ParaFlow-owned menu labels; unknown host/plugin labels retain their translation. */
 const english: Readonly<Record<string, string>> = {
+	'在当前标签页打开': 'Open in current tab', '在新的标签页打开': 'Open in new tab', '打开链接': 'Open link',
 	'粘贴为纯文本': 'Paste as plain text', '段落格式': 'Paragraph format',
 	'插入 Wiki 链接': 'Insert Wiki link', '插入链接': 'Insert link', '公式块': 'Math block',
 	'清除文本格式': 'Clear formatting', '行内代码': 'Inline code', '行内公式': 'Inline math',

@@ -67,7 +67,8 @@ Improve rendering in each view, especially Source mode, along with copying and p
 Other features:
 
 - Improve the display of headings, inline formatting, footnotes, images, and more.
-- Import Typora themes and work with Obsidian themes, with compatibility still being refined.
+- [Manage content themes](docs/features/EN/themes.en.md) with search, package grouping, and import/export. The GitHub theme supports light and dark palettes.
+- Edit links with a click, or Ctrl/Cmd-click to open and focus a new tab.
 - Toggle each feature individually in settings. Some issues may remain.
 
 A [showcase vault](../../releases/tag/0.1.5) with ParaFlow installed is available in the release for a quick trial.

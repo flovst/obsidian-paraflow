@@ -492,10 +492,7 @@ function emptyTopLevelReplacement(context: ListContext): EmptyReplacement {
 	if (context.topology.atDocumentEnd) {
 		return { caretOffset: desired.length + 1, text: `\n${desired}` };
 	}
-	const following = context.topology.whitespaceBoundaries.find(boundary =>
-		boundary.fromAnchor === 'current-marker-line' && boundary.toAnchor === 'following-block');
-	const existingSeparator = following !== undefined && /\n[ \t]*\n/u.test(context.source.slice(following.range));
-	return { caretOffset: desired.length + 1, text: `\n${desired}${existingSeparator ? '' : '\n'}` };
+	return { caretOffset: desired.length + 1, text: `\n${desired}\n` };
 }
 
 function emptyOwnedIndentDelta(context: ListContext): number {
@@ -505,23 +502,29 @@ function emptyOwnedIndentDelta(context: ListContext): number {
 		markdownColumns(context.source.slice({ from: context.current.lineFrom, to: context.current.content.from }));
 }
 
-function reuseNestedEmptySeparators(context: ListContext, replacement: EmptyReplacement): EmptyReplacement {
-	const indent = physicalIndent(context);
-	const lineFrom = context.current.lineFrom;
-	const lineTo = context.current.markerLine.to;
-	const previousFrom = context.source.text.lastIndexOf('\n', lineFrom - 2) + 1;
-	const nextTo = context.source.text.indexOf('\n', lineTo + 1);
-	const before = context.source.slice({ from: previousFrom, to: lineFrom });
-	const after = context.source.slice({ from: lineTo, to: nextTo < 0 ? context.source.length : nextTo + 1 });
-	const leading = `${indent}\n`;
-	const trailing = `\n${indent}`;
-	if (/^[ \t]*\n$/u.test(before) && replacement.text.startsWith(leading)) {
-		replacement = { text: replacement.text.slice(leading.length), caretOffset: replacement.caretOffset - leading.length };
-	}
-	if (/^\n[ \t]*\n/u.test(after) && replacement.text.endsWith(trailing)) {
-		replacement = { ...replacement, text: replacement.text.slice(0, -trailing.length) };
-	}
-	return replacement;
+function firstChildPrecedingNewlines(context: ListContext): number {
+	if (!context.topology.parent || context.topology.previousSibling) return 1;
+	// The first child's parent is not a previous-block topology anchor.
+	const previousLineFrom = context.source.text.lastIndexOf('\n', context.current.lineFrom - 2) + 1;
+	return /^[ \t]*\n$/u.test(context.source.slice({ from: previousLineFrom, to: context.current.lineFrom })) ? 2 : 1;
+}
+
+function reuseEmptySeparators(context: ListContext, replacement: EmptyReplacement): EmptyReplacement {
+	const boundaries = context.topology.whitespaceBoundaries;
+	const previous = boundaries.find(boundary =>
+		boundary.fromAnchor === 'previous-block' && boundary.toAnchor === 'current-marker-line');
+	const following = boundaries.find(boundary =>
+		boundary.fromAnchor === 'current-marker-line' && boundary.toAnchor === 'following-block');
+	const lines = replacement.text.split('\n');
+	const caretLine = replacement.text.slice(0, replacement.caretOffset).split('\n').length - 1;
+	// Only separator rows beside the caret may be supplied by existing boundaries.
+	const before = Math.min(caretLine, Math.max(0, (previous?.newlineCount ?? firstChildPrecedingNewlines(context)) - 1));
+	const after = Math.min(lines.length - caretLine - 1, Math.max(0, (following?.newlineCount ?? 1) - 1));
+	const removedBefore = before === 0 ? 0 : lines.slice(0, before).join('\n').length + 1;
+	return {
+		text: lines.slice(before, lines.length - after).join('\n'),
+		caretOffset: replacement.caretOffset - removedBefore,
+	};
 }
 
 function emptyItemFragment(
@@ -533,9 +536,9 @@ function emptyItemFragment(
 		context.topology.ownedBlocks.every((block) => block.kind === 'descendant')) {
 		return removeEmptyItemAndPromoteOwnedBlocks(context, currentItemId, delta);
 	}
-	const replacement = nested
-		? reuseNestedEmptySeparators(context, emptyNestedReplacement(context))
-		: emptyTopLevelReplacement(context);
+	const replacement = reuseEmptySeparators(context, nested
+		? emptyNestedReplacement(context)
+		: emptyTopLevelReplacement(context));
 	return replaceEmptyItem(
 		context,
 		currentItemId,

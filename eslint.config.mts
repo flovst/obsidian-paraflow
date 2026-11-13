@@ -36,7 +36,7 @@ export default defineConfig(
 	},
 	...obsidianmd.configs.recommended,
 	{
-		files: ['build/**/*.mjs', 'stylelint.config.mjs'],
+		files: ['build/**/*.mjs', 'stylelint.config.mjs', 'skills/public/**/scripts/*.mjs'],
 		languageOptions: {
 			globals: { ...globals.node },
 			parserOptions: { projectService: false, project: './tsconfig.tools.json' },

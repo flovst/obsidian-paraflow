@@ -7,7 +7,7 @@ import { detailsContainers } from '../editor/rendered-blocks/details-source.js';
 interface RenderedBlock { node: SyntaxNode; element: HTMLElement; }
 export { READING_BLANK_PARAGRAPH_CSS } from './blank-paragraphs-css.js';
 const selectors: Readonly<Record<string, string>> = {
-	Paragraph: 'p', BulletList: 'ul', OrderedList: 'ol', ListItem: 'li',
+	Paragraph: 'p', Task: 'p', BulletList: 'ul', OrderedList: 'ol', ListItem: 'li',
 	Blockquote: 'blockquote,.callout', FencedCode: 'pre,.paraflow-code-display-frame',
 	CodeBlock: 'pre,.paraflow-code-display-frame', Table: 'table,.paraflow-display-table-viewport',
 	HorizontalRule: 'hr', HTMLBlock: 'details,table',
@@ -39,7 +39,17 @@ export function displayReadingBlankParagraphs(root: HTMLElement, source: string,
 	before: SyntaxNode | undefined, after: SyntaxNode | undefined, leadingBoundary = 0, container = false): () => void {
 	const undo: Array<() => void> = [];
 	const details = detailsContainers(source);
-	const end = (node: SyntaxNode): number => details.find(block => block.from <= node.from && node.from <= block.headerTo)?.to ?? node.to;
+	function end(node: SyntaxNode): number {
+		const detail = details.find(block => block.from <= node.from && node.from <= block.headerTo);
+		if (detail) return detail.to;
+		if (['ListItem', 'BulletList', 'OrderedList'].includes(node.name)) {
+			// Lezer can include the following blank rows' quote markers in a list item.
+			let last = node.lastChild;
+			while (last?.name === 'QuoteMark') last = last.prevSibling;
+			if (last) return end(last);
+		}
+		return node.to;
+	}
 	function style(element: HTMLElement, property: string, value: string): void {
 		const previous = element.style.getPropertyValue(property), priority = element.style.getPropertyPriority(property);
 		element.style.setProperty(property, value, 'important');
@@ -80,15 +90,33 @@ export function displayReadingBlankParagraphs(root: HTMLElement, source: string,
 		}
 		return result;
 	}
+	function children(node: SyntaxNode): SyntaxNode[] {
+		const result: SyntaxNode[] = [];
+		for (let child = node.firstChild; child; child = child.nextSibling) result.push(child);
+		return result;
+	}
+	function releaseTrailingListEdge(block: RenderedBlock): string {
+		style(block.element, 'margin-block-end', '0');
+		if (block.node.name === 'ListItem') style(block.element, 'padding-block-end', '0');
+		if (['ListItem', 'BulletList', 'OrderedList'].includes(block.node.name)) {
+			const last = mapBlocks(block.element, children(block.node)).at(-1);
+			if (last) return releaseTrailingListEdge(last);
+		}
+		return kind(block.node);
+	}
 	function inside(parent: HTMLElement, children: readonly SyntaxNode[]): void {
 		const blocks = mapBlocks(parent, children);
 		for (let index = 0; index < blocks.length; index++) {
 			const current = blocks[index]!, previous = blocks[index - 1];
-			// List item edges retain list rhythm; item-internal paragraphs use body rhythm.
-			if (previous && current.node.name !== 'ListItem') {
+			if (previous) {
 				const rows = between(previous.node, current.node);
 				if (hasParagraph(rows)) {
-					current.element.before(spacer(rows, kind(previous.node), kind(current.node)));
+					if (current.node.name === 'ListItem') {
+						// Keep native numbering and task controls in the original li sequence.
+						const trailingKind = releaseTrailingListEdge(previous);
+						previous.element.append(spacer(rows, trailingKind, 'p'));
+						style(current.element, '--paraflow-list-row-top-padding', '0px');
+					} else current.element.before(spacer(rows, kind(previous.node), kind(current.node)));
 					style(previous.element, 'margin-block-end', '0'); style(current.element, 'margin-block-start', '0');
 				}
 			}

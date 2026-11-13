@@ -1,5 +1,6 @@
 import type { ThemeManifest } from './model.js';
 import { validateThemeId } from './store.js';
+import * as css from 'css-tree';
 
 export interface ThemeOverrides {
  colorScheme?: 'host' | 'light' | 'dark';
@@ -15,8 +16,30 @@ export interface ThemeOverrides {
 }
 
 export function supportsThemeColorScheme(theme: ThemeManifest | null | undefined): boolean {
- // Converted CSS keeps its own colors and media rules; the converter does not create palette variants.
- return theme == null || theme.origin === 'builtin';
+ return theme == null || theme.origin === 'builtin' || theme.colorSchemeVariants === 'host-class';
+}
+
+/** Select an authored content palette without changing Obsidian's body theme classes. */
+export function selectThemeColorScheme(source: string, theme: ThemeManifest, mode: ThemeOverrides['colorScheme']): string {
+ if (theme.colorSchemeVariants !== 'host-class' || (mode !== 'light' && mode !== 'dark')) return source;
+ const ast = css.parse(source, { parseCustomProperty: true, onParseError(error) { throw error; } });
+ css.walk(ast, { visit: 'Rule', enter(rule) {
+  if (rule.prelude.type !== 'SelectorList') return;
+  for (const selector of rule.prelude.children) {
+   if (selector.type !== 'Selector') continue;
+   const compound = selector.children.toArray();
+   if (compound[0]?.type !== 'TypeSelector' || compound[0].name !== 'body') continue;
+   for (const node of compound) {
+    if (node.type === 'Combinator') break;
+    if (node.type !== 'ClassSelector' || !['theme-light', 'theme-dark'].includes(node.name)) continue;
+    const enabled = node.name === `theme-${mode}`;
+    // The always-matching branch keeps the original class specificity.
+    const replacement = css.parse(enabled ? ':nth-child(n)' : ':not(*)', { context: 'selector' }) as css.Selector;
+    Object.assign(node, replacement.children.first);
+   }
+  }
+ } });
+ return css.generate(ast);
 }
 
 export function normalizeThemeOverrides(value: unknown): ThemeOverrides {

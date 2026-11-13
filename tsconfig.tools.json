@@ -5,5 +5,5 @@
 		"noEmit": true,
 		"types": ["node"]
 	},
-	"include": ["eslint.config.mts", "*.mjs", "build/**/*.mjs"]
+	"include": ["eslint.config.mts", "*.mjs", "build/**/*.mjs", "skills/public/**/scripts/*.mjs"]
 }

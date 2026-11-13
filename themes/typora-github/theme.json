@@ -3,8 +3,12 @@
   "id": "typora-github",
   "name": "Typora GitHub",
   "origin": "imported",
-  "colorScheme": "light",
+  "colorScheme": "adaptive",
+  "colorSchemeVariants": "host-class",
   "converterVersion": "11",
   "sourceEntry": "github.css",
-  "sourceVersion": "1.9.5"
+  "sourceVersion": "1.9.5",
+  "sourceApp": "Typora",
+  "sourcePackage": "Typora default themes",
+  "packageId": "typora-default"
 }

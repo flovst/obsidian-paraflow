@@ -6,7 +6,7 @@ import type { ThemeManifest } from './model.js';
 import { semanticBlockRhythmCss, listSiblingRhythmCss, readingBlockRhythmCss } from '../editor/paragraph/rhythm-css.js';
 import { projectHeadingThemeSelectors } from './heading-selectors.js';
 import { projectSourceThemeTokens } from './width-selectors.js';
-import { isolateDiagramParagraphs, projectContentThemeSelectors, projectLinkAccentOverride } from './content-selectors.js';
+import { isolateDiagramParagraphs, projectContentThemeSelectors, projectLinkAccentOverride, projectLinkThemeTokens } from './content-selectors.js';
 import { projectQuoteThemeTokens } from './quote-selectors.js';
 import { themeResource } from './resource-policy.js';
 
@@ -26,6 +26,7 @@ export function resolveThemeUrls(source: string, resourcePath: (path: string) =>
 	});
 	projectHeadingThemeSelectors(ast);
 	projectContentThemeSelectors(ast);
+	projectLinkThemeTokens(ast);
 	projectQuoteThemeTokens(ast);
 	projectSourceThemeTokens(ast);
 	isolateDiagramParagraphs(ast);
@@ -36,6 +37,9 @@ export function resolveThemeUrls(source: string, resourcePath: (path: string) =>
 export function contentTokenBridge(id: string, overrides: ThemeOverrides = {}, origin?: ThemeManifest['origin'], metadataGap: number | null = -6): string {
  const {body,live,source,reading,roots,widthRoots} = themeRoots(id);
  const exclude = ':not(:is(.callout,.callout *,.markdown-embed,.markdown-embed *))';
+ const linkRoots = [live, reading, source];
+ const links = ':is(a:not(.tag),.cm-link,.cm-url,.cm-hmd-internal-link,.paraflow-footnote-reference,.paraflow-footnote-backlink)';
+ const linkExclude = ':not(:is(.markdown-embed,.markdown-embed *,.paraflow-code-line *,.paraflow-rendered-source-line *,.paraflow-literal-reference *,.paraflow-inline-source-active *,.paraflow-literal-inline-marker *))';
  return `
 ${body}{
  --paraflow-host-font:var(--font-text); --paraflow-host-size:var(--font-text-size); --paraflow-host-weight:var(--font-weight);
@@ -55,7 +59,10 @@ ${roots},${source}{
  --font-text:var(--paraflow-paragraph-font,var(--paraflow-content-font,var(--paraflow-host-font)));
  --font-text-size:var(--paraflow-paragraph-size,var(--paraflow-content-font-size,var(--paraflow-host-size)));
  --link-color:var(--paraflow-link-color,var(--paraflow-host-accent));
+ --link-color-hover:var(--paraflow-link-override,var(--paraflow-link-hover-color,var(--link-color)));
  --link-external-color:var(--link-color);
+ --link-external-color-hover:var(--link-color-hover);
+ --link-unresolved-color:#a0a0a0;--link-unresolved-opacity:1;
  --paraflow-accent-color:var(--link-color);
  --interactive-accent:var(--paraflow-accent-color);--interactive-accent-hover:var(--paraflow-accent-color);
  --text-accent:var(--paraflow-accent-color);--text-accent-hover:var(--paraflow-accent-color);
@@ -153,7 +160,27 @@ ${reading} li${exclude},${reading} :is(ul,ol):has(>li)${exclude},${live} .HyperM
 ${reading} li${exclude},${reading} :is(ul,ol):has(>li)${exclude},${live} .HyperMD-list-line:not(.paraflow-code-line):not(:where(.paraflow-list-blank-gap-head,.paraflow-list-blank-editable,.paraflow-list-blank-folded))${exclude}{
  line-height:var(--paraflow-list-line-height,var(--paraflow-line-height));
 }
-${live} .cm-link .cm-underline${exclude},${live} .cm-url${exclude},${reading} a${exclude}{color:var(--link-color)}
+${linkRoots.map(root => `${root} ${links}${linkExclude}`).join(',')}{
+ --paraflow-link-paint:var(--paraflow-link-override,var(--link-color));color:var(--paraflow-link-paint);
+}
+${linkRoots.map(root => `${root} ${links}:hover${linkExclude}`).join(',')}{
+ --paraflow-link-paint:var(--link-color-hover);color:var(--paraflow-link-paint);
+}
+${linkRoots.map(root => `${root} :is(.cm-link,.cm-url,.cm-hmd-internal-link) .cm-underline${linkExclude}`).join(',')}{color:var(--paraflow-link-paint,var(--link-color))}
+/* A highlight inside a link retains its background and uses the link's text paint. */
+${linkRoots.map(root => `${root} ${links} :is(mark,.cm-highlight,.paraflow-inline-body--highlight)${linkExclude}`).join(',')}{color:var(--paraflow-link-paint,var(--link-color))!important}
+${source} .cm-footref:not(.HyperMD-footnote *)${linkExclude}{color:var(--link-color)}
+${source} .cm-footref:not(.HyperMD-footnote *):hover${linkExclude}{color:var(--link-color-hover)}
+${linkRoots.flatMap(root => [
+ `${root} ${links}:is(.is-unresolved,[data-footnote-status="missing"])${linkExclude}`,
+ `${root} .is-unresolved${linkExclude}`,
+ `${root} .is-unresolved ${links}${linkExclude}`,
+ `${root} ${links} .is-unresolved${linkExclude}`,
+ `${root} .is-unresolved .cm-underline${linkExclude}`,
+ `${root} .cm-underline.is-unresolved${linkExclude}`,
+]).join(',')}{
+ --paraflow-link-paint:var(--link-unresolved-color);color:var(--paraflow-link-paint);opacity:1;
+}
 ${live} a.tag${exclude},${reading} a.tag${exclude}{color:var(--tag-color)}
 ${live} .cm-hashtag${exclude}{line-height:1}
 ${live} .paraflow-quote-line.HyperMD-task-line:is([data-task="x"],[data-task="X"])${exclude}{color:var(--checklist-done-color)}

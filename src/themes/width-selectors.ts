@@ -3,7 +3,7 @@ import * as css from 'css-tree';
 const widthTokens = ['--paraflow-content-width', '--paraflow-text-width', '--paraflow-page-padding-left', '--paraflow-page-padding-right'];
 const textProperties = new Set(['font-family', 'font-size', 'font-weight', 'line-height', 'color', 'caret-color']);
 const sourceToken = (property: string): boolean =>
- /^(?:--font-text(?:-size)?|--text-(?:normal|muted|faint|accent)|--interactive-accent|--link-(?:color|external-color)|--code-(?:normal|comment|keyword|string|number|function|property)|--background-(?:primary|secondary)|--paraflow-(?:content-(?:font|font-size|color|background|weight|line-height)|paragraph-(?:font|size|weight|line-height)|h[1-6]-(?:size|font|weight|color)|link-color))$/u.test(property);
+ /^(?:--font-text(?:-size)?|--text-(?:normal|muted|faint|accent)|--interactive-accent|--link-(?:color(?:-hover)?|external-color(?:-hover)?)|--code-(?:normal|comment|keyword|string|number|function|property)|--background-(?:primary|secondary)|--paraflow-(?:content-(?:font|font-size|color|background|weight|line-height)|paragraph-(?:font|size|weight|line-height)|h[1-6]-(?:size|font|weight|color)|link-(?:hover-)?color))$/u.test(property);
 
 /** Project Source text and width in place, retaining cascade without live layout or hidden syntax. */
 export function projectSourceThemeTokens(ast: css.CssNode): void {

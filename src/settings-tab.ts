@@ -15,6 +15,9 @@ export class ParaFlowSettingTab extends PluginSettingTab {
 	private helpSequence = 0;
 	private renderedRows = new Map<MessageKey, HTMLElement>();
 	constructor(private readonly paraFlow: ParaFlowPlugin) { super(paraFlow.app, paraFlow); }
+	refreshThemeControls(): void {
+		this.refreshSettings();
+	}
 
 	getSettingDefinitions(): SettingDefinitionItem[] {
 		return (['theme', 'editing', 'other'] as const).map(category => {
@@ -210,6 +213,8 @@ export class ParaFlowSettingTab extends PluginSettingTab {
 		for (const key of ['livePreviewPasteMode', 'sourcePasteMode'] as const) this.select(key, this.choices([['exact', 'exact'], ['smart', 'smart']]));
 		this.toggle('pasteCloseCodeFences');
 		this.section('interaction');
+		this.row('preventImplicitLinkCreation', setting => setting.addToggle(toggle => toggle.setValue(plugin.preventImplicitLinkCreation)
+			.onChange(value => this.save(() => plugin.setPreventImplicitLinkCreation(value)))));
 		this.row('disableSelectedTextDrag', setting => setting.addToggle(toggle => toggle.setValue(plugin.disableSelectedTextDrag).onChange(value => this.save(() => plugin.setDisableSelectedTextDrag(value)))));
 		this.row('hideCaretWhileDragSelecting', setting => setting.addToggle(toggle => toggle.setValue(plugin.hideCaretWhileDragSelecting).onChange(value => this.save(() => plugin.setHideCaretWhileDragSelecting(value)))));
 		this.feature('sourceView');

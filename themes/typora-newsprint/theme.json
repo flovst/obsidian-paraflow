@@ -6,5 +6,8 @@
   "colorScheme": "light",
   "converterVersion": "11",
   "sourceEntry": "newsprint.css",
-  "sourceVersion": "1.9.5"
+  "sourceVersion": "1.9.5",
+  "sourceApp": "Typora",
+  "sourcePackage": "Typora default themes",
+  "packageId": "typora-default"
 }

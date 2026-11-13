@@ -1,11 +1,10 @@
-import { createDetachedEl } from '../dom';
-import { FileSystemAdapter, Notice, Platform, Setting, normalizePath, type SliderComponent, type TextComponent } from 'obsidian';
+import { Platform, Setting, setIcon, type SliderComponent, type TextComponent } from 'obsidian';
 import type ParaFlowPlugin from '../main.js';
 import { supportsThemeColorScheme, type ThemeOverrides } from '../themes/appearance.js';
 import { ImportTyporaThemeModal } from '../themes/import-modal.js';
 import { translate as t, type MessageKey } from './i18n.js';
-
-declare const require: (id: 'electron') => { shell: { openPath(path: string): Promise<string> } };
+import { exportTheme, openThemeFolder, reloadThemes } from './theme-actions.js';
+import { openThemeLibrary } from './theme-library.js';
 
 export interface ThemePageHost {
 	plugin: ParaFlowPlugin;
@@ -72,14 +71,20 @@ export function renderMarker(host: ThemePageHost): void {
 export function renderThemePage(host: ThemePageHost): void {
 	const plugin = host.plugin;
 	host.section('themeManagement');
-	host.row('contentTheme', setting => setting.addDropdown(dropdown => {
+	host.row('contentTheme', setting => setting.addButton(button => {
+		setIcon(button.buttonEl, 'refresh-cw');
+		button.buttonEl.classList.add('clickable-icon');
+		button.buttonEl.setAttribute('aria-label', t('refreshThemes'));
+		button.buttonEl.title = t('refreshThemes');
+		button.onClick(() => host.save(() => reloadThemes(plugin), true));
+	}).addDropdown(dropdown => {
 		dropdown.addOption('', t('followObsidian'));
 		for (const theme of plugin.contentThemes) {
 			const duplicate = plugin.contentThemes.filter(item => item.name === theme.name).length > 1;
 			dropdown.addOption(theme.id, duplicate ? `${theme.name} (${theme.id.slice(-8)})` : theme.name);
 		}
 		dropdown.setValue(plugin.contentThemeId ?? '').onChange(id => host.save(() => plugin.setContentTheme(id || null), true));
-	}));
+	}).addButton(button => button.setButtonText(t('themeLibrary')).onClick(() => host.save(() => openThemeLibrary(plugin)))));
 	host.row('importTheme', setting => {
 		const summary = imports.get(plugin);
 		if (summary) setting.setDesc(t('conversionSummary').replace('{mapped}', String(summary.mapped)).replace('{approximate}', String(summary.approximate)).replace('{skipped}', String(summary.skipped)));
@@ -93,28 +98,19 @@ export function renderThemePage(host: ThemePageHost): void {
 		}));
 	});
 	host.row('themeFiles', setting => setting
-		.addButton(button => button.setButtonText(t('openThemeFolder')).setDisabled(!Platform.isDesktop).onClick(() => host.save(async () => {
-			const adapter = plugin.app.vault.adapter;
-			if (!(adapter instanceof FileSystemAdapter)) throw new Error(t('desktopOnly'));
-			const root = normalizePath((plugin.manifest.dir ?? `${plugin.app.vault.configDir}/plugins/${plugin.manifest.id}`) + '/themes');
-			// Electron is supplied by desktop Obsidian and kept external by the bundle.
-			const { shell } = require('electron');
-			const error = await shell.openPath(adapter.getFullPath(root));
-			if (error) throw new Error(error);
-		})))
-		.addButton(button => button.setButtonText(t('reload')).onClick(() => host.save(async () => { await plugin.setContentTheme(plugin.contentThemeId, true); new Notice(t('reloaded')); })))
+		.addButton(button => button.setButtonText(t('openThemeFolder')).setDisabled(!Platform.isDesktop).onClick(() => host.save(() => openThemeFolder(plugin))))
 		.addButton(button => button.setButtonText(t('export')).setDisabled(!plugin.contentThemeId || plugin.contentThemeId === 'builtin-classic').onClick(() => host.save(async () => {
-			const bytes = await plugin.exportContentTheme();
-			const url = URL.createObjectURL(new Blob([new Uint8Array(bytes).buffer], { type: 'application/zip' }));
-			const link = createDetachedEl(setting.settingEl.ownerDocument, 'a'); link.href = url; link.download = plugin.contentThemeId + '.zip'; link.click();
-			setting.settingEl.ownerDocument.defaultView?.setTimeout(() => URL.revokeObjectURL(url), 1000);
+			await exportTheme(plugin, setting.settingEl.ownerDocument, plugin.contentThemeId!);
 		}))));
 	const canChooseScheme = () => supportsThemeColorScheme(plugin.contentThemes.find(theme => theme.id === plugin.contentThemeId));
-	host.row('colorScheme', setting => setting.addDropdown(dropdown => {
+	host.row('colorScheme', setting => {
+		setting.setDesc(t(canChooseScheme() ? 'themeSchemeSupported' : 'themeSchemeFixed'));
+		setting.addDropdown(dropdown => {
 		dropdown.selectEl.classList.add('paraflow-setting-mode');
 		dropdown.addOptions(choices([['', 'preset'], ['host', 'followObsidian'], ['light', 'light'], ['dark', 'dark']]))
 			.setValue(canChooseScheme() ? plugin.contentThemeOverrides.colorScheme ?? '' : '').onChange(value => saveOverride(host, 'colorScheme', value || undefined));
-	}), () => !canChooseScheme());
+		});
+	}, () => !canChooseScheme());
 	host.row('accentColor', setting => {
 		const value = plugin.contentThemeOverrides.accentColor; const mode = value === undefined ? '' : value === 'host' ? 'host' : 'custom';
 		setting.controlEl.classList.add('paraflow-setting-custom');

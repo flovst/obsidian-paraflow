@@ -1,8 +1,8 @@
 import { unzipSync, zipSync } from 'fflate';
-import { validateRelativePath } from './store.js';
+import { parseManifest, validateSourceMetadata, validateRelativePath } from './store.js';
 import { readPackagedTheme, relocatePackagedOverrides, relocatePackagedTheme } from './packaged-theme.js';
 import { convertTyporaTheme } from './converter.js';
-import type { ConvertedTheme } from './model.js';
+import type { ConvertedTheme, ThemeSourceMetadata } from './model.js';
 
 export const MAX_THEME_FILES = 2000;
 export const MAX_THEME_BYTES = 64 * 1024 * 1024;
@@ -75,6 +75,7 @@ export function createThemeArchive(files: ReadonlyMap<string, Uint8Array>): Uint
 export interface PreparedThemeImport {
 	files: Map<string, Uint8Array>; overrides: string; assets: Map<string, Uint8Array>; entry: string; name: string;
 	packaged?: ConvertedTheme;
+	sourceMetadata?: ThemeSourceMetadata & { sourceVersion?: string };
 }
 
 export function prepareThemeImport(files: Map<string, Uint8Array>): PreparedThemeImport {
@@ -89,8 +90,8 @@ export function prepareThemeImport(files: Map<string, Uint8Array>): PreparedThem
 	}
 	const result: PreparedThemeImport = { files, overrides: '', assets: new Map<string, Uint8Array>(), entry: '', name: '' };
 	if (files.has('theme.json') && files.has('theme.css')) {
-		const metadata = JSON.parse(new TextDecoder().decode(files.get('theme.json'))) as { sourceEntry?: unknown } | null;
-		if (!metadata || typeof metadata.sourceEntry !== 'string' || !/\.css$/iu.test(metadata.sourceEntry) || !files.has(`source/${metadata.sourceEntry}`)) {
+		const metadata = JSON.parse(new TextDecoder().decode(files.get('theme.json'))) as { sourceEntry?: unknown; colorSchemeVariants?: unknown } | null;
+		if (!metadata || metadata.colorSchemeVariants !== undefined || typeof metadata.sourceEntry !== 'string' || !/\.css$/iu.test(metadata.sourceEntry) || !files.has(`source/${metadata.sourceEntry}`)) {
 			result.packaged = readPackagedTheme(files);
 			result.entry = 'theme.css'; result.name = result.packaged.manifest.name;
 			result.overrides = files.has('overrides.css') ? new TextDecoder().decode(files.get('overrides.css')) : '';
@@ -101,6 +102,15 @@ export function prepareThemeImport(files: Map<string, Uint8Array>): PreparedThem
 	if (files.has('theme.json') && [...files.keys()].some(path => path.startsWith('source/'))) {
 		const metadata = JSON.parse(new TextDecoder().decode(files.get('theme.json'))) as Record<string, unknown>;
 		if (metadata.schemaVersion === 1 && ['builtin', 'imported'].includes(String(metadata.origin))) {
+			const sourceMetadata = metadata as ThemeSourceMetadata & { sourceVersion?: string };
+			validateSourceMetadata(sourceMetadata);
+			if (sourceMetadata.sourceVersion !== undefined && typeof sourceMetadata.sourceVersion !== 'string') throw new Error('Invalid theme manifest: sourceVersion');
+			result.sourceMetadata = { sourceApp: sourceMetadata.sourceApp, sourcePackage: sourceMetadata.sourcePackage,
+				packageId: sourceMetadata.packageId, sourceVersion: sourceMetadata.sourceVersion };
+			if (metadata.colorSchemeVariants !== undefined) {
+				parseManifest(JSON.stringify(metadata), String(metadata.id));
+				throw new Error('Color scheme variants require packaged theme.css');
+			}
 			result.entry = typeof metadata.sourceEntry === 'string' ? metadata.sourceEntry : '';
 			result.name = typeof metadata.name === 'string' ? metadata.name : '';
 			if (files.has('overrides.css')) result.overrides = new TextDecoder().decode(files.get('overrides.css'));
@@ -117,5 +127,6 @@ export function materializeThemeImport(input: PreparedThemeImport, id: string, n
 	if (input.packaged) return { ...relocatePackagedTheme(input.packaged, id, name),
 		overrides: relocatePackagedOverrides(input.overrides, input.packaged.manifest.id, id) };
 	const converted = convertTyporaTheme({ entry: input.entry, files: input.files }, { id, name });
+	if (input.sourceMetadata) Object.assign(converted.manifest, input.sourceMetadata);
 	return { ...converted, assets: new Map([...input.assets, ...converted.assets]), overrides: input.overrides };
 }

@@ -3,5 +3,7 @@
   "id": "builtin-classic",
   "name": "ParaFlow Classic",
   "origin": "builtin",
-  "colorScheme": "adaptive"
+  "colorScheme": "adaptive",
+  "sourceApp": "ParaFlow",
+  "sourcePackage": "ParaFlow bundled themes"
 }

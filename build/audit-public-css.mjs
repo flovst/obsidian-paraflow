@@ -39,8 +39,12 @@ export function collectPublicCss(root, rules) {
 		for (const path of rules.paths) collect(path);
 		for (const entry of rules.mappings ?? []) collect(entry.source, entry.destination);
 	} else {
+		if (!existsSync(resolve(root, '.git'))) {
+			throw new Error('Audit CSS in the private repository or a public Git checkout; an untracked export has no public file index.');
+		}
 		for (const path of execFileSync('git', ['ls-files', '-z', '--', '*.css'], { cwd: root, encoding: 'utf8' }).split('\0').filter(Boolean)) collect(path);
 	}
+	if (files.size === 0) throw new Error('No public CSS files found; audit requires a nonempty public CSS selection.');
 	return [...files.values()].sort((a, b) => a.path.localeCompare(b.path, 'en'));
 }
 

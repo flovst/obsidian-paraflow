@@ -57,6 +57,7 @@ export const LIST_LAYOUT_CSS = `
 	font-family: var(--font-monospace);
 	font-size: 0;
 	line-height: 0;
+	tab-size: 0;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview

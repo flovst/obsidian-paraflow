@@ -201,7 +201,50 @@ export function isolateDiagramParagraphs(ast: css.CssNode): void {
 	});
 }
 
-/** An explicit appearance accent overrides contextual theme links, including table links. */
+/** A theme's ordinary link palette also owns native links and Source tokens. */
+export function projectLinkThemeTokens(ast: css.CssNode): void {
+	const additions: Array<{list: css.List<css.CssNode>; item: css.ListItem<css.CssNode>; rule: css.Rule}> = [];
+	css.walk(ast, (node, item, list) => {
+		if (node.type !== 'Rule' || node.prelude.type !== 'SelectorList' || !item || !list) return;
+		const palettes = new Map<boolean, Set<string>>();
+		for (const selector of node.prelude.children) {
+			if (selector.type !== 'Selector') continue;
+			const parts = selector.children.toArray();
+			const reading = parts.findIndex(part => part.type === 'ClassSelector' && part.name === 'markdown-reading-view');
+			if (reading < 0) continue;
+			const tail = parts.slice(reading + 1);
+			if (tail[0]?.type !== 'Combinator' || tail[0].name !== ' ' || tail[1]?.type !== 'TypeSelector' || tail[1].name !== 'a') continue;
+			if (tail.slice(2).some(part => part.type !== 'PseudoClassSelector' || !['not', 'where', 'hover'].includes(part.name))) continue;
+			// Exclusion guards are retained; contextual links do not define the document palette.
+			if (tail.slice(2).some(part => part.type === 'PseudoClassSelector' && part.name !== 'hover' && !/callout|markdown-embed|paraflow-/u.test(css.generate(part)))) continue;
+			const hover = tail.some(part => part.type === 'PseudoClassSelector' && part.name === 'hover');
+			const roots = palettes.get(hover) ?? new Set<string>();
+			palettes.set(hover, roots);
+			const prefix = parts.slice(0, reading).map(part => css.generate(part)).join('');
+			roots.add(`${prefix}.markdown-reading-view`);
+			roots.add(`${prefix}.markdown-source-view.mod-cm6.is-live-preview:not(:is(.cm-table-widget *))`);
+		}
+		const colors = node.block.children.toArray().filter((part): part is css.Declaration => part.type === 'Declaration' && part.property === 'color' && !/--paraflow-link-(?:paint|override)/u.test(css.generate(part.value)));
+		if (!palettes.size || !colors.length) return;
+		for (const [hover, roots] of palettes) {
+			const declarations = colors.map(color => `--paraflow-link-${hover ? 'hover-' : ''}color:${css.generate(color.value)}${color.important ? '!important' : ''}`).join(';');
+			const rule = (css.parse(`${[...roots].join(',')}{${declarations}}`, {parseCustomProperty: true}) as css.StyleSheet).children.first as css.Rule;
+			additions.push({list, item, rule});
+		}
+	});
+	for (const {list, item, rule} of additions) {
+		// Palette roots and their Source projections form one group before the authored link rule.
+		let existing = false;
+		for (let previous = item.prev; previous?.data.type === 'Rule' && previous.data.block.children.toArray().every(part =>
+			part.type === 'Declaration' && /^--paraflow-link-(?:hover-)?color$/u.test(part.property)); previous = previous.prev) {
+			if (css.generate(previous.data) === css.generate(rule)) { existing = true; break; }
+		}
+		if (existing) continue;
+		list.insertData(rule, item);
+	}
+}
+
+/** Runtime link state and explicit appearance accents own contextual link paint. */
 export function projectLinkAccentOverride(ast: css.CssNode): void {
 	const additions: Array<{list: css.List<css.CssNode>; item: css.ListItem<css.CssNode>; rule: css.Rule}> = [];
 	css.walk(ast, (node, item, list) => {
@@ -218,11 +261,12 @@ export function projectLinkAccentOverride(ast: css.CssNode): void {
 			return link;
 		});
 		const colors = node.block.children.toArray().filter((part): part is css.Declaration => part.type === 'Declaration' && part.property.toLowerCase() === 'color');
-		if (!selectors.length || !colors.length || colors.every(color => css.generate(color.value).includes('--paraflow-link-override'))) return;
+		if (!selectors.length || !colors.length || colors.every(color => css.generate(color.value).includes('--paraflow-link-paint'))) return;
 		// Keep the authored fallback order and per-declaration priority, including repeated colors.
 		const declarations = colors.map(color => {
 			const original = css.generate(color.value);
-			const value = original.includes('--paraflow-link-override') ? original : `var(--paraflow-link-override,${original})`;
+			const fallback = original.includes('--paraflow-link-override') ? original : `var(--paraflow-link-override,${original})`;
+			const value = original.includes('--paraflow-link-paint') ? original : `var(--paraflow-link-paint,${fallback})`;
 			return `color:${value}${color.important ? '!important' : ''}`;
 		}).join(';');
 		const rule = css.parse(`${selectors.map(selector => css.generate(selector)).join(',')}{${declarations}}`) as css.StyleSheet;

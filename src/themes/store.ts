@@ -1,4 +1,4 @@
-import type { ConvertedTheme, ThemeManifest } from './model.js';
+import type { ConvertedTheme, ThemeManifest, ThemeSourceMetadata } from './model.js';
 
 export interface ThemeStorage {
 	exists(path: string): Promise<boolean>;
@@ -12,8 +12,10 @@ export interface ThemeStorage {
 	getResourcePath(path: string): string;
 }
 
+const themeIdPattern = /^[a-z0-9][a-z0-9-]{0,79}$/u;
+
 export function validateThemeId(id: string): void {
-	if (!/^[a-z0-9][a-z0-9-]{0,79}$/u.test(id)) throw new Error('Invalid theme id');
+	if (!themeIdPattern.test(id)) throw new Error('Invalid theme id');
 }
 
 export function validateRelativePath(path: string): string {
@@ -24,12 +26,29 @@ export function validateRelativePath(path: string): string {
 	return path;
 }
 
+export function validateSourceMetadata(value: ThemeSourceMetadata): void {
+	if (value.packageId !== undefined && value.packageId !== null && (typeof value.packageId !== 'string' || !themeIdPattern.test(value.packageId))) {
+		throw new Error('Invalid theme manifest: packageId');
+	}
+	for (const key of ['sourceApp', 'sourcePackage'] as const) {
+		const label = value[key];
+		if (label !== undefined && (typeof label !== 'string' || !label.trim() || label.length > 200
+			|| [...label].some(character => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127))) {
+			throw new Error(`Invalid theme manifest: ${key}`);
+		}
+	}
+}
+
 export function parseManifest(text: string, id: string): ThemeManifest {
 	const value = JSON.parse(text) as Partial<ThemeManifest> | null;
 	if (!value || value.schemaVersion !== 1 || value.id !== id || typeof value.name !== 'string'
 		|| !value.name.trim() || !['builtin', 'imported'].includes(value.origin ?? '')
 		|| !['light', 'dark', 'adaptive'].includes(value.colorScheme ?? '')) {
 		throw new Error(`Invalid theme manifest: ${id}`);
+	}
+	validateSourceMetadata(value);
+	if (value.colorSchemeVariants !== undefined && (value.colorSchemeVariants !== 'host-class' || value.colorScheme !== 'adaptive')) {
+		throw new Error('Invalid theme manifest: colorSchemeVariants');
 	}
 	return value as ThemeManifest;
 }
@@ -67,15 +86,39 @@ export class ThemeStore {
 	}
 
 	async ensureBuiltin(manifest: ThemeManifest, css: string): Promise<void> {
-		const dir = this.path(manifest.id); await this.mkdir(dir);
+		validateSourceMetadata(manifest);
+		const dir = this.path(manifest.id);
+		const refreshed = { ...manifest };
+		if (await this.storage.exists(`${dir}/theme.json`)) {
+			const existing = parseManifest(await this.storage.read(`${dir}/theme.json`), manifest.id);
+			for (const key of ['sourceApp', 'sourcePackage', 'packageId'] as const) {
+				if (Object.hasOwn(existing, key)) Object.assign(refreshed, { [key]: existing[key] });
+			}
+		}
+		await this.mkdir(dir);
 		await this.storage.write(`${dir}/theme.css`, css);
-		await this.storage.write(`${dir}/theme.json`, JSON.stringify(manifest, null, 2));
+		await this.storage.write(`${dir}/theme.json`, JSON.stringify(refreshed, null, 2));
 		if (!await this.storage.exists(`${dir}/overrides.css`)) {
 			await this.storage.write(`${dir}/overrides.css`, '/* Local content theme overrides. */\n');
 		}
 	}
 
+	async updateMetadata(id: string, patch: ThemeSourceMetadata): Promise<void> {
+		const { manifest } = await this.read(id);
+		if (Object.hasOwn(patch, 'packageId')) manifest.packageId = patch.packageId === '' || patch.packageId === undefined ? null : patch.packageId;
+		for (const key of ['sourceApp', 'sourcePackage'] as const) {
+			if (!Object.hasOwn(patch, key)) continue;
+			const label = patch[key];
+			if (label === undefined || label === '') delete manifest[key];
+			else manifest[key] = label;
+		}
+		const text = JSON.stringify(manifest, null, 2);
+		parseManifest(text, id);
+		await this.storage.write(`${this.path(id)}/theme.json`, text);
+	}
+
 	async install(theme: ConvertedTheme, overrides = '/* Local content theme overrides. */\n'): Promise<void> {
+		validateSourceMetadata(theme.manifest);
 		const dir = this.path(theme.manifest.id);
 		if (await this.storage.exists(dir)) throw new Error(`Theme already exists: ${theme.manifest.name}`);
 		// Validate all destinations before the first write. Manifest is the completion marker.

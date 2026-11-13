@@ -322,7 +322,8 @@ function dispatchValidatedEditPlan(
 ): void {
 	const historyAnnotations = enterOperations.has(expectedOperation)
 		? [Transaction.userEvent.of('input'), isolateHistory.of(expectedOperation === 'shift-enter' ? 'full' : 'before')]
-		: expectedOperation === 'tab' || expectedOperation === 'shift-tab'
+		: expectedOperation === 'tab' || expectedOperation === 'shift-tab' ||
+			expectedOperation === 'backspace-empty-top-level' || expectedOperation === 'backspace-empty-nested'
 			? [Transaction.userEvent.of('input'), isolateHistory.of('full')]
 		: [];
 	view.dispatch({

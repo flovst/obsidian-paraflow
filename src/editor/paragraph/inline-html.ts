@@ -3,7 +3,7 @@ import type { EditorState } from '@codemirror/state';
 import { WidgetType, type EditorView } from '@codemirror/view';
 import type { SyntaxNode } from '@lezer/common';
 import type { InlineSemanticConstruct } from './inline-selection-projection.js';
-import { bindRenderedSourceClick } from '../runtime/rendered-source-click.js';
+import { bindRenderedSourceClick, renderedSourceClickPosition } from '../runtime/rendered-source-click.js';
 
 export type InlineHtmlRenderer = (
 	source: string,
@@ -11,7 +11,15 @@ export type InlineHtmlRenderer = (
 	view: EditorView,
 ) => () => void;
 
-const inlineTags = new Set(['abbr', 'b', 'del', 'em', 'i', 'ins', 'kbd', 'mark', 's', 'small', 'span', 'strong', 'sub', 'sup', 'u']);
+const inlineTags = new Set(['a', 'abbr', 'b', 'del', 'em', 'i', 'ins', 'kbd', 'mark', 's', 'small', 'span', 'strong', 'sub', 'sup', 'u']);
+const editLinksByDefault = () => true;
+const sourcePositions = new WeakMap<HTMLElement, (node: Node, offset: number) => number | null>();
+
+export function inlineHtmlClickPosition(event: MouseEvent): number | null {
+	const element = (event.target as Element).closest<HTMLElement>('.paraflow-inline-html');
+	const resolve = element && sourcePositions.get(element);
+	return element && resolve ? renderedSourceClickPosition(event, element, resolve) : null;
+}
 
 export function inlineHtmlConstruct(state: EditorState, node: SyntaxNode): InlineSemanticConstruct | null {
 	if (node.name !== 'HTMLTag' && !node.name.toLowerCase().includes('hmd-html')) return null;
@@ -49,10 +57,10 @@ export class InlineHtmlWidget extends WidgetType {
 	private static readonly cleanups = new WeakMap<HTMLElement, () => void>();
 
 	constructor(private readonly source: string, private readonly render: InlineHtmlRenderer, private readonly from: number,
-		private readonly isOwnerActive: () => boolean) { super(); }
+		private readonly isOwnerActive: () => boolean, private readonly editLinksOnPlainClick: () => boolean = editLinksByDefault) { super(); }
 
 	eq(other: InlineHtmlWidget): boolean {
-		return this.source === other.source && this.render === other.render && this.from === other.from && this.isOwnerActive === other.isOwnerActive;
+		return this.source === other.source && this.render === other.render && this.from === other.from && this.isOwnerActive === other.isOwnerActive && this.editLinksOnPlainClick === other.editLinksOnPlainClick;
 	}
 
 	toDOM(view: EditorView): HTMLElement {
@@ -60,24 +68,32 @@ export class InlineHtmlWidget extends WidgetType {
 		container.className = 'paraflow-inline-html';
 		const disposeRender = this.render(this.source, container, view);
 		const mapping = htmlTextSourceMap(this.source, container.ownerDocument);
-		const disposeClick = bindRenderedSourceClick(view, container, (node, offset) => {
+		const resolve = (node: Node, offset: number): number | null => {
 			const range = container.ownerDocument.createRange();
 			range.selectNodeContents(container);
 			range.setEnd(node, offset);
 			const length = range.toString().length;
 			const sourceOffset = offset === 0 ? mapping[length]?.from : mapping[length - 1]?.to;
 			return sourceOffset === undefined ? null : this.from + sourceOffset;
+		};
+		sourcePositions.set(container, resolve);
+		const disposeClick = bindRenderedSourceClick(view, container, (node, offset) => {
+			const element = node.nodeType === 1 ? node as Element : node.parentElement;
+			return element?.closest('a[href]') ? null : resolve(node, offset);
 		}, this.isOwnerActive);
 		InlineHtmlWidget.cleanups.set(container, () => { disposeClick(); disposeRender(); });
 		return container;
 	}
 
 	destroy(dom: HTMLElement): void {
+		sourcePositions.delete(dom);
 		InlineHtmlWidget.cleanups.get(dom)!();
 		InlineHtmlWidget.cleanups.delete(dom);
 	}
 
-	ignoreEvent(): boolean { return false; }
+	ignoreEvent(event: Event): boolean {
+		return !this.editLinksOnPlainClick() && (event.target as Element).closest('a[href]') !== null;
+	}
 }
 
 function htmlTextSourceMap(source: string, doc: Document): { from: number; to: number }[] {

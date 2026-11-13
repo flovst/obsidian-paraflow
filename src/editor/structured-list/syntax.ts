@@ -8,6 +8,7 @@ import { emptyBodies, createdBodyOwnership } from '../runtime/empty-body-state.j
 import type { ListItemSyntax, SourceRange } from './model.js';
 import { isSeparatorlessListMarkerLine, markdownColumns, prefixPolicy } from './prefix.js';
 import { detailsMarkdownSource } from '../rendered-blocks/details-source.js';
+import { discoverMath, mathRangeIndex } from '../math/syntax.js';
 
 interface SyntaxNodeFact extends SourceRange {
 	readonly name: string;
@@ -156,19 +157,99 @@ function isObsidianNoBulletLineName(name: string): boolean {
 }
 
 const syntaxFacts = new WeakMap<Tree, readonly SyntaxNodeFact[]>();
+function opaqueHostListBoundary(name: string): boolean {
+	return nodeNameTokens(name).some(token => token.startsWith('HyperMD-codeblock') ||
+		token.startsWith('HyperMD-quote') || token.startsWith('HyperMD-table') ||
+		['HyperMD-frontmatter', 'HyperMD-footnote', 'hmd-codeblock', 'hmd-indented-code',
+			'hmd-html-begin', 'hmd-html-end', 'math-block'].includes(token));
+}
+
 function collectSyntaxFacts(tree: Tree): readonly SyntaxNodeFact[] {
 	const cached = syntaxFacts.get(tree);
 	if (cached) return cached;
 	const facts: SyntaxNodeFact[] = [];
 	tree.iterate({
 		enter: (node) => {
-			if (node.name === 'ListItem' || isObsidianListLineName(node.name)) {
+			if (node.name === 'ListItem' || isObsidianListLineName(node.name) ||
+				nodeNameTokens(node.name).includes('hmd-list-indent') || opaqueHostListBoundary(node.name)) {
 				facts.push({ from: node.from, name: node.name, to: node.to });
 			}
 		},
 	});
 	syntaxFacts.set(tree, facts);
 	return facts;
+}
+
+interface SourceListFact extends SourceRange { readonly parent: number | null; readonly quoted: boolean }
+const sourceFacts = new WeakMap<Tree, readonly SourceListFact[]>();
+function sourceListFacts(state: EditorState): readonly SourceListFact[] {
+	const tree = sourceListTree(state), cached = sourceFacts.get(tree);
+	if (cached) return cached;
+	const facts: SourceListFact[] = [];
+	tree.iterate({ enter(node) {
+		if (node.name !== 'ListItem') return;
+		let parent: number | null = null, quoted = false;
+		for (let ancestor = node.node.parent; ancestor; ancestor = ancestor.parent) {
+			if (parent === null && ancestor.name === 'ListItem') parent = ancestor.from;
+			if (ancestor.name === 'Blockquote') quoted = true;
+		}
+		facts.push({ from: node.from, to: node.to, parent, quoted });
+	} });
+	sourceFacts.set(tree, facts);
+	return facts;
+}
+
+function sourceIndentItem(state: EditorState, fact: SourceListFact, candidates: ReadonlySet<number>, opaque: readonly SourceRange[], available: ParseAvailable): ListItemSyntax | null {
+	const line = state.doc.lineAt(fact.from);
+	if (!candidates.has(line.from) || fact.quoted || !available(fact.to)) return null;
+	const item = syntaxForItem(state, fact, true);
+	if (!item || opaque.some(block => block.from < item.prefix.full.to && line.from < block.to)) return null;
+	return item;
+}
+
+function* admittedSourceAncestors(state: EditorState, fact: SourceListFact, byStart: ReadonlyMap<number, SourceListFact>, owned: ReadonlyMap<number, ListItemSyntax>): Iterable<number> {
+	for (let parent = fact.parent; parent !== null; parent = byStart.get(parent)!.parent) {
+		const from = state.doc.lineAt(parent).from;
+		if (!owned.has(from)) break;
+		yield from;
+	}
+}
+
+function rejoinSourceAncestors(state: EditorState, source: readonly SourceListFact[], added: readonly SourceListFact[], owned: Map<number, ListItemSyntax>): void {
+	const byStart = new Map(source.map(fact => [fact.from, fact]));
+	const repair = new Set(added.flatMap(fact => [...admittedSourceAncestors(state, fact, byStart, owned)]));
+	// A missing row can also disconnect later, already recognized source siblings.
+	// Rejoin only admitted descendants of the affected source ancestors.
+	for (const fact of source) {
+		const child = owned.get(state.doc.lineAt(fact.from).from);
+		if (!child) continue;
+		for (const from of admittedSourceAncestors(state, fact, byStart, owned)) {
+			const owner = owned.get(from)!;
+			if (repair.has(from) && child.itemNode.to > owner.itemNode.to) {
+				owned.set(from, { ...owner, itemNode: range(owner.itemNode.from, child.itemNode.to) });
+			}
+		}
+	}
+}
+
+/** HyperMD's indent token can survive when its marker fact is missing. */
+function supplementIndentedItems(state: EditorState, items: readonly ListItemSyntax[], facts: readonly SyntaxNodeFact[], available: ParseAvailable): readonly ListItemSyntax[] {
+	const owned = new Map(items.map(item => [item.markerLine.from, item]));
+	const candidates = new Set(facts.filter(fact => nodeNameTokens(fact.name).includes('hmd-list-indent'))
+		.map(fact => state.doc.lineAt(fact.from).from).filter(from => !owned.has(from)));
+	if (!candidates.size) return items;
+	const opaque = [...facts.filter(fact => opaqueHostListBoundary(fact.name)),
+		...mathRangeIndex(state).opaque, ...discoverMath(state).filter(math => math.display)];
+	const source = sourceListFacts(state), added: SourceListFact[] = [];
+	for (const fact of source) {
+		const item = sourceIndentItem(state, fact, candidates, opaque, available);
+		if (!item) continue;
+		owned.set(item.markerLine.from, item);
+		added.push(fact);
+	}
+	if (!added.length) return items;
+	rejoinSourceAncestors(state, source, added, owned);
+	return [...owned.values()].sort((left, right) => left.markerLine.from - right.markerLine.from);
 }
 
 function standardItems(
@@ -182,10 +263,12 @@ function standardItems(
 }
 
 function fencedListLevels(state: EditorState, facts: readonly SyntaxNodeFact[]): ReadonlyMap<number, number> {
-	const levels = new Map(facts.map(fact => [fact.from, obsidianListLevel(fact.name)] as const)
+	// Indent and opaque child tokens share a line; only list-line facts advance this sequence.
+	const listFacts = facts.filter(fact => isObsidianListLineName(fact.name));
+	const levels = new Map(listFacts.map(fact => [fact.from, obsidianListLevel(fact.name)] as const)
 		.filter((entry): entry is readonly [number, number] => entry[1] !== null));
 	let level: number | null = null, previousLine = -1;
-	for (const fact of facts) {
+	for (const fact of listFacts) {
 		const tokens = nodeNameTokens(fact.name);
 		const number = state.doc.lineAt(fact.from).number;
 		if (tokens.includes('HyperMD-codeblock-begin')) level = obsidianListLevel(fact.name);
@@ -365,7 +448,7 @@ function normalizeListItems(state: EditorState, facts: readonly SyntaxNodeFact[]
 	const standard = standardItems(state, facts);
 	const items = standard.length > 0
 		? standard
-		: normalizedObsidianItems(state, obsidianListLines(state, facts, available));
+		: supplementIndentedItems(state, normalizedObsidianItems(state, obsidianListLines(state, facts, available)), facts, available);
 	const latestStartByEnd = new Map<number, number>();
 	const boundaries: { markerFrom: number; to: number }[] = [];
 	for (const item of items) {

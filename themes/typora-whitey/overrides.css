@@ -16,7 +16,7 @@ h2::after,
 .paraflow-heading-line--h2::after {
   content: '';
   position: absolute;
-  bottom: 0;
+  bottom: -.2em;
   left: calc(50% - 50px);
   width: 100px;
   height: 1px;

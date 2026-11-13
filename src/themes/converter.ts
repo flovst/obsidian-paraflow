@@ -426,7 +426,7 @@ export function convertTyporaTheme(input: ThemeInput, options: { id: string; nam
 		});
 	});
 	return {
-		manifest: { schemaVersion: 1, id: options.id, name: options.name, origin: 'imported', colorScheme, converterVersion: CONVERTER_VERSION, sourceEntry: input.entry, ...(options.sourceVersion ? { sourceVersion: options.sourceVersion } : {}) },
+		manifest: { schemaVersion: 1, id: options.id, name: options.name, origin: 'imported', sourceApp: 'Typora', colorScheme, converterVersion: CONVERTER_VERSION, sourceEntry: input.entry, ...(options.sourceVersion ? { sourceVersion: options.sourceVersion } : {}) },
 		css: css.generate(stylesheet), assets, sources: files, diagnostics,
 	};
 }

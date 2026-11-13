@@ -9,6 +9,7 @@ export interface ParaFlowSettings {
 	disableSelectedTextDrag: boolean;
 	hideCaretWhileDragSelecting: boolean;
 	editLinksOnPlainClick: boolean;
+	preventImplicitLinkCreation: boolean;
 	breakMarkersEnabled: boolean;
 	htmlBreakMarkersEnabled: boolean;
 	hardBreakMarkersEnabled: boolean;
@@ -24,6 +25,7 @@ export const DEFAULT_SETTINGS: ParaFlowSettings = Object.freeze({
 	disableSelectedTextDrag: true,
 	hideCaretWhileDragSelecting: true,
 	editLinksOnPlainClick: true,
+	preventImplicitLinkCreation: true,
 	breakMarkersEnabled: true,
 	htmlBreakMarkersEnabled: true,
 	hardBreakMarkersEnabled: true,
@@ -66,6 +68,7 @@ export function normalizeSettings(value: unknown): ParaFlowSettings {
 	const editLinksOnPlainClick = 'editLinksOnPlainClick' in value
 		? value.editLinksOnPlainClick
 		: undefined;
+	const preventImplicitLinkCreation = 'preventImplicitLinkCreation' in value ? value.preventImplicitLinkCreation : undefined;
 	const disableSelectedTextDrag = 'disableSelectedTextDrag' in value
 		? value.disableSelectedTextDrag
 		: undefined;
@@ -96,6 +99,7 @@ export function normalizeSettings(value: unknown): ParaFlowSettings {
 		editLinksOnPlainClick: typeof editLinksOnPlainClick === 'boolean'
 			? editLinksOnPlainClick
 			: DEFAULT_SETTINGS.editLinksOnPlainClick,
+		preventImplicitLinkCreation: typeof preventImplicitLinkCreation === 'boolean' ? preventImplicitLinkCreation : true,
 		breakMarkersEnabled: typeof paragraphEnabled === 'boolean' ? paragraphEnabled : false,
 		htmlBreakMarkersEnabled: typeof htmlBreakMarkersEnabled === 'boolean' ? htmlBreakMarkersEnabled
 			: typeof lineBreakMarkersEnabled === 'boolean' ? lineBreakMarkersEnabled : DEFAULT_SETTINGS.htmlBreakMarkersEnabled,

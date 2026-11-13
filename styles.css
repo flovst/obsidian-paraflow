@@ -486,6 +486,56 @@ body[data-paraflow-theme] .tooltip.mod-left .tooltip-arrow { top: calc(50% - 4px
 	50% { visibility: hidden; }
 }
 
+.paraflow-theme-library { display: flex; flex-direction: column; gap: var(--size-4-3); font-family: var(--font-interface); font-size: var(--font-ui-medium); line-height: var(--line-height-normal); }
+.paraflow-theme-view { height: 100%; padding: var(--size-4-4); overflow: hidden; }
+.paraflow-theme-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--size-4-3); }
+.paraflow-theme-toolbar > .search-input-container { flex: 1 1 240px; min-width: 0; margin: 0; }
+.paraflow-theme-toolbar input[type='search'] { width: 100%; }
+.paraflow-theme-filters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--size-4-2); width: 100%; order: 1; }
+.workspace-leaf-content .paraflow-theme-library .paraflow-theme-filters > .setting-item { flex-direction: column; align-items: stretch; gap: var(--size-4-1); padding: 0; margin: 0; border: 0; background: transparent; }
+.paraflow-theme-filters .setting-item-info { margin: 0; }
+.paraflow-theme-filters .setting-item-name { color: var(--text-muted); font-size: var(--font-ui-small); font-weight: var(--font-normal); }
+.paraflow-theme-filters .setting-item-control { width: 100%; justify-content: stretch; }
+.paraflow-theme-library .paraflow-theme-filters .setting-item-control select { flex: 1; width: 100%; min-width: 0; max-width: 100%; }
+.paraflow-theme-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--size-4-2); }
+.paraflow-theme-status { color: var(--text-muted); font-size: var(--font-ui-small); }
+.paraflow-theme-error { color: var(--text-error); overflow-wrap: anywhere; }
+.paraflow-theme-error:empty { display: none; }
+.paraflow-theme-table-scroll { flex: 1; min-height: 0; overflow: auto; }
+.paraflow-theme-table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: var(--font-ui-small); }
+.paraflow-theme-table :is(th, td) { padding: var(--size-4-3) var(--size-4-2); border-bottom: 1px solid var(--background-modifier-border); text-align: start; vertical-align: top; }
+.paraflow-theme-table th { position: sticky; top: 0; background: var(--background-secondary); color: var(--text-muted); font-weight: var(--font-semibold); white-space: nowrap; cursor: var(--cursor); }
+.paraflow-theme-table th + th { border-inline-start: 1px solid var(--background-modifier-border); }
+.paraflow-theme-table tbody tr { cursor: var(--cursor); }
+.paraflow-theme-table tr.is-selected { background: var(--background-modifier-hover); }
+.paraflow-theme-table tbody tr:focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: -2px; }
+.paraflow-theme-package-group > td:first-child { border-inline-start: 1px solid var(--background-modifier-border); }
+.paraflow-theme-package-group > td:last-child { border-inline-end: 1px solid var(--background-modifier-border); }
+.paraflow-theme-package-group.is-package-start > td { border-top: 1px solid var(--background-modifier-border); }
+.paraflow-theme-package-group.is-package-end > td { border-bottom: 1px solid var(--background-modifier-border); }
+.paraflow-theme-table button.paraflow-theme-column { display: flex; justify-content: flex-start; align-items: center; gap: var(--size-4-1); width: 100%; background: none; box-shadow: none; border: 0; padding: 0; color: inherit; font-weight: inherit; text-align: start; height: auto; }
+.paraflow-theme-sort-icon { display: flex; flex: 0 0 var(--icon-xs); width: var(--icon-xs); height: var(--icon-xs); --icon-size: var(--icon-xs); }
+.paraflow-theme-sort-icon.is-inactive { visibility: hidden; }
+.paraflow-theme-table th.is-dragging { opacity: 0.55; }
+.paraflow-theme-table th.is-drop-target[data-drop-side='before'] { box-shadow: inset 2px 0 var(--interactive-accent); }
+.paraflow-theme-table th.is-drop-target[data-drop-side='after'] { box-shadow: inset -2px 0 var(--interactive-accent); }
+.paraflow-theme-library.is-column-dragging { user-select: none; cursor: grabbing; }
+.paraflow-theme-library.is-column-dragging .paraflow-theme-column { cursor: grabbing; }
+.paraflow-theme-column-preview { position: fixed; z-index: var(--layer-popover); pointer-events: none; box-sizing: border-box; padding: var(--size-4-3) var(--size-4-2); border: 1px solid var(--background-modifier-border); border-radius: var(--radius-s); background: var(--background-secondary); color: var(--text-normal); box-shadow: var(--shadow-s); font-family: var(--font-interface); font-size: var(--font-ui-small); font-weight: var(--font-semibold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.paraflow-theme-badge { display: inline-block; margin-inline-start: 6px; padding: 1px 5px; background: var(--background-modifier-hover); color: var(--text-accent); border-radius: var(--radius-s); font-size: var(--font-ui-smaller); white-space: nowrap; }
+.paraflow-theme-name { display: flex; align-items: center; gap: var(--size-4-1); font-weight: var(--font-normal); }
+.paraflow-theme-name.is-package-child { padding-inline-start: calc(var(--icon-xs) + var(--size-4-1)); }
+.paraflow-theme-disclosure { display: flex; flex: 0 0 var(--icon-xs); --icon-size: var(--icon-xs); }
+.paraflow-theme-package-count { color: var(--text-muted); font-size: var(--font-ui-smaller); }
+.paraflow-theme-info .setting-item-description { overflow-wrap: anywhere; user-select: text; }
+.paraflow-theme-info form { margin-top: var(--size-4-5); }
+.paraflow-theme-info input { width: 100%; }
+.paraflow-theme-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; white-space: nowrap; }
+.paraflow-theme-library :is(button, input, select):focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: 2px; }
+@media (max-width: 800px) {
+	.paraflow-theme-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 .paraflow-settings {
 	--paraflow-setting-font-size: var(--font-ui-medium);
 }
@@ -676,7 +726,8 @@ body .workspace-leaf-content[data-type="markdown"] .markdown-reading-view .markd
  position: relative;
  padding-inline-start: 0;
 }
-.markdown-reading-view ul > li.task-list-item:not(.markdown-embed *) > .task-list-item-checkbox {
+.markdown-reading-view ul > li.task-list-item:not(.markdown-embed *) > .task-list-item-checkbox,
+.markdown-reading-view ul > li.task-list-item:not(.markdown-embed *) > p > .task-list-item-checkbox {
  font: inherit;
  position: absolute;
  inset-inline-start: calc(0px - var(--paraflow-live-list-content-offset, .75em) - var(--paraflow-live-list-hanging-indent, .625em));
@@ -685,6 +736,26 @@ body .workspace-leaf-content[data-type="markdown"] .markdown-reading-view .markd
 }
 .markdown-reading-view ol > li:not(.markdown-embed *)::marker {
  color: var(--paraflow-marker-color, var(--text-normal));
+}
+
+/* Native counters retain start/value/reversed while the label uses the LP hanging slot. */
+.markdown-reading-view ol > li.paraflow-reading-list-decimal:not(.markdown-embed *) {
+	position: relative;
+}
+.markdown-reading-view ol > li.paraflow-reading-list-decimal:not(.markdown-embed *)::marker {
+	content: '';
+}
+.markdown-reading-view ol > li.paraflow-reading-list-decimal:not(.markdown-embed *)::before {
+	content: counter(list-item) '.';
+	position: absolute;
+	inset-inline-end: calc(100% + var(--paraflow-live-list-content-offset, .75em) + var(--paraflow-live-list-hanging-indent, .625em) - 1.125em);
+	top: var(--paraflow-list-row-top-padding, .3em);
+	color: var(--paraflow-marker-color, var(--text-normal));
+	font: inherit;
+	white-space: nowrap;
+	direction: ltr;
+	unicode-bidi: isolate;
+	pointer-events: none;
 }
 
 /* Source delimiters are text; the code body retains its native paint. */
@@ -753,6 +824,7 @@ body .workspace-leaf-content[data-type="markdown"] .markdown-reading-view .markd
 	font-family: var(--font-monospace);
 	font-size: 0;
 	line-height: 0;
+	tab-size: 0;
 }
 
 .markdown-source-view.mod-cm6.is-live-preview

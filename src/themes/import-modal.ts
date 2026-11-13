@@ -1,5 +1,5 @@
 import { Modal, Notice, Setting, type App } from 'obsidian';
-import { materializeThemeImport, nextTyporaThemeId, prepareThemeImport, readImportFiles, themeEntries } from './import-files.js';
+import { materializeThemeImport, nextTyporaThemeId, prepareThemeImport, readImportFiles, themeEntries, type PreparedThemeImport } from './import-files.js';
 import type { ConvertedTheme } from './model.js';
 import { translate as t } from '../settings-ui/i18n.js';
 
@@ -17,6 +17,7 @@ export class ImportTyporaThemeModal extends Modal {
 	private overrides = '';
 	private exportedAssets = new Map<string, Uint8Array>();
 	private packaged: ConvertedTheme | undefined;
+	private sourceMetadata: PreparedThemeImport['sourceMetadata'];
 	constructor(app: App, private readonly save: (theme: ConvertedTheme, overrides?: string) => Promise<void>,
 		private readonly existingIds: () => Iterable<string>) { super(app); }
 
@@ -46,7 +47,7 @@ export class ImportTyporaThemeModal extends Modal {
 			try {
 				const id = nextTyporaThemeId(this.themeName, this.entry, this.existingIds());
 				this.converted = materializeThemeImport({ entry: this.entry, files: this.files, name: this.themeName,
-					overrides: this.overrides, assets: this.exportedAssets, packaged: this.packaged }, id, this.themeName.trim() || t('importedTheme'));
+					overrides: this.overrides, assets: this.exportedAssets, packaged: this.packaged, sourceMetadata: this.sourceMetadata }, id, this.themeName.trim() || t('importedTheme'));
 				this.render();
 			} catch (error) { new Notice(String(error)); }
 		}));
@@ -73,6 +74,7 @@ export class ImportTyporaThemeModal extends Modal {
 			this.files = input.files; this.converted = null; this.overrides = input.overrides;
 			this.exportedAssets = input.assets; this.entry = input.entry; this.themeName = input.name;
 			this.packaged = input.packaged;
+			this.sourceMetadata = input.sourceMetadata;
 			this.render();
 		} catch (error) { new Notice(String(error)); }
 	}

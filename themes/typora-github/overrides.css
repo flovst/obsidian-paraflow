@@ -1,4 +1,4 @@
-:root { --paraflow-content-background: #fff; --background-primary: #fff; background-color: #fff; }
+:root { --paraflow-content-background: var(--paraflow-github-background); --background-primary: var(--paraflow-github-background); background-color: var(--paraflow-github-background); }
 /* Measured Typora number slot; separate from CodeMirror-lines' inner padding. */
 :root {
   /* Typora's li p margin collapses to .5rem between sibling items. */

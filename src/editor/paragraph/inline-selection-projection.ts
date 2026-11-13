@@ -692,6 +692,7 @@ function standardConstruct(
 	node: SyntaxNode,
 	context: DiscoveryContext,
 ): InlineSemanticConstruct | null {
+	if (node.name === 'Autolink') return construct(node, 'link', edgeRanges(node, 1));
 	if ((node.name === 'Emphasis' || node.name === 'StrongEmphasis' ||
 		node.name === 'InlineCode' || node.name === 'Highlight') &&
 		hasUnsupportedLinkAncestor(state, node, context)) return null;
@@ -792,6 +793,17 @@ function hypermdWikiConstruct(state: EditorState, node: SyntaxNode): InlineSeman
 	return null;
 }
 
+function hypermdAutolinkConstruct(state: EditorState, node: SyntaxNode): InlineSemanticConstruct | null {
+	if (!isLinkDelimiter(node) || state.sliceDoc(node.from, node.to) !== '<') return null;
+	const body = node.nextSibling;
+	if (!body || body.from !== node.to ||
+		!nameTokens(body.name).includes('link') || !nameTokens(body.name).includes('url') ||
+		state.sliceDoc(body.to, body.to + 1) !== '>') return null;
+	return { editFrom: node.from, editTo: body.to + 1, kind: 'link', sourceRanges: [
+		delimiterRange(node), { from: body.to, to: body.to + 1, kind: 'delimiter' },
+	] };
+}
+
 function hypermdEscapeConstruct(state: EditorState, node: SyntaxNode): InlineSemanticConstruct | null {
 	if (!nameTokens(node.name).includes('hmd-escape-backslash') || state.sliceDoc(node.from, node.to) !== '\\') return null;
 	const character = node.nextSibling;
@@ -816,7 +828,7 @@ function constructForNode(
 		context.unsupportedFlatHosts.contains(node.from, node.to)
 	)) return null;
 	if (node.name === 'Link' && hasStandardBracketOwner(state, node, context)) return null;
-	const native = hypermdWikiConstruct(state, node) ?? hypermdEscapeConstruct(state, node);
+	const native = hypermdWikiConstruct(state, node) ?? hypermdAutolinkConstruct(state, node) ?? hypermdEscapeConstruct(state, node);
 	if (native) return native;
 	const html = inlineHtmlConstruct(state, node);
 	if (html) return html;
@@ -1075,6 +1087,7 @@ function projectionDecorations(
 	frozenActive: readonly InlineSemanticConstruct[] | undefined,
 	isOwnerActive: () => boolean,
 	renderInlineHtml?: InlineHtmlRenderer,
+	editLinksOnPlainClick?: () => boolean,
 ): { readonly decorations: DecorationSet; readonly nativeOwners: DecorationSet; readonly active: readonly InlineSemanticConstruct[] } {
 	const visibleSelections = visibleRanges.map(({ from, to }) => EditorSelection.range(from, to));
 	const strikeCorrections = malformedNativeStrikeRanges(state, visibleRanges);
@@ -1111,7 +1124,7 @@ function projectionDecorations(
 		}
 		if (item.kind === 'inline-html' && !revealed) {
 			return [Decoration.replace({ widget: new InlineHtmlWidget(
-				state.sliceDoc(item.editFrom, item.editTo), renderInlineHtml!, item.editFrom, isOwnerActive,
+				state.sliceDoc(item.editFrom, item.editTo), renderInlineHtml!, item.editFrom, isOwnerActive, editLinksOnPlainClick,
 			) }).range(item.editFrom, item.editTo)];
 		}
 		const source = item.sourceRanges.map((range) =>
@@ -1199,6 +1212,7 @@ export function createInlineSelectionProjection(
 	isStateActive: (state: EditorState) => boolean,
 	isViewActive: (view: EditorView) => boolean = () => true,
 	renderInlineHtml?: InlineHtmlRenderer,
+	editLinksOnPlainClick?: () => boolean,
 ): Extension {
 	const literalMarkerOwner = (state: EditorState, view: EditorView) => {
 		if (!isStateActive(state) || !isViewActive(view)) return null;
@@ -1270,6 +1284,7 @@ export function createInlineSelectionProjection(
 				this.pointerPressed ? this.frozenConstructs : undefined,
 				this.isOwnerActive,
 				renderInlineHtml,
+				editLinksOnPlainClick,
 			);
 			this.activeConstructs = projection.active;
 			this.nativeOwners = projection.nativeOwners;

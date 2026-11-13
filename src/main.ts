@@ -10,7 +10,7 @@ import { ThemeManager } from './themes/manager.js';
 import { contentTokenBridge, resolveThemeUrls, scopeOverrides } from './themes/runtime-css.js';
 import type { ConvertedTheme, ThemeManifest } from './themes/model.js';
 import { createThemeArchive } from './themes/import-files.js';
-import { normalizeThemeOverrides, supportsThemeColorScheme, themeOverrideCss, themePaletteCss, type ThemeOverrides } from './themes/appearance.js';
+import { normalizeThemeOverrides, selectThemeColorScheme, supportsThemeColorScheme, themeOverrideCss, themePaletteCss, type ThemeOverrides } from './themes/appearance.js';
 import { createBrowserClipboardSink } from './clipboard.js';
 import type { EditorExtensionLifecycle } from './editor/extension-lifecycle.js';
 import { createEditorComposition, type EditorComposition } from './editor/editor-composition.js';
@@ -18,6 +18,7 @@ import { createBlockMoveScopeRegistration } from './editor/block-move-obsidian.j
 import type { LineBreakKind } from './editor/paragraph/line-break-projection.js';
 import { isPrimaryLivePreviewEditor, isPrimarySourceEditor } from './editor/surface.js';
 import { ParaFlowSettingTab } from './settings-tab.js';
+import { THEME_LIBRARY_VIEW_TYPE, ThemeLibraryView } from './settings-ui/theme-library.js';
 import { normalizeMetadataGap, normalizeSettings, resetEditingSettings, type ParaFlowSettings, type SourceMaintenanceMode } from './settings.js';
 import { normalizeEnhancements, type EnhancementSettings } from './enhancement-settings.js';
 import { createReadingEnhancements, type ReadingEnhancements } from './reading/enhancements.js';
@@ -30,6 +31,8 @@ import { createModeScrollAlignment, type ModeScrollView } from './reading/mode-s
 import { refreshCalloutHeaderIcons, renderCalloutHeaderIcon } from './editor/callout/header-icon.js';
 import { createTableEditingIntegration } from './editor/table/obsidian-adapter.js';
 import { registerContentMenus } from './editor/context-menu.js';
+import { createObsidianLinkNavigation } from './links/obsidian.js';
+import { registerNativeLinkGuard } from './links/native-guard.js';
 import { pasteFromClipboard } from './editor/clipboard-paste.js';
 import { createIndentModeMaintenance } from './editor/indent-maintenance-mode.js';
 import { planListIndentMaintenance } from './editor/list-indent-maintenance.js';
@@ -42,6 +45,7 @@ export function isParaFlowLivePreview(state: EditorState): boolean {
 
 export default class ParaFlowPlugin extends Plugin {
 	settings: ParaFlowSettings = normalizeSettings(null);
+	private settingsTab: ParaFlowSettingTab | undefined;
 	private editorLifecycle: EditorExtensionLifecycle | null = null;
 	private settingsUpdate: Promise<void> = Promise.resolve();
 	private themeStore!: ThemeStore;
@@ -190,8 +194,11 @@ export default class ParaFlowPlugin extends Plugin {
 		const theme = id === null ? null : await this.themeStore.read(id);
 		const overrideScheme = supportsThemeColorScheme(theme?.manifest) ? overrides.colorScheme : undefined;
 		const scheme = overrideScheme === 'host' ? 'adaptive' : overrideScheme ?? theme?.manifest.colorScheme ?? 'adaptive';
-		const css = themePaletteCss(themeId, scheme) + (theme?.css ?? '') + contentTokenBridge(themeId, overrides, theme?.manifest.origin, metadataGap)
-			+ themeOverrideCss(themeId, overrides) + scopeOverrides(theme?.overrides ?? '', themeId);
+		const authoredCss = theme ? selectThemeColorScheme(theme.css, theme.manifest, overrideScheme) : '';
+		const localCss = scopeOverrides(theme?.overrides ?? '', themeId);
+		const css = themePaletteCss(themeId, theme?.manifest.colorSchemeVariants ? 'adaptive' : scheme)
+			+ authoredCss + contentTokenBridge(themeId, overrides, theme?.manifest.origin, metadataGap) + themeOverrideCss(themeId, overrides)
+			+ (theme ? selectThemeColorScheme(localCss, theme.manifest, overrideScheme) : localCss);
 		return { id: themeId, css: resolveThemeUrls(css, path => this.app.vault.adapter.getResourcePath(this.themeStore.path(themeId) + '/' + path)) };
 	}
 
@@ -240,6 +247,7 @@ export default class ParaFlowPlugin extends Plugin {
 			this.themeManager.setTheme(theme); this.settings = nextSettings;
 			this.refreshCalloutIcons();
 			this.readingEnhancements?.refresh();
+			this.settingsTab?.refreshThemeControls();
 		});
 		this.settingsUpdate = update.catch(() => undefined); await update;
 	}
@@ -251,16 +259,34 @@ export default class ParaFlowPlugin extends Plugin {
 		});
 		await this.themeStore.install(theme, overrides);
 		this.contentThemes = (await this.themeStore.list()).themes;
+		this.settingsTab?.refreshThemeControls();
 	}
 
-	async exportContentTheme(): Promise<Uint8Array> {
-		if (this.contentThemeId === null || this.contentThemeId === 'builtin-classic') throw new Error('Select an imported theme to export');
-		return createThemeArchive(await this.themeStore.exportFiles(this.contentThemeId));
+	async refreshContentThemes(): Promise<void> {
+		const listing = await this.themeStore.list();
+		this.contentThemes = listing.themes;
+		if (listing.warnings.length) new Notice('Some ParaFlow themes could not be loaded: ' + listing.warnings.join('; '));
+		await this.setContentTheme(this.contentThemeId, true);
 	}
 
-	async contentThemeReport(): Promise<string> {
-		if (this.contentThemeId === null) throw new Error('Select a content theme first');
-		const path = this.themeStore.path(this.contentThemeId) + '/conversion-report.json';
+	contentThemeFolder(id?: string): string {
+		return id ? this.themeStore.path(id) : this.themeStore.root;
+	}
+
+	async updateContentThemeMetadata(id: string, metadata: Pick<ThemeManifest, 'sourceApp' | 'sourcePackage'>): Promise<void> {
+		await this.themeStore.updateMetadata(id, metadata);
+		this.contentThemes = (await this.themeStore.list()).themes;
+		this.settingsTab?.refreshThemeControls();
+	}
+
+	async exportContentTheme(id = this.contentThemeId): Promise<Uint8Array> {
+		if (id === null || id === 'builtin-classic') throw new Error('Select an imported theme to export');
+		return createThemeArchive(await this.themeStore.exportFiles(id));
+	}
+
+	async contentThemeReport(id = this.contentThemeId): Promise<string> {
+		if (id === null) throw new Error('Select a content theme first');
+		const path = this.themeStore.path(id) + '/conversion-report.json';
 		return await this.themeStore.storage.exists(path) ? this.themeStore.storage.read(path) : 'This built-in theme has no conversion report.';
 	}
 
@@ -300,11 +326,18 @@ export default class ParaFlowPlugin extends Plugin {
 	}
 
 	async onload(): Promise<void> {
-		registerContentMenus(this);
+		this.registerView(THEME_LIBRARY_VIEW_TYPE, leaf => new ThemeLibraryView(leaf, this));
 		registerDetailsOpenState(this, this.detailsOpenState);
 		this.register(() => { this.disposed = true; this.themeManager.destroy(); });
 		this.settings = normalizeSettings(await this.loadData());
 		if (this.disposed) return;
+		const linkNavigation = createObsidianLinkNavigation(this.app, () => this.settings.preventImplicitLinkCreation);
+		registerContentMenus(this, linkNavigation);
+		registerNativeLinkGuard(this, linkNavigation, {
+			preventImplicitCreation: () => this.settings.preventImplicitLinkCreation,
+			editorOwnsLink: view => this.settings.editLinksOnPlainClick && this.settings.enhancements.inline && isParaFlowLivePreview(view.state) && isPrimaryLivePreviewEditor(view),
+			tableOwnsLink: target => this.tableEditing?.ownsLinkGesture(target) ?? false,
+		});
 		const modeMaintenance = createIndentModeMaintenance({
 			getEnabled: () => this.settings.enhancements.maintainListIndentOnModeChange,
 			plan: planListIndentMaintenance,
@@ -399,11 +432,7 @@ export default class ParaFlowPlugin extends Plugin {
 			loadPrism,
 			registerBlockMoveScope: createBlockMoveScopeRegistration(this.app),
 			mathRendering: { renderMath: mathRenderer.renderMath, getCachedMath: mathRenderer.getCachedMath, isFocused: state => state.field(editorEditorField, false)?.hasFocus === true },
-			openReferenceLink: (destination, view) => {
-				if (/^(?:javascript|data|vbscript):/iu.test(destination.trim())) return;
-				if (/^(?:[a-z][a-z\d+.-]*:|\/\/)/iu.test(destination)) view.dom.ownerDocument.defaultView!.open(destination, '_external');
-				else void this.app.workspace.openLinkText(destination, view.state.field(editorInfoField).file?.path ?? '');
-			},
+			openReferenceLink: linkNavigation.openFromEditor,
 			renderInlineHtml: (source, element, view) => {
 				const component = new Component(); component.load();
 				let disposed = false;
@@ -429,7 +458,8 @@ export default class ParaFlowPlugin extends Plugin {
 			tableEditingExtension: () => this.tableEditing?.extension ?? null,
 		});
 		this.editorLifecycle = this.editorComposition.lifecycle;
-		this.addSettingTab(new ParaFlowSettingTab(this));
+		this.settingsTab = new ParaFlowSettingTab(this);
+		this.addSettingTab(this.settingsTab);
 		const currentEditor = () => this.currentEditor();
 		for (const mode of ['exact', 'smart'] as const) this.addCommand({
 			id: `paste-${mode}`, name: mode === 'exact' ? '本次精确粘贴 / Paste exact text' : '本次智能粘贴 / Smart paste',
@@ -441,6 +471,12 @@ export default class ParaFlowPlugin extends Plugin {
 			},
 		});
 		this.tableEditing=createTableEditingIntegration(this.app,{
+			openLink: linkNavigation.openFromEditor,
+			captureLinkNavigation: (view, destination) => {
+				const origin = linkNavigation.fromEditor(view);
+				return intent => linkNavigation.open(destination, origin, intent);
+			},
+			editLinksOnPlainClick: () => this.settings.editLinksOnPlainClick,
 			getBreakEditingEnabled:()=>this.settings.paragraphEditingEnabled,
 			isActive:view=>!Platform.isMobile&&this.settings.enhancements.table&&this.settings.enhancements.tableEditing&&isParaFlowLivePreview(view.state)&&isPrimaryLivePreviewEditor(view),
 			getView:currentEditor,
@@ -544,6 +580,19 @@ export default class ParaFlowPlugin extends Plugin {
 			};
 			await this.saveData(nextSettings);
 			this.settings = nextSettings;
+		});
+		this.settingsUpdate = update.catch(() => undefined);
+		await update;
+	}
+
+	get preventImplicitLinkCreation(): boolean { return this.settings.preventImplicitLinkCreation; }
+
+	async setPreventImplicitLinkCreation(enabled: boolean): Promise<void> {
+		const update = this.settingsUpdate.then(async () => {
+			if (this.disposed || enabled === this.settings.preventImplicitLinkCreation) return;
+			const nextSettings = { ...this.settings, preventImplicitLinkCreation: enabled };
+			await this.saveData(nextSettings);
+			if (!this.disposed) this.settings = nextSettings;
 		});
 		this.settingsUpdate = update.catch(() => undefined);
 		await update;

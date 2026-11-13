@@ -153,7 +153,7 @@ export function createEditorComposition(host: EditorExtensionLifecycleHost, depe
 			dependencies.mathRendering ? createMathEditingExtension({ ...dependencies.mathRendering, isStateActive: isLivePreview }) : []);
 		if (enhancements.inline) extensions.push(
 			EditorView.editorAttributes.of(view => ({ class: isActive(view) ? 'paraflow-inline-active' : '' })),
-			createInlineSelectionProjection(isLivePreview, isActive, dependencies.renderInlineHtml),
+			createInlineSelectionProjection(isLivePreview, isActive, dependencies.renderInlineHtml, () => getSettings().editLinksOnPlainClick),
 			createLinkInteraction({ isActive, editLinksOnPlainClick: () => getSettings().editLinksOnPlainClick, openReferenceLink: dependencies.openReferenceLink }),
 			createCommentExtension({ isActive, getMode: () => getSettings().enhancements.commentDisplay }),
 			createShorthandExtension({ isActive, getSettings: () => getSettings().enhancements }));
