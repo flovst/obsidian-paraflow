@@ -71,13 +71,13 @@ Other features:
 - Edit links with a click, or Ctrl/Cmd-click to open and focus a new tab.
 - Toggle each feature individually in settings. Some issues may remain.
 
-A [showcase vault](../../releases/tag/0.1.5) with ParaFlow installed is available in the release for a quick trial.
+A [showcase vault](../../releases/tag/0.1.6) with ParaFlow installed is available in the release for a quick trial.
 
 ## Installation
 
 #### Try the showcase vault
 
-Download `showcase-paraflow-0.1.5.zip` from the [release](../../releases/tag/0.1.5), extract it, and open the `showcase-paraflow` folder as a vault in Obsidian. It includes the matching ParaFlow build, example notes, and preset settings.
+Download `showcase-paraflow-0.1.6.zip` from the [release](../../releases/tag/0.1.6), extract it, and open the `showcase-paraflow` folder as a vault in Obsidian. It includes the matching ParaFlow build, example notes, and preset settings.
 
 #### Manual installation
 
