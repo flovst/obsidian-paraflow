@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "marktext-catppuccin-mocha",
+  "name": "MarkText Catppuccin Mocha",
+  "origin": "imported",
+  "sourceApp": "MarkText",
+  "colorScheme": "dark",
+  "converterVersion": "11",
+  "sourceEntry": "adapted/content.css",
+  "sourceVersion": "45b2cedb5be2902d32b064f9127914d48de00cef",
+  "sourcePackage": "MarkText default",
+  "packageId": "marktext-default"
+}

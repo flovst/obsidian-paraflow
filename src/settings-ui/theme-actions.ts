@@ -26,7 +26,10 @@ export function importTheme(plugin: ParaFlowPlugin, changed: () => void): void {
 	new ImportTyporaThemeModal(plugin.app, async (theme, overrides) => {
 		await plugin.importContentTheme(theme, overrides);
 		changed();
-	}, () => plugin.contentThemes.map(theme => theme.id)).open();
+	}, () => plugin.contentThemes.map(theme => theme.id), async files => {
+		await plugin.importContentThemePackage(files);
+		changed();
+	}).open();
 }
 
 export async function reloadThemes(plugin: ParaFlowPlugin): Promise<void> {

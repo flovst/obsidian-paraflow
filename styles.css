@@ -563,6 +563,7 @@ body[data-paraflow-theme] .tooltip.mod-left .tooltip-arrow { top: calc(50% - 4px
 .paraflow-settings .paraflow-setting-custom :disabled { opacity: 0.5; }
 .paraflow-settings .setting-item-description:empty { display: none; }
 .paraflow-settings .setting-item-control { flex-wrap: wrap; gap: 0.5em; }
+.paraflow-theme-manager-button { display: inline-flex; align-items: center; gap: 0.4em; }
 .paraflow-settings .setting-item-control :is(input, select, button) { max-width: 100%; font-size: var(--paraflow-setting-font-size); }
 .setting-item.paraflow-settings.is-disabled :is(.setting-item-info, .setting-item-name) { color: var(--text-faint); }
 .setting-item.paraflow-settings.is-disabled .setting-item-control { opacity: 0.65; }

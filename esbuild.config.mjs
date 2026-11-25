@@ -1,4 +1,5 @@
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { loadThemeBundles } from './build/theme-bundles.mjs';
 import esbuild from 'esbuild';
 import process from 'process';
 import { builtinModules } from 'node:module';
@@ -14,28 +15,7 @@ ${readFileSync('THIRD-PARTY-NOTICES.txt', 'utf8')}
 
 const prod = process.argv[2] === 'production';
 
-function themeFiles(directory, prefix = '') {
-	if (!existsSync(directory)) return [];
-	return readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name)).flatMap(entry => {
-		const relative = prefix + entry.name;
-		if (entry.isDirectory()) return themeFiles(`${directory}/${entry.name}`, relative + '/');
-		if (!entry.isFile()) throw new Error(`Unsupported theme resource: ${directory}/${entry.name}`);
-		return [[relative, readFileSync(`${directory}/${entry.name}`).toString('base64')]];
-	});
-}
-
-const bundledThemes = JSON.parse(readFileSync('themes/bundled.json', 'utf8')).map(name => {
-	if (!/^typora-[a-z]+$/.test(name)) throw new Error(`Invalid bundled theme directory: ${name}`);
-	const directory = `themes/${name}`;
-	return {
-		manifest: JSON.parse(readFileSync(`${directory}/theme.json`, 'utf8')),
-		css: readFileSync(`${directory}/theme.css`, 'utf8'),
-		overrides: readFileSync(`${directory}/overrides.css`, 'utf8'),
-		assets: themeFiles(`${directory}/assets`),
-		sources: [['THIRD-PARTY-NOTICE.txt', readFileSync(`${directory}/THIRD-PARTY-NOTICE.txt`).toString('base64')]],
-		diagnostics: JSON.parse(readFileSync(`${directory}/conversion-report.json`, 'utf8')),
-	};
-});
+const bundledThemes = loadThemeBundles();
 
 const context = await esbuild.context({
 	plugins: [pluginStylesPlugin()],

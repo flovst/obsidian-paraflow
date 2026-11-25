@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "vnote-solarized-light",
+  "name": "VNote Solarized Light",
+  "origin": "imported",
+  "sourceApp": "VNote",
+  "colorScheme": "light",
+  "converterVersion": "11",
+  "sourceEntry": "adapted/content.css",
+  "sourceVersion": "da2f75924d033e4437ba28ae5bb0cd970cc52aa0",
+  "sourcePackage": "VNote official",
+  "packageId": "vnote-official"
+}

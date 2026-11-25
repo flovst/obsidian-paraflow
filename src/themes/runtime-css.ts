@@ -10,7 +10,7 @@ import { isolateDiagramParagraphs, projectContentThemeSelectors, projectLinkAcce
 import { projectQuoteThemeTokens } from './quote-selectors.js';
 import { themeResource } from './resource-policy.js';
 
-export function resolveThemeUrls(source: string, resourcePath: (path: string) => string): string {
+export function resolveThemeUrls(source: string, resourcePath: (path: string) => string, sharedAssets = false): string {
 	const ast = css.parse(source, { parseCustomProperty: true, onParseError(error) { throw error; } });
 	css.walk(ast, node => {
 		const resource = themeResource(node);
@@ -20,7 +20,8 @@ export function resolveThemeUrls(source: string, resourcePath: (path: string) =>
 		}
 		if (!resource || resource.value.startsWith('data:')) return;
 		const match = /^([^?#]*)(.*)$/u.exec(resource.value)!;
-		const path = validateRelativePath(decodeURIComponent(match[1]!));
+		const decoded = decodeURIComponent(match[1]!);
+		const path = validateRelativePath(sharedAssets && decoded.startsWith('../assets/') ? decoded.slice(3) : decoded);
 		if (!path.startsWith('assets/')) throw new Error(`Theme URL must be inside assets/: ${path}`);
 		resource.value = resourcePath(path) + match[2]!;
 	});

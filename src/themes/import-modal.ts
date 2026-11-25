@@ -1,5 +1,6 @@
 import { Modal, Notice, Setting, type App } from 'obsidian';
-import { materializeThemeImport, nextTyporaThemeId, prepareThemeImport, readImportFiles, themeEntries, type PreparedThemeImport } from './import-files.js';
+import { materializeThemeImport, nextTyporaThemeId, prepareThemeImport, readImportFiles, themeEntries, unwrapThemeDirectory, type PreparedThemeImport } from './import-files.js';
+import { readThemePackage } from './packaged-theme.js';
 import type { ConvertedTheme } from './model.js';
 import { translate as t } from '../settings-ui/i18n.js';
 
@@ -18,8 +19,10 @@ export class ImportTyporaThemeModal extends Modal {
 	private exportedAssets = new Map<string, Uint8Array>();
 	private packaged: ConvertedTheme | undefined;
 	private sourceMetadata: PreparedThemeImport['sourceMetadata'];
+	private bundle: { files: Map<string, Uint8Array>; name: string; names: string[] } | null = null;
 	constructor(app: App, private readonly save: (theme: ConvertedTheme, overrides?: string) => Promise<void>,
-		private readonly existingIds: () => Iterable<string>) { super(app); }
+		private readonly existingIds: () => Iterable<string>,
+		private readonly savePackage: (files: ReadonlyMap<string, Uint8Array>) => Promise<void>) { super(app); }
 
 	onOpen(): void { this.render(); }
 	onClose(): void { this.contentEl.empty(); }
@@ -34,6 +37,18 @@ export class ImportTyporaThemeModal extends Modal {
 			if (folder) { input.setAttribute('webkitdirectory', ''); input.multiple = true; }
 			else input.accept = '.css,.zip';
 			input.addEventListener('change', () => { void this.load(Array.from(input.files ?? [])); });
+		}
+		if (this.bundle) {
+			const bundle = this.bundle;
+			this.contentEl.createEl('h3', { text: bundle.name });
+			const list = this.contentEl.createEl('ul');
+			for (const name of bundle.names) list.createEl('li', { text: name });
+			new Setting(this.contentEl).addButton(button => button.setButtonText(t('saveTheme')).setCta().onClick(async () => {
+				button.buttonEl.disabled = true;
+				try { await this.savePackage(bundle.files); this.close(); new Notice(t('themeImported')); }
+				catch (error) { new Notice(String(error)); button.buttonEl.disabled = false; }
+			}));
+			return;
 		}
 		if (!this.files.size) return;
 		const entries = themeEntries(this.files);
@@ -70,7 +85,15 @@ export class ImportTyporaThemeModal extends Modal {
 
 	private async load(files: File[]): Promise<void> {
 		try {
-			const input = prepareThemeImport(await readImportFiles(files));
+			const selected = unwrapThemeDirectory(await readImportFiles(files));
+			const metadata = selected.has('theme.json') ? JSON.parse(new TextDecoder().decode(selected.get('theme.json'))) as { type?: unknown } : null;
+			if (metadata?.type === 'package') {
+				const bundle = readThemePackage(selected);
+				this.bundle = { files: selected, name: bundle.manifest.name, names: bundle.themes.map(theme => theme.manifest.name) };
+				this.render(); return;
+			}
+			const input = prepareThemeImport(selected);
+			this.bundle = null;
 			this.files = input.files; this.converted = null; this.overrides = input.overrides;
 			this.exportedAssets = input.assets; this.entry = input.entry; this.themeName = input.name;
 			this.packaged = input.packaged;

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "type": "package",
+  "id": "joplin-default",
+  "name": "Joplin built-in",
+  "themes": [
+    "joplin-dark",
+    "joplin-dracula",
+    "joplin-light",
+    "joplin-nord",
+    "joplin-solarized-dark",
+    "joplin-solarized-light"
+  ]
+}

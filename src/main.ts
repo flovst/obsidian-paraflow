@@ -5,12 +5,12 @@ import { createReadingMathRanges } from './reading/math-ranges';
 import { createSvgMathRenderer, type NativeMathJax } from './display/math.js';
 import { createMermaidThemeRenderer } from './display/mermaid-svg.js';
 import { installBundledThemes } from './themes/builtin.js';
-import { ThemeStore } from './themes/store.js';
+import { ThemeStore, validateRelativePath } from './themes/store.js';
 import { ThemeManager } from './themes/manager.js';
 import { contentTokenBridge, resolveThemeUrls, scopeOverrides } from './themes/runtime-css.js';
 import type { ConvertedTheme, ThemeManifest } from './themes/model.js';
 import { createThemeArchive } from './themes/import-files.js';
-import { normalizeThemeOverrides, selectThemeColorScheme, supportsThemeColorScheme, themeOverrideCss, themePaletteCss, type ThemeOverrides } from './themes/appearance.js';
+import { normalizeThemeOverrides, themeOverrideCss, themePaletteCss, type ThemeOverrides } from './themes/appearance.js';
 import { createBrowserClipboardSink } from './clipboard.js';
 import type { EditorExtensionLifecycle } from './editor/extension-lifecycle.js';
 import { createEditorComposition, type EditorComposition } from './editor/editor-composition.js';
@@ -192,14 +192,12 @@ export default class ParaFlowPlugin extends Plugin {
 	private async prepareTheme(id: string | null, overrides = this.settings.themeOverrides[id ?? 'paraflow-follow'] ?? {}, metadataGap = this.settings.metadataGap): Promise<{ id: string; css: string } | null> {
 		const themeId = id ?? 'paraflow-follow';
 		const theme = id === null ? null : await this.themeStore.read(id);
-		const overrideScheme = supportsThemeColorScheme(theme?.manifest) ? overrides.colorScheme : undefined;
-		const scheme = overrideScheme === 'host' ? 'adaptive' : overrideScheme ?? theme?.manifest.colorScheme ?? 'adaptive';
-		const authoredCss = theme ? selectThemeColorScheme(theme.css, theme.manifest, overrideScheme) : '';
 		const localCss = scopeOverrides(theme?.overrides ?? '', themeId);
-		const css = themePaletteCss(themeId, theme?.manifest.colorSchemeVariants ? 'adaptive' : scheme)
-			+ authoredCss + contentTokenBridge(themeId, overrides, theme?.manifest.origin, metadataGap) + themeOverrideCss(themeId, overrides)
-			+ (theme ? selectThemeColorScheme(localCss, theme.manifest, overrideScheme) : localCss);
-		return { id: themeId, css: resolveThemeUrls(css, path => this.app.vault.adapter.getResourcePath(this.themeStore.path(themeId) + '/' + path)) };
+		const css = themePaletteCss(themeId, theme?.manifest.colorScheme ?? 'adaptive')
+			+ (theme?.css ?? '') + contentTokenBridge(themeId, overrides, theme?.manifest.origin, metadataGap) + themeOverrideCss(themeId, overrides)
+			+ localCss;
+		const assetRoot = this.themeStore.assetRoot(themeId);
+		return { id: themeId, css: resolveThemeUrls(css, path => this.app.vault.adapter.getResourcePath(assetRoot + '/' + path), assetRoot !== this.themeStore.path(themeId)) };
 	}
 
 	async setContentThemeOverrides(value: ThemeOverrides): Promise<void> {
@@ -269,6 +267,12 @@ export default class ParaFlowPlugin extends Plugin {
 		await this.setContentTheme(this.contentThemeId, true);
 	}
 
+	async importContentThemePackage(files: ReadonlyMap<string, Uint8Array>): Promise<void> {
+		await this.themeStore.installPackage(files);
+		this.contentThemes = (await this.themeStore.list()).themes;
+		this.settingsTab?.refreshThemeControls();
+	}
+
 	contentThemeFolder(id?: string): string {
 		return id ? this.themeStore.path(id) : this.themeStore.root;
 	}
@@ -279,15 +283,23 @@ export default class ParaFlowPlugin extends Plugin {
 		this.settingsTab?.refreshThemeControls();
 	}
 
-	async exportContentTheme(id = this.contentThemeId): Promise<Uint8Array> {
+	async exportContentTheme(id = this.contentThemeId, wholePackage = false): Promise<Uint8Array> {
 		if (id === null || id === 'builtin-classic') throw new Error('Select an imported theme to export');
-		return createThemeArchive(await this.themeStore.exportFiles(id));
+		return createThemeArchive(await this.themeStore.exportFiles(id, wholePackage));
 	}
 
 	async contentThemeReport(id = this.contentThemeId): Promise<string> {
 		if (id === null) throw new Error('Select a content theme first');
 		const path = this.themeStore.path(id) + '/conversion-report.json';
-		return await this.themeStore.storage.exists(path) ? this.themeStore.storage.read(path) : 'This built-in theme has no conversion report.';
+		if (await this.themeStore.storage.exists(path)) return this.themeStore.storage.read(path);
+		const root = this.themeStore.assetRoot(id);
+		const indexPath = root + '/source/files.json';
+		if (await this.themeStore.storage.exists(indexPath)) {
+			const index = JSON.parse(await this.themeStore.storage.read(indexPath)) as Record<string, Record<string, string>>;
+			const report = index[id]?.['conversion-report.json'];
+			if (report) return this.themeStore.storage.read(root + '/' + validateRelativePath(report));
+		}
+		return 'This theme has no conversion report.';
 	}
 
 	get hideCaretWhileDragSelecting(): boolean {

@@ -8,7 +8,7 @@ export function createObsidianLinkNavigation(app: App, preventImplicitCreation: 
 		preventImplicitCreation,
 		parseLinktext,
 		resolveFile: (path, sourcePath) => app.metadataCache.getFirstLinkpathDest(path, sourcePath),
-		notifyMissing: () => { new Notice(getLanguage().startsWith('zh') ? '链接目标尚未创建。' : 'This link target does not exist.'); },
+		notifyMissing: () => { new Notice(getLanguage().startsWith('zh') ? '文件不存在。' : 'File does not exist.'); },
 		openInternal: async (destination, origin, intent, file, subpath) => {
 			if (intent === 'current' && file && !origin.leaf.getViewState().pinned) {
 				await origin.leaf.openFile(file, { active: true, eState: { subpath } });

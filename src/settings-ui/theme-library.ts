@@ -26,8 +26,9 @@ export interface ThemeLibraryHost {
 }
 function libraryState(value: unknown): ThemeLibraryState {
 	const input = value && typeof value === 'object' ? value as Partial<ThemeLibraryState> : {};
+	const savedColumns = Array.isArray(input.columns) ? input.columns.filter((key: string) => key !== 'libraryPackage') : [];
 	return {
-		columns: Array.isArray(input.columns) && input.columns.length === columns.length && new Set(input.columns).size === columns.length && input.columns.every(key => columns.includes(key)) ? [...input.columns] : [...columns],
+		columns: savedColumns.length === columns.length && new Set(savedColumns).size === columns.length && savedColumns.every(key => columns.includes(key)) ? savedColumns : [...columns],
 		sort: input.sort && columns.includes(input.sort.column) && ['ascending', 'descending'].includes(input.sort.direction) ? { ...input.sort } : { column: 'libraryName', direction: 'ascending' },
 		expandedPackages: Array.isArray(input.expandedPackages) ? [...new Set(input.expandedPackages.filter((id): id is string => typeof id === 'string'))] : [],
 	};
@@ -109,7 +110,7 @@ export function renderThemeLibrary(root: HTMLElement, host: ThemeLibraryHost, in
 		const unique = (key: 'sourceApp' | 'sourcePackage'): Array<[string, string]> => [...new Set(themes.map(theme => source(theme)[key] ?? ''))].sort().map(value => [value || '__unknown', value || '-']);
 		options('sourceSoftware', unique('sourceApp')); options('themePackage', unique('sourcePackage'));
 		options('variants', [['adaptive', t('libraryAdaptive')], ['light', t('light')], ['dark', t('dark')]]);
-		options('themeOrigin', [['builtin', t('builtInTheme')], ['imported', t('importedTheme')]]);
+		options('themeOrigin', [['builtin', t('builtInTheme')], ['imported', t('libraryImported')]]);
 		tools.querySelectorAll<HTMLButtonElement>('button').forEach(control => { control.disabled = busy; });
 		renderHeader(); renderRows();
 	}
@@ -235,6 +236,7 @@ export function renderThemeLibrary(root: HTMLElement, host: ThemeLibraryHost, in
 				} else cell.textContent = theme ? themeCell(theme, column) : entryCell(entry, column);
 			}
 			row.addEventListener('click', () => { if (isPackage) togglePackage(entry.packageId!); else selectRow(key); });
+			if (theme) row.addEventListener('dblclick', () => { if (!busy && host.activeId() !== theme.id) void run(() => host.apply(theme.id)); });
 			const showContext = (event?: MouseEvent) => { if (theme) context(theme, row, event); else packageContext(entry, row, event); };
 			row.addEventListener('contextmenu', event => { event.preventDefault(); showContext(event); });
 			row.addEventListener('keydown', event => {

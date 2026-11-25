@@ -78,8 +78,21 @@ export interface PreparedThemeImport {
 	sourceMetadata?: ThemeSourceMetadata & { sourceVersion?: string };
 }
 
+export function unwrapThemeDirectory(files: Map<string, Uint8Array>): Map<string, Uint8Array> {
+	// Folder selection includes one outer directory, for either entry format.
+	if (!files.has('theme.json')) {
+		const roots = [...files.keys()].filter(path => /^[^/]+\/theme\.json$/u.test(path));
+		if (roots.length === 1) {
+			const prefix = roots[0]!.slice(0, -10);
+			if ([...files.keys()].every(path => path.startsWith(prefix))) files = new Map([...files].map(([path, bytes]) => [path.slice(prefix.length), bytes]));
+		}
+	}
+	return files;
+}
+
 export function prepareThemeImport(files: Map<string, Uint8Array>): PreparedThemeImport {
 	validatePackage(files);
+	files = unwrapThemeDirectory(files);
 	if (!files.has('theme.json')) {
 		const packages = [...files.keys()].filter(path => path.endsWith('/theme.json') && files.has(path.slice(0, -10) + 'theme.css'));
 		if (packages.length) {

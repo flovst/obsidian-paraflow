@@ -1,12 +1,10 @@
 import type { en } from './en.js';
 
 export const zhCN: Record<keyof typeof en, string> = {
-	libraryName: '名称', libraryScheme: '配色方案', libraryPackage: '主题包', librarySource: '来源',
+	libraryName: '名称', libraryScheme: '配色方案', libraryPackage: '主题包', librarySource: '来源', libraryImported: '已导入',
 	libraryAdaptive: '深/浅色', libraryInfo: '主题信息',
 	expandThemePackage: '展开主题包', collapseThemePackage: '折叠主题包', themePackageInfo: '主题包信息',
 	themePackageId: '主题包 ID', themePackageIdHelp: '相同 ID 的主题组成一个包。使用小写字母、数字和连字符；留空则作为独立主题。',
-	themeSchemeSupported: '支持浅色、深色和跟随 Obsidian，应用于笔记正文。',
-	themeSchemeFixed: '使用主题原有配色；选择含深浅色变体的主题后可切换。',
 	themeLibrary: '管理主题', refreshThemes: '刷新列表并重新加载主题文件',
 	searchThemes: '搜索主题、ID、软件或主题包', sourceSoftware: '来源软件',
 	variants: '深浅色变体', themePackage: '来源主题包', themeOrigin: '安装类型', themeActions: '操作',
@@ -52,7 +50,6 @@ export const zhCN: Record<keyof typeof en, string> = {
 	followObsidian: '跟随 Obsidian', importTheme: '导入主题', importThemeHelp: '当前支持转换 Typora CSS 文件或包含字体、图片等资源的主题包。',
 	themeFiles: '检查主题文件', themeFilesHelp: '', openThemeFolder: '打开主题文件夹', desktopOnly: '此操作仅适用于桌面端。',
 	report: '查看报告', reload: '重新加载', export: '导出', reloaded: '内容主题已重新加载',
-	colorScheme: '配色方案', colorSchemeHelp: '',
 	preset: '跟随主题', light: '浅色', dark: '深色', custom: '自定义',
 	fontFamily: '正文字体', fontFamilyHelp: '',
 	fontSize: '正文字号', fontSizeHelp: '',

@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "type": "package",
+  "id": "zettlr-official",
+  "name": "Zettlr official",
+  "themes": [
+    "zettlr-berlin",
+    "zettlr-bielefeld",
+    "zettlr-bordeaux",
+    "zettlr-frankfurt",
+    "zettlr-karl-marx-stadt"
+  ]
+}

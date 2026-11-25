@@ -1,11 +1,32 @@
 import * as css from 'css-tree';
 import type { ConvertedTheme, ThemeDiagnostic } from './model.js';
-import { parseManifest, validateRelativePath, validateThemeId } from './store.js';
+import { parseManifest, parseThemePackage, validateRelativePath, validateThemeId } from './store.js';
 import { resolveThemeUrls, scopeOverrides } from './runtime-css.js';
 import { cssName } from './resource-policy.js';
 import { validateDelimiters } from './converter.js';
 
 const decode = (bytes: Uint8Array): string => new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+
+/** Validate each child using the existing standalone-theme boundary. */
+export function readThemePackage(files: ReadonlyMap<string, Uint8Array>) {
+	for (const path of files.keys()) validateRelativePath(path);
+	const text = decode(files.get('theme.json')!);
+	const manifest = parseThemePackage(text, (JSON.parse(text) as { id: string }).id);
+	const ids = new Set<string>();
+	const themes = manifest.themes.map(directory => {
+		const prefix = directory + '/';
+		const child = new Map([...files].filter(([path]) => path.startsWith(prefix)).map(([path, bytes]) => [path.slice(prefix.length), bytes]));
+		for (const [path, bytes] of files) if (path.startsWith('assets/')) child.set(path, bytes);
+		for (const name of ['theme.css', 'overrides.css']) {
+			if (child.has(name)) child.set(name, new TextEncoder().encode(resolveThemeUrls(decode(child.get(name)!), String, true)));
+		}
+		const theme = readPackagedTheme(child);
+		if (ids.has(theme.manifest.id)) throw new Error('Duplicate theme id');
+		ids.add(theme.manifest.id);
+		return theme;
+	});
+	return { manifest, themes };
+}
 
 function relocateFontDeclaration(node: css.CssNode, oldId: string, id: string): void {
 	if (node.type !== 'Declaration' || (!['font-family', 'font'].includes(cssName(node.property)) && !node.property.startsWith('--'))) return;

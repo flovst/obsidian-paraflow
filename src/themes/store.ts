@@ -1,4 +1,6 @@
-import type { ConvertedTheme, ThemeManifest, ThemeSourceMetadata } from './model.js';
+import type { ConvertedTheme, ThemeManifest, ThemePackageManifest, ThemeSourceMetadata } from './model.js';
+import { resolveThemeUrls } from './runtime-css.js';
+import { readThemePackage } from './packaged-theme.js';
 
 export interface ThemeStorage {
 	exists(path: string): Promise<boolean>;
@@ -15,7 +17,7 @@ export interface ThemeStorage {
 const themeIdPattern = /^[a-z0-9][a-z0-9-]{0,79}$/u;
 
 export function validateThemeId(id: string): void {
-	if (!themeIdPattern.test(id)) throw new Error('Invalid theme id');
+	if (typeof id !== 'string' || !themeIdPattern.test(id)) throw new Error('Invalid theme id');
 }
 
 export function validateRelativePath(path: string): string {
@@ -53,7 +55,24 @@ export function parseManifest(text: string, id: string): ThemeManifest {
 	return value as ThemeManifest;
 }
 
+export function parseThemePackage(text: string, id: string): ThemePackageManifest {
+	const value = JSON.parse(text) as Partial<ThemePackageManifest> | null;
+	validateThemeId(id);
+	if (!value || value.schemaVersion !== 1 || value.type !== 'package' || value.id !== id
+		|| typeof value.name !== 'string' || !value.name.trim() || !Array.isArray(value.themes) || !value.themes.length) {
+		throw new Error(`Invalid theme package: ${id}`);
+	}
+	for (const directory of value.themes) {
+		if (typeof directory !== 'string') throw new Error('Invalid theme directory');
+		validateThemeId(directory);
+		if (['assets', 'source'].includes(directory)) throw new Error(`Reserved theme directory: ${directory}`);
+	}
+	if (new Set(value.themes.map(name => name.toLowerCase())).size !== value.themes.length) throw new Error('Duplicate theme directory');
+	return value as ThemePackageManifest;
+}
+
 export class ThemeStore {
+	private locations = new Map<string, { directory: string; packageRoot?: string }>();
 	constructor(readonly storage: ThemeStorage, readonly root: string) {}
 
 	private async mkdir(path: string): Promise<void> {
@@ -63,14 +82,39 @@ export class ThemeStore {
 		await this.storage.mkdir(path);
 	}
 
-	path(id: string): string { validateThemeId(id); return `${this.root}/${id}`; }
+	path(id: string): string { validateThemeId(id); return this.locations.get(id)?.directory ?? `${this.root}/${id}`; }
+
+	assetRoot(id: string): string { return this.locations.get(id)?.packageRoot ?? this.path(id); }
 
 	async list(): Promise<{ themes: ThemeManifest[]; warnings: string[] }> {
 		await this.mkdir(this.root);
+		this.locations.clear();
 		const themes: ThemeManifest[] = []; const warnings: string[] = [];
 		for (const dir of (await this.storage.list(this.root)).folders) {
 			const id = dir.slice(dir.lastIndexOf('/') + 1);
-			try { themes.push((await this.read(id)).manifest); }
+			try {
+				const text = await this.storage.read(`${dir}/theme.json`);
+				const metadata = JSON.parse(text) as { type?: unknown };
+				const entries = metadata.type === 'package'
+					? await Promise.all(parseThemePackage(text, id).themes.map(async child => {
+						const directory = `${dir}/${child}`;
+						const childText = await this.storage.read(`${directory}/theme.json`);
+						const childId = (JSON.parse(childText) as { id: string }).id;
+						validateThemeId(childId);
+						return { manifest: parseManifest(childText, childId), directory, packageRoot: dir };
+					}))
+					: [{ manifest: parseManifest(text, id), directory: dir, packageRoot: undefined }];
+				const ids = entries.map(entry => entry.manifest.id);
+				if (new Set(ids).size !== ids.length || ids.some(key => this.locations.has(key))) throw new Error('Duplicate theme id');
+				for (const entry of entries) this.locations.set(entry.manifest.id, entry);
+				try {
+					const loaded = await Promise.all(ids.map(key => this.read(key)));
+					themes.push(...loaded.map(theme => theme.manifest));
+				} catch (error) {
+					for (const key of ids) this.locations.delete(key);
+					throw error;
+				}
+			}
 			catch (error) { warnings.push(`${id}: ${String(error)}`); }
 		}
 		return { themes: themes.sort((a, b) => a.name.localeCompare(b.name)), warnings };
@@ -120,7 +164,7 @@ export class ThemeStore {
 	async install(theme: ConvertedTheme, overrides = '/* Local content theme overrides. */\n'): Promise<void> {
 		validateSourceMetadata(theme.manifest);
 		const dir = this.path(theme.manifest.id);
-		if (await this.storage.exists(dir)) throw new Error(`Theme already exists: ${theme.manifest.name}`);
+		if (this.locations.has(theme.manifest.id) || await this.storage.exists(dir)) throw new Error(`Theme already exists: ${theme.manifest.name}`);
 		// Validate all destinations before the first write. Manifest is the completion marker.
 		for (const name of [...theme.assets.keys(), ...theme.sources.keys()]) validateRelativePath(name);
 		await this.mkdir(dir);
@@ -142,17 +186,51 @@ export class ThemeStore {
 		}
 	}
 
-	async exportFiles(id: string): Promise<Map<string, Uint8Array>> {
-		const base = this.path(id); const files = new Map<string, Uint8Array>();
-		await this.read(id);
-		const visit = async (dir: string): Promise<void> => {
+	async installPackage(files: ReadonlyMap<string, Uint8Array>): Promise<void> {
+		for (const path of files.keys()) validateRelativePath(path);
+		const { manifest, themes } = readThemePackage(files);
+		await this.list();
+		const dir = `${this.root}/${manifest.id}`;
+		if (await this.storage.exists(dir) || themes.some(theme => this.locations.has(theme.manifest.id))) throw new Error('Theme package or theme already exists');
+		await this.mkdir(dir);
+		try {
+			for (const [path, bytes] of files) {
+				if (path === 'theme.json') continue;
+				const target = `${dir}/${path}`;
+				await this.mkdir(target.slice(0, target.lastIndexOf('/')));
+				await this.storage.writeBinary(target, new Uint8Array(bytes).buffer);
+			}
+			await this.storage.write(`${dir}/theme.json`, JSON.stringify(manifest, null, 2));
+		} catch (error) {
+			await this.storage.rmdir(dir, true);
+			throw error;
+		}
+		for (const [index, theme] of themes.entries()) {
+			this.locations.set(theme.manifest.id, { directory: `${dir}/${manifest.themes[index]!}`, packageRoot: dir });
+		}
+	}
+
+	async exportFiles(id: string, wholePackage = false): Promise<Map<string, Uint8Array>> {
+		const packageRoot = this.locations.get(id)?.packageRoot;
+		const base = wholePackage && packageRoot ? packageRoot : this.path(id);
+		const files = new Map<string, Uint8Array>();
+		const theme = await this.read(id);
+		const visit = async (dir: string, relativeBase = base): Promise<void> => {
 			const listing = await this.storage.list(dir);
 			for (const path of listing.files) {
-				const relative = validateRelativePath(path.slice(base.length + 1));
+				const relative = validateRelativePath(path.slice(relativeBase.length + 1));
 				files.set(relative, new Uint8Array(await this.storage.readBinary(path)));
 			}
-			for (const child of listing.folders) await visit(child);
+			for (const child of listing.folders) await visit(child, relativeBase);
 		};
-		await visit(base); return files;
+		await visit(base);
+		if (packageRoot && !wholePackage) {
+			const encoder = new TextEncoder();
+			files.set('theme.css', encoder.encode(resolveThemeUrls(theme.css, String, true)));
+			files.set('overrides.css', encoder.encode(resolveThemeUrls(theme.overrides, String, true)));
+			const assets = `${packageRoot}/assets`;
+			if (await this.storage.exists(assets)) await visit(assets, packageRoot);
+		}
+		return files;
 	}
 }

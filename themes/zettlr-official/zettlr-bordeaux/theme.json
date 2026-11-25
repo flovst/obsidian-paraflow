@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "zettlr-bordeaux",
+  "name": "Zettlr Bordeaux",
+  "origin": "imported",
+  "sourceApp": "Zettlr",
+  "colorScheme": "adaptive",
+  "converterVersion": "11",
+  "sourceEntry": "adapted/content.css",
+  "sourceVersion": "e20591b794e857f64b875f7b2f8a7adc5d62c94a",
+  "colorSchemeVariants": "host-class",
+  "sourcePackage": "Zettlr official",
+  "packageId": "zettlr-official"
+}

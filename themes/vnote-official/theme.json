@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "type": "package",
+  "id": "vnote-official",
+  "name": "VNote official",
+  "themes": [
+    "vnote-pure",
+    "vnote-solarized-dark",
+    "vnote-solarized-light",
+    "vnote-vue-dark",
+    "vnote-vue-light"
+  ]
+}

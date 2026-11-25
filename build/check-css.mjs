@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import stylelint from 'stylelint';
 
 const source = process.argv.includes('--sources');
-const themes = JSON.parse(readFileSync('themes/bundled.json', 'utf8'));
+const themes = JSON.parse(readFileSync('themes/bundled.json', 'utf8')).flatMap(entry => entry.themeIds.length === 1 && entry.directory === entry.themeIds[0] ? [entry.directory] : entry.themeIds.map(id => `${entry.directory}/${id}`));
 const files = source
 	? themes.map(theme => `themes/${theme}/source/**/*.css`)
 	: ['styles.css', 'themes/builtin-classic/theme.css', ...themes.flatMap(theme => [

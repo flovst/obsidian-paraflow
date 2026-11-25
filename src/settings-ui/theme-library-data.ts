@@ -3,7 +3,7 @@ import { bundledThemeMetadata } from '../themes/builtin.js';
 import { supportsThemeColorScheme } from '../themes/appearance.js';
 import { translate as t } from './i18n.js';
 
-export const themeLibraryColumns = ['libraryName', 'libraryScheme', 'libraryPackage', 'librarySource', 'themeOrigin'] as const;
+export const themeLibraryColumns = ['libraryName', 'libraryScheme', 'librarySource', 'themeOrigin'] as const;
 export type ThemeLibraryColumn = typeof themeLibraryColumns[number];
 export interface ThemeLibraryEntry {
 	key: string;
@@ -18,14 +18,13 @@ export function themeCell(theme: ThemeManifest, column: ThemeLibraryColumn): str
 	switch (column) {
 		case 'libraryName': return theme.name;
 		case 'libraryScheme': { const value = themeScheme(theme); return value ? t(value === 'adaptive' ? 'libraryAdaptive' : value) : '-'; }
-		case 'libraryPackage': return themeSource(theme).sourcePackage || '-';
 		case 'librarySource': return themeSource(theme).sourceApp || '-';
-		case 'themeOrigin': return t(themeInstallation(theme) === 'builtin' ? 'builtInTheme' : 'importedTheme');
+		case 'themeOrigin': return t(themeInstallation(theme) === 'builtin' ? 'builtInTheme' : 'libraryImported');
 	}
 }
 export function entryCell(entry: ThemeLibraryEntry, column: ThemeLibraryColumn): string {
 	if (!entry.packageId) return themeCell(entry.themes[0]!, column);
-	if (column === 'libraryName' || column === 'libraryPackage') return packageName(entry);
+	if (column === 'libraryName') return packageName(entry);
 	if (column === 'libraryScheme') {
 		const values = new Set(entry.themes.map(themeScheme));
 		if (values.has(undefined)) return '-';

@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "joplin-nord",
+  "name": "Joplin Nord",
+  "origin": "imported",
+  "sourceApp": "Joplin",
+  "colorScheme": "dark",
+  "converterVersion": "11",
+  "sourceEntry": "adapted/content.css",
+  "sourceVersion": "95cab5a86d770c57f58fd43953f37a2cfe5a7016",
+  "sourcePackage": "Joplin built-in",
+  "packageId": "joplin-default"
+}

@@ -17,6 +17,14 @@ export interface ThemeManifest {
 
 export type ThemeSourceMetadata = Pick<ThemeManifest, 'sourceApp' | 'sourcePackage' | 'packageId'>;
 
+export interface ThemePackageManifest {
+	schemaVersion: 1;
+	type: 'package';
+	id: string;
+	name: string;
+	themes: string[];
+}
+
 export interface ThemeInput {
 	entry: string;
 	files: ReadonlyMap<string, Uint8Array>;

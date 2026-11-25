@@ -20,6 +20,7 @@ export function classifyCss(path) {
 export function collectPublicCss(root, rules) {
 	const files = new Map();
 	function collect(sourcePath, publicPath = sourcePath) {
+		if (/^themes\/[^/]+\/source(?:\/|$)/.test(sourcePath)) return;
 		const source = resolve(root, sourcePath);
 		const local = relative(root, source);
 		if (isAbsolute(local) || local === '..' || local.startsWith(`..${sep}`)) throw new Error(`Source escapes project: ${sourcePath}`);

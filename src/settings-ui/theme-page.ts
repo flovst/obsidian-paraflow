@@ -1,6 +1,6 @@
 import { Platform, Setting, setIcon, type SliderComponent, type TextComponent } from 'obsidian';
 import type ParaFlowPlugin from '../main.js';
-import { supportsThemeColorScheme, type ThemeOverrides } from '../themes/appearance.js';
+import type { ThemeOverrides } from '../themes/appearance.js';
 import { ImportTyporaThemeModal } from '../themes/import-modal.js';
 import { translate as t, type MessageKey } from './i18n.js';
 import { exportTheme, openThemeFolder, reloadThemes } from './theme-actions.js';
@@ -84,7 +84,12 @@ export function renderThemePage(host: ThemePageHost): void {
 			dropdown.addOption(theme.id, duplicate ? `${theme.name} (${theme.id.slice(-8)})` : theme.name);
 		}
 		dropdown.setValue(plugin.contentThemeId ?? '').onChange(id => host.save(() => plugin.setContentTheme(id || null), true));
-	}).addButton(button => button.setButtonText(t('themeLibrary')).onClick(() => host.save(() => openThemeLibrary(plugin)))));
+	}).addButton(button => {
+		setIcon(button.buttonEl, 'settings');
+		button.buttonEl.createSpan({ text: t('themeLibrary') });
+		button.buttonEl.classList.add('paraflow-theme-manager-button');
+		button.onClick(() => host.save(() => openThemeLibrary(plugin)));
+	}));
 	host.row('importTheme', setting => {
 		const summary = imports.get(plugin);
 		if (summary) setting.setDesc(t('conversionSummary').replace('{mapped}', String(summary.mapped)).replace('{approximate}', String(summary.approximate)).replace('{skipped}', String(summary.skipped)));
@@ -94,7 +99,10 @@ export function renderThemePage(host: ThemePageHost): void {
 				const counts = { mapped: 0, approximate: 0, skipped: 0 };
 				for (const item of theme.diagnostics) if (item.status !== 'error') counts[item.status]++;
 				imports.set(plugin, counts); host.refresh();
-			}, () => plugin.contentThemes.map(theme => theme.id)).open();
+			}, () => plugin.contentThemes.map(theme => theme.id), async files => {
+				await plugin.importContentThemePackage(files);
+				host.refresh();
+			}).open();
 		}));
 	});
 	host.row('themeFiles', setting => setting
@@ -102,15 +110,6 @@ export function renderThemePage(host: ThemePageHost): void {
 		.addButton(button => button.setButtonText(t('export')).setDisabled(!plugin.contentThemeId || plugin.contentThemeId === 'builtin-classic').onClick(() => host.save(async () => {
 			await exportTheme(plugin, setting.settingEl.ownerDocument, plugin.contentThemeId!);
 		}))));
-	const canChooseScheme = () => supportsThemeColorScheme(plugin.contentThemes.find(theme => theme.id === plugin.contentThemeId));
-	host.row('colorScheme', setting => {
-		setting.setDesc(t(canChooseScheme() ? 'themeSchemeSupported' : 'themeSchemeFixed'));
-		setting.addDropdown(dropdown => {
-		dropdown.selectEl.classList.add('paraflow-setting-mode');
-		dropdown.addOptions(choices([['', 'preset'], ['host', 'followObsidian'], ['light', 'light'], ['dark', 'dark']]))
-			.setValue(canChooseScheme() ? plugin.contentThemeOverrides.colorScheme ?? '' : '').onChange(value => saveOverride(host, 'colorScheme', value || undefined));
-		});
-	}, () => !canChooseScheme());
 	host.row('accentColor', setting => {
 		const value = plugin.contentThemeOverrides.accentColor; const mode = value === undefined ? '' : value === 'host' ? 'host' : 'custom';
 		setting.controlEl.classList.add('paraflow-setting-custom');
@@ -216,7 +215,7 @@ export function renderThemePage(host: ThemePageHost): void {
 		.addButton(button => button.setButtonText(t('followObsidianAll'))
 			.onClick(() => host.save(() => plugin.setContentThemeOverrides({
 				...(plugin.contentThemeOverrides.marker ? { marker: plugin.contentThemeOverrides.marker } : {}),
-				colorScheme: 'host', accentColor: 'host', fontFamily: 'host', fontSize: 'host', fontWeight: 'host',
+				accentColor: 'host', fontFamily: 'host', fontSize: 'host', fontWeight: 'host',
 				width: 'host', lineHeight: 'host', metadataLayout: 'native',
 			}), true)))
 		.addButton(button => button.setButtonText(t('followThemeAll'))
@@ -230,7 +229,6 @@ function resetThemeValues(current: ThemeOverrides): ThemeOverrides {
 	for (const key of Object.keys(defaults) as Array<keyof typeof defaults>) {
 		if (current[key] !== undefined && current[key] !== 'host') Object.assign(next, { [key]: defaults[key] });
 	}
-	if (current.colorScheme !== 'host') delete next.colorScheme;
 	delete next.metadataLayout;
 	delete next.metadataPadding;
 	return next;
