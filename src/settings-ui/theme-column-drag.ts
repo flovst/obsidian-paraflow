@@ -38,10 +38,11 @@ export function themeColumnDrag(header: HTMLTableRowElement, root: HTMLElement, 
 		if (!gesture || gesture.pointer !== event.pointerId) return;
 		if (!gesture.preview) {
 			if (Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y) < 6) return;
-			gesture.preview = document.createElement('div');
-			gesture.preview.className = 'paraflow-theme-column-preview';
-			gesture.preview.textContent = gesture.source.querySelector('button')!.textContent;
-			gesture.preview.setAttribute('aria-hidden', 'true'); document.body.append(gesture.preview);
+			gesture.preview = document.body.createDiv({
+				cls: 'paraflow-theme-column-preview',
+				text: gesture.source.querySelector('button')!.textContent ?? '',
+				attr: { 'aria-hidden': 'true' },
+			});
 			gesture.preview.style.width = `${gesture.source.getBoundingClientRect().width}px`;
 			gesture.source.classList.add('is-dragging'); root.classList.add('is-column-dragging');
 		}
