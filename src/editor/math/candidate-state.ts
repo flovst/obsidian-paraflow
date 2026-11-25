@@ -1,6 +1,7 @@
 import { EditorState, StateEffect, StateField, type ChangeSpec, type Extension, type Transaction } from '@codemirror/state';
 import { invertedEffects, isolateHistory } from '@codemirror/commands';
-import { acceptedMath, discoverParsedMath, mathRangeIndex, type MathExpression } from './syntax.js';
+import { acceptedMath, discoverMath, discoverParsedMath, mathRangeIndex, type MathExpression } from './syntax.js';
+import { scanMathRanges } from './range-scanner.js';
 import { mathCandidatesActive, pendingMath, type PendingMathRange } from './candidate-ranges.js';
 import { createSharedMathParser } from './shared-parser.js';
 import { createRangeQuery } from './range-query.js';
@@ -76,6 +77,11 @@ function mappedAccepted(value: MathCandidates, tr: Transaction, closed: Readonly
         const opening = tr.startState.sliceDoc(math.from, math.contentFrom), closing = tr.startState.sliceDoc(math.contentTo, math.to);
         if (next.from >= next.to || tr.state.sliceDoc(next.from, next.contentFrom) !== opening || tr.state.sliceDoc(next.contentTo, next.to) !== closing) return [];
         if (!math.display && opening.length === 1 && !validRetainedInline(tr.state, next)) return [];
+        if (!math.display && opening.length === 2 && !parsed) {
+            const from = tr.state.doc.lineAt(next.from).from, to = tr.state.doc.lineAt(next.to).to;
+            if (!scanMathRanges(tr.state.sliceDoc(from, to)).expressions.some(item =>
+                item.from === next.from - from && item.to === next.to - from)) return [];
+        }
         // A preserved delimiter slice must still occupy the same complete dollar run.
         // This also retains legal adjacent close/open pairs inside a four-dollar run.
         return dollarTokenIdentity(tr.startState, math.from, math.contentFrom) === dollarTokenIdentity(tr.state, next.from, next.contentFrom) &&
@@ -128,8 +134,15 @@ export function createMathCandidateExtension(isActive: (state: EditorState) => b
             const confirmed = tr.effects.find(effect => effect.is(confirmMath));
             const confirmAll = confirmed?.value === null || active && !value.active && value.dirty;
             const retained = tr.effects.find(effect => effect.is(retainMathSource));
-            const sourceOwners = retained && !value.accepted.some(math => math.from === retained.value.from && math.to === retained.value.to)
-                ? { ...value, accepted: [...value.accepted, retained.value] } : value;
+            // A newly typed opener cannot borrow a delimiter from an existing inline formula.
+            const openers = found.filter(range => editedDelimiter(tr, range));
+            const displaced = openers.length ? discoverMath(tr.startState).filter(math => {
+                if (math.display || value.accepted.some(item => item.from === math.from && item.to === math.to)) return false;
+                const from = tr.changes.mapPos(math.from, 1), to = tr.changes.mapPos(math.to, -1);
+                return !paired.has(`${from}:${to}`) && openers.some(range => range.from < from && from < range.to);
+            }) : [];
+            const sourceOwners = { ...value, accepted: [...value.accepted, ...displaced,
+                ...(retained && !value.accepted.some(math => math.from === retained.value.from && math.to === retained.value.to) ? [retained.value] : [])] };
             const preserved = restored?.value.accepted ?? mappedAccepted(sourceOwners, tr, paired);
             const preservedPairs = exactMath(preserved), preservedOwners = createRangeQuery(preserved);
             const mappedStarts = new Set(mapped.map(range => range.from));

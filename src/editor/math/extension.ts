@@ -357,7 +357,8 @@ export function createMathEditingExtension(options: MathEditingOptions): Extensi
 		if (!options.isStateActive(state) || state.readOnly || view.composing || state.selection.ranges.length !== 1 || !caret.empty) return false;
 		const draft = mathDraftRanges(state).find(range => range.to === caret.head && range.to - range.from === 2);
 		if (!draft) return false;
-		const paired = discoverParsedMath(state).find(math => math.display && math.from <= draft.from && draft.to <= math.to);
+		const paired = discoverParsedMath(state).find(math => math.display && math.contentTo === draft.from && math.to === draft.to &&
+			pendingMathRanges(state).some(range => range.from <= math.from && math.to <= range.to));
 		if (paired) {
 			const changes = state.changes(mathConversionChanges(state, [paired]));
 			const opening = state.doc.lineAt(paired.from), prefix = state.sliceDoc(opening.from, paired.from);

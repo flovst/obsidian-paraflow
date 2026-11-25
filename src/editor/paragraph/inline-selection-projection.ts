@@ -1112,8 +1112,15 @@ function projectionDecorations(
 	const endpoints = inlineEndpointOwners(state, constructs.filter(item => item.kind !== 'literal-strike' || caret.empty).map(item => ({
 		from: item.editFrom, to: item.editTo, bodies: bodyRanges(item), item,
 	}))).map(owner => owner.item);
+	// Once exposed, a link's destination and delimiters remain editable by selection.
+	const retainedLinks = mode === 'continuous' && state.selection.ranges.length === 1 && !caret.empty
+		? previousActive.filter(item => (item.kind === 'link' || item.kind === 'wikilink' ||
+			item.kind === 'inline-html' && /^<a\b/iu.test(state.sliceDoc(item.editFrom, item.editTo))) &&
+			[caret.anchor, caret.head].some(position => item.editFrom <= position && position <= item.editTo))
+			.map(matchingConstruct).filter((item): item is InlineSemanticConstruct => item !== null) : [];
 	const active = frozenActive !== undefined ? frozenActive.map(matchingConstruct).filter((item): item is InlineSemanticConstruct => item !== null)
-		: endpoints.length > 0 ? endpoints : synchronizedActive.map(matchingConstruct).filter((item): item is InlineSemanticConstruct => item !== null);
+		: endpoints.length > 0 || retainedLinks.length > 0 ? [...new Set([...endpoints, ...retainedLinks])]
+			: synchronizedActive.map(matchingConstruct).filter((item): item is InlineSemanticConstruct => item !== null);
 	const nativeOwners: ReturnType<Decoration['range']>[] = [];
 	const ranges = constructs.flatMap((item) => {
 		const revealed = active.includes(item);

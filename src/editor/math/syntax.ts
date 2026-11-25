@@ -22,9 +22,11 @@ export function discoverMath(state: EditorState): readonly MathExpression[] {
 	const cached = discoveries.get(state);
 	if (cached) return cached;
 	const accepted = state.facet(acceptedMath);
-	const owners = createRangeQuery(accepted), pending = createRangeQuery(pendingMathRanges(state));
+	const pendingRanges = pendingMathRanges(state), pendingStarts = new Set(pendingRanges.map(range => range.from));
+	const owners = createRangeQuery(accepted), pending = createRangeQuery(pendingRanges);
 	const expressions = [...accepted, ...discoverParsedMath(state).filter(math =>
-		(!math.display || !pending.contains(math.from, math.to)) && !owners.overlaps(math.from, math.to))].sort((a, b) => a.from - b.from);
+		!pendingStarts.has(math.from) && (!math.display || !pending.contains(math.from, math.to)) &&
+		!owners.overlaps(math.from, math.to))].sort((a, b) => a.from - b.from);
 	discoveries.set(state, expressions);
 	return expressions;
 }
