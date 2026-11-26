@@ -4,7 +4,7 @@ A theme directory can contain one theme or a package with multiple themes. Packa
 
 [Documentation](../../README.md) · [中文](../zh-CN/themes.zh.md)
 
-ParaFlow includes 55 themes from ParaFlow Classic, Typora, Joplin, MarkText, VNote and Zettlr. Select them in settings or Theme Manager.
+ParaFlow includes 11 themes from ParaFlow Classic, Typora and VNote. Select them in settings or Theme Manager.
 
 The settings offer an experimental Typora theme importer. The source repository also includes the [paraflow-theme Skill](../../../skills/public/paraflow-theme/SKILL.md), which helps an agent inspect and adapt themes from Typora, MarkText, VNote, Zettlr, Joplin, and other CSS sources.
 

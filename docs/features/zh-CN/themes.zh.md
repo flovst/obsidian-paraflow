@@ -4,7 +4,7 @@
 
 [文档索引](../../README.zh.md) · [English](../EN/themes.en.md)
 
-ParaFlow 内置 55 套主题，来自 ParaFlow Classic、Typora、Joplin、MarkText、VNote 和 Zettlr，可在设置或主题管理中选择。
+ParaFlow 内置 11 套主题，来自 ParaFlow Classic、Typora 和 VNote，可在设置或主题管理中选择。
 
 设置页面提供了测试用的Typora主题导入。源码中的 [paraflow-theme Skill](../../../skills/public/paraflow-theme/SKILL.md)可辅助agent检查和适配Typora、MarkText、VNote、Zettlr、Joplin及其它CSS来源的主题。
 

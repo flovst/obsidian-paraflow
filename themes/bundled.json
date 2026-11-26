@@ -45,61 +45,6 @@
     "packageId": "typora-default"
   },
   {
-    "directory": "joplin-default",
-    "themeIds": [
-      "joplin-dark",
-      "joplin-dracula",
-      "joplin-light",
-      "joplin-nord",
-      "joplin-solarized-dark",
-      "joplin-solarized-light"
-    ],
-    "sourceApp": "Joplin",
-    "sourcePackage": "Joplin built-in",
-    "packageId": "joplin-default"
-  },
-  {
-    "directory": "marktext-default",
-    "themeIds": [
-      "marktext-ayu-dark",
-      "marktext-ayu-light",
-      "marktext-ayu-mirage",
-      "marktext-catppuccin-latte",
-      "marktext-catppuccin-mocha",
-      "marktext-cyberdream",
-      "marktext-dark",
-      "marktext-dracula",
-      "marktext-everforest-dark",
-      "marktext-everforest-light",
-      "marktext-graphite",
-      "marktext-gruvbox-dark",
-      "marktext-gruvbox-light",
-      "marktext-horizon-dark",
-      "marktext-kanagawa",
-      "marktext-light",
-      "marktext-material-dark",
-      "marktext-monokai-pro",
-      "marktext-nightfox",
-      "marktext-nord",
-      "marktext-one-dark",
-      "marktext-oxocarbon-dark",
-      "marktext-palenight",
-      "marktext-rose-pine",
-      "marktext-rose-pine-dawn",
-      "marktext-rose-pine-moon",
-      "marktext-solarized-dark",
-      "marktext-solarized-light",
-      "marktext-synthwave-84",
-      "marktext-tokyo-night",
-      "marktext-tokyo-night-light",
-      "marktext-tokyo-night-storm",
-      "marktext-ulysses"
-    ],
-    "sourceApp": "MarkText",
-    "sourcePackage": "MarkText default",
-    "packageId": "marktext-default"
-  },
-  {
     "directory": "vnote-official",
     "themeIds": [
       "vnote-pure",
@@ -111,18 +56,5 @@
     "sourceApp": "VNote",
     "sourcePackage": "VNote official",
     "packageId": "vnote-official"
-  },
-  {
-    "directory": "zettlr-official",
-    "themeIds": [
-      "zettlr-berlin",
-      "zettlr-bielefeld",
-      "zettlr-bordeaux",
-      "zettlr-frankfurt",
-      "zettlr-karl-marx-stadt"
-    ],
-    "sourceApp": "Zettlr",
-    "sourcePackage": "Zettlr official",
-    "packageId": "zettlr-official"
   }
 ]
