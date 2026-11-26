@@ -54,6 +54,9 @@ jobs:
             - name: Check community CSS rules
               run: npm run lint:css
 
+            - name: Check downloadable theme packages
+              run: npm run package:themes -- --check
+
             - name: Attest required plugin assets
               if: ${{ !github.event.repository.private }}
               uses: actions/attest@v4

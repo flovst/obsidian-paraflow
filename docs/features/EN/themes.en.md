@@ -16,7 +16,7 @@ Click a theme row to select it; double-click to use it. Right-click for theme ac
 
 Click anywhere in a header cell to toggle ascending or descending order. Dragging shows a floating heading and an insertion line before or after the target; release to insert the column there, or press Esc to cancel. Alt+Left/Right moves a focused heading. The workspace saves column order, sorting and package expansion. Headers align left with separators, sorting arrows reserve their width, and management controls keep accessible names without hover tooltips.
 
-Themes with both palettes, such as Typora GitHub, follow Obsidian’s active light or dark appearance, including system changes. Single-palette themes retain their own colors. Change the application’s color scheme in Obsidian Appearance settings. Theme Manager labels declared support as Dark/light, Dark or Light.
+Themes with both palettes, such as Typora GitHub, Pixyll, Whitey, and Newsprint, follow Obsidian’s active light or dark appearance, including system changes. Single-palette themes retain their own colors. Change the application’s color scheme in Obsidian Appearance settings. Theme Manager labels declared support as Dark/light, Dark or Light.
 
 ## Importing a Typora theme (experimental)
 
@@ -26,7 +26,7 @@ Themes with both palettes, such as Typora GitHub, follow Obsidian’s active lig
 
 Import directories use the theme name, such as `typora-github`. Import mainly processes local CSS and assets; remote resources are not downloaded.
 
-Plugin upgrades preserve existing Typora theme directories. To install an updated theme package, import its ZIP and select the newly saved theme. An existing ID receives a numeric suffix, so the old theme remains available. Copy personal rules from the old `overrides.css` as needed. The refresh icon reloads installed files.
+Plugin upgrades update unmodified bundled theme files while retaining personal additions in `overrides.css` and directly edited base styles. For other packages, [download an adapted theme ZIP](../../../themes/README.md) and import it; an existing ID receives a numeric suffix. You can also copy a complete theme or package folder into `<vault>/.obsidian/plugins/paraflow/themes/`, keeping its manifest, members, and shared assets together, then refresh the theme list.
 
 The conversion report helps locate individual rule and resource issues. No convertible body rules, missing required CSS imports, and invalid paths can block saving. Missing optional fonts or images are reported.
 

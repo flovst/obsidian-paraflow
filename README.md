@@ -67,11 +67,15 @@ Improve rendering in each view, especially Source mode, along with copying and p
 Other features:
 
 - Improve the display of headings, inline formatting, footnotes, images, and more.
-- [Manage content themes](docs/features/EN/themes.en.md) with search, package grouping, and import/export. The GitHub theme supports light and dark palettes.
+- [Manage content themes](docs/features/EN/themes.en.md) with search, package grouping, and import/export. GitHub, Pixyll, Whitey, and Newsprint follow Obsidian’s light/dark mode; Night stays dark.
 - Edit links with a click, or Ctrl/Cmd-click to open and focus a new tab.
 - Toggle each feature individually in settings. Some issues may remain.
 
 A [showcase vault](../../releases/tag/0.1.6) with ParaFlow installed is available in the release for a quick trial.
+
+## More themes
+
+[Download adapted themes](themes/README.md) as individual ZIPs and import them through ParaFlow → Import theme. You can also extract a complete theme directory into `<vault>/.obsidian/plugins/paraflow/themes/` and refresh the theme list. Keep each package’s `theme.json`, subdirectories, and assets together.
 
 ## Installation
 
