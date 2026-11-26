@@ -1,12 +1,1 @@
-:root { --paraflow-content-background: #fff; --background-primary: #fff; background-color: #fff; }
-/* Typora Pixyll has horizontal rules, with a thicker header bottom edge. */
-:root {
-  --paraflow-list-row-padding: calc(.25 * var(--paraflow-root-font-size, 16px));
-  --paraflow-list-sibling-gap: calc(.5 * var(--paraflow-root-font-size, 16px));
-  --paraflow-table-base-background: #fff;
-  --paraflow-table-header-background: #fff;
-  --paraflow-table-stripe-background: #fff;
-}
-table.paraflow-display-table > :is(thead, tbody, tfoot) > tr > :is(th, td) {
-  border-inline: 0;
-}
+:root{--paraflow-content-background:var(--paraflow-pixyll-background);--background-primary:var(--paraflow-pixyll-background);background-color:var(--paraflow-pixyll-background)}:root{--paraflow-list-row-padding:calc(.25*var(--paraflow-root-font-size,16px));--paraflow-list-sibling-gap:calc(.5*var(--paraflow-root-font-size,16px));--paraflow-table-base-background:var(--paraflow-pixyll-background);--paraflow-table-header-background:var(--paraflow-pixyll-background);--paraflow-table-stripe-background:var(--paraflow-pixyll-background)}table.paraflow-display-table>:is(thead,tbody,tfoot)>tr>:is(th,td){border-inline:0}

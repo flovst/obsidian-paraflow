@@ -3,11 +3,12 @@
   "id": "typora-whitey",
   "name": "Typora Whitey",
   "origin": "imported",
-  "colorScheme": "light",
+  "colorScheme": "adaptive",
   "converterVersion": "11",
   "sourceEntry": "whitey.css",
   "sourceVersion": "1.9.5",
   "sourceApp": "Typora",
   "sourcePackage": "Typora default themes",
-  "packageId": "typora-default"
+  "packageId": "typora-default",
+  "colorSchemeVariants": "host-class"
 }

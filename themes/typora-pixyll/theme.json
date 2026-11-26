@@ -3,11 +3,12 @@
   "id": "typora-pixyll",
   "name": "Typora Pixyll",
   "origin": "imported",
-  "colorScheme": "light",
+  "colorScheme": "adaptive",
   "converterVersion": "11",
   "sourceEntry": "pixyll.css",
   "sourceVersion": "1.9.5",
   "sourceApp": "Typora",
   "sourcePackage": "Typora default themes",
-  "packageId": "typora-default"
+  "packageId": "typora-default",
+  "colorSchemeVariants": "host-class"
 }
