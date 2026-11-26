@@ -1,0 +1,86 @@
+{
+  "typora-github": {
+    "css": [
+      "aa52903d97b2c0c804eba467fad0b46f63fbd6dfceacce45f3ae91139014193a",
+      "c0b02bf899e07239aa7c93132ddd91e283024417317bac20d3db562f5f9410eb",
+      "18184c002dfadf3db1be0684e695e786561b507e92d7e59bea31349fc710bcba",
+      "080c640aa10c0b83db94df5624fd237674addb9b1341daba07c0748eb2106f5c",
+      "dea4fa554c62cbd76f8195582e75c5e320f22603ad8759a864d961c079685e79",
+      "121d7bcbec07025fdab9f67117c156a889fa0e359df57048f045987f1f1aa57e",
+      "5491d37e365f930106671a19856879fcd19f8d088ad744d25a7859da64cebd5e",
+      "d7e9b26551903f05ff4ac96d8675a4780033249adde752ce3d0b685d1838b0ea",
+      "57365e2d8c6e802fb5fc7709a8b506fe3ebe04cd90a9c016d15adba8be88221e",
+      "40830205c592b807a0112cfd8bb07a2ef9f3b786281556248c3570ead2904264"
+    ],
+    "overrides": [
+      ":root { --paraflow-content-background: var(--paraflow-github-background); --background-primary: var(--paraflow-github-background); background-color: var(--paraflow-github-background); }\n/* Measured Typora number slot; separate from CodeMirror-lines' inner padding. */\n:root {\n  /* Typora's li p margin collapses to .5rem between sibling items. */\n  --paraflow-list-row-padding: calc(.25 * var(--paraflow-root-font-size, 16px));\n  --paraflow-list-sibling-gap: calc(.5 * var(--paraflow-root-font-size, 16px));\n  --paraflow-code-number-padding-left: 10px;\n  --paraflow-code-inner-padding-left: 4px;\n  --paraflow-code-number-text-gap: 4px;\n  --paraflow-code-numbered-inset: 0px;\n}\n",
+      ":root { --paraflow-content-background: #fff; --background-primary: #fff; background-color: #fff; }\n/* Measured Typora number slot; separate from CodeMirror-lines' inner padding. */\n:root {\n  /* Typora's li p margin collapses to .5rem between sibling items. */\n  --paraflow-list-row-padding: calc(.25 * var(--paraflow-root-font-size, 16px));\n  --paraflow-list-sibling-gap: calc(.5 * var(--paraflow-root-font-size, 16px));\n  --paraflow-code-number-padding-left: 10px;\n  --paraflow-code-inner-padding-left: 4px;\n  --paraflow-code-number-text-gap: 4px;\n  --paraflow-code-numbered-inset: 0px;\n}\n"
+    ]
+  },
+  "typora-newsprint": {
+    "css": [
+      "b8f306947eb1dd9b35f82886719121c563f7e583768ef0959aee025f954e5ffa",
+      "630e0dd3a0e01d26a4985429566b38ee40b1bfe8e41ebab14059294d5110cb52",
+      "2e68f8a6a75b7250b264b0baad2a5acb5036608dca4930605833796486a4f78f",
+      "2cef146dde50e9e7417536cc586c20dfe0fcc186eb4e15d2a5321002f99d0797",
+      "b873f0919fc4eecd38117eaf5394482af6346024f162b108e8f5cb437010ecda",
+      "fc55e3fee4e9254962d82709e331e332d328d24ab4361cc31a79e7930e59c13c"
+    ],
+    "overrides": [
+      "/* Preserve the source header and stripe colors; remove only vertical rules. */\n:root {\n  --paraflow-list-row-padding: calc(.25 * var(--paraflow-root-font-size, 16px));\n  --paraflow-list-sibling-gap: calc(.5 * var(--paraflow-root-font-size, 16px));\n}\ntable.paraflow-display-table > :is(thead, tbody, tfoot) > tr > :is(th, td) {\n  border-inline: 0;\n}\n"
+    ]
+  },
+  "typora-night": {
+    "css": [
+      "a331b234322fd09b9d66f8b07b75a7d5698f9ddc79acde930b46112d4a61ce40",
+      "dd28bb050da9c1810b985e8ff7cd1a586c1113bbeaf6a56342276992e3151619",
+      "bc53546bcf872e7c1723911179e926b5782666899d15f0385bd33a779dc33b8b",
+      "cfadc7334ce0436f44dae6429dd4890089a913f51f67d8047ea2c15b09ce6443",
+      "29b41a55ce7b92f3c5bebc6a5bab97ef0ace7e917ac489a523ef3c254d12d260",
+      "4b1b346f4fc9c3a53f2ce9f3857f1b8e96feedf64a76dd758907929a5cd12b6e",
+      "4869612bc60707c361d75183a03678cba60e7e2a375bc4a6a6c559da50547bfb",
+      "1fbc2d707f7d9e4e3b97f6818600591bc51f22a7d47ed67952e80a487cb499ae",
+      "45e8a9098717e6f6c10e1a13c29c2e83b9d7936b83a5c2204f913ac53a497896",
+      "c0fa8b717ca24654e9d2da95a07a94dd4056e7dcd1eb0207546c69b8b389e686"
+    ],
+    "overrides": [
+      "/* Typora Night: content remains dark even in a light Obsidian application. */\n:root {\n  --paraflow-list-row-padding: calc(.25 * var(--paraflow-root-font-size, 16px));\n  --paraflow-list-sibling-gap: calc(.5 * var(--paraflow-root-font-size, 16px));\n  --paraflow-table-base-background: #363b40;\n  --paraflow-table-header-background: #363b40;\n  --paraflow-table-stripe-background: #363b40;\n  --paraflow-table-color: #b8bfc6;\n  --paraflow-border-color: #474d54;\n  --paraflow-accent-color: #81b1db;\n  --paraflow-highlight-background: #D3D40E;\n  --paraflow-highlight-color: #000;\n}\nmark {\n  background: var(--paraflow-highlight-background);\n  color: var(--paraflow-highlight-color);\n}\nkbd {\n  padding: 2px 4px;\n  font-size: 90%;\n  color: #fff;\n  background-color: #333;\n  border-radius: 3px;\n  box-shadow: inset 0 -1px 0 rgba(0,0,0,.25);\n}\ntable.paraflow-display-table :is(th, td) {\n  color: var(--paraflow-table-color);\n}\n.cm-table-widget table.paraflow-display-table .cm-content,\n.cm-table-widget table.paraflow-display-table .cm-line,\n.paraflow-html-table-editor table.paraflow-display-table .cm-content,\n.paraflow-html-table-editor table.paraflow-display-table .cm-line {\n  color: inherit;\n}\n",
+      "/* Typora Night: content remains dark even in a light Obsidian application. */\n:root {\n  --paraflow-list-row-padding: calc(.25 * var(--paraflow-root-font-size, 16px));\n  --paraflow-list-sibling-gap: calc(.5 * var(--paraflow-root-font-size, 16px));\n  --paraflow-table-base-background: #363b40;\n  --paraflow-table-header-background: #363b40;\n  --paraflow-table-stripe-background: #363b40;\n  --paraflow-table-color: #b8bfc6;\n  --paraflow-border-color: #474d54;\n  --interactive-accent: #81b1db;\n}\ntable.paraflow-display-table :is(th, td) {\n  color: var(--paraflow-table-color);\n}\n.cm-table-widget table.paraflow-display-table .cm-content,\n.cm-table-widget table.paraflow-display-table .cm-line,\n.paraflow-html-table-editor table.paraflow-display-table .cm-content,\n.paraflow-html-table-editor table.paraflow-display-table .cm-line {\n  color: inherit;\n}\n"
+    ]
+  },
+  "typora-pixyll": {
+    "css": [
+      "896c794effeed605a6b54ee0db11e5199d0e905c1e4a343e4c448adc0baaadf9",
+      "236f80ed21ea7eb2176b8f2875dbb78ec364bef86eb65fcd6a4d18195e66d928",
+      "a996beaf49564b8b8bccae2fd20b868886d349540ee6e8dc68895ebe0e0d85aa",
+      "a4b238a4d534328446152f882c00c3a8949c1ab47527fa4490d536125a3acbda",
+      "62a7fe59a6dcbceac89f4c69073ae22c40f870f572028b7a6b87604ea68a544b",
+      "7febe54ff56c321b461d946fcec80e48b3389e5105d4745938b6becea3978c8d",
+      "9005c1732e92e0f83650410183cab47576399922ed592ef8fcc04eccb6320a38",
+      "45a54a1138008f08f79d378ce99f00881ee3339a8faa5a7155492383c1254b49"
+    ],
+    "overrides": [
+      ":root { --paraflow-content-background: #fff; --background-primary: #fff; background-color: #fff; }\n/* Typora Pixyll has horizontal rules, with a thicker header bottom edge. */\n:root {\n  --paraflow-list-row-padding: calc(.25 * var(--paraflow-root-font-size, 16px));\n  --paraflow-list-sibling-gap: calc(.5 * var(--paraflow-root-font-size, 16px));\n  --paraflow-table-base-background: #fff;\n  --paraflow-table-header-background: #fff;\n  --paraflow-table-stripe-background: #fff;\n}\ntable.paraflow-display-table > :is(thead, tbody, tfoot) > tr > :is(th, td) {\n  border-inline: 0;\n}\n"
+    ]
+  },
+  "typora-whitey": {
+    "css": [
+      "8497dbb47b946c534a037ece29907f5e046658f80efce070c10f9733af49fde5",
+      "67104170a6d2c98ffff18806c7d0687bb5a2fed5757029da11d8991df4eb106f",
+      "5b22e7395572a5b7572dd0d21110542b3f262d62e7ed93a0ec17dae4d070d072",
+      "f74956dfda7c4f06033a6165c7d2175ec69eb0f2544efe082f35030d54d3f79e",
+      "ee14b46c3996941e9b423ce047cd6906a3d308e0594d62fb95bf7f1b33987a6b",
+      "2f61d61e53e0ec0f971d2ddf9262b5f139db4d21456d2f4c6f4862e9705e538a",
+      "986307e426470c2867b18503ce5f02d2c7a89ad41e3d8a10bbdb62d9eacc5d33",
+      "2c7b75c28ac682cda6a564f110136e7695b91d66c90ee649cfe6121e58e770aa",
+      "aa9fff97620edededcce438458055fd3070a17a978f3f78a6a1f245260078963",
+      "343cc20c0f183e151a584931ad208076fd86acf1a2145699996a7020e791f8b8"
+    ],
+    "overrides": [
+      ":root {\n  --paraflow-list-row-padding: calc(.25 * var(--paraflow-root-font-size, 16px));\n  --paraflow-list-sibling-gap: calc(.5 * var(--paraflow-root-font-size, 16px));\n  --paraflow-table-base-background: #fefefe;\n  --paraflow-table-header-background: #fefefe;\n  --paraflow-table-stripe-background: #fefefe;\n}\ntable.paraflow-display-table > :is(thead, tbody, tfoot) > tr > :is(th, td) {\n  border-inline: 0;\n}\nh2,\n.paraflow-heading-line--h2 {\n  position: relative;\n}\nh2::after,\n.paraflow-heading-line--h2::after {\n  content: '';\n  position: absolute;\n  bottom: -.2em;\n  left: calc(50% - 50px);\n  width: 100px;\n  height: 1px;\n  background: #2f2f2f;\n  pointer-events: none;\n}\n:is(.paraflow-block-boundary-gap,.paraflow-paragraph-gap-head)[data-paraflow-before=\"h1\"][data-paraflow-after=\"h2\"],\n.el-h2[data-paraflow-reading-before=\"h1\"] {\n  --paraflow-gap-after: calc(.83 * var(--paraflow-h2-size));\n}\n:is(.paraflow-block-boundary-gap,.paraflow-paragraph-gap-head)[data-paraflow-before=\"h2\"][data-paraflow-after=\"h3\"],\n.el-h3[data-paraflow-reading-before=\"h2\"] {\n  --paraflow-gap-after: calc(.83 * var(--paraflow-h3-size));\n}\n",
+      ":root {\n  --paraflow-list-row-padding: calc(.25 * var(--paraflow-root-font-size, 16px));\n  --paraflow-list-sibling-gap: calc(.5 * var(--paraflow-root-font-size, 16px));\n  --paraflow-table-base-background: #fefefe;\n  --paraflow-table-header-background: #fefefe;\n  --paraflow-table-stripe-background: #fefefe;\n}\ntable.paraflow-display-table > :is(thead, tbody, tfoot) > tr > :is(th, td) {\n  border-inline: 0;\n}\nh2,\n.paraflow-heading-line--h2 {\n  position: relative;\n}\nh2::after,\n.paraflow-heading-line--h2::after {\n  content: '';\n  position: absolute;\n  bottom: 0;\n  left: calc(50% - 50px);\n  width: 100px;\n  height: 1px;\n  background: #2f2f2f;\n  pointer-events: none;\n}\n:is(.paraflow-block-boundary-gap,.paraflow-paragraph-gap-head)[data-paraflow-before=\"h1\"][data-paraflow-after=\"h2\"],\n.el-h2[data-paraflow-reading-before=\"h1\"] {\n  --paraflow-gap-after: calc(.83 * var(--paraflow-h2-size));\n}\n:is(.paraflow-block-boundary-gap,.paraflow-paragraph-gap-head)[data-paraflow-before=\"h2\"][data-paraflow-after=\"h3\"],\n.el-h3[data-paraflow-reading-before=\"h2\"] {\n  --paraflow-gap-after: calc(.83 * var(--paraflow-h3-size));\n}\n",
+      ":root {\n  --paraflow-list-row-padding: calc(.25 * var(--paraflow-root-font-size, 16px));\n  --paraflow-list-sibling-gap: calc(.5 * var(--paraflow-root-font-size, 16px));\n  --paraflow-table-base-background: #fefefe;\n  --paraflow-table-header-background: #fefefe;\n  --paraflow-table-stripe-background: #fefefe;\n}\ntable.paraflow-display-table > :is(thead, tbody, tfoot) > tr > :is(th, td) {\n  border-inline: 0;\n}\nh2,\n.paraflow-heading-line--h2 {\n  position: relative;\n}\nh2::after,\n.paraflow-heading-line--h2::after {\n  content: '';\n  position: absolute;\n  bottom: 0;\n  left: calc(50% - 50px);\n  width: 100px;\n  height: 1px;\n  background: #2f2f2f;\n  pointer-events: none;\n}\n:is(.paraflow-block-boundary-gap,.paraflow-paragraph-gap-head)[data-paraflow-before=\"h1\"][data-paraflow-after=\"h2\"],\n.el-h2[data-paraflow-reading-before=\"h1\"] {\n  --paraflow-gap-after: calc(.83 * var(--paraflow-h2-size)) !important;\n}\n:is(.paraflow-block-boundary-gap,.paraflow-paragraph-gap-head)[data-paraflow-before=\"h2\"][data-paraflow-after=\"h3\"],\n.el-h3[data-paraflow-reading-before=\"h2\"] {\n  --paraflow-gap-after: calc(.83 * var(--paraflow-h3-size)) !important;\n}\n",
+      ":root {\n  --paraflow-list-row-padding: calc(.25 * var(--paraflow-root-font-size, 16px));\n  --paraflow-list-sibling-gap: calc(.5 * var(--paraflow-root-font-size, 16px));\n  --paraflow-table-base-background: #fefefe;\n  --paraflow-table-header-background: #fefefe;\n  --paraflow-table-stripe-background: #fefefe;\n}\ntable.paraflow-display-table > :is(thead, tbody, tfoot) > tr > :is(th, td) {\n  border-inline: 0;\n}\n"
+    ]
+  }
+}
