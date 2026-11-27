@@ -113,17 +113,23 @@ export class ParaFlowSettingTab extends PluginSettingTab {
 				setting.settingEl.dataset.setting = key;
 				if (!description) { setting.setDesc(''); this.help(setting, key); }
 				setting.setDisabled(false);
-				build(setting);
+				const cleanup = build(setting);
 				if (isDisabled) setting.setDisabled(true);
 				setting.settingEl.classList.toggle('is-disabled', isDisabled);
 				const controls = setting.controlEl.querySelectorAll<HTMLElement>('input, select, button, [role="switch"], .checkbox-container');
-				controls.forEach((control, index) => {
+				const indices = new Map<string, number>();
+				controls.forEach(control => {
 					if (!control.hasAttribute('aria-label')) control.setAttribute('aria-label', control.tagName === 'BUTTON' && control.textContent ? control.textContent : t(key));
-					control.dataset.control = String(index);
+					const index = indices.get(control.tagName) ?? 0;
+					control.dataset.control = `${control.tagName}-${index}`;
+					indices.set(control.tagName, index + 1);
 				});
 				this.accessibleNames(setting.settingEl);
 				this.renderedRows.set(key, setting.settingEl);
-				return () => { if (this.renderedRows.get(key) === setting.settingEl) this.renderedRows.delete(key); };
+				return () => {
+					if (typeof cleanup === 'function') (cleanup as () => void)();
+					if (this.renderedRows.get(key) === setting.settingEl) this.renderedRows.delete(key);
+				};
 			},
 		});
 	}

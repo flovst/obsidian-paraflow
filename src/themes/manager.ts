@@ -1,8 +1,23 @@
+import { themeAccentCss } from './accent-css.js';
+
 type ContentTheme = { id: string; css: string } | null;
 
 export class ThemeManager {
 	private styles = new Map<Document, CSSStyleSheet>();
 	private theme: ContentTheme = null;
+	private accentStyles = new Set<{ document: Document; sheet: CSSStyleSheet }>();
+	private accentCss = '';
+
+	mountAccentPreview(parent: HTMLElement): () => void {
+		const document = parent.ownerDocument;
+		const style = { document, sheet: this.createSheet(document, { id: '', css: this.accentCss }) };
+		document.adoptedStyleSheets = [...document.adoptedStyleSheets, style.sheet];
+		this.accentStyles.add(style);
+		return () => {
+			document.adoptedStyleSheets = document.adoptedStyleSheets.filter(sheet => sheet !== style.sheet);
+			this.accentStyles.delete(style);
+		};
+	}
 
 	setTheme(theme: ContentTheme): void {
 		const next = new Map<Document, CSSStyleSheet>();
@@ -29,6 +44,10 @@ export class ThemeManager {
 	}
 
 	private apply(next: Map<Document, CSSStyleSheet>, theme: ContentTheme): void {
+		const accentCss = theme === this.theme ? this.accentCss : themeAccentCss(theme?.css ?? '');
+		const accentUpdates = theme === this.theme ? [] : [...this.accentStyles].map(style => ({
+			style, sheet: this.createSheet(style.document, { id: '', css: accentCss }),
+		}));
 		const previous = new Map<Document, CSSStyleSheet[]>();
 		try {
 			for (const document of new Set([...this.styles.keys(), ...next.keys()])) {
@@ -39,6 +58,11 @@ export class ThemeManager {
 				const replacement = sheets.flatMap(sheet => sheet === oldSheet ? (newSheet ? [newSheet] : []) : [sheet]);
 				if (newSheet && (!oldSheet || !sheets.includes(oldSheet))) replacement.push(newSheet);
 				document.adoptedStyleSheets = replacement;
+			}
+			for (const { style, sheet } of accentUpdates) {
+				const document = style.document;
+				if (!previous.has(document)) previous.set(document, [...document.adoptedStyleSheets]);
+				document.adoptedStyleSheets = document.adoptedStyleSheets.map(current => current === style.sheet ? sheet : current);
 			}
 		} catch (error) {
 			const errors = [error];
@@ -54,7 +78,13 @@ export class ThemeManager {
 		}
 		this.styles = next;
 		this.theme = theme;
+		this.accentCss = accentCss;
+		for (const { style, sheet } of accentUpdates) style.sheet = sheet;
 	}
 
-	destroy(): void { this.apply(new Map(), null); }
+	destroy(): void {
+		this.apply(new Map(), null);
+		for (const { document, sheet } of this.accentStyles) document.adoptedStyleSheets = document.adoptedStyleSheets.filter(current => current !== sheet);
+		this.accentStyles.clear();
+	}
 }

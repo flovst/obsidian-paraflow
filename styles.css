@@ -560,6 +560,10 @@ body[data-paraflow-theme] .tooltip.mod-left .tooltip-arrow { top: calc(50% - 4px
 .paraflow-settings .paraflow-setting-number { width: 5.5em; }
 .paraflow-settings .paraflow-setting-custom input[type='text'] { width: 11em; }
 .paraflow-settings .paraflow-setting-custom input[type='color'] { width: 2.8em; height: 1.8em; border-radius: var(--radius-s); }
+.paraflow-settings .paraflow-accent-preview { background-color: var(--paraflow-accent-preview-color, var(--interactive-accent)); display: inline-block; position: relative; width: 2.8em; height: 1.6em; border-radius: 1em; box-shadow: var(--swatch-shadow); }
+.paraflow-settings .paraflow-accent-theme { --paraflow-accent-preview-color: var(--paraflow-link-color, var(--interactive-accent)); }
+.paraflow-settings .paraflow-accent-preview input[type='color'] { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; opacity: 0; }
+.paraflow-settings .paraflow-accent-preview:focus-within { outline: 2px solid var(--background-modifier-border-focus); outline-offset: 2px; }
 .paraflow-settings .paraflow-setting-custom :disabled { opacity: 0.5; }
 .paraflow-settings .setting-item-description:empty { display: none; }
 .paraflow-settings .setting-item-control { flex-wrap: wrap; gap: 0.5em; }

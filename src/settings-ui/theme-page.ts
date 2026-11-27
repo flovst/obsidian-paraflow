@@ -1,10 +1,11 @@
-import { Platform, Setting, setIcon, type SliderComponent, type TextComponent } from 'obsidian';
+import { ColorComponent, Platform, Setting, setIcon, type SliderComponent, type TextComponent } from 'obsidian';
 import type ParaFlowPlugin from '../main.js';
 import type { ThemeOverrides } from '../themes/appearance.js';
 import { ImportTyporaThemeModal } from '../themes/import-modal.js';
 import { translate as t, type MessageKey } from './i18n.js';
 import { exportTheme, openThemeFolder, reloadThemes } from './theme-actions.js';
 import { openThemeLibrary } from './theme-library.js';
+import { renderAccentPreview } from './accent-preview.js';
 
 export interface ThemePageHost {
 	plugin: ParaFlowPlugin;
@@ -113,13 +114,20 @@ export function renderThemePage(host: ThemePageHost): void {
 	host.row('accentColor', setting => {
 		const value = plugin.contentThemeOverrides.accentColor; const mode = value === undefined ? '' : value === 'host' ? 'host' : 'custom';
 		setting.controlEl.classList.add('paraflow-setting-custom');
-		setting.addColorPicker(color => color.setValue(mode === 'custom' ? value! : '#428bca').setDisabled(mode !== 'custom')
-			.onChange(input => saveOverride(host, 'accentColor', input)));
+		const preview = renderAccentPreview(setting.controlEl, mode === '' ? 'theme' : mode, t('accentColor'));
+		if (mode === 'custom') {
+			preview.setCssProps({ '--paraflow-accent-preview-color': value! });
+			new ColorComponent(preview).setValue(value!).onChange(input => {
+				preview.setCssProps({ '--paraflow-accent-preview-color': input });
+				return saveOverride(host, 'accentColor', input);
+			});
+		}
 		setting.addDropdown(dropdown => {
 			dropdown.selectEl.classList.add('paraflow-setting-mode');
 			dropdown.addOptions(modes()).setValue(mode)
 				.onChange(source => saveOverride(host, 'accentColor', source === '' ? undefined : source === 'host' ? 'host' : '#428bca', true));
 		});
+		return mode === '' ? plugin.mountAccentPreview(setting.controlEl) : undefined;
 	});
 	host.section('appearance');
 	host.row('fontFamily', setting => {

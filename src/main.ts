@@ -183,6 +183,8 @@ export default class ParaFlowPlugin extends Plugin {
 		this.themeManager.syncDocuments(documents);
 	}
 
+	mountAccentPreview(parent: HTMLElement): () => void { return this.themeManager.mountAccentPreview(parent); }
+
 	private refreshCalloutIcons(): void {
 		const documents = new Set([this.app.workspace.containerEl.ownerDocument]);
 		this.app.workspace.iterateAllLeaves(leaf => documents.add(leaf.view.containerEl.ownerDocument));
@@ -368,7 +370,10 @@ export default class ParaFlowPlugin extends Plugin {
 		this.registerEvent(this.app.workspace.on('layout-change', () => this.syncThemeDocuments()));
 		this.registerEvent(this.app.workspace.on('window-open', () => this.syncThemeDocuments()));
 		this.registerEvent(this.app.workspace.on('window-close', () => this.syncThemeDocuments()));
-		this.registerEvent(this.app.workspace.on('css-change', () => { this.refreshCalloutIcons(); this.readingEnhancements?.refresh(); }));
+		this.registerEvent(this.app.workspace.on('css-change', () => {
+			this.refreshCalloutIcons();
+			this.readingEnhancements?.refresh();
+		}));
 		try { await this.initializeThemes(); }
 		catch (error) {
 			new Notice('Content theme setup failed. Editor features remain available. ' + String(error));
