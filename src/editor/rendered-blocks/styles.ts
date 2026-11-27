@@ -39,7 +39,8 @@ export const renderedBlockLayoutStyles = `
   opacity: 0;
   pointer-events: none;
 }
-.paraflow-rendered-block-html .paraflow-rendered-block-content { white-space: normal; }
+/* Include descendant margins in the block height measured by CodeMirror. */
+.paraflow-rendered-block-html > .paraflow-rendered-block-content { display: flow-root; white-space: normal; }
 .paraflow-rendered-block-preview.paraflow-rendered-block-html { padding: 0; }
 .paraflow-rendered-block-content > :first-child { margin-block-start: 0; }
 .paraflow-rendered-block-content > :last-child { margin-block-end: 0; }
